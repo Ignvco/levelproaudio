@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+media/
+
+# Entornos virtuales
+venv/
+.venv/
+env/
+
+# Variables de entorno
+.env
+.env.*
+!.env.example
+
+# Docker
+*.override.yml
+
+# Node / React
+node_modules/
+dist/
+.cache/
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Google Cloud
+*.json
+!package.json
+!tsconfig.json
+gcloud-service-key.json
+
+# OS
+.DS_Store
+Thumbs.db
