@@ -13,6 +13,8 @@ environ.Env.read_env(BASE_DIR.parent / '.env')  # Lee desde la raíz del repo
 
 SECRET_KEY = env('DJANGO_SECRET_KEY')
 
+# config/settings/base.py
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
@@ -21,14 +23,48 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     # Terceros
+    'django_filters',
     'rest_framework',
-    'corsheaders',
-    # Apps propias (las iremos agregando)
+    'rest_framework_simplejwt',          # ← nuevo
+    'rest_framework_simplejwt.token_blacklist',   # ← agrega esta línea
+    'corsheaders',                    # ← nuevo
+    # Apps propias
+    'core',
     'apps.users',
     'apps.products',
     'apps.orders',
     'apps.payments',
+    'apps.academy',
+    'apps.services'
+    
 ]
+
+# DRF — ahora con JWT como autenticación por defecto
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ),
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticatedOrReadOnly',
+    ],
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
+    'PAGE_SIZE': 20,
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
+}
+
+# JWT — configuración de tokens
+from datetime import timedelta
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),   # Token expira en 1 hora
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),      # Refresh dura 7 días
+    'ROTATE_REFRESH_TOKENS': True,                    # Cada refresh genera uno nuevo
+    'BLACKLIST_AFTER_ROTATION': True,                 # Invalida el refresh anterior
+    'AUTH_HEADER_TYPES': ('Bearer',),
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -99,3 +135,6 @@ REST_FRAMEWORK = {
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
     'PAGE_SIZE': 20,
 }
+
+# Agrega esta línea al final de base.py
+AUTH_USER_MODEL = 'users.User'
