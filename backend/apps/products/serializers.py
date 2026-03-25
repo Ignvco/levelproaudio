@@ -70,22 +70,31 @@ class ProductListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Product
         fields = [
-            'id',
-            'name',
-            'slug',
-            'price',
-            'compare_price',
-            'is_featured',
-            'primary_image'
+            "id",
+            "name",
+            "slug",
+            "price",
+            "compare_price",
+            "is_featured",
+            "primary_image",
         ]
 
     def get_primary_image(self, obj):
+        """
+        Retorna la imagen principal del producto.
+        """
+
         image = obj.images.filter(is_primary=True).first()
 
-        if image:
-            return image.image.url
+        if not image:
+            return None
 
-        return None
+        request = self.context.get("request")
+
+        if request:
+            return request.build_absolute_uri(image.image.url)
+
+        return image.image.url
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):

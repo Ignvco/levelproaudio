@@ -1,15 +1,20 @@
+# apps/services/models.py
+
 from django.db import models
+from django.utils import timezone          # ← agrega este import
 from django.conf import settings
 from core.models import TimeStampedModel
 
 
-class ServiceCategory(models.Model):
+class ServiceCategory(TimeStampedModel):
 
     name = models.CharField(max_length=200)
-
     slug = models.SlugField(unique=True)
-
     description = models.TextField(blank=True)
+
+    # Defaults para las filas existentes en la BD
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(default=timezone.now)
 
     def __str__(self):
         return self.name
