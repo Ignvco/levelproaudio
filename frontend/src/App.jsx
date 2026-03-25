@@ -14,12 +14,16 @@ import Home from "./pages/Home"
 import Shop from "./pages/Shop"
 import ProductDetail from "./pages/ProductDetail"
 import Login from "./pages/Login"
+import Academy from "./pages/Academy"
+import Services from "./pages/Services"
+import Cart from "./pages/Cart"
 
 // Páginas protegidas
 import Dashboard from "./pages/Dashboard"
+import Checkout from "./pages/Checkout"
+import OrderConfirmation from "./pages/OrderConfirmation"
 
 // ── Rutas protegidas ────────────────────────────────────────
-// Si el usuario no está autenticado, redirige al login
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuthStore()
   return isAuthenticated ? children : <Navigate to="/login" replace />
@@ -31,48 +35,44 @@ function App() {
     <BrowserRouter>
       <Routes>
 
-        {/* ── Rutas públicas con MainLayout ── */}
-        <Route
-          path="/"
-          element={
-            <MainLayout>
-              <Home />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/shop"
-          element={
-            <MainLayout>
-              <Shop />
-            </MainLayout>
-          }
-        />
-        <Route
-          path="/shop/:slug"
-          element={
-            <MainLayout>
-              <ProductDetail />
-            </MainLayout>
-          }
-        />
+        {/* ── Públicas ── */}
+        <Route path="/" element={<MainLayout><Home /></MainLayout>} />
+        <Route path="/shop" element={<MainLayout><Shop /></MainLayout>} />
+        <Route path="/shop/:slug" element={<MainLayout><ProductDetail /></MainLayout>} />
+        <Route path="/academy" element={<MainLayout><Academy /></MainLayout>} />
+        <Route path="/services" element={<MainLayout><Services /></MainLayout>} />
+        <Route path="/cart" element={<MainLayout><Cart /></MainLayout>} />
 
         {/* ── Auth ── */}
         <Route path="/login" element={<Login />} />
 
-        {/* ── Rutas protegidas con DashboardLayout ── */}
+        {/* ── Protegidas ── */}
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <DashboardLayout>
-                <Dashboard />
-              </DashboardLayout>
+              <DashboardLayout><Dashboard /></DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/checkout"
+          element={
+            <ProtectedRoute>
+              <MainLayout><Checkout /></MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/order-confirmation/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout><OrderConfirmation /></MainLayout>
             </ProtectedRoute>
           }
         />
 
-        {/* ── 404 → redirige al inicio ── */}
+        {/* ── 404 ── */}
         <Route path="*" element={<Navigate to="/" replace />} />
 
       </Routes>
@@ -80,47 +80,4 @@ function App() {
   )
 }
 
-// App.jsx — agrega estos imports arriba
-import Cart from "./pages/Cart"
-import Checkout from "./pages/Checkout"
-import OrderConfirmation from "./pages/OrderConfirmation"
-
-// Y estas rutas dentro de <Routes>
-
-{/* Carrito — público pero usa auth en checkout */}
-<Route
-  path="/cart"
-  element={
-    <MainLayout>
-      <Cart />
-    </MainLayout>
-  }
-/>
-
-{/* Checkout — protegido */}
-<Route
-  path="/checkout"
-  element={
-    <ProtectedRoute>
-      <MainLayout>
-        <Checkout />
-      </MainLayout>
-    </ProtectedRoute>
-  }
-/>
-
-{/* Confirmación de orden */}
-<Route
-  path="/order-confirmation/:id"
-  element={
-    <ProtectedRoute>
-      <MainLayout>
-        <OrderConfirmation />
-      </MainLayout>
-    </ProtectedRoute>
-  }
-/>
-
-
 export default App
-

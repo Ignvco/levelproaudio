@@ -58,6 +58,18 @@ class ProductImageSerializer(serializers.ModelSerializer):
             'order',
             'is_primary'
         ]
+        
+class ProductImageSerializer(serializers.ModelSerializer):
+    image = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductImage
+        fields = ['id', 'image', 'alt_text', 'order', 'is_primary']
+
+    def get_image(self, obj):
+        if obj.image:
+            return f"/media/{obj.image.name}"
+        return None
 
 
 class ProductListSerializer(serializers.ModelSerializer):
@@ -80,47 +92,36 @@ class ProductListSerializer(serializers.ModelSerializer):
         ]
 
     def get_primary_image(self, obj):
-        """
-        Retorna la imagen principal del producto.
-        """
-
         image = obj.images.filter(is_primary=True).first()
-
         if not image:
-            return None
-
-        request = self.context.get("request")
-
-        if request:
-            return request.build_absolute_uri(image.image.url)
-
-        return image.image.url
+            image = obj.images.first()
+        if image and image.image:
+            # Retorna ruta relativa — Vite proxy se encarga del resto
+            return f"/media/{image.image.name}"
+        return None
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     """
-    Serializer completo para detalle de producto.
+    Serializer completo para la página de detalle de un producto.
+    Incluye todas las imágenes y datos completos.
     """
-
-    images = ProductImageSerializer(many=True, read_only=True)
     category = CategorySerializer(read_only=True)
     brand = BrandSerializer(read_only=True)
+    images = ProductImageSerializer(many=True, read_only=True)
+    has_discount = serializers.BooleanField(read_only=True)
+    discount_percentage = serializers.IntegerField(read_only=True)
+    in_stock = serializers.BooleanField(read_only=True)
 
     class Meta:
         model = Product
-
         fields = [
-            'id',
-            'name',
-            'slug',
-            'sku',
-            'category',
-            'brand',
-            'description',
-            'short_description',
-            'price',
-            'compare_price',
-            'stock',
-            'is_featured',
-            'images'
+            'id', 'name', 'slug', 'sku',
+            'category', 'brand',
+            'description', 'short_description',
+            'price', 'compare_price',
+            'has_discount', 'discount_percentage',
+            'stock', 'in_stock',
+            'is_featured', 'images',
+            'created_at', 'updated_at',
         ]

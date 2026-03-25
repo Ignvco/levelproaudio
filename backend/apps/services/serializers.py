@@ -37,3 +37,5 @@ class ServiceSerializer(serializers.ModelSerializer):
             'description',
             'price'
         ]
+        
+        
