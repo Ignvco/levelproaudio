@@ -5,6 +5,10 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import { useAuthStore } from "./store/authStore"
 
+import Orders from "./pages/dashboard/Orders"
+import OrderDetail from "./pages/dashboard/OrderDetail"
+import Profile from "./pages/dashboard/Profile"
+
 // Layouts
 import MainLayout from "./layouts/MainLayout"
 import DashboardLayout from "./layouts/DashboardLayout"
@@ -22,6 +26,12 @@ import Cart from "./pages/Cart"
 import Dashboard from "./pages/Dashboard"
 import Checkout from "./pages/Checkout"
 import OrderConfirmation from "./pages/OrderConfirmation"
+
+
+//aCADEMY
+// Imports nuevos
+import CourseDetail from "./pages/CourseDetail"
+import MyCourses from "./pages/dashboard/MyCourses"
 
 // ── Rutas protegidas ────────────────────────────────────────
 function ProtectedRoute({ children }) {
@@ -41,8 +51,9 @@ function App() {
         <Route path="/shop/:slug" element={<MainLayout><ProductDetail /></MainLayout>} />
         <Route path="/academy" element={<MainLayout><Academy /></MainLayout>} />
         <Route path="/services" element={<MainLayout><Services /></MainLayout>} />
-        <Route path="/cart" element={<MainLayout><Cart /></MainLayout>} />
-
+        <Route path="/cart" element={<MainLayout><Cart /></MainLayout>} />    
+        <Route path="/academy" element={<MainLayout><Academy /></MainLayout>}/>  
+        <Route path="/academy/:slug" element={<MainLayout><CourseDetail /></MainLayout>}/>  
         {/* ── Auth ── */}
         <Route path="/login" element={<Login />} />
 
@@ -52,6 +63,47 @@ function App() {
           element={
             <ProtectedRoute>
               <DashboardLayout><Dashboard /></DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/orders"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Orders />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/orders/:id"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <OrderDetail />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
+          path="/dashboard/profile"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Profile />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/courses"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <MyCourses />
+              </DashboardLayout>
             </ProtectedRoute>
           }
         />
