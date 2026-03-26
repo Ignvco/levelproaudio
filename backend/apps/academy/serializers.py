@@ -1,76 +1,120 @@
 # apps/academy/serializers.py
-# Serializers del sistema de cursos
 
 from rest_framework import serializers
-from .models import Course, Module, Lesson
+from .models import Course, Module, Lesson, Enrollment, LessonProgress
 
 
 class LessonSerializer(serializers.ModelSerializer):
-    """
-    Serializer de lecciones.
-    """
+    is_locked = serializers.SerializerMethodField()
 
     class Meta:
         model = Lesson
         fields = [
-            'id',
-            'title',
-            'video_url',
-            'description',
-            'order',
-            'is_free'
+            "id", "title", "video_url", "description",
+            "order", "is_free", "duration_minutes", "is_locked",
         ]
+
+    def get_is_locked(self, obj):
+        """
+        Una lección está bloqueada si no es free
+        y el usuario no está inscrito en el curso.
+        """
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return not obj.is_free
+        enrolled = Enrollment.objects.filter(
+            user=request.user,
+            course=obj.module.course
+        ).exists()
+        return not enrolled and not obj.is_free
 
 
 class ModuleSerializer(serializers.ModelSerializer):
-    """
-    Serializer de módulos dentro de un curso.
-    """
-
     lessons = LessonSerializer(many=True, read_only=True)
+    lessons_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Module
-        fields = [
-            'id',
-            'title',
-            'order',
-            'lessons'
-        ]
+        fields = ["id", "title", "order", "lessons", "lessons_count"]
+
+    def get_lessons_count(self, obj):
+        return obj.lessons.count()
 
 
 class CourseListSerializer(serializers.ModelSerializer):
-    """
-    Serializer liviano para listado de cursos.
-    """
+    """Serializer liviano para la grilla de cursos."""
+    total_lessons  = serializers.IntegerField(read_only=True)
+    total_duration = serializers.IntegerField(read_only=True)
+    enrolled_count = serializers.IntegerField(read_only=True)
+    level_display  = serializers.CharField(source="get_level_display", read_only=True)
+    is_enrolled    = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
         fields = [
-            'id',
-            'title',
-            'slug',
-            'thumbnail',
-            'price'
+            "id", "title", "slug", "short_description",
+            "thumbnail", "price", "level", "level_display",
+            "is_free", "total_lessons", "total_duration",
+            "enrolled_count", "is_enrolled",
         ]
+
+    def get_is_enrolled(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return Enrollment.objects.filter(
+            user=request.user, course=obj
+        ).exists()
 
 
 class CourseDetailSerializer(serializers.ModelSerializer):
-    """
-    Serializer completo de un curso.
-    """
-
-    modules = ModuleSerializer(many=True, read_only=True)
+    """Serializer completo para la página de detalle."""
+    modules        = ModuleSerializer(many=True, read_only=True)
+    total_lessons  = serializers.IntegerField(read_only=True)
+    total_duration = serializers.IntegerField(read_only=True)
+    enrolled_count = serializers.IntegerField(read_only=True)
+    level_display  = serializers.CharField(source="get_level_display", read_only=True)
+    is_enrolled    = serializers.SerializerMethodField()
+    progress       = serializers.SerializerMethodField()
 
     class Meta:
         model = Course
-
         fields = [
-            'id',
-            'title',
-            'slug',
-            'description',
-            'thumbnail',
-            'price',
-            'modules'
+            "id", "title", "slug", "description", "short_description",
+            "thumbnail", "preview_url", "price", "level", "level_display",
+            "is_free", "total_lessons", "total_duration", "enrolled_count",
+            "is_enrolled", "progress", "modules",
         ]
+
+    def get_is_enrolled(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return Enrollment.objects.filter(
+            user=request.user, course=obj
+        ).exists()
+
+    def get_progress(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return 0
+        try:
+            enrollment = Enrollment.objects.get(user=request.user, course=obj)
+            return enrollment.progress_percentage
+        except Enrollment.DoesNotExist:
+            return 0
+
+
+class EnrollmentSerializer(serializers.ModelSerializer):
+    course = CourseListSerializer(read_only=True)
+    progress_percentage = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Enrollment
+        fields = ["id", "course", "progress_percentage", "created_at"]
+
+
+class LessonProgressSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LessonProgress
+        fields = ["id", "lesson", "completed", "updated_at"]
