@@ -19,6 +19,8 @@ export const createOrder = async (payload) => {
   return response.data
 }
 
+
+
 // ── Carrito ──────────────────────────────────────────────────
 export const getActiveCart = async () => {
   const response = await api.get("/cart/active/")
@@ -35,4 +37,9 @@ export const addToCart = async (productId, quantity = 1) => {
 
 export const clearCart = async () => {
   await api.delete("/cart/clear/")
+}
+
+export const cancelOrder = async (id) => {
+  const response = await api.delete(`/orders/${id}/`)
+  return response.data
 }

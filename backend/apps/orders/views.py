@@ -94,7 +94,7 @@ class OrderViewSet(viewsets.ModelViewSet):
     """
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post", "head", "options"]
+    http_method_names = ["get", "post","delete", "head", "options"]
 
     def get_queryset(self):
         return Order.objects.filter(
@@ -151,3 +151,32 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         serializer = OrderSerializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+    
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        """
+        DELETE /api/v1/orders/{id}/
+        Cancela la orden y restablece el stock de cada producto.
+        Solo se puede cancelar si está en estado 'pending'.
+        """
+        order = self.get_object()
+
+        if order.status != "pending":
+            return Response(
+                {"error": "Solo puedes cancelar órdenes pendientes."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Restablecer stock de cada item
+        for item in order.items.all():
+            if item.product:
+                item.product.stock = item.product.stock + item.quantity
+                item.product.save(update_fields=["stock"])
+
+        order.status = "cancelled"
+        order.save(update_fields=["status"])
+
+        return Response(
+            {"detail": "Orden cancelada. Stock restablecido."},
+            status=status.HTTP_200_OK
+        )

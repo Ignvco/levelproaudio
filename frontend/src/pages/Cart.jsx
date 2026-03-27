@@ -1,88 +1,84 @@
 // pages/Cart.jsx
-// Carrito de compras — muestra items, permite editar cantidades
-// y lleva al checkout
 
 import { Link, useNavigate } from "react-router-dom"
 import { useCartStore } from "../store/cartStore"
 import { useAuthStore } from "../store/authStore"
 
-// ── Item del carrito ─────────────────────────────────────────
 function CartItem({ item }) {
   const { updateQuantity, removeItem } = useCartStore()
   const { product, quantity } = item
 
   return (
-    <div
-      className="flex gap-4 py-5 border-b"
-      style={{ borderColor: "var(--color-border)" }}
-    >
+    <div style={{
+      display: "flex", gap: "16px", paddingBottom: "24px", marginBottom: "24px",
+      borderBottom: "1px solid var(--border)",
+    }}>
       {/* Imagen */}
-      <div
-        className="w-20 h-20 rounded-xl flex-shrink-0 overflow-hidden"
-        style={{ backgroundColor: "var(--color-surface-2)" }}
-      >
+      <div style={{
+        width: "88px", height: "88px", borderRadius: "var(--r-md)",
+        background: "var(--surface-2)", overflow: "hidden", flexShrink: 0,
+        border: "1px solid var(--border)",
+      }}>
         {product.primary_image ? (
-          <img
-            src={product.primary_image}
-            alt={product.name}
-            className="w-full h-full object-cover"
-          />
+          <img src={product.primary_image} alt={product.name}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-2xl">
+          <div style={{ width: "100%", height: "100%", display: "flex",
+            alignItems: "center", justifyContent: "center", fontSize: "28px" }}>
             🎧
           </div>
         )}
       </div>
 
       {/* Info */}
-      <div className="flex-1 min-w-0">
-        <p className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
+          letterSpacing: "0.08em", marginBottom: "4px" }}>
           {product.brand_name}
         </p>
-        <Link
-          to={`/shop/${product.slug}`}
-          className="font-semibold text-sm leading-snug hover:underline line-clamp-2"
+        <Link to={`/shop/${product.slug}`}
+          style={{ fontSize: "15px", fontWeight: 400, lineHeight: 1.4,
+            display: "block", marginBottom: "12px" }}
+          className="hover:text-[var(--text-2)] transition-colors"
         >
           {product.name}
         </Link>
 
-        <div className="flex items-center justify-between mt-3">
-          {/* Selector cantidad */}
-          <div
-            className="flex items-center rounded-lg overflow-hidden"
-            style={{ border: "1px solid var(--color-border)" }}
-          >
-            <button
-              onClick={() => updateQuantity(product.id, quantity - 1)}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          {/* Cantidad */}
+          <div style={{
+            display: "flex", alignItems: "center", gap: "0",
+            border: "1px solid var(--border)", borderRadius: "var(--r-sm)", overflow: "hidden",
+          }}>
+            <button onClick={() => updateQuantity(product.id, quantity - 1)}
               disabled={quantity <= 1}
-              className="w-8 h-8 flex items-center justify-center text-sm disabled:opacity-30 hover:bg-white/5"
-              style={{ color: "var(--color-text-muted)" }}
-            >
+              style={{ width: "32px", height: "32px", display: "flex", alignItems: "center",
+                justifyContent: "center", background: "none", border: "none",
+                color: "var(--text-2)", cursor: "pointer", fontSize: "16px",
+                opacity: quantity <= 1 ? 0.3 : 1, transition: "opacity var(--dur)" }}>
               −
             </button>
-            <span className="w-8 text-center text-sm font-semibold">
+            <span style={{ width: "32px", textAlign: "center", fontSize: "14px", fontWeight: 500 }}>
               {quantity}
             </span>
-            <button
-              onClick={() => updateQuantity(product.id, quantity + 1)}
+            <button onClick={() => updateQuantity(product.id, quantity + 1)}
               disabled={quantity >= product.stock}
-              className="w-8 h-8 flex items-center justify-center text-sm disabled:opacity-30 hover:bg-white/5"
-              style={{ color: "var(--color-text-muted)" }}
-            >
+              style={{ width: "32px", height: "32px", display: "flex", alignItems: "center",
+                justifyContent: "center", background: "none", border: "none",
+                color: "var(--text-2)", cursor: "pointer", fontSize: "16px",
+                opacity: quantity >= product.stock ? 0.3 : 1, transition: "opacity var(--dur)" }}>
               +
             </button>
           </div>
 
-          {/* Precio + eliminar */}
-          <div className="flex items-center gap-4">
-            <span className="font-bold text-sm" style={{ color: "var(--color-accent)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <span style={{ fontSize: "16px", fontWeight: 500 }}>
               ${(Number(product.price) * quantity).toLocaleString("es-CL")}
             </span>
-            <button
-              onClick={() => removeItem(product.id)}
-              className="text-xs transition-colors hover:text-red-400"
-              style={{ color: "var(--color-text-muted)" }}
-            >
+            <button onClick={() => removeItem(product.id)}
+              style={{ fontSize: "12px", color: "var(--text-3)", background: "none",
+                border: "none", cursor: "pointer", transition: "color var(--dur)" }}
+              className="hover:text-[var(--danger)]">
               Eliminar
             </button>
           </div>
@@ -92,119 +88,96 @@ function CartItem({ item }) {
   )
 }
 
-// ── Cart page ────────────────────────────────────────────────
 export default function Cart() {
   const { items, total, clearCart } = useCartStore()
-  const { isAuthenticated } = useAuthStore()
-  const navigate = useNavigate()
+  const { isAuthenticated }         = useAuthStore()
+  const navigate                    = useNavigate()
 
-  const handleCheckout = () => {
-    if (!isAuthenticated) {
-      navigate("/login?next=/checkout")
-      return
-    }
-    navigate("/checkout")
-  }
-
-  // Carrito vacío
-  if (!items.length) {
-    return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center gap-4 px-4"
-        style={{ backgroundColor: "var(--color-bg)" }}
-      >
-        <span className="text-6xl">🛒</span>
-        <h2 className="text-xl font-bold">Tu carrito está vacío</h2>
-        <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-          Agrega productos desde la tienda para continuar.
-        </p>
-        <Link
-          to="/shop"
-          className="mt-2 px-6 py-2.5 rounded-lg font-semibold text-sm"
-          style={{ backgroundColor: "var(--color-accent)", color: "#000" }}
-        >
-          Ir a la tienda
-        </Link>
-      </div>
-    )
-  }
+  if (!items.length) return (
+    <div style={{ minHeight: "80vh", display: "flex", flexDirection: "column",
+      alignItems: "center", justifyContent: "center", gap: "16px", padding: "40px" }}>
+      <div style={{ fontSize: "56px", marginBottom: "8px" }}>🛒</div>
+      <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "2rem" }}>Tu carrito está vacío</h2>
+      <p style={{ color: "var(--text-2)", fontSize: "15px" }}>
+        Agrega productos desde la tienda para continuar.
+      </p>
+      <Link to="/shop" className="btn btn-accent" style={{ marginTop: "8px" }}>
+        Ir a la tienda
+      </Link>
+    </div>
+  )
 
   return (
-    <div
-      className="min-h-screen py-10 px-4"
-      style={{ backgroundColor: "var(--color-bg)" }}
-    >
-      <div className="max-w-4xl mx-auto">
+    <div style={{ background: "var(--bg)", minHeight: "100vh",
+      padding: "clamp(40px, 6vw, 80px) 0" }}>
+      <div className="container" style={{ maxWidth: "960px" }}>
 
-        <h1 className="text-3xl font-black mb-8">Carrito</h1>
+        <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2rem, 4vw, 3rem)",
+          marginBottom: "40px" }}>
+          Carrito
+        </h1>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
-          {/* Lista de items */}
-          <div className="lg:col-span-2">
-            {items.map(item => (
-              <CartItem key={item.product.id} item={item} />
-            ))}
-
-            <button
-              onClick={clearCart}
-              className="mt-4 text-sm transition-colors hover:text-red-400"
-              style={{ color: "var(--color-text-muted)" }}
-            >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "40px",
+          alignItems: "start" }}
+          className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-10"
+        >
+          {/* Items */}
+          <div>
+            {items.map(item => <CartItem key={item.product.id} item={item} />)}
+            <button onClick={clearCart}
+              style={{ fontSize: "13px", color: "var(--text-3)", background: "none",
+                border: "none", cursor: "pointer", marginTop: "8px", transition: "color var(--dur)" }}
+              className="hover:text-[var(--danger)]">
               Vaciar carrito
             </button>
           </div>
 
           {/* Resumen */}
-          <div
-            className="rounded-2xl p-6 h-fit sticky top-24"
-            style={{
-              backgroundColor: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
-            }}
-          >
-            <h2 className="font-bold text-lg mb-5">Resumen</h2>
+          <div style={{
+            background: "var(--surface)", border: "1px solid var(--border)",
+            borderRadius: "var(--r-xl)", padding: "28px",
+            position: "sticky", top: "88px",
+          }}>
+            <h2 style={{ fontSize: "15px", fontWeight: 500, marginBottom: "20px" }}>Resumen</h2>
 
-            <div className="space-y-3 mb-5">
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "20px" }}>
               {items.map(item => (
-                <div key={item.product.id} className="flex justify-between text-sm">
-                  <span style={{ color: "var(--color-text-muted)" }} className="truncate mr-2">
-                    {item.product.name} x{item.quantity}
+                <div key={item.product.id} style={{ display: "flex", justifyContent: "space-between",
+                  fontSize: "13px" }}>
+                  <span style={{ color: "var(--text-2)", overflow: "hidden",
+                    textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: "8px" }}>
+                    {item.product.name} ×{item.quantity}
                   </span>
-                  <span className="flex-shrink-0">
+                  <span style={{ flexShrink: 0 }}>
                     ${(Number(item.product.price) * item.quantity).toLocaleString("es-CL")}
                   </span>
                 </div>
               ))}
             </div>
 
-            <div
-              className="pt-4 border-t flex justify-between font-bold text-lg"
-              style={{ borderColor: "var(--color-border)" }}
-            >
-              <span>Total</span>
-              <span style={{ color: "var(--color-accent)" }}>
+            <div style={{ borderTop: "1px solid var(--border)", paddingTop: "16px",
+              marginBottom: "24px", display: "flex", justifyContent: "space-between",
+              alignItems: "center" }}>
+              <span style={{ fontSize: "15px", fontWeight: 500 }}>Total</span>
+              <span style={{ fontSize: "22px", fontWeight: 500 }}>
                 ${total.toLocaleString("es-CL")}
               </span>
             </div>
 
             <button
-              onClick={handleCheckout}
-              className="w-full mt-5 py-3 rounded-lg font-semibold text-sm transition-opacity hover:opacity-90"
-              style={{ backgroundColor: "var(--color-accent)", color: "#000" }}
-            >
+              onClick={() => isAuthenticated ? navigate("/checkout") : navigate("/login?next=/checkout")}
+              className="btn btn-accent"
+              style={{ width: "100%", justifyContent: "center" }}>
               Proceder al pago
             </button>
 
-            <Link
-              to="/shop"
-              className="block text-center mt-3 text-sm transition-colors"
-              style={{ color: "var(--color-text-muted)" }}
-            >
+            <Link to="/shop" style={{ display: "block", textAlign: "center",
+              fontSize: "13px", color: "var(--text-3)", marginTop: "16px",
+              transition: "color var(--dur)" }}
+              className="hover:text-[var(--text-2)]">
               ← Seguir comprando
             </Link>
           </div>
-
         </div>
       </div>
     </div>

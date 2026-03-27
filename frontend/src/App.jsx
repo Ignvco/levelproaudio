@@ -41,7 +41,7 @@ import MyServices from "./pages/dashboard/MyServices"
 import PaymentSuccess from "./pages/payment/PaymentSuccess"
 import PaymentFailure from "./pages/payment/PaymentFailure"
 import TransferInstructions from "./pages/payment/TransferInstructions"
-
+import NotFound from "./pages/NotFound"
 
 // ── Rutas protegidas ────────────────────────────────────────
 function ProtectedRoute({ children }) {
@@ -170,7 +170,7 @@ function App() {
         />
 
         {/* ── 404 ── */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+       <Route path="*" element={<NotFound />} />
 
       </Routes>
     </BrowserRouter>

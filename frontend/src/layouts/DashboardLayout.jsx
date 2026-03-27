@@ -1,133 +1,69 @@
 // layouts/DashboardLayout.jsx
-// Layout del área privada — sidebar de navegación + contenido
 
 import { NavLink, Link, useNavigate } from "react-router-dom"
 import { useAuthStore } from "../store/authStore"
+import logoImg from "../assets/logo.png"
+import iconImg from "../assets/icon.png"
 
 const navItems = [
-  {
-    to: "/dashboard",
-    label: "Resumen",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"
-        />
-      </svg>
-    ),
-  },
-  {
-    to: "/dashboard/orders",
-    label: "Mis pedidos",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z"
-        />
-      </svg>
-    ),
-  },
-  {
-    to: "/dashboard/profile",
-    label: "Mi perfil",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-        />
-      </svg>
-    ),
-  },
-  {
-    to: "/dashboard/courses",
-    label: "Mis cursos",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
-        />
-      </svg>
-    ),
-  },
-  {
-    to: "/dashboard/services",
-    label: "Mis servicios",
-    icon: (
-      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-          d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"
-        />
-      </svg>
-    ),
-  },
+  { to: "/dashboard",          label: "Resumen",        icon: "⊞" },
+  { to: "/dashboard/orders",   label: "Mis pedidos",     icon: "⊡" },
+  { to: "/dashboard/profile",  label: "Mi perfil",       icon: "○" },
+  { to: "/dashboard/courses",  label: "Mis cursos",      icon: "▷" },
+  { to: "/dashboard/services", label: "Mis servicios",   icon: "◈" },
 ]
 
 export default function DashboardLayout({ children }) {
   const { user, logout } = useAuthStore()
   const navigate = useNavigate()
 
-  const handleLogout = () => {
-    logout()
-    navigate("/")
-  }
-
   return (
-    <div
-      className="min-h-screen flex"
-      style={{ backgroundColor: "var(--color-bg)" }}
-    >
-      {/* ── Sidebar ─────────────────────────────────────── */}
-      <aside
-        className="w-64 flex-shrink-0 flex flex-col"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderRight: "1px solid var(--color-border)",
-        }}
-      >
+    <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg)" }}>
+
+      {/* Sidebar */}
+      <aside style={{
+        width: "240px",
+        flexShrink: 0,
+        borderRight: "1px solid var(--border)",
+        background: "var(--surface)",
+        display: "flex",
+        flexDirection: "column",
+        position: "sticky",
+        top: 0,
+        height: "100vh",
+        overflow: "hidden",
+      }}>
+
         {/* Logo */}
-        <div
-          className="p-6 border-b"
-          style={{ borderColor: "var(--color-border)" }}
-        >
-          <Link to="/" className="flex items-center gap-2">
-            <span
-              className="text-lg font-black tracking-tight"
-              style={{ color: "var(--color-accent)" }}
-            >
-              LEVEL<span style={{ color: "var(--color-text)" }}>PRO</span>
-            </span>
+        <div style={{ padding: "24px 20px", borderBottom: "1px solid var(--border)" }}>
+          <Link to="/" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <img src={logoImg} alt="LevelPro" style={{ height: "28px", filter: "brightness(0) invert(1)", maxWidth: "100px" }} />
           </Link>
         </div>
 
         {/* Usuario */}
-        <div
-          className="p-4 border-b"
-          style={{ borderColor: "var(--color-border)" }}
-        >
-          <div
-            className="flex items-center gap-3 p-3 rounded-xl"
-            style={{ backgroundColor: "var(--color-surface-2)" }}
-          >
-            <div
-              className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold flex-shrink-0"
-              style={{
-                backgroundColor: "rgba(0,230,118,0.15)",
-                color: "var(--color-accent)",
-              }}
-            >
-              {user?.first_name?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U"}
+        <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <div style={{
+              width: "32px",
+              height: "32px",
+              borderRadius: "50%",
+              background: "var(--surface-3)",
+              border: "1px solid var(--border)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "13px",
+              fontWeight: 600,
+              flexShrink: 0,
+            }}>
+              {user?.first_name?.[0]?.toUpperCase() || "U"}
             </div>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold truncate">
-                {user?.first_name
-                  ? `${user.first_name} ${user.last_name || ""}`
-                  : "Mi cuenta"
-                }
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: "13px", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {user?.first_name ? `${user.first_name} ${user.last_name || ""}`.trim() : "Mi cuenta"}
               </p>
-              <p
-                className="text-xs truncate"
-                style={{ color: "var(--color-text-muted)" }}
-              >
+              <p style={{ fontSize: "11px", color: "var(--text-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {user?.email}
               </p>
             </div>
@@ -135,59 +71,74 @@ export default function DashboardLayout({ children }) {
         </div>
 
         {/* Nav */}
-        <nav className="flex-1 p-4 space-y-1">
+        <nav style={{ flex: 1, padding: "12px 10px", overflowY: "auto" }}>
           {navItems.map(({ to, label, icon }) => (
             <NavLink
               key={to}
               to={to}
               end={to === "/dashboard"}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors ${isActive
-                  ? "bg-[var(--color-surface-2)] text-[var(--color-accent)]"
-                  : "text-[var(--color-text-muted)] hover:text-[var(--color-text)] hover:bg-[var(--color-surface-2)]"
-                }`
-              }
+              style={({ isActive }) => ({
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                padding: "9px 10px",
+                borderRadius: "var(--r-md)",
+                fontSize: "13px",
+                fontWeight: isActive ? 500 : 400,
+                color: isActive ? "var(--text)" : "var(--text-2)",
+                background: isActive ? "var(--surface-2)" : "transparent",
+                transition: "all var(--dur) var(--ease)",
+                marginBottom: "2px",
+              })}
             >
-              {icon}
+              <span style={{ fontSize: "14px", opacity: 0.6, width: "16px", textAlign: "center" }}>{icon}</span>
               {label}
             </NavLink>
           ))}
         </nav>
 
         {/* Footer sidebar */}
-        <div
-          className="p-4 border-t space-y-1"
-          style={{ borderColor: "var(--color-border)" }}
-        >
-          <Link
-            to="/"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
-            style={{ color: "var(--color-text-muted)" }}
+        <div style={{ padding: "10px", borderTop: "1px solid var(--border)" }}>
+          <Link to="/" style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "9px 10px",
+            borderRadius: "var(--r-md)",
+            fontSize: "13px",
+            color: "var(--text-3)",
+            transition: "color var(--dur)",
+            marginBottom: "2px",
+          }}
+            className="hover:text-[var(--text-2)]"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-              />
-            </svg>
-            Volver al sitio
+            ← Volver al sitio
           </Link>
           <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-colors"
-            style={{ color: "var(--color-text-muted)" }}
+            onClick={() => { logout(); navigate("/") }}
+            style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "9px 10px",
+              borderRadius: "var(--r-md)",
+              fontSize: "13px",
+              color: "var(--text-3)",
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+              transition: "color var(--dur)",
+            }}
+            className="hover:text-[var(--text-2)]"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-              />
-            </svg>
-            Cerrar sesión
+            ↗ Cerrar sesión
           </button>
         </div>
       </aside>
 
-      {/* ── Contenido ────────────────────────────────────── */}
-      <main className="flex-1 overflow-auto">
+      {/* Contenido */}
+      <main style={{ flex: 1, overflow: "auto" }}>
         {children}
       </main>
     </div>
