@@ -1,13 +1,17 @@
 # apps/services/urls.py
-# Endpoints de servicios profesionales
 
 from rest_framework.routers import DefaultRouter
-from .views import ServiceViewSet
-
+from .views import (
+    ServiceCategoryViewSet,
+    ServiceViewSet,
+    BookingViewSet,
+    ServiceRequestViewSet,
+)
 
 router = DefaultRouter()
-
-router.register(r'services', ServiceViewSet, basename='services')
-
+router.register("service-categories", ServiceCategoryViewSet, basename="service-category")
+router.register("services",           ServiceViewSet,         basename="service")
+router.register("bookings",           BookingViewSet,         basename="booking")
+router.register("service-requests",   ServiceRequestViewSet,  basename="service-request")
 
 urlpatterns = router.urls

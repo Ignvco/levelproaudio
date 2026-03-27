@@ -149,3 +149,32 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }
+
+
+# Al final de config/settings/base.py
+
+import os
+
+# ── Pagos ────────────────────────────────────────────────────
+MP_CL_ACCESS_TOKEN  = env("MP_CL_ACCESS_TOKEN",  default="")
+MP_CL_PUBLIC_KEY    = env("MP_CL_PUBLIC_KEY",    default="")
+MP_AR_ACCESS_TOKEN  = env("MP_AR_ACCESS_TOKEN",  default="")
+MP_AR_PUBLIC_KEY    = env("MP_AR_PUBLIC_KEY",    default="")
+
+PAYPAL_CLIENT_ID     = env("PAYPAL_CLIENT_ID",     default="")
+PAYPAL_CLIENT_SECRET = env("PAYPAL_CLIENT_SECRET", default="")
+PAYPAL_MODE          = env("PAYPAL_MODE",          default="sandbox")
+
+# ── Global66 ─────────────────────────────────────────────────
+GLOBAL66_ALIAS        = env("GLOBAL66_ALIAS",        default="")
+GLOBAL66_ACCOUNT_NAME = env("GLOBAL66_ACCOUNT_NAME", default="LevelPro Audio")
+GLOBAL66_BANK         = env("GLOBAL66_BANK",         default="Global66")
+GLOBAL66_EMAIL        = env("GLOBAL66_EMAIL",        default="")
+
+# ── URLs del sistema ─────────────────────────────────────────
+FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
+BACKEND_URL  = env("BACKEND_URL",  default="http://localhost:8000")
+
+# ── Email ────────────────────────────────────────────────────
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ventas@levelproaudio.com")
+EMAIL_BACKEND      = "django.core.mail.backends.console.EmailBackend"
