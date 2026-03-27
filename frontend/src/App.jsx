@@ -21,6 +21,7 @@ import Login from "./pages/Login"
 import Academy from "./pages/Academy"
 import Services from "./pages/Services"
 import Cart from "./pages/Cart"
+import Register from "./pages/Register"
 
 // Páginas protegidas
 import Dashboard from "./pages/Dashboard"
@@ -32,6 +33,15 @@ import OrderConfirmation from "./pages/OrderConfirmation"
 // Imports nuevos
 import CourseDetail from "./pages/CourseDetail"
 import MyCourses from "./pages/dashboard/MyCourses"
+
+import ServiceDetail from "./pages/ServiceDetail"
+import MyServices from "./pages/dashboard/MyServices"
+
+// Imports nuevos
+import PaymentSuccess from "./pages/payment/PaymentSuccess"
+import PaymentFailure from "./pages/payment/PaymentFailure"
+import TransferInstructions from "./pages/payment/TransferInstructions"
+
 
 // ── Rutas protegidas ────────────────────────────────────────
 function ProtectedRoute({ children }) {
@@ -51,11 +61,17 @@ function App() {
         <Route path="/shop/:slug" element={<MainLayout><ProductDetail /></MainLayout>} />
         <Route path="/academy" element={<MainLayout><Academy /></MainLayout>} />
         <Route path="/services" element={<MainLayout><Services /></MainLayout>} />
-        <Route path="/cart" element={<MainLayout><Cart /></MainLayout>} />    
-        <Route path="/academy" element={<MainLayout><Academy /></MainLayout>}/>  
-        <Route path="/academy/:slug" element={<MainLayout><CourseDetail /></MainLayout>}/>  
+        <Route path="/cart" element={<MainLayout><Cart /></MainLayout>} />
+        <Route path="/academy" element={<MainLayout><Academy /></MainLayout>} />
+        <Route path="/academy/:slug" element={<MainLayout><CourseDetail /></MainLayout>} />
+        <Route path="/services" element={<MainLayout><Services /></MainLayout>} />
+        <Route path="/services/:slug" element={<MainLayout><ServiceDetail /></MainLayout>} />
+
+
+
         {/* ── Auth ── */}
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
         {/* ── Protegidas ── */}
         <Route
@@ -108,6 +124,17 @@ function App() {
           }
         />
         <Route
+          path="/dashboard/services"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <MyServices />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+
+        <Route
           path="/checkout"
           element={
             <ProtectedRoute>
@@ -120,6 +147,24 @@ function App() {
           element={
             <ProtectedRoute>
               <MainLayout><OrderConfirmation /></MainLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/payment/success"
+          element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>}
+        />
+        <Route path="/payment/failure"
+          element={<PaymentFailure />}
+        />
+        <Route path="/payment/pending"
+          element={<ProtectedRoute><PaymentSuccess /></ProtectedRoute>}
+        />
+        <Route path="/payment/transfer/:id"
+          element={
+            <ProtectedRoute>
+              <MainLayout>
+                <TransferInstructions />
+              </MainLayout>
             </ProtectedRoute>
           }
         />
