@@ -1,5 +1,4 @@
 // pages/payment/TransferInstructions.jsx
-// Instrucciones de transferencia via Global66
 
 import { useLocation, Link } from "react-router-dom"
 
@@ -7,100 +6,82 @@ export default function TransferInstructions() {
   const { state } = useLocation()
   const data      = state?.transferData
 
-  if (!data) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <p style={{ color: "var(--color-text-muted)" }}>
-            No se encontraron datos de transferencia.
-          </p>
-          <Link to="/" style={{ color: "var(--color-accent)" }}
-            className="mt-4 inline-block text-sm"
-          >
-            Volver al inicio
-          </Link>
-        </div>
-      </div>
-    )
-  }
+  const copy = (text) => navigator.clipboard.writeText(text)
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-  }
+  if (!data) return (
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center",
+      justifyContent: "center", padding: "40px", background: "var(--bg)" }}>
+      <div style={{ textAlign: "center" }}>
+        <p style={{ color: "var(--text-2)", marginBottom: "16px" }}>
+          No se encontraron datos de transferencia.
+        </p>
+        <Link to="/" className="btn btn-ghost">Volver al inicio</Link>
+      </div>
+    </div>
+  )
+
+  const rows = [
+    { label: "Banco / Plataforma",     value: data.bank,         highlight: false },
+    { label: "Nombre de cuenta",       value: data.account_name, highlight: false },
+    { label: "Alias / Usuario",        value: data.alias,        highlight: false },
+    { label: "Email",                  value: data.email,        highlight: false },
+    { label: "Monto exacto",           value: `$${Number(data.amount).toLocaleString("es-CL")} CLP`, highlight: true },
+    { label: "Referencia (obligatorio)",value: data.reference,   highlight: true },
+  ]
 
   return (
-    <div
-      className="min-h-screen py-10 px-4 flex items-center justify-center"
-      style={{ backgroundColor: "var(--color-bg)" }}
-    >
-      <div
-        className="w-full max-w-lg rounded-2xl p-8"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-        }}
-      >
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div
-            className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-            style={{ backgroundColor: "rgba(0,230,118,0.1)" }}
-          >
-            <span className="text-3xl">🏦</span>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center",
+      justifyContent: "center", padding: "24px", background: "var(--bg)" }}>
+      <div style={{
+        width: "100%", maxWidth: "440px",
+        background: "var(--surface)", border: "1px solid var(--border)",
+        borderRadius: "var(--r-xl)", padding: "36px",
+      }}>
+        <div style={{ textAlign: "center", marginBottom: "28px" }}>
+          <div style={{
+            width: "52px", height: "52px", borderRadius: "50%",
+            background: "var(--surface-2)", border: "1px solid var(--border)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "22px", margin: "0 auto 16px",
+          }}>
+            🏦
           </div>
-          <h1 className="text-2xl font-black mb-2">Instrucciones de transferencia</h1>
-          <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-            Realiza la transferencia con los siguientes datos
+          <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.6rem", marginBottom: "6px" }}>
+            Instrucciones de transferencia
+          </h1>
+          <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
+            Realiza la transferencia con los datos exactos
           </p>
         </div>
 
         {/* Datos */}
-        <div className="space-y-3 mb-6">
-          {[
-            { label: "Banco / Plataforma",  value: data.bank },
-            { label: "Nombre de cuenta",    value: data.account_name },
-            { label: "Alias / Usuario",     value: data.alias },
-            { label: "Email",               value: data.email },
-            { label: "Monto exacto",
-              value: `$${Number(data.amount).toLocaleString("es-CL")} CLP`,
-              highlight: true
-            },
-            { label: "Referencia (obligatorio)",
-              value: data.reference,
-              highlight: true
-            },
-          ].map(({ label, value, highlight }) => (
-            <div
-              key={label}
-              className="flex items-center justify-between p-3 rounded-xl"
-              style={{
-                backgroundColor: highlight
-                  ? "rgba(0,230,118,0.05)"
-                  : "var(--color-surface-2)",
-                border: highlight
-                  ? "1px solid var(--color-accent)"
-                  : "1px solid var(--color-border)",
-              }}
-            >
-              <div>
-                <p className="text-xs mb-0.5" style={{ color: "var(--color-text-muted)" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "20px" }}>
+          {rows.map(({ label, value, highlight }) => (
+            <div key={label} style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "12px 14px", borderRadius: "var(--r-md)", gap: "12px",
+              background: highlight ? "var(--accent-glow)" : "var(--surface-2)",
+              border: `1px solid ${highlight ? "rgba(26,255,110,0.2)" : "var(--border)"}`,
+            }}>
+              <div style={{ minWidth: 0 }}>
+                <p style={{ fontSize: "11px", color: "var(--text-3)", marginBottom: "2px",
+                  textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 500 }}>
                   {label}
                 </p>
-                <p
-                  className="font-bold text-sm"
-                  style={{ color: highlight ? "var(--color-accent)" : "var(--color-text)" }}
-                >
+                <p style={{ fontSize: "14px", fontWeight: highlight ? 600 : 400,
+                  color: highlight ? "var(--accent)" : "var(--text)",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                   {value}
                 </p>
               </div>
-              <button
-                onClick={() => copyToClipboard(value)}
-                className="text-xs px-2 py-1 rounded-lg transition-colors"
+              <button onClick={() => copy(value)}
                 style={{
-                  color: "var(--color-text-muted)",
-                  border: "1px solid var(--color-border)",
+                  flexShrink: 0, padding: "4px 10px", borderRadius: "var(--r-sm)",
+                  fontSize: "11px", fontWeight: 500, cursor: "pointer",
+                  background: "none", border: "1px solid var(--border)",
+                  color: "var(--text-3)", transition: "all var(--dur) var(--ease)",
                 }}
-              >
+                className="hover:border-[var(--border-hover)] hover:text-[var(--text-2)]">
                 Copiar
               </button>
             </div>
@@ -108,39 +89,27 @@ export default function TransferInstructions() {
         </div>
 
         {/* Instrucciones */}
-        <div
-          className="rounded-xl p-4 mb-6 text-sm"
-          style={{
-            backgroundColor: "var(--color-surface-2)",
-            border: "1px solid var(--color-border)",
-          }}
-        >
-          <p className="font-semibold mb-2">⚠️ Importante</p>
-          <p style={{ color: "var(--color-text-muted)" }} className="leading-relaxed">
+        <div style={{
+          padding: "14px", borderRadius: "var(--r-md)",
+          background: "var(--surface-2)", border: "1px solid var(--border)",
+          marginBottom: "20px",
+        }}>
+          <p style={{ fontSize: "12px", fontWeight: 500, marginBottom: "6px" }}>⚠️ Importante</p>
+          <p style={{ fontSize: "12px", color: "var(--text-2)", lineHeight: 1.65 }}>
             {data.instructions}
           </p>
         </div>
 
-        {/* CTAs */}
-        <div className="space-y-3"><a
-          
-            href={data.whatsapp}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl font-semibold text-sm"
-            style={{ backgroundColor: "#25d366", color: "#fff" }}
-          >
-            <span>💬</span>
-            Enviar comprobante por WhatsApp
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <a href={data.whatsapp} target="_blank" rel="noreferrer"
+            className="btn" style={{
+              justifyContent: "center",
+              background: "#22c55e", color: "#fff",
+            }}>
+            💬 Enviar comprobante por WhatsApp
           </a>
-          <Link
-            to="/dashboard/orders"
-            className="flex items-center justify-center w-full py-3 rounded-xl font-semibold text-sm"
-            style={{
-              border: "1px solid var(--color-border)",
-              color: "var(--color-text)",
-            }}
-          >
+          <Link to="/dashboard/orders" className="btn btn-ghost"
+            style={{ justifyContent: "center" }}>
             Ver mis pedidos
           </Link>
         </div>

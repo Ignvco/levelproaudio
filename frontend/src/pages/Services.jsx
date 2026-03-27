@@ -1,108 +1,87 @@
 // pages/Services.jsx
-// Catálogo de servicios profesionales
 
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { getServices, getServiceCategories } from "../api/services.api"
+import fondoImg from "../assets/fondo.png"
 
-// ── Price type config ────────────────────────────────────────
-const priceTypeConfig = {
-  fixed: { label: "Precio fijo", color: "#00e676" },
-  quote: { label: "A cotizar", color: "#f59e0b" },
-  hourly: { label: "Por hora", color: "#3b82f6" },
-  project: { label: "Por proyecto", color: "#a78bfa" },
+const priceColors = {
+  fixed:   "#4ade80",
+  quote:   "#facc15",
+  hourly:  "#60a5fa",
+  project: "#c084fc",
 }
 
-// ── Service Card ─────────────────────────────────────────────
 function ServiceCard({ service }) {
-  const typeConfig = priceTypeConfig[service.price_type] || { color: "#888" }
-
+  const color = priceColors[service.price_type] || "var(--text-2)"
   return (
-    <Link
-      to={`/services/${service.slug}`}
-      className="group rounded-2xl overflow-hidden flex flex-col transition-all hover:-translate-y-1"
-      style={{
-        backgroundColor: "var(--color-surface)",
-        border: "1px solid var(--color-border)",
-      }}
+    <Link to={`/services/${service.slug}`} className="card"
+      style={{ display: "flex", flexDirection: "column" }}
     >
-      {/* Thumbnail */}
-      <div
-        className="relative w-full aspect-video overflow-hidden"
-        style={{ backgroundColor: "var(--color-surface-2)" }}
-      >
+      <div style={{
+        width: "100%", aspectRatio: "16/9",
+        background: "var(--surface-2)", overflow: "hidden", flexShrink: 0,
+      }}>
         {service.thumbnail ? (
-          <img
-            src={service.thumbnail}
-            alt={service.name}
-            className="w-full h-full object-cover transition-transform group-hover:scale-105"
-          />
+          <img src={service.thumbnail} alt={service.name}
+            style={{ width: "100%", height: "100%", objectFit: "cover",
+              transition: "transform 400ms var(--ease)" }} />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="text-6xl">🎚️</span>
+          <div style={{ width: "100%", height: "100%", display: "flex",
+            alignItems: "center", justifyContent: "center", fontSize: "40px" }}>
+            🎚️
           </div>
         )}
-
         {service.is_featured && (
-          <span
-            className="absolute top-3 left-3 text-xs font-bold px-2.5 py-1 rounded-full"
-            style={{ backgroundColor: "var(--color-accent)", color: "#000" }}
-          >
+          <span style={{
+            position: "absolute", top: "12px", left: "12px",
+            padding: "3px 10px", borderRadius: "100px",
+            background: "var(--accent)", color: "#000",
+            fontSize: "11px", fontWeight: 600,
+          }}>
             Destacado
           </span>
         )}
       </div>
 
-      {/* Info */}
-      <div className="flex flex-col flex-1 p-5">
+      <div style={{ padding: "20px", flex: 1, display: "flex", flexDirection: "column" }}>
         {service.category_name && (
-          <p className="text-xs font-semibold uppercase tracking-widest mb-2"
-            style={{ color: "var(--color-text-muted)" }}
-          >
+          <p style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
+            letterSpacing: "0.08em", marginBottom: "8px", fontWeight: 500 }}>
             {service.category_name}
           </p>
         )}
-
-        <h3 className="font-bold text-base leading-snug mb-2">
+        <h3 style={{ fontFamily: "var(--font-serif)", fontSize: "1.1rem",
+          lineHeight: 1.3, marginBottom: "8px", flex: 1 }}>
           {service.name}
         </h3>
-
         {service.short_description && (
-          <p className="text-sm leading-relaxed line-clamp-2 mb-4 flex-1"
-            style={{ color: "var(--color-text-muted)" }}
-          >
+          <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6,
+            marginBottom: "16px", display: "-webkit-box", WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical", overflow: "hidden" }}>
             {service.short_description}
           </p>
         )}
-
-        <div
-          className="flex items-center justify-between pt-3 mt-auto"
-          style={{ borderTop: "1px solid var(--color-border)" }}
-        >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+          paddingTop: "16px", borderTop: "1px solid var(--border)" }}>
           <div>
-            <span
-              className="font-black text-base"
-              style={{ color: typeConfig.color }}
-            >
+            <span style={{ fontSize: "16px", fontWeight: 500, color }}>
               {service.price_display}
             </span>
             {service.duration_hours && (
-              <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+              <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "2px" }}>
                 ~{service.duration_hours}h estimado
               </p>
             )}
           </div>
-          <span className="text-xs font-semibold" style={{ color: "var(--color-accent)" }}>
-            Ver detalle →
-          </span>
+          <span style={{ fontSize: "12px", color: "var(--text-3)" }}>Ver detalle →</span>
         </div>
       </div>
     </Link>
   )
 }
 
-// ── Services page ────────────────────────────────────────────
 export default function Services() {
   const [activeCategory, setActiveCategory] = useState("")
 
@@ -111,168 +90,128 @@ export default function Services() {
     queryFn: getServiceCategories,
   })
 
-  const params = activeCategory ? { category__slug: activeCategory } : {}
-
   const { data, isLoading } = useQuery({
-    queryKey: ["services", params],
-    queryFn: () => getServices(params),
+    queryKey: ["services", activeCategory],
+    queryFn: () => getServices(activeCategory ? { category__slug: activeCategory } : {}),
   })
 
   const categories = categoriesData?.results || categoriesData || []
-  const services = data?.results || data || []
-  const featured = services.filter(s => s.is_featured)
-  const rest = services.filter(s => !s.is_featured)
+  const services   = data?.results || data || []
+  const featured   = services.filter(s => s.is_featured)
+  const rest       = activeCategory ? services : services.filter(s => !s.is_featured)
 
   return (
-    <div style={{ backgroundColor: "var(--color-bg)" }}>
+    <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
 
       {/* Hero */}
-      <div
-        className="py-20 px-4 border-b"
-        style={{
-          background: "linear-gradient(135deg, var(--color-surface) 0%, var(--color-bg) 70%)",
-          borderColor: "var(--color-border)",
-        }}
-      >
-        <div className="max-w-7xl mx-auto">
-          <span
-            className="inline-block text-xs font-bold tracking-widest uppercase mb-4 px-3 py-1 rounded-full"
-            style={{
-              color: "var(--color-accent)",
-              border: "1px solid var(--color-accent)",
-              backgroundColor: "rgba(0,230,118,0.05)",
-            }}
-          >
+      <div style={{
+        position: "relative",
+        padding: "clamp(64px, 10vw, 120px) 0 0",
+        borderBottom: "1px solid var(--border)",
+        overflow: "hidden",
+      }}>
+        <div style={{
+          position: "absolute", inset: 0,
+          backgroundImage: `url(${fondoImg})`,
+          backgroundSize: "cover", opacity: 0.05,
+        }} />
+        <div style={{
+          position: "absolute", bottom: "-100px", left: "-100px",
+          width: "400px", height: "400px", borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(26,255,110,0.05) 0%, transparent 60%)",
+        }} />
+        <div className="container" style={{ maxWidth: "var(--container)", position: "relative", zIndex: 1 }}>
+          <span className="pill pill-accent" style={{ marginBottom: "24px", display: "inline-flex" }}>
             Servicios Profesionales
           </span>
-          <h1 className="text-4xl md:text-5xl font-black mb-4">
-            Lleva tu sonido al<br />
-            <span style={{ color: "var(--color-accent)" }}>siguiente nivel</span>
+          <h1 style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: "clamp(2.8rem, 6vw, 5rem)",
+            lineHeight: 1.06, marginBottom: "20px",
+          }}>
+            Lleva tu sonido al{" "}
+            <em style={{ fontStyle: "italic", color: "var(--accent)" }}>siguiente nivel.</em>
           </h1>
-          <p className="text-lg max-w-xl" style={{ color: "var(--color-text-muted)" }}>
-            Producción musical, mezcla, grabación, live sound y soporte técnico
-            para iglesias. Trabajamos con tu visión.
+          <p style={{ fontSize: "17px", color: "var(--text-2)", maxWidth: "480px",
+            lineHeight: 1.7, marginBottom: "32px" }}>
+            Producción musical, mezcla, grabación, live sound y soporte técnico para iglesias.
           </p>
-
-          <div className="flex gap-4 mt-8">
-            <Link
-              to="/services/contact"
-              className="px-6 py-3 rounded-xl font-semibold text-sm"
-              style={{ backgroundColor: "var(--color-accent)", color: "#000" }}
-            >
-              Solicitar cotización
-            </Link><a
-
-              href="https://wa.me/5492622635045"
-              target="_blank"
-              rel="noreferrer"
-              className="px-6 py-3 rounded-xl font-semibold text-sm transition-colors"
-              style={{
-                border: "1px solid var(--color-border)",
-                color: "var(--color-text)",
-              }}
-            >
+          <div style={{ display: "flex", gap: "12px", marginBottom: "40px" }}>
+            <Link to="/services/contact" className="btn btn-accent">Solicitar cotización</Link>
+            <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+              className="btn btn-ghost">
               WhatsApp directo
             </a>
           </div>
+
+          {/* Categorías */}
+          {categories.length > 0 && (
+            <div style={{ display: "flex", gap: "8px", paddingBottom: "32px", flexWrap: "wrap" }}>
+              <button onClick={() => setActiveCategory("")}
+                style={{
+                  padding: "7px 16px", borderRadius: "100px", fontSize: "13px",
+                  cursor: "pointer", transition: "all var(--dur) var(--ease)",
+                  background: !activeCategory ? "var(--text)" : "transparent",
+                  color: !activeCategory ? "var(--bg)" : "var(--text-2)",
+                  border: `1px solid ${!activeCategory ? "var(--text)" : "var(--border)"}`,
+                }}>
+                Todos
+              </button>
+              {categories.map(cat => (
+                <button key={cat.slug} onClick={() => setActiveCategory(cat.slug)}
+                  style={{
+                    padding: "7px 16px", borderRadius: "100px", fontSize: "13px",
+                    cursor: "pointer", transition: "all var(--dur) var(--ease)",
+                    display: "flex", alignItems: "center", gap: "6px",
+                    background: activeCategory === cat.slug ? "var(--text)" : "transparent",
+                    color: activeCategory === cat.slug ? "var(--bg)" : "var(--text-2)",
+                    border: `1px solid ${activeCategory === cat.slug ? "var(--text)" : "var(--border)"}`,
+                  }}>
+                  {cat.icon && <span>{cat.icon}</span>}
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Categorías */}
-      {categories.length > 0 && (
-        <div
-          className="sticky top-16 z-40 px-4 py-3 border-b"
-          style={{
-            backgroundColor: "var(--color-surface)",
-            borderColor: "var(--color-border)",
-          }}
-        >
-          <div className="max-w-7xl mx-auto flex flex-wrap gap-2">
-            <button
-              onClick={() => setActiveCategory("")}
-              className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
-              style={{
-                backgroundColor: !activeCategory
-                  ? "var(--color-accent)"
-                  : "var(--color-surface-2)",
-                color: !activeCategory ? "#000" : "var(--color-text-muted)",
-                border: "1px solid var(--color-border)",
-              }}
-            >
-              Todos
-            </button>
-            {categories.map(cat => (
-              <button
-                key={cat.slug}
-                onClick={() => setActiveCategory(cat.slug)}
-                className="px-3 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5"
-                style={{
-                  backgroundColor: activeCategory === cat.slug
-                    ? "var(--color-accent)"
-                    : "var(--color-surface-2)",
-                  color: activeCategory === cat.slug ? "#000" : "var(--color-text-muted)",
-                  border: "1px solid var(--color-border)",
-                }}
-              >
-                {cat.icon && <span>{cat.icon}</span>}
-                {cat.name}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div className="max-w-7xl mx-auto px-4 py-12">
-
+      {/* Contenido */}
+      <div className="container" style={{ maxWidth: "var(--container)", padding: "48px clamp(20px, 5vw, 60px)" }}>
         {isLoading && (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
             {[...Array(6)].map((_, i) => (
-              <div
-                key={i}
-                className="rounded-2xl animate-pulse"
-                style={{ backgroundColor: "var(--color-surface)", height: 340 }}
-              />
+              <div key={i} className="skeleton" style={{ height: "340px" }} />
             ))}
           </div>
         )}
 
-        {/* Destacados */}
-        {!isLoading && featured.length > 0 && !activeCategory && (
-          <div className="mb-12">
-            <h2 className="text-xl font-bold mb-6">Servicios destacados</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {featured.map(service => (
-                <ServiceCard key={service.id} service={service} />
-              ))}
+        {!isLoading && !activeCategory && featured.length > 0 && (
+          <div style={{ marginBottom: "48px" }}>
+            <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem", marginBottom: "24px" }}>
+              Destacados
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {featured.map(s => <ServiceCard key={s.id} service={s} />)}
             </div>
           </div>
         )}
 
-        {/* Todos los servicios */}
-        {!isLoading && (
+        {!isLoading && rest.length > 0 && (
           <div>
-            {!activeCategory && rest.length > 0 && (
-              <h2 className="text-xl font-bold mb-6">Todos los servicios</h2>
-            )}
-            {services.length === 0 ? (
-              <div className="text-center py-20">
-                <p className="text-5xl mb-4">🎚️</p>
-                <p className="font-bold text-lg mb-2">Sin servicios en esta categoría</p>
-                <button
-                  onClick={() => setActiveCategory("")}
-                  className="mt-4 text-sm"
-                  style={{ color: "var(--color-accent)" }}
-                >
-                  Ver todos los servicios
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {(activeCategory ? services : rest).map(service => (
-                  <ServiceCard key={service.id} service={service} />
-                ))}
-              </div>
-            )}
+            {!activeCategory && <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem", marginBottom: "24px" }}>
+              Todos los servicios
+            </h2>}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {rest.map(s => <ServiceCard key={s.id} service={s} />)}
+            </div>
+          </div>
+        )}
+
+        {!isLoading && services.length === 0 && (
+          <div style={{ textAlign: "center", padding: "80px 0" }}>
+            <p style={{ fontSize: "40px", marginBottom: "16px" }}>🎚️</p>
+            <p style={{ color: "var(--text-3)", fontSize: "15px" }}>Sin servicios en esta categoría.</p>
           </div>
         )}
       </div>

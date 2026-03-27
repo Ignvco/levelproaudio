@@ -8,45 +8,45 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import api from "../api/client"
 import { createPayment } from "../api/payments.api"
-import { useCartStore } from "../store/cartStore"
+import { useCartStore, cartTotal } from "../store/cartStore"
 import { useAuthStore } from "../store/authStore"
 
 const checkoutSchema = z.object({
-  first_name:       z.string().min(1, "Requerido"),
-  last_name:        z.string().min(1, "Requerido"),
-  email:            z.string().email("Email inválido"),
-  phone:            z.string().min(8, "Teléfono inválido"),
-  address_street:   z.string().min(5, "Dirección requerida"),
-  address_city:     z.string().min(2, "Ciudad requerida"),
+  first_name: z.string().min(1, "Requerido"),
+  last_name: z.string().min(1, "Requerido"),
+  email: z.string().email("Email inválido"),
+  phone: z.string().min(8, "Teléfono inválido"),
+  address_street: z.string().min(5, "Dirección requerida"),
+  address_city: z.string().min(2, "Ciudad requerida"),
   address_province: z.string().min(2, "Región requerida"),
-  notes:            z.string().optional(),
+  notes: z.string().optional(),
 })
 
 // ── Métodos de pago disponibles ──────────────────────────────
 const PAYMENT_METHODS = [
   {
-    id:          "mercadopago_cl",
-    label:       "MercadoPago",
+    id: "mercadopago_cl",
+    label: "MercadoPago",
     description: "Tarjetas, saldo MP, Servipag, Khipu",
-    icon:        "💳",
-    badge:       "Chile",
-    badgeColor:  "#009ee3",
+    icon: "💳",
+    badge: "Chile",
+    badgeColor: "#009ee3",
   },
   {
-    id:          "paypal",
-    label:       "PayPal",
+    id: "paypal",
+    label: "PayPal",
     description: "Tarjetas internacionales Visa / Mastercard",
-    icon:        "🌎",
-    badge:       "Internacional",
-    badgeColor:  "#003087",
+    icon: "🌎",
+    badge: "Internacional",
+    badgeColor: "#003087",
   },
   {
-    id:          "global66",
-    label:       "Transferencia Global66",
+    id: "global66",
+    label: "Transferencia Global66",
     description: "Transferencia bancaria — procesamos en 24hs",
-    icon:        "🏦",
-    badge:       "Manual",
-    badgeColor:  "#00c853",
+    icon: "🏦",
+    badge: "Manual",
+    badgeColor: "#00c853",
   },
 ]
 
@@ -77,43 +77,51 @@ function inputStyle(hasError) {
 }
 
 export default function Checkout() {
-  const [isLoading, setIsLoading]         = useState(false)
-  const [serverError, setServerError]     = useState("")
+  const [isLoading, setIsLoading] = useState(false)
+  const [serverError, setServerError] = useState("")
   const [selectedMethod, setSelectedMethod] = useState("mercadopago_cl")
-  const { items, total, clearCart }       = useCartStore()
-  const { user }                          = useAuthStore()
-  const navigate                          = useNavigate()
+  const items = useCartStore(state => state.items)
+  const total = useCartStore(cartTotal)
+  const clearCart = useCartStore(state => state.clearCart)
+  const { user } = useAuthStore()
+  const navigate = useNavigate()
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(checkoutSchema),
     defaultValues: {
-      first_name:       user?.first_name || "",
-      last_name:        user?.last_name  || "",
-      email:            user?.email      || "",
-      phone:            user?.phone      || "",
-      address_street:   user?.address_street   || "",
-      address_city:     user?.address_city     || "",
+      first_name: user?.first_name || "",
+      last_name: user?.last_name || "",
+      email: user?.email || "",
+      phone: user?.phone || "",
+      address_street: user?.address_street || "",
+      address_city: user?.address_city || "",
       address_province: user?.address_province || "",
     },
   })
 
   const onSubmit = async (data) => {
     if (!items.length) return
+    if (total <= 0) {
+      setServerError("Error calculando el total. Recarga la página e intenta de nuevo.")
+      return
+    }
+
     setIsLoading(true)
     setServerError("")
+
 
     try {
       // 1 — Crear la orden
       const { data: order } = await api.post("/orders/", {
-        email:            data.email,
+        email: data.email,
         shipping_address: `${data.address_street}, ${data.address_city}, ${data.address_province}`,
-        notes:            data.notes || "",
+        notes: data.notes || "",
         total,
         items: items.map(i => ({
-          product:      i.product.id,
+          product: i.product.id,
           product_name: i.product.name,
-          price:        i.product.price,
-          quantity:     i.quantity,
+          price: i.product.price,
+          quantity: i.quantity,
         })),
       })
 
@@ -276,7 +284,7 @@ export default function Checkout() {
                         border: `2px solid ${selectedMethod === method.id
                           ? "var(--color-accent)"
                           : "var(--color-border)"
-                        }`,
+                          }`,
                       }}
                     >
                       {/* Radio */}
@@ -286,7 +294,7 @@ export default function Checkout() {
                           border: `2px solid ${selectedMethod === method.id
                             ? "var(--color-accent)"
                             : "var(--color-border)"
-                          }`,
+                            }`,
                         }}
                       >
                         {selectedMethod === method.id && (
@@ -401,8 +409,8 @@ export default function Checkout() {
                 {isLoading
                   ? "Procesando..."
                   : selectedMethod === "global66"
-                  ? "Ver instrucciones de transferencia"
-                  : "Ir al pago"
+                    ? "Ver instrucciones de transferencia"
+                    : "Ir al pago"
                 }
               </button>
 

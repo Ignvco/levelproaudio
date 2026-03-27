@@ -1,5 +1,4 @@
 // pages/ServiceDetail.jsx
-// Detalle de servicio con formulario de solicitud integrado
 
 import { useState } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
@@ -10,358 +9,291 @@ import { z } from "zod"
 import { getService, createServiceRequest } from "../api/services.api"
 import { useAuthStore } from "../store/authStore"
 
-const requestSchema = z.object({
-    name: z.string().min(2, "Requerido"),
-    email: z.string().email("Email inválido"),
-    phone: z.string().optional(),
-    message: z.string().min(10, "Describe tu proyecto (mínimo 10 caracteres)"),
-    budget: z.string().optional(),
-    preferred_date: z.string().optional(),
+const schema = z.object({
+  name:           z.string().min(2, "Requerido"),
+  email:          z.string().email("Email inválido"),
+  phone:          z.string().optional(),
+  message:        z.string().min(10, "Mínimo 10 caracteres"),
+  budget:         z.string().optional(),
+  preferred_date: z.string().optional(),
 })
 
-const priceTypeConfig = {
-    fixed: { label: "Precio fijo", color: "#00e676" },
-    quote: { label: "A cotizar", color: "#f59e0b" },
-    hourly: { label: "Por hora", color: "#3b82f6" },
-    project: { label: "Por proyecto", color: "#a78bfa" },
-}
-
-function Field({ label, error, children }) {
-    return (
-        <div>
-            <label className="block text-sm font-medium mb-1.5"
-                style={{ color: "var(--color-text-muted)" }}
-            >
-                {label}
-            </label>
-            {children}
-            {error && (
-                <p className="mt-1 text-xs" style={{ color: "var(--color-danger)" }}>
-                    {error}
-                </p>
-            )}
-        </div>
-    )
+const priceColors = {
+  fixed: "#4ade80", quote: "#facc15", hourly: "#60a5fa", project: "#c084fc",
 }
 
 export default function ServiceDetail() {
-    const { slug } = useParams()
-    const { isAuthenticated, user } = useAuthStore()
-    const navigate = useNavigate()
-    const [submitted, setSubmitted] = useState(false)
+  const { slug }    = useParams()
+  const { isAuthenticated, user } = useAuthStore()
+  const navigate    = useNavigate()
+  const [submitted, setSubmitted] = useState(false)
 
-    const { data: service, isLoading, isError } = useQuery({
-        queryKey: ["service", slug],
-        queryFn: () => getService(slug),
+  const { data: service, isLoading, isError } = useQuery({
+    queryKey: ["service", slug],
+    queryFn:  () => getService(slug),
+  })
+
+  const mutation = useMutation({
+    mutationFn: createServiceRequest,
+    onSuccess:  () => setSubmitted(true),
+  })
+
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      name:  user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() : "",
+      email: user?.email || "",
+      phone: user?.phone || "",
+    },
+  })
+
+  const onSubmit = (data) => {
+    if (!isAuthenticated) { navigate(`/login?next=/services/${slug}`); return }
+    mutation.mutate({
+      service:        service.id,
+      name:           data.name,
+      email:          data.email,
+      phone:          data.phone || "",
+      message:        data.message,
+      budget:         data.budget ? parseFloat(data.budget) : null,
+      preferred_date: data.preferred_date || null,
     })
+  }
 
-    const mutation = useMutation({
-        mutationFn: createServiceRequest,
-        onSuccess: () => setSubmitted(true),
-    })
+  if (isLoading) return (
+    <div style={{ maxWidth: "1100px", margin: "0 auto",
+      padding: "60px clamp(20px, 5vw, 60px)" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-12">
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="skeleton" style={{ height: "60px" }} />
+          ))}
+        </div>
+        <div className="skeleton" style={{ height: "480px", borderRadius: "var(--r-xl)" }} />
+      </div>
+    </div>
+  )
 
-    const {
-        register,
-        handleSubmit,
-        formState: { errors },
-    } = useForm({
-        resolver: zodResolver(requestSchema),
-        defaultValues: {
-            name: user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() : "",
-            email: user?.email || "",
-            phone: user?.phone || "",
-        },
-    })
+  if (isError || !service) return (
+    <div style={{ textAlign: "center", padding: "120px 20px" }}>
+      <p style={{ color: "var(--text-3)", marginBottom: "20px" }}>Servicio no encontrado.</p>
+      <Link to="/services" className="btn btn-ghost">← Servicios</Link>
+    </div>
+  )
 
-    const onSubmit = (data) => {
-        if (!isAuthenticated) {
-            navigate(`/login?next=/services/${slug}`)
-            return
-        }
-        mutation.mutate({
-            service: service.id,
-            name: data.name,
-            email: data.email,
-            phone: data.phone || "",
-            message: data.message,
-            budget: data.budget ? parseFloat(data.budget) : null,
-            preferred_date: data.preferred_date || null,
-        })
-    }
+  const priceColor = priceColors[service.price_type] || "var(--text-2)"
 
-    const inputStyle = (hasError) => ({
-        backgroundColor: "var(--color-surface-2)",
-        border: `1px solid ${hasError ? "var(--color-danger)" : "var(--color-border)"}`,
-        color: "var(--color-text)",
-    })
+  return (
+    <div style={{ background: "var(--bg)", minHeight: "100vh",
+      padding: "clamp(40px, 6vw, 80px) 0" }}>
+      <div style={{ maxWidth: "1100px", margin: "0 auto",
+        padding: "0 clamp(20px, 5vw, 60px)" }}>
 
-    if (isLoading) {
-        return (
-            <div className="max-w-7xl mx-auto px-4 py-12 grid grid-cols-1 lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2 space-y-4">
-                    {[...Array(4)].map((_, i) => (
-                        <div key={i} className="h-16 rounded-xl animate-pulse"
-                            style={{ backgroundColor: "var(--color-surface)" }}
-                        />
-                    ))}
+        {/* Breadcrumb */}
+        <nav style={{ display: "flex", alignItems: "center", gap: "8px",
+          fontSize: "13px", color: "var(--text-3)", marginBottom: "40px" }}>
+          <Link to="/services" className="hover:text-white" style={{ transition: "color var(--dur)" }}>
+            Servicios
+          </Link>
+          <span>/</span>
+          <span style={{ color: "var(--text-2)" }}>{service.name}</span>
+        </nav>
+
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-12"
+          style={{ alignItems: "start" }}>
+
+          {/* Info */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
+
+            {service.thumbnail && (
+              <div style={{ width: "100%", aspectRatio: "16/9",
+                borderRadius: "var(--r-xl)", overflow: "hidden",
+                background: "var(--surface-2)", border: "1px solid var(--border)" }}>
+                <img src={service.thumbnail} alt={service.name}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
+            )}
+
+            <div>
+              {service.category && (
+                <p style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
+                  letterSpacing: "0.1em", fontWeight: 500, marginBottom: "8px" }}>
+                  {service.category.icon} {service.category.name}
+                </p>
+              )}
+              <h1 style={{ fontFamily: "var(--font-serif)",
+                fontSize: "clamp(2rem, 4vw, 3rem)", lineHeight: 1.1, marginBottom: "16px" }}>
+                {service.name}
+              </h1>
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px" }}>
+                <span style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem",
+                  color: priceColor }}>
+                  {service.price_display}
+                </span>
+                <span style={{ fontSize: "12px", padding: "3px 10px", borderRadius: "100px",
+                  color: priceColor, background: `${priceColor}14`,
+                  border: `1px solid ${priceColor}30` }}>
+                  {service.price_type_display}
+                </span>
+                {service.duration_hours && (
+                  <span style={{ fontSize: "13px", color: "var(--text-3)" }}>
+                    ⏱ ~{service.duration_hours}h
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Descripción */}
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: "var(--r-lg)", padding: "24px" }}>
+              <h2 style={{ fontSize: "15px", fontWeight: 500, marginBottom: "12px" }}>
+                Descripción
+              </h2>
+              <p style={{ fontSize: "14px", color: "var(--text-2)", lineHeight: 1.75 }}>
+                {service.description}
+              </p>
+            </div>
+
+            {/* Entregables */}
+            {service.deliverables_list?.length > 0 && (
+              <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
+                borderRadius: "var(--r-lg)", padding: "24px" }}>
+                <h2 style={{ fontSize: "15px", fontWeight: 500, marginBottom: "16px" }}>
+                  ¿Qué incluye?
+                </h2>
+                <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {service.deliverables_list.map((item, i) => (
+                    <li key={i} style={{ display: "flex", alignItems: "flex-start",
+                      gap: "10px", fontSize: "14px" }}>
+                      <span style={{ color: "var(--accent)", marginTop: "1px", flexShrink: 0 }}>✓</span>
+                      <span style={{ color: "var(--text-2)" }}>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {/* Formulario */}
+          <div style={{ position: "sticky", top: "88px" }}>
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: "var(--r-xl)", padding: "28px" }}>
+
+              {submitted ? (
+                <div style={{ textAlign: "center", padding: "16px 0" }}>
+                  <div style={{
+                    width: "52px", height: "52px", borderRadius: "50%",
+                    background: "var(--accent-glow)", border: "1px solid rgba(26,255,110,0.2)",
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: "20px", margin: "0 auto 16px", color: "var(--accent)",
+                  }}>✓</div>
+                  <h3 style={{ fontFamily: "var(--font-serif)", fontSize: "1.3rem",
+                    marginBottom: "8px" }}>
+                    ¡Solicitud enviada!
+                  </h3>
+                  <p style={{ fontSize: "13px", color: "var(--text-2)", marginBottom: "20px",
+                    lineHeight: 1.6 }}>
+                    Te contactamos en menos de 24hs para coordinar los detalles.
+                  </p>
+                  <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+                    className="btn" style={{ width: "100%", justifyContent: "center",
+                      background: "#22c55e", color: "#fff" }}>
+                    💬 WhatsApp directo
+                  </a>
                 </div>
-                <div className="h-96 rounded-2xl animate-pulse"
-                    style={{ backgroundColor: "var(--color-surface)" }}
-                />
-            </div>
-        )
-    }
+              ) : (
+                <>
+                  <h3 style={{ fontFamily: "var(--font-serif)", fontSize: "1.3rem",
+                    marginBottom: "6px" }}>
+                    Solicitar servicio
+                  </h3>
+                  <p style={{ fontSize: "13px", color: "var(--text-3)", marginBottom: "20px" }}>
+                    Te contactamos en menos de 24hs.
+                  </p>
 
-    if (isError || !service) {
-        return (
-            <div className="text-center py-20">
-                <p style={{ color: "var(--color-text-muted)" }}>Servicio no encontrado.</p>
-                <Link to="/services" style={{ color: "var(--color-accent)" }}
-                    className="mt-4 inline-block text-sm"
-                >
-                    ← Volver a servicios
-                </Link>
-            </div>
-        )
-    }
-
-    const typeConfig = priceTypeConfig[service.price_type] || { color: "#888" }
-
-    return (
-        <div style={{ backgroundColor: "var(--color-bg)" }} className="min-h-screen py-10 px-4">
-            <div className="max-w-7xl mx-auto">
-
-                {/* Breadcrumb */}
-                <nav className="flex items-center gap-2 text-sm mb-8"
-                    style={{ color: "var(--color-text-muted)" }}
-                >
-                    <Link to="/services" className="hover:text-white transition-colors">Servicios</Link>
-                    <span>/</span>
-                    <span style={{ color: "var(--color-text)" }}>{service.name}</span>
-                </nav>
-
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-
-                    {/* ── Info del servicio ──────────────────────────── */}
-                    <div className="lg:col-span-2 space-y-8">
-
-                        {/* Thumbnail */}
-                        {service.thumbnail && (
-                            <div className="w-full aspect-video rounded-2xl overflow-hidden"
-                                style={{ backgroundColor: "var(--color-surface-2)" }}
-                            >
-                                <img
-                                    src={service.thumbnail}
-                                    alt={service.name}
-                                    className="w-full h-full object-cover"
-                                />
-                            </div>
+                  <form onSubmit={handleSubmit(onSubmit)}
+                    style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+                    {[
+                      { name: "name",  label: "Nombre completo", type: "text" },
+                      { name: "email", label: "Email",           type: "email" },
+                      { name: "phone", label: "Teléfono (opcional)", type: "tel" },
+                    ].map(({ name, label, type }) => (
+                      <div key={name}>
+                        <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+                          color: "var(--text-2)", marginBottom: "6px" }}>
+                          {label}
+                        </label>
+                        <input type={type} {...register(name)}
+                          className={`input ${errors[name] ? "error" : ""}`} />
+                        {errors[name] && (
+                          <p style={{ fontSize: "11px", color: "var(--danger)", marginTop: "3px" }}>
+                            {errors[name].message}
+                          </p>
                         )}
+                      </div>
+                    ))}
 
-                        {/* Cabecera */}
-                        <div>
-                            {service.category && (
-                                <p className="text-xs font-bold uppercase tracking-widest mb-2"
-                                    style={{ color: "var(--color-accent)" }}
-                                >
-                                    {service.category.icon} {service.category.name}
-                                </p>
-                            )}
-                            <h1 className="text-4xl font-black mb-4">{service.name}</h1>
-
-                            <div className="flex flex-wrap items-center gap-4">
-                                <span className="text-2xl font-black" style={{ color: typeConfig.color }}>
-                                    {service.price_display}
-                                </span>
-                                <span className="text-sm px-2.5 py-1 rounded-full"
-                                    style={{
-                                        color: typeConfig.color,
-                                        backgroundColor: `${typeConfig.color}18`,
-                                    }}
-                                >
-                                    {service.price_type_display}
-                                </span>
-                                {service.duration_hours && (
-                                    <span className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-                                        ⏱ ~{service.duration_hours}h estimado
-                                    </span>
-                                )}
-                            </div>
-                        </div>
-
-                        {/* Descripción */}
-                        <div
-                            className="rounded-2xl p-6"
-                            style={{
-                                backgroundColor: "var(--color-surface)",
-                                border: "1px solid var(--color-border)",
-                            }}
-                        >
-                            <h2 className="font-bold text-lg mb-4">Descripción</h2>
-                            <p className="text-sm leading-relaxed"
-                                style={{ color: "var(--color-text-muted)" }}
-                            >
-                                {service.description}
-                            </p>
-                        </div>
-
-                        {/* Entregables */}
-                        {service.deliverables_list?.length > 0 && (
-                            <div
-                                className="rounded-2xl p-6"
-                                style={{
-                                    backgroundColor: "var(--color-surface)",
-                                    border: "1px solid var(--color-border)",
-                                }}
-                            >
-                                <h2 className="font-bold text-lg mb-4">¿Qué incluye?</h2>
-                                <ul className="space-y-3">
-                                    {service.deliverables_list.map((item, i) => (
-                                        <li key={i} className="flex items-start gap-3 text-sm">
-                                            <span
-                                                className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 text-xs font-bold"
-                                                style={{
-                                                    backgroundColor: "rgba(0,230,118,0.15)",
-                                                    color: "var(--color-accent)",
-                                                }}
-                                            >
-                                                ✓
-                                            </span>
-                                            <span style={{ color: "var(--color-text-muted)" }}>{item}</span>
-                                        </li>
-                                    ))}
-                                </ul>
-                            </div>
-                        )}
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+                        color: "var(--text-2)", marginBottom: "6px" }}>
+                        Cuéntanos tu proyecto
+                      </label>
+                      <textarea {...register("message")} rows={4}
+                        placeholder="Describe qué necesitas..."
+                        className={`input ${errors.message ? "error" : ""}`}
+                        style={{ resize: "none" }} />
+                      {errors.message && (
+                        <p style={{ fontSize: "11px", color: "var(--danger)", marginTop: "3px" }}>
+                          {errors.message.message}
+                        </p>
+                      )}
                     </div>
 
-                    {/* ── Formulario de solicitud ───────────────────── */}
-                    <div className="sticky top-24 h-fit">
-                        <div
-                            className="rounded-2xl p-6"
-                            style={{
-                                backgroundColor: "var(--color-surface)",
-                                border: "1px solid var(--color-border)",
-                            }}
-                        >
-                            {submitted ? (
-                                /* ── Confirmación ── */
-                                <div className="text-center py-6">
-                                    <div
-                                        className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-                                        style={{ backgroundColor: "rgba(0,230,118,0.1)" }}
-                                    >
-                                        <span className="text-3xl">✓</span>
-                                    </div>
-                                    <h3 className="text-lg font-bold mb-2">¡Solicitud enviada!</h3>
-                                    <p className="text-sm mb-4" style={{ color: "var(--color-text-muted)" }}>
-                                        Nos pondremos en contacto contigo a la brevedad para coordinar los detalles.
-                                    </p><a
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                      <div>
+                        <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+                          color: "var(--text-2)", marginBottom: "6px" }}>
+                          Presupuesto (CLP)
+                        </label>
+                        <input type="number" {...register("budget")}
+                          placeholder="150000" className="input" />
+                      </div>
+                      <div>
+                        <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+                          color: "var(--text-2)", marginBottom: "6px" }}>
+                          Fecha preferida
+                        </label>
+                        <input type="date" {...register("preferred_date")}
+                          className="input" style={{ colorScheme: "dark" }} />
+                      </div>
+                    </div>
 
-                                    href="https://wa.me/5492622635045"
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="block w-full py-2.5 rounded-xl text-sm font-semibold text-center"
-                                    style={{ backgroundColor: "var(--color-accent)", color: "#000" }}
-                  >
-                                    Contactar por WhatsApp
-                                </a>
-                </div>
-                        ) : (
-                        /* ── Formulario ── */
-                        <>
-                            <h3 className="font-bold text-lg mb-1">Solicitar este servicio</h3>
-                            <p className="text-sm mb-5" style={{ color: "var(--color-text-muted)" }}>
-                                Completa el formulario y te contactamos en menos de 24hs.
-                            </p>
+                    {mutation.isError && (
+                      <p style={{ fontSize: "12px", color: "var(--danger)" }}>
+                        Error al enviar. Intenta de nuevo.
+                      </p>
+                    )}
 
-                            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                                <Field label="Nombre completo" error={errors.name?.message}>
-                                    <input
-                                        {...register("name")}
-                                        className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                                        style={inputStyle(errors.name)}
-                                    />
-                                </Field>
+                    <button type="submit" disabled={mutation.isPending}
+                      className="btn btn-accent"
+                      style={{ justifyContent: "center",
+                        opacity: mutation.isPending ? 0.7 : 1 }}>
+                      {mutation.isPending ? "Enviando..." : "Enviar solicitud"}
+                    </button>
 
-                                <Field label="Email" error={errors.email?.message}>
-                                    <input
-                                        type="email"
-                                        {...register("email")}
-                                        className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                                        style={inputStyle(errors.email)}
-                                    />
-                                </Field>
-
-                                <Field label="Teléfono (opcional)">
-                                    <input
-                                        {...register("phone")}
-                                        className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                                        style={inputStyle(false)}
-                                    />
-                                </Field>
-
-                                <Field label="Cuéntanos tu proyecto" error={errors.message?.message}>
-                                    <textarea
-                                        {...register("message")}
-                                        rows={4}
-                                        placeholder="Describe qué necesitas, estilo, referencias..."
-                                        className="w-full px-3 py-2.5 rounded-lg text-sm outline-none resize-none"
-                                        style={inputStyle(errors.message)}
-                                    />
-                                </Field>
-
-                                <div className="grid grid-cols-2 gap-3">
-                                    <Field label="Presupuesto (CLP)">
-                                        <input
-                                            type="number"
-                                            {...register("budget")}
-                                            placeholder="Ej: 150000"
-                                            className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                                            style={inputStyle(false)}
-                                        />
-                                    </Field>
-                                    <Field label="Fecha preferida">
-                                        <input
-                                            type="date"
-                                            {...register("preferred_date")}
-                                            className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
-                                            style={{
-                                                ...inputStyle(false),
-                                                colorScheme: "dark",
-                                            }}
-                                        />
-                                    </Field>
-                                </div>
-
-                                {mutation.isError && (
-                                    <p className="text-xs" style={{ color: "var(--color-danger)" }}>
-                                        Error al enviar. Intenta de nuevo.
-                                    </p>
-                                )}
-
-                                <button
-                                    type="submit"
-                                    disabled={mutation.isPending}
-                                    className="w-full py-3 rounded-xl font-semibold text-sm disabled:opacity-50 transition-opacity"
-                                    style={{ backgroundColor: "var(--color-accent)", color: "#000" }}
-                                >
-                                    {mutation.isPending ? "Enviando..." : "Enviar solicitud"}
-                                </button><a
-                                href="https://wa.me/5492622635045"
-                                target="_blank"
-                                rel="noreferrer"
-                                className="block text-center text-sm transition-colors"
-                                style={{ color: "var(--color-text-muted)" }}>O escríbenos por WhatsApp →
-                            </a>
-                        </form>
-                    </>
+                    <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+                      style={{ textAlign: "center", fontSize: "13px", color: "var(--text-3)",
+                        transition: "color var(--dur)", display: "block" }}
+                      className="hover:text-[var(--text-2)]">
+                      O por WhatsApp →
+                    </a>
+                  </form>
+                </>
               )}
-                </div>
             </div>
-
+          </div>
         </div>
-      </div >
-    </div >
+      </div>
+    </div>
   )
 }

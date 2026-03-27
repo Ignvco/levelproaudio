@@ -1,65 +1,45 @@
 // pages/payment/PaymentFailure.jsx
 
-import { Link, useSearchParams } from "react-router-dom"
+import { Link } from "react-router-dom"
 
 export default function PaymentFailure() {
-  const [searchParams] = useSearchParams()
-  const orderId        = searchParams.get("order")
-
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "var(--color-bg)" }}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl p-10 text-center"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-        }}
-      >
-        <div
-          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
-          style={{ backgroundColor: "rgba(255,68,68,0.1)" }}
-        >
-          <span className="text-4xl">❌</span>
+    <div style={{
+      minHeight: "100vh", display: "flex", alignItems: "center",
+      justifyContent: "center", padding: "40px", background: "var(--bg)",
+    }}>
+      <div style={{
+        width: "100%", maxWidth: "400px", textAlign: "center",
+        background: "var(--surface)", border: "1px solid var(--border)",
+        borderRadius: "var(--r-xl)", padding: "48px 40px",
+      }}>
+        <div style={{
+          width: "64px", height: "64px", borderRadius: "50%",
+          background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.2)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "22px", margin: "0 auto 24px", color: "var(--danger)",
+        }}>
+          ✕
         </div>
 
-        <h1 className="text-2xl font-black mb-3" style={{ color: "var(--color-danger)" }}>
-          Pago no completado
+        <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem",
+          marginBottom: "12px" }}>
+          Pago no completado.
         </h1>
-        <p className="text-sm mb-8" style={{ color: "var(--color-text-muted)" }}>
+        <p style={{ fontSize: "14px", color: "var(--text-2)", lineHeight: 1.7, marginBottom: "32px" }}>
           El pago fue cancelado o rechazado. No se realizó ningún cobro.
           Puedes intentar con otro método de pago.
         </p>
 
-        <div className="space-y-3">
-          {orderId && (
-            <Link
-              to="/checkout"
-              className="block w-full py-3 rounded-xl font-semibold text-sm"
-              style={{ backgroundColor: "var(--color-accent)", color: "#000" }}
-            >
-              Intentar de nuevo
-            </Link>
-          )}
-          <Link
-            to="/cart"
-            className="block w-full py-3 rounded-xl font-semibold text-sm"
-            style={{
-              border: "1px solid var(--color-border)",
-              color: "var(--color-text)",
-            }}
-          >
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <Link to="/checkout" className="btn btn-accent" style={{ justifyContent: "center" }}>
+            Intentar de nuevo
+          </Link>
+          <Link to="/cart" className="btn btn-ghost" style={{ justifyContent: "center" }}>
             Volver al carrito
-          </Link><a
-          
-            href="https://wa.me/5492622635045"
-            target="_blank"
-            rel="noreferrer"
-            className="block w-full py-3 rounded-xl font-semibold text-sm"
-            style={{ backgroundColor: "#25d366", color: "#fff" }}
-          >
+          </Link>
+          <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+            className="btn btn-ghost" style={{ justifyContent: "center", color: "#4ade80", borderColor: "rgba(74,222,128,0.2)" }}>
             💬 Necesito ayuda
           </a>
         </div>

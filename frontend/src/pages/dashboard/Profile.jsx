@@ -1,5 +1,4 @@
 // pages/dashboard/Profile.jsx
-// Edición del perfil del usuario
 
 import { useEffect } from "react"
 import { useForm } from "react-hook-form"
@@ -9,7 +8,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { useAuthStore } from "../../store/authStore"
 import api from "../../api/client"
 
-const profileSchema = z.object({
+const schema = z.object({
   first_name:       z.string().min(1, "Requerido"),
   last_name:        z.string().optional(),
   phone:            z.string().optional(),
@@ -21,30 +20,22 @@ const profileSchema = z.object({
 function Field({ label, error, children }) {
   return (
     <div>
-      <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--color-text-muted)" }}>
+      <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+        color: "var(--text-2)", marginBottom: "8px", letterSpacing: "0.02em" }}>
         {label}
       </label>
       {children}
-      {error && (
-        <p className="mt-1 text-xs" style={{ color: "var(--color-danger)" }}>
-          {error}
-        </p>
-      )}
+      {error && <p style={{ fontSize: "11px", color: "var(--danger)", marginTop: "4px" }}>{error}</p>}
     </div>
   )
 }
 
 export default function Profile() {
-  const { user, setUser } = useAuthStore()
-  const queryClient = useQueryClient()
+  const { user, setUser }  = useAuthStore()
+  const queryClient        = useQueryClient()
 
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isDirty },
-  } = useForm({
-    resolver: zodResolver(profileSchema),
+  const { register, handleSubmit, reset, formState: { errors, isDirty } } = useForm({
+    resolver: zodResolver(schema),
     defaultValues: {
       first_name:       user?.first_name || "",
       last_name:        user?.last_name  || "",
@@ -55,125 +46,78 @@ export default function Profile() {
     },
   })
 
-  // Sincroniza el form si el user cambia
-  useEffect(() => {
-    if (user) reset(user)
-  }, [user, reset])
+  useEffect(() => { if (user) reset(user) }, [user, reset])
 
   const mutation = useMutation({
-    mutationFn: (data) => api.patch("/auth/profile/", data),
-    onSuccess: ({ data }) => {
-      setUser(data)
-      queryClient.invalidateQueries(["profile"])
-    },
-  })
-
-  const inputStyle = (hasError) => ({
-    backgroundColor: "var(--color-surface-2)",
-    border: `1px solid ${hasError ? "var(--color-danger)" : "var(--color-border)"}`,
-    color: "var(--color-text)",
+    mutationFn: data => api.patch("/auth/profile/", data),
+    onSuccess: ({ data }) => { setUser(data); queryClient.invalidateQueries(["profile"]) },
   })
 
   return (
-    <div className="p-8 max-w-2xl mx-auto">
-      <h1 className="text-3xl font-black mb-8">Mi perfil</h1>
+    <div style={{ padding: "clamp(32px, 5vw, 56px)", maxWidth: "560px" }}>
+      <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2rem, 4vw, 2.8rem)",
+        marginBottom: "40px" }}>
+        Mi perfil
+      </h1>
 
       <form onSubmit={handleSubmit(data => mutation.mutate(data))}>
-        <div
-          className="rounded-2xl p-6 space-y-5"
-          style={{
-            backgroundColor: "var(--color-surface)",
-            border: "1px solid var(--color-border)",
-          }}
-        >
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
+          borderRadius: "var(--r-xl)", padding: "28px", display: "flex",
+          flexDirection: "column", gap: "20px" }}>
+
           {/* Email — solo lectura */}
           <div>
-            <label className="block text-sm font-medium mb-1.5" style={{ color: "var(--color-text-muted)" }}>
-              Email
-            </label>
-            <input
-              value={user?.email || ""}
-              disabled
-              className="w-full px-4 py-2.5 rounded-lg text-sm outline-none opacity-50 cursor-not-allowed"
-              style={inputStyle(false)}
-            />
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+              color: "var(--text-2)", marginBottom: "8px" }}>Email</label>
+            <input value={user?.email || ""} disabled
+              className="input" style={{ opacity: 0.5, cursor: "not-allowed" }} />
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}
+            className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="Nombre" error={errors.first_name?.message}>
-              <input
-                {...register("first_name")}
-                className="w-full px-4 py-2.5 rounded-lg text-sm outline-none"
-                style={inputStyle(errors.first_name)}
-              />
+              <input {...register("first_name")} className={`input ${errors.first_name ? "error" : ""}`} />
             </Field>
             <Field label="Apellido">
-              <input
-                {...register("last_name")}
-                className="w-full px-4 py-2.5 rounded-lg text-sm outline-none"
-                style={inputStyle(false)}
-              />
+              <input {...register("last_name")} className="input" />
             </Field>
           </div>
 
           <Field label="Teléfono">
-            <input
-              {...register("phone")}
-              className="w-full px-4 py-2.5 rounded-lg text-sm outline-none"
-              style={inputStyle(false)}
-            />
+            <input {...register("phone")} className="input" />
           </Field>
 
-          <div
-            className="pt-4 border-t"
-            style={{ borderColor: "var(--color-border)" }}
-          >
-            <p className="text-sm font-semibold mb-4">Dirección de envío</p>
-            <div className="space-y-4">
+          <div style={{ paddingTop: "20px", borderTop: "1px solid var(--border)" }}>
+            <p style={{ fontSize: "13px", fontWeight: 500, marginBottom: "16px" }}>
+              Dirección de envío
+            </p>
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               <Field label="Calle y número">
-                <input
-                  {...register("address_street")}
-                  className="w-full px-4 py-2.5 rounded-lg text-sm outline-none"
-                  style={inputStyle(false)}
-                />
+                <input {...register("address_street")} className="input"
+                  placeholder="Ej: Av. Providencia 1234" />
               </Field>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}
+                className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field label="Ciudad">
-                  <input
-                    {...register("address_city")}
-                    className="w-full px-4 py-2.5 rounded-lg text-sm outline-none"
-                    style={inputStyle(false)}
-                  />
+                  <input {...register("address_city")} className="input" />
                 </Field>
                 <Field label="Región">
-                  <input
-                    {...register("address_province")}
-                    className="w-full px-4 py-2.5 rounded-lg text-sm outline-none"
-                    style={inputStyle(false)}
-                  />
+                  <input {...register("address_province")} className="input" />
                 </Field>
               </div>
             </div>
           </div>
 
-          {/* Feedback */}
           {mutation.isSuccess && (
-            <p className="text-sm" style={{ color: "var(--color-accent)" }}>
-              ✓ Perfil actualizado correctamente.
-            </p>
+            <p style={{ fontSize: "13px", color: "var(--accent)" }}>✓ Perfil actualizado.</p>
           )}
           {mutation.isError && (
-            <p className="text-sm" style={{ color: "var(--color-danger)" }}>
-              Error al guardar. Intenta de nuevo.
-            </p>
+            <p style={{ fontSize: "13px", color: "var(--danger)" }}>Error al guardar.</p>
           )}
 
-          <button
-            type="submit"
-            disabled={!isDirty || mutation.isPending}
-            className="w-full py-3 rounded-lg font-semibold text-sm disabled:opacity-40 transition-opacity"
-            style={{ backgroundColor: "var(--color-accent)", color: "#000" }}
-          >
+          <button type="submit" disabled={!isDirty || mutation.isPending}
+            className="btn btn-accent"
+            style={{ justifyContent: "center", opacity: (!isDirty || mutation.isPending) ? 0.5 : 1 }}>
             {mutation.isPending ? "Guardando..." : "Guardar cambios"}
           </button>
         </div>

@@ -86,6 +86,8 @@ class ProductListSerializer(serializers.ModelSerializer):
             "name",
             "slug",
             "price",
+            "stock",
+            "in_stock",
             "compare_price",
             "is_featured",
             "primary_image",

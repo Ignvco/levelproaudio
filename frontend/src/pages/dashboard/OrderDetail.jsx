@@ -1,74 +1,69 @@
 // pages/dashboard/OrderDetail.jsx
-// Detalle completo de un pedido específico
 
-import { useParams, Link } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useParams, Link, useNavigate } from "react-router-dom"
+import { useQuery, useMutation } from "@tanstack/react-query"
+import { useState } from "react"
 import { getOrder } from "../../api/orders.api"
+import { createPayment } from "../../api/payments.api"
 
 const statusConfig = {
-  pending:   { label: "Pendiente",  color: "#f59e0b", step: 1 },
-  paid:      { label: "Pagado",     color: "#00e676", step: 2 },
-  shipped:   { label: "Enviado",    color: "#3b82f6", step: 3 },
-  completed: { label: "Completado", color: "#00e676", step: 4 },
-  cancelled: { label: "Cancelado",  color: "#ff4444", step: 0 },
+  pending:   { label: "Pendiente",  color: "#facc15", step: 1 },
+  paid:      { label: "Pagado",     color: "#4ade80", step: 2 },
+  shipped:   { label: "Enviado",    color: "#60a5fa", step: 3 },
+  completed: { label: "Completado", color: "#4ade80", step: 4 },
+  cancelled: { label: "Cancelado",  color: "#f87171", step: 0 },
 }
 
-// ── Timeline del estado del pedido ───────────────────────────
-function OrderTimeline({ status }) {
-  if (status === "cancelled") {
-    return (
-      <div
-        className="p-4 rounded-xl text-sm"
-        style={{
-          backgroundColor: "rgba(255,68,68,0.1)",
-          border: "1px solid var(--color-danger)",
-          color: "var(--color-danger)",
-        }}
-      >
-        Este pedido fue cancelado.
-      </div>
-    )
-  }
+const PAYMENT_METHODS = [
+  { id: "mercadopago_cl", label: "MercadoPago",           icon: "💳" },
+  { id: "paypal",         label: "PayPal",                icon: "🌎" },
+  { id: "global66",       label: "Transferencia Global66", icon: "🏦" },
+]
 
-  const steps = ["Pendiente", "Pagado", "Enviado", "Completado"]
-  const currentStep = statusConfig[status]?.step || 1
+// ── Timeline ─────────────────────────────────────────────────
+function Timeline({ status }) {
+  if (status === "cancelled") return (
+    <div style={{
+      padding: "14px 18px", borderRadius: "var(--r-md)", fontSize: "13px",
+      background: "rgba(248,113,113,0.08)", border: "1px solid rgba(248,113,113,0.2)",
+      color: "#f87171",
+    }}>
+      Este pedido fue cancelado.
+    </div>
+  )
+
+  const steps   = ["Pendiente", "Pagado", "Enviado", "Completado"]
+  const current = statusConfig[status]?.step || 1
 
   return (
-    <div className="flex items-center gap-0">
+    <div style={{ display: "flex", alignItems: "center" }}>
       {steps.map((step, i) => (
-        <div key={step} className="flex items-center flex-1 last:flex-none">
-          <div className="flex flex-col items-center">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-colors"
-              style={{
-                backgroundColor: i + 1 <= currentStep
-                  ? "var(--color-accent)"
-                  : "var(--color-surface-2)",
-                color: i + 1 <= currentStep ? "#000" : "var(--color-text-muted)",
-              }}
-            >
-              {i + 1 <= currentStep ? "✓" : i + 1}
+        <div key={step} style={{ display: "flex", alignItems: "center",
+          flex: i < steps.length - 1 ? 1 : "none" }}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+            <div style={{
+              width: "28px", height: "28px", borderRadius: "50%",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "11px", fontWeight: 600,
+              background: i + 1 <= current ? "var(--accent)" : "var(--surface-3)",
+              color: i + 1 <= current ? "#000" : "var(--text-3)",
+              transition: "all var(--dur) var(--ease)",
+            }}>
+              {i + 1 <= current ? "✓" : i + 1}
             </div>
-            <span
-              className="text-xs mt-1 whitespace-nowrap"
-              style={{
-                color: i + 1 <= currentStep
-                  ? "var(--color-text)"
-                  : "var(--color-text-muted)",
-              }}
-            >
+            <span style={{
+              fontSize: "11px", whiteSpace: "nowrap",
+              color: i + 1 <= current ? "var(--text)" : "var(--text-3)",
+            }}>
               {step}
             </span>
           </div>
           {i < steps.length - 1 && (
-            <div
-              className="flex-1 h-0.5 mx-1 mb-5 transition-colors"
-              style={{
-                backgroundColor: i + 1 < currentStep
-                  ? "var(--color-accent)"
-                  : "var(--color-border)",
-              }}
-            />
+            <div style={{
+              flex: 1, height: "1px", margin: "0 6px", marginBottom: "18px",
+              background: i + 1 < current ? "var(--accent)" : "var(--border)",
+              transition: "background var(--dur) var(--ease)",
+            }} />
           )}
         </div>
       ))}
@@ -76,155 +71,202 @@ function OrderTimeline({ status }) {
   )
 }
 
+// ── Panel de pago para órdenes pendientes ────────────────────
+function PaymentPanel({ order }) {
+  const navigate        = useNavigate()
+  const [method, setMethod] = useState("mercadopago_cl")
+  const [error, setError]   = useState("")
+
+  const mutation = useMutation({
+    mutationFn: () => createPayment(order.id, method),
+    onSuccess: (data) => {
+      if (method === "mercadopago_cl" || method === "mercadopago_ar") {
+        window.location.href = data.sandbox_url || data.init_point
+      } else if (method === "paypal") {
+        window.location.href = data.approve_url
+      } else {
+        navigate(`/payment/transfer/${order.id}`, { state: { transferData: data } })
+      }
+    },
+    onError: () => setError("Error al procesar. Intenta de nuevo."),
+  })
+
+  return (
+    <div style={{
+      background: "var(--surface)", border: "1px solid rgba(250,204,21,0.25)",
+      borderRadius: "var(--r-lg)", padding: "20px 24px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "14px" }}>
+        <div style={{ width: "8px", height: "8px", borderRadius: "50%",
+          background: "#facc15" }} />
+        <p style={{ fontSize: "14px", fontWeight: 500 }}>Pago pendiente</p>
+      </div>
+
+      <p style={{ fontSize: "13px", color: "var(--text-2)", marginBottom: "16px", lineHeight: 1.6 }}>
+        Elige un método para completar tu compra.
+      </p>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
+        {PAYMENT_METHODS.map(m => (
+          <button key={m.id} onClick={() => setMethod(m.id)} style={{
+            display: "flex", alignItems: "center", gap: "12px",
+            padding: "11px 14px", borderRadius: "var(--r-md)", textAlign: "left",
+            cursor: "pointer", transition: "all var(--dur) var(--ease)",
+            background: method === m.id ? "var(--surface-2)" : "transparent",
+            border: `1px solid ${method === m.id ? "var(--border-hover)" : "var(--border)"}`,
+          }}>
+            <div style={{
+              width: "16px", height: "16px", borderRadius: "50%", flexShrink: 0,
+              border: `2px solid ${method === m.id ? "var(--accent)" : "var(--border)"}`,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              {method === m.id && (
+                <div style={{ width: "7px", height: "7px", borderRadius: "50%",
+                  background: "var(--accent)" }} />
+              )}
+            </div>
+            <span style={{ fontSize: "14px" }}>{m.icon}</span>
+            <span style={{ fontSize: "13px" }}>{m.label}</span>
+          </button>
+        ))}
+      </div>
+
+      {error && (
+        <p style={{ fontSize: "12px", color: "var(--danger)", marginBottom: "12px" }}>{error}</p>
+      )}
+
+      <button onClick={() => mutation.mutate()} disabled={mutation.isPending}
+        className="btn btn-accent"
+        style={{ width: "100%", justifyContent: "center",
+          opacity: mutation.isPending ? 0.6 : 1 }}>
+        {mutation.isPending ? "Procesando..." :
+          method === "global66" ? "Ver instrucciones de transferencia" : "Continuar con el pago →"}
+      </button>
+    </div>
+  )
+}
+
+// ── OrderDetail ──────────────────────────────────────────────
 export default function OrderDetail() {
   const { id } = useParams()
 
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ["order", id],
-    queryFn: () => getOrder(id),
+    queryFn:  () => getOrder(id),
   })
 
-  if (isLoading) {
-    return (
-      <div className="p-8 max-w-3xl mx-auto space-y-4">
-        {[...Array(4)].map((_, i) => (
-          <div
-            key={i}
-            className="h-24 rounded-2xl animate-pulse"
-            style={{ backgroundColor: "var(--color-surface)" }}
-          />
-        ))}
-      </div>
-    )
-  }
+  if (isLoading) return (
+    <div style={{ padding: "clamp(32px, 5vw, 56px)", maxWidth: "640px",
+      display: "flex", flexDirection: "column", gap: "12px" }}>
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="skeleton" style={{ height: "80px" }} />
+      ))}
+    </div>
+  )
 
-  if (isError || !order) {
-    return (
-      <div className="p-8 text-center">
-        <p style={{ color: "var(--color-text-muted)" }}>Pedido no encontrado.</p>
-        <Link
-          to="/dashboard/orders"
-          className="mt-4 inline-block text-sm"
-          style={{ color: "var(--color-accent)" }}
-        >
-          ← Volver a mis pedidos
-        </Link>
-      </div>
-    )
-  }
+  if (isError || !order) return (
+    <div style={{ padding: "clamp(32px, 5vw, 56px)", textAlign: "center" }}>
+      <p style={{ color: "var(--text-3)", marginBottom: "16px" }}>Pedido no encontrado.</p>
+      <Link to="/dashboard/orders" style={{ color: "var(--text-2)", fontSize: "14px" }}>
+        ← Volver a mis pedidos
+      </Link>
+    </div>
+  )
 
   return (
-    <div className="p-8 max-w-3xl mx-auto">
+    <div style={{ padding: "clamp(32px, 5vw, 56px)", maxWidth: "640px" }}>
 
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <Link
-          to="/dashboard/orders"
-          className="text-sm transition-colors"
-          style={{ color: "var(--color-text-muted)" }}
-        >
-          ← Mis pedidos
+      {/* Breadcrumb */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px",
+        fontSize: "13px", color: "var(--text-3)", marginBottom: "32px" }}>
+        <Link to="/dashboard/orders"
+          style={{ transition: "color var(--dur)" }} className="hover:text-white">
+          Mis pedidos
         </Link>
-        <span style={{ color: "var(--color-border)" }}>/</span>
-        <span className="text-sm font-mono font-semibold">
+        <span>/</span>
+        <span style={{ fontFamily: "monospace" }}>
           #{order.id.slice(0, 8).toUpperCase()}
         </span>
       </div>
 
-      <h1 className="text-2xl font-black mb-6">Detalle del pedido</h1>
+      <h1 style={{ fontFamily: "var(--font-serif)",
+        fontSize: "clamp(2rem, 4vw, 2.8rem)", marginBottom: "32px" }}>
+        Detalle del pedido
+      </h1>
 
       {/* Timeline */}
-      <div
-        className="rounded-2xl p-6 mb-6"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-        }}
-      >
-        <h2 className="text-sm font-semibold mb-5" style={{ color: "var(--color-text-muted)" }}>
-          ESTADO DEL PEDIDO
-        </h2>
-        <OrderTimeline status={order.status} />
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
+        borderRadius: "var(--r-lg)", padding: "24px", marginBottom: "16px" }}>
+        <p style={{ fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
+          textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "20px" }}>
+          Estado del pedido
+        </p>
+        <Timeline status={order.status} />
       </div>
 
+      {/* Panel de pago */}
+      {order.status === "pending" && (
+        <div style={{ marginBottom: "16px" }}>
+          <PaymentPanel order={order} />
+        </div>
+      )}
+
       {/* Productos */}
-      <div
-        className="rounded-2xl overflow-hidden mb-6"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-        }}
-      >
-        <div
-          className="px-6 py-4 border-b"
-          style={{ borderColor: "var(--color-border)" }}
-        >
-          <h2 className="font-bold">Productos</h2>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
+        borderRadius: "var(--r-lg)", overflow: "hidden", marginBottom: "16px" }}>
+        <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)" }}>
+          <p style={{ fontSize: "13px", fontWeight: 500 }}>Productos</p>
         </div>
         {order.items?.map((item, i) => (
-          <div
-            key={i}
-            className="flex justify-between items-center px-6 py-4 border-b last:border-b-0"
-            style={{ borderColor: "var(--color-border)" }}
-          >
+          <div key={i} style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            padding: "14px 20px",
+            borderBottom: i < order.items.length - 1 ? "1px solid var(--border)" : "none",
+          }}>
             <div>
-              <p className="text-sm font-semibold">{item.product_name}</p>
-              <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+              <p style={{ fontSize: "14px", marginBottom: "3px" }}>{item.product_name}</p>
+              <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
                 ${Number(item.price).toLocaleString("es-CL")} × {item.quantity}
               </p>
             </div>
-            <p className="font-bold text-sm" style={{ color: "var(--color-accent)" }}>
+            <p style={{ fontSize: "14px", fontWeight: 500 }}>
               ${Number(item.subtotal).toLocaleString("es-CL")}
             </p>
           </div>
         ))}
-        <div
-          className="flex justify-between items-center px-6 py-4"
-          style={{ borderTop: "2px solid var(--color-border)" }}
-        >
-          <span className="font-bold">Total</span>
-          <span
-            className="font-black text-xl"
-            style={{ color: "var(--color-accent)" }}
-          >
+        <div style={{
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          padding: "16px 20px", borderTop: "1px solid var(--border)",
+          background: "var(--surface-2)",
+        }}>
+          <span style={{ fontSize: "14px", fontWeight: 500 }}>Total</span>
+          <span style={{ fontSize: "20px", fontWeight: 500 }}>
             ${Number(order.total).toLocaleString("es-CL")}
           </span>
         </div>
       </div>
 
       {/* Datos de envío */}
-      <div
-        className="rounded-2xl p-6"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-        }}
-      >
-        <h2 className="font-bold mb-4">Datos de envío</h2>
-        <div className="space-y-2 text-sm">
-          <div className="flex gap-2">
-            <span style={{ color: "var(--color-text-muted)" }}>Email:</span>
-            <span>{order.email}</span>
-          </div>
-          <div className="flex gap-2">
-            <span style={{ color: "var(--color-text-muted)" }}>Dirección:</span>
-            <span>{order.shipping_address}</span>
-          </div>
-          {order.notes && (
-            <div className="flex gap-2">
-              <span style={{ color: "var(--color-text-muted)" }}>Notas:</span>
-              <span>{order.notes}</span>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
+        borderRadius: "var(--r-lg)", padding: "20px 24px" }}>
+        <p style={{ fontSize: "13px", fontWeight: 500, marginBottom: "16px" }}>
+          Datos de envío
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {[
+            { label: "Email",     value: order.email },
+            { label: "Dirección", value: order.shipping_address },
+            ...(order.notes ? [{ label: "Notas", value: order.notes }] : []),
+            { label: "Fecha", value: new Date(order.created_at).toLocaleDateString("es-CL", {
+              weekday: "long", day: "numeric", month: "long", year: "numeric" }) },
+          ].map(({ label, value }) => (
+            <div key={label} style={{ display: "flex", gap: "12px", fontSize: "13px" }}>
+              <span style={{ color: "var(--text-3)", flexShrink: 0, minWidth: "80px" }}>
+                {label}
+              </span>
+              <span style={{ color: "var(--text-2)" }}>{value}</span>
             </div>
-          )}
-          <div className="flex gap-2">
-            <span style={{ color: "var(--color-text-muted)" }}>Fecha:</span>
-            <span>
-              {new Date(order.created_at).toLocaleDateString("es-CL", {
-                weekday: "long", day: "numeric",
-                month: "long", year: "numeric",
-              })}
-            </span>
-          </div>
+          ))}
         </div>
       </div>
 

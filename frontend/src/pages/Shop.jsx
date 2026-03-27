@@ -1,5 +1,4 @@
 // pages/Shop.jsx
-// Catálogo completo con búsqueda, filtros y paginación
 
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
@@ -12,15 +11,17 @@ export default function Shop() {
   const [search, setSearch] = useState(searchParams.get("search") || "")
 
   const filters = {
-    search: searchParams.get("search") || undefined,
+    search:        searchParams.get("search") || undefined,
     category__slug: searchParams.get("category") || undefined,
-    ordering: searchParams.get("ordering") || "-created_at",
+    ordering:      searchParams.get("ordering") || "-created_at",
   }
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["products", filters],
-    queryFn: () => getProducts(filters),
+    queryFn:  () => getProducts(filters),
   })
+
+  const products = data?.results || []
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -31,62 +32,49 @@ export default function Shop() {
     })
   }
 
-  const handleOrdering = (value) => {
-    setSearchParams(prev => {
-      prev.set("ordering", value)
-      return prev
-    })
-  }
-
   return (
-    <div
-      className="min-h-screen"
-      style={{ backgroundColor: "var(--color-bg)" }}
-    >
-      {/* Header de la tienda */}
-      <div
-        className="py-10 px-4 border-b"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          borderColor: "var(--color-border)"
-        }}
-      >
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-3xl font-black mb-6">Tienda</h1>
+    <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
+
+      {/* Header */}
+      <div style={{
+        padding: "clamp(48px, 8vw, 80px) 0 0",
+        borderBottom: "1px solid var(--border)",
+      }}>
+        <div className="container" style={{ maxWidth: "var(--container)" }}>
+          <h1 style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: "clamp(2.5rem, 5vw, 4rem)",
+            marginBottom: "32px",
+          }}>
+            Tienda
+          </h1>
 
           {/* Búsqueda + ordenamiento */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <form onSubmit={handleSearch} className="flex gap-2 flex-1">
+          <div style={{
+            display: "flex",
+            gap: "12px",
+            paddingBottom: "32px",
+            flexWrap: "wrap",
+          }}>
+            <form onSubmit={handleSearch} style={{ display: "flex", gap: "8px", flex: 1, minWidth: "240px" }}>
               <input
                 type="text"
                 placeholder="Buscar productos..."
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="flex-1 px-4 py-2 rounded-lg text-sm outline-none"
-                style={{
-                  backgroundColor: "var(--color-surface-2)",
-                  border: "1px solid var(--color-border)",
-                  color: "var(--color-text)",
-                }}
+                onChange={e => setSearch(e.target.value)}
+                className="input"
+                style={{ flex: 1 }}
               />
-              <button
-                type="submit"
-                className="px-4 py-2 rounded-lg text-sm font-semibold"
-                style={{ backgroundColor: "var(--color-accent)", color: "#000" }}
-              >
+              <button type="submit" className="btn btn-accent" style={{ padding: "12px 20px", flexShrink: 0 }}>
                 Buscar
               </button>
             </form>
 
             <select
-              onChange={(e) => handleOrdering(e.target.value)}
+              onChange={e => setSearchParams(prev => { prev.set("ordering", e.target.value); return prev })}
               defaultValue="-created_at"
-              className="px-4 py-2 rounded-lg text-sm outline-none"
-              style={{
-                backgroundColor: "var(--color-surface-2)",
-                border: "1px solid var(--color-border)",
-                color: "var(--color-text)",
-              }}
+              className="input"
+              style={{ width: "auto", minWidth: "180px" }}
             >
               <option value="-created_at">Más recientes</option>
               <option value="price">Precio: menor a mayor</option>
@@ -97,61 +85,46 @@ export default function Shop() {
         </div>
       </div>
 
-      {/* Grilla de productos */}
-      <div className="max-w-7xl mx-auto px-4 py-10">
+      {/* Grilla */}
+      <div className="container" style={{ maxWidth: "var(--container)", padding: "48px clamp(20px, 5vw, 60px)" }}>
+
         {isLoading && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}
+            className="grid grid-cols-2 md:grid-cols-4 gap-4"
+          >
             {[...Array(8)].map((_, i) => (
-              <div
-                key={i}
-                className="h-64 rounded-xl animate-pulse"
-                style={{ backgroundColor: "var(--color-surface)" }}
-              />
+              <div key={i} className="skeleton" style={{ height: "320px" }} />
             ))}
           </div>
         )}
 
         {isError && (
-          <div className="text-center py-20" style={{ color: "var(--color-text-muted)" }}>
-            Error al cargar los productos. Intenta de nuevo.
-          </div>
+          <p style={{ textAlign: "center", padding: "60px 0", color: "var(--text-3)" }}>
+            Error al cargar los productos.
+          </p>
         )}
 
-        {!isLoading && !isError && data?.results?.length === 0 && (
-          <div className="text-center py-20" style={{ color: "var(--color-text-muted)" }}>
+        {!isLoading && !isError && products.length === 0 && (
+          <p style={{ textAlign: "center", padding: "80px 0", color: "var(--text-3)", fontSize: "15px" }}>
             No se encontraron productos.
-          </div>
+          </p>
         )}
 
-        {!isLoading && !isError && (
+        {!isLoading && !isError && products.length > 0 && (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {data?.results?.map(product => (
-                <ProductCard key={product.id} product={product} />
-              ))}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "16px" }}
+              className="grid grid-cols-2 md:grid-cols-4 gap-4"
+            >
+              {products.map(p => <ProductCard key={p.id} product={p} />)}
             </div>
 
             {/* Paginación */}
             {(data?.next || data?.previous) && (
-              <div className="flex justify-center gap-3 mt-10">
-                <button
-                  disabled={!data.previous}
-                  className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-30"
-                  style={{
-                    border: "1px solid var(--color-border)",
-                    color: "var(--color-text)"
-                  }}
-                >
+              <div style={{ display: "flex", justifyContent: "center", gap: "12px", marginTop: "48px" }}>
+                <button disabled={!data.previous} className="btn btn-ghost" style={{ opacity: data.previous ? 1 : 0.4 }}>
                   ← Anterior
                 </button>
-                <button
-                  disabled={!data.next}
-                  className="px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-30"
-                  style={{
-                    border: "1px solid var(--color-border)",
-                    color: "var(--color-text)"
-                  }}
-                >
+                <button disabled={!data.next} className="btn btn-ghost" style={{ opacity: data.next ? 1 : 0.4 }}>
                   Siguiente →
                 </button>
               </div>

@@ -1,29 +1,24 @@
 // pages/payment/PaymentSuccess.jsx
-// Pantalla de éxito después del pago con MP o PayPal
 
 import { useEffect, useState } from "react"
-import { useSearchParams, Link, useNavigate } from "react-router-dom"
-import { getPaymentStatus } from "../../api/payments.api"
-import { capturePayPal } from "../../api/payments.api"
+import { useSearchParams, Link } from "react-router-dom"
+import { getPaymentStatus, capturePayPal } from "../../api/payments.api"
+import iconImg from "../../assets/icon.png"
 
 export default function PaymentSuccess() {
-  const [searchParams]  = useSearchParams()
+  const [searchParams] = useSearchParams()
   const [status, setStatus] = useState("loading")
-  const navigate        = useNavigate()
 
-  const orderId          = searchParams.get("order")
-  const paypalPaymentId  = searchParams.get("paymentId")
-  const payerId          = searchParams.get("PayerID")
+  const orderId         = searchParams.get("order")
+  const paypalPaymentId = searchParams.get("paymentId")
+  const payerId         = searchParams.get("PayerID")
 
   useEffect(() => {
     const process = async () => {
       try {
-        // Si viene de PayPal necesita capturar el pago
         if (paypalPaymentId && payerId) {
           await capturePayPal(paypalPaymentId, payerId)
         }
-
-        // Verifica el estado final
         if (orderId) {
           const data = await getPaymentStatus(orderId)
           setStatus(data.status === "approved" ? "approved" : "pending")
@@ -34,75 +29,52 @@ export default function PaymentSuccess() {
         setStatus("pending")
       }
     }
-
     process()
   }, [orderId, paypalPaymentId, payerId])
 
   const config = {
-    loading: {
-      icon:  "⏳",
-      title: "Procesando pago...",
-      desc:  "Esto puede tomar unos segundos.",
-      color: "#f59e0b",
-    },
-    approved: {
-      icon:  "✅",
-      title: "¡Pago confirmado!",
-      desc:  "Tu pedido fue procesado exitosamente. Recibirás un email de confirmación.",
-      color: "#00e676",
-    },
-    pending: {
-      icon:  "⏳",
-      title: "Pago pendiente",
-      desc:  "Tu pago está siendo procesado. Te notificaremos cuando sea confirmado.",
-      color: "#f59e0b",
-    },
+    loading:  { icon: "⏳", title: "Procesando pago...",    desc: "Esto puede tomar unos segundos.", color: "var(--text-2)" },
+    approved: { icon: "✓",  title: "Pago confirmado.",      desc: "Tu pedido fue procesado. Recibirás un email de confirmación.", color: "var(--accent)" },
+    pending:  { icon: "⏳", title: "Pago en proceso.",      desc: "Te notificaremos cuando sea confirmado.", color: "#facc15" },
   }
 
   const c = config[status] || config.pending
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: "var(--color-bg)" }}
-    >
-      <div
-        className="w-full max-w-md rounded-2xl p-10 text-center"
-        style={{
-          backgroundColor: "var(--color-surface)",
-          border: "1px solid var(--color-border)",
-        }}
-      >
-        <div
-          className="w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6"
-          style={{ backgroundColor: `${c.color}18` }}
-        >
-          <span className="text-4xl">{c.icon}</span>
+    <div style={{
+      minHeight: "100vh", display: "flex", alignItems: "center",
+      justifyContent: "center", padding: "40px", background: "var(--bg)",
+    }}>
+      <div style={{
+        width: "100%", maxWidth: "400px", textAlign: "center",
+        background: "var(--surface)", border: "1px solid var(--border)",
+        borderRadius: "var(--r-xl)", padding: "48px 40px",
+      }}>
+        <div style={{
+          width: "64px", height: "64px", borderRadius: "50%",
+          background: `${c.color}14`, border: `1px solid ${c.color}30`,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "24px", margin: "0 auto 24px", color: c.color,
+          fontWeight: 600,
+        }}>
+          {c.icon}
         </div>
 
-        <h1 className="text-2xl font-black mb-3" style={{ color: c.color }}>
+        <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem",
+          marginBottom: "12px", color: c.color }}>
           {c.title}
         </h1>
-        <p className="text-sm mb-8" style={{ color: "var(--color-text-muted)" }}>
+        <p style={{ fontSize: "14px", color: "var(--text-2)", lineHeight: 1.7, marginBottom: "32px" }}>
           {c.desc}
         </p>
 
-        <div className="space-y-3">
-          <Link
-            to="/dashboard/orders"
-            className="block w-full py-3 rounded-xl font-semibold text-sm"
-            style={{ backgroundColor: "var(--color-accent)", color: "#000" }}
-          >
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          <Link to="/dashboard/orders" className="btn btn-accent"
+            style={{ justifyContent: "center" }}>
             Ver mis pedidos
           </Link>
-          <Link
-            to="/shop"
-            className="block w-full py-3 rounded-xl font-semibold text-sm"
-            style={{
-              border: "1px solid var(--color-border)",
-              color: "var(--color-text)",
-            }}
-          >
+          <Link to="/shop" className="btn btn-ghost"
+            style={{ justifyContent: "center" }}>
             Seguir comprando
           </Link>
         </div>

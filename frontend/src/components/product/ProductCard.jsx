@@ -1,79 +1,102 @@
 // components/product/ProductCard.jsx
-// Card de producto para grillas — conectada al router
 
 import { Link } from "react-router-dom"
 
 export default function ProductCard({ product }) {
+  const inStock = Number(product.stock) > 0
+
   return (
     <Link
       to={`/shop/${product.slug}`}
-      className="group rounded-xl overflow-hidden transition-all hover:-translate-y-1"
-      style={{
-        backgroundColor: "var(--color-surface)",
-        border: "1px solid var(--color-border)",
-      }}
+      className="card"
+      style={{ display: "flex", flexDirection: "column" }}
     >
       {/* Imagen */}
-      <div
-        className="relative w-full h-48 overflow-hidden"
-        style={{ backgroundColor: "var(--color-surface-2)" }}
-      >
+      <div style={{
+        position: "relative",
+        width: "100%",
+        aspectRatio: "1",
+        background: "var(--surface-2)",
+        overflow: "hidden",
+      }}>
         {product.primary_image ? (
           <img
             src={product.primary_image}
             alt={product.name}
-            className="w-full h-full object-cover transition-transform group-hover:scale-105"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              transition: "transform 400ms var(--ease)",
+            }}
+            className="group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-            <span className="text-4xl">🎧</span>
+          <div style={{
+            width: "100%",
+            height: "100%",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "40px",
+          }}>
+            🎧
           </div>
         )}
 
-        {/* Badge descuento */}
-        {product.has_discount && (
-          <span
-            className="absolute top-2 left-2 text-xs font-bold px-2 py-0.5 rounded-full"
-            style={{ backgroundColor: "var(--color-accent)", color: "#000" }}
-          >
-            -{product.discount_percentage}%
-          </span>
-        )}
+        {/* Badges */}
+        <div style={{ position: "absolute", top: "12px", left: "12px", display: "flex", gap: "6px" }}>
+          {product.has_discount && (
+            <span style={{
+              padding: "3px 8px",
+              borderRadius: "100px",
+              background: "var(--accent)",
+              color: "#000",
+              fontSize: "11px",
+              fontWeight: 600,
+            }}>
+              -{product.discount_percentage}%
+            </span>
+          )}
+          {!inStock && (
+            <span style={{
+              padding: "3px 8px",
+              borderRadius: "100px",
+              background: "rgba(0,0,0,0.7)",
+              backdropFilter: "blur(8px)",
+              color: "var(--text-2)",
+              fontSize: "11px",
+              fontWeight: 500,
+              border: "1px solid var(--border)",
+            }}>
+              Sin stock
+            </span>
+          )}
+        </div>
       </div>
 
       {/* Info */}
-      <div className="p-4">
-        <p className="text-xs mb-1" style={{ color: "var(--color-text-muted)" }}>
-          {product.brand_name}
-        </p>
-        <h3 className="font-semibold text-sm leading-snug line-clamp-2 mb-3">
+      <div style={{ padding: "20px", display: "flex", flexDirection: "column", flex: 1 }}>
+        {product.brand_name && (
+          <p style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "6px", fontWeight: 500 }}>
+            {product.brand_name}
+          </p>
+        )}
+        <p style={{ fontSize: "14px", fontWeight: 400, color: "var(--text)", lineHeight: 1.4, marginBottom: "16px", flex: 1 }}
+          className="line-clamp-2"
+        >
           {product.name}
-        </h3>
-
-        {/* Precio */}
-        <div className="flex items-baseline gap-2">
-          <span
-            className="font-bold text-base"
-            style={{ color: "var(--color-accent)" }}
-          >
+        </p>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <span style={{ fontSize: "16px", fontWeight: 500, color: inStock ? "var(--text)" : "var(--text-3)" }}>
             ${Number(product.price).toLocaleString("es-CL")}
           </span>
           {product.has_discount && (
-            <span
-              className="text-xs line-through"
-              style={{ color: "var(--color-text-muted)" }}
-            >
+            <span style={{ fontSize: "13px", color: "var(--text-3)", textDecoration: "line-through" }}>
               ${Number(product.compare_price).toLocaleString("es-CL")}
             </span>
           )}
         </div>
-
-        {/* Stock */}
-        {!product.in_stock && (
-          <p className="mt-2 text-xs" style={{ color: "var(--color-danger)" }}>
-            Sin stock
-          </p>
-        )}
       </div>
     </Link>
   )

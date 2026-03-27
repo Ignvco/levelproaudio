@@ -1,66 +1,54 @@
 // pages/dashboard/MyServices.jsx
-// Solicitudes y reservas del usuario
 
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
-import {
-  getServiceRequests,
-  getBookings,
-  cancelBooking,
-} from "../../api/services.api"
+import { getServiceRequests, getBookings, cancelBooking } from "../../api/services.api"
 
-// ── Status configs ───────────────────────────────────────────
-const requestStatusConfig = {
-  pending:   { label: "Pendiente",  color: "#f59e0b" },
-  contacted: { label: "Contactado", color: "#3b82f6" },
-  accepted:  { label: "Aceptado",   color: "#00e676" },
-  rejected:  { label: "Rechazado",  color: "#ff4444" },
+const requestStatus = {
+  pending:   { label: "Pendiente",  color: "#facc15" },
+  contacted: { label: "Contactado", color: "#60a5fa" },
+  accepted:  { label: "Aceptado",   color: "#4ade80" },
+  rejected:  { label: "Rechazado",  color: "#f87171" },
 }
 
-const bookingStatusConfig = {
-  pending:   { label: "Pendiente",  color: "#f59e0b" },
-  confirmed: { label: "Confirmado", color: "#00e676" },
-  completed: { label: "Completado", color: "#3b82f6" },
-  cancelled: { label: "Cancelado",  color: "#ff4444" },
+const bookingStatus = {
+  pending:   { label: "Pendiente",  color: "#facc15" },
+  confirmed: { label: "Confirmado", color: "#4ade80" },
+  completed: { label: "Completado", color: "#60a5fa" },
+  cancelled: { label: "Cancelado",  color: "#f87171" },
 }
 
 function StatusBadge({ status, config }) {
-  const c = config[status] || { label: status, color: "#888" }
+  const c = config[status] || { label: status, color: "var(--text-3)" }
   return (
-    <span
-      className="text-xs font-semibold px-2.5 py-1 rounded-full"
-      style={{
-        color: c.color,
-        backgroundColor: `${c.color}18`,
-      }}
-    >
+    <span style={{
+      padding: "2px 10px", borderRadius: "100px", fontSize: "11px", fontWeight: 500,
+      color: c.color, background: `${c.color}14`, border: `1px solid ${c.color}30`,
+    }}>
       {c.label}
     </span>
   )
 }
 
-// ── Tab ──────────────────────────────────────────────────────
-function Tab({ active, onClick, children, count }) {
+function TabButton({ active, onClick, children, count }) {
   return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors"
-      style={{
-        backgroundColor: active ? "var(--color-surface-2)" : "transparent",
-        color: active ? "var(--color-accent)" : "var(--color-text-muted)",
-        border: active ? "1px solid var(--color-accent)" : "1px solid transparent",
-      }}
-    >
+    <button onClick={onClick} style={{
+      padding: "8px 18px", borderRadius: "100px", fontSize: "13px",
+      fontWeight: 400, cursor: "pointer", transition: "all var(--dur) var(--ease)",
+      display: "flex", alignItems: "center", gap: "8px",
+      background: active ? "var(--text)" : "transparent",
+      color: active ? "var(--bg)" : "var(--text-2)",
+      border: `1px solid ${active ? "var(--text)" : "var(--border)"}`,
+    }}>
       {children}
       {count > 0 && (
-        <span
-          className="text-xs font-bold px-1.5 py-0.5 rounded-full"
-          style={{
-            backgroundColor: active ? "var(--color-accent)" : "var(--color-surface)",
-            color: active ? "#000" : "var(--color-text-muted)",
-          }}
-        >
+        <span style={{
+          fontSize: "11px", fontWeight: 600,
+          padding: "0px 6px", borderRadius: "100px",
+          background: active ? "rgba(0,0,0,0.15)" : "var(--surface-2)",
+          color: active ? "var(--bg)" : "var(--text-3)",
+        }}>
           {count}
         </span>
       )}
@@ -68,19 +56,15 @@ function Tab({ active, onClick, children, count }) {
   )
 }
 
-// ── MyServices page ──────────────────────────────────────────
 export default function MyServices() {
-  const [activeTab, setActiveTab] = useState("requests")
-  const queryClient = useQueryClient()
+  const [tab, setTab]  = useState("requests")
+  const queryClient    = useQueryClient()
 
-  const { data: requestsData, isLoading: loadingRequests } = useQuery({
-    queryKey: ["service-requests"],
-    queryFn:  getServiceRequests,
+  const { data: reqData,  isLoading: loadingReqs  } = useQuery({
+    queryKey: ["service-requests"], queryFn: getServiceRequests,
   })
-
-  const { data: bookingsData, isLoading: loadingBookings } = useQuery({
-    queryKey: ["bookings"],
-    queryFn:  getBookings,
+  const { data: bookData, isLoading: loadingBooks } = useQuery({
+    queryKey: ["bookings"], queryFn: getBookings,
   })
 
   const cancelMutation = useMutation({
@@ -88,190 +72,170 @@ export default function MyServices() {
     onSuccess:  () => queryClient.invalidateQueries(["bookings"]),
   })
 
-  const requests = requestsData?.results || requestsData || []
-  const bookings = bookingsData?.results || bookingsData || []
+  const requests = reqData?.results  || reqData  || []
+  const bookings = bookData?.results || bookData || []
 
   return (
-    <div className="p-8 max-w-4xl mx-auto">
+    <div style={{ padding: "clamp(32px, 5vw, 56px)", maxWidth: "720px" }}>
 
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-3xl font-black">Mis servicios</h1>
-        <Link
-          to="/services"
-          className="text-sm font-medium px-4 py-2 rounded-lg"
-          style={{ backgroundColor: "var(--color-accent)", color: "#000" }}
-        >
-          Ver servicios
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between",
+        alignItems: "flex-start", marginBottom: "40px", flexWrap: "wrap", gap: "16px" }}>
+        <h1 style={{ fontFamily: "var(--font-serif)",
+          fontSize: "clamp(2rem, 4vw, 2.8rem)" }}>
+          Mis servicios
+        </h1>
+        <Link to="/services" className="btn btn-ghost" style={{ padding: "9px 18px", fontSize: "13px" }}>
+          Ver servicios →
         </Link>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-8">
-        <Tab
-          active={activeTab === "requests"}
-          onClick={() => setActiveTab("requests")}
-          count={requests.length}
-        >
+      <div style={{ display: "flex", gap: "8px", marginBottom: "28px" }}>
+        <TabButton active={tab === "requests"} onClick={() => setTab("requests")} count={requests.length}>
           Solicitudes
-        </Tab>
-        <Tab
-          active={activeTab === "bookings"}
-          onClick={() => setActiveTab("bookings")}
-          count={bookings.length}
-        >
+        </TabButton>
+        <TabButton active={tab === "bookings"} onClick={() => setTab("bookings")} count={bookings.length}>
           Reservas
-        </Tab>
+        </TabButton>
       </div>
 
-      {/* ── Solicitudes ──────────────────────────────────── */}
-      {activeTab === "requests" && (
-        <div>
-          {loadingRequests && (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-24 rounded-2xl animate-pulse"
-                  style={{ backgroundColor: "var(--color-surface)" }}
-                />
-              ))}
+      {/* ── Solicitudes ─────────────────────────────────── */}
+      {tab === "requests" && (
+        <>
+          {loadingReqs && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {[...Array(3)].map((_, i) => <div key={i} className="skeleton" style={{ height: "96px" }} />)}
             </div>
           )}
 
-          {!loadingRequests && requests.length === 0 && (
-            <div
-              className="rounded-2xl p-12 text-center"
-              style={{
-                backgroundColor: "var(--color-surface)",
-                border: "1px solid var(--color-border)",
-              }}
-            >
-              <p className="text-5xl mb-4">🎚️</p>
-              <p className="font-bold text-lg mb-2">Sin solicitudes todavía</p>
-              <p className="text-sm mb-6" style={{ color: "var(--color-text-muted)" }}>
+          {!loadingReqs && requests.length === 0 && (
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: "var(--r-xl)", padding: "64px", textAlign: "center" }}>
+              <p style={{ fontSize: "40px", marginBottom: "16px" }}>🎚️</p>
+              <p style={{ fontSize: "16px", fontWeight: 500, marginBottom: "8px" }}>
+                Sin solicitudes todavía
+              </p>
+              <p style={{ fontSize: "14px", color: "var(--text-3)", marginBottom: "28px" }}>
                 Explora nuestros servicios y envía tu primera solicitud.
               </p>
-              <Link
-                to="/services"
-                className="inline-block px-6 py-2.5 rounded-lg font-semibold text-sm"
-                style={{ backgroundColor: "var(--color-accent)", color: "#000" }}
-              >
-                Ver servicios
-              </Link>
+              <Link to="/services" className="btn btn-accent">Ver servicios</Link>
             </div>
           )}
 
-          {!loadingRequests && requests.length > 0 && (
-            <div className="space-y-3">
+          {!loadingReqs && requests.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {requests.map(req => (
-                <div
-                  key={req.id}
-                  className="rounded-2xl p-5"
-                  style={{
-                    backgroundColor: "var(--color-surface)",
-                    border: "1px solid var(--color-border)",
-                  }}
+                <div key={req.id} style={{
+                  background: "var(--surface)", border: "1px solid var(--border)",
+                  borderRadius: "var(--r-lg)", padding: "18px 20px",
+                  transition: "border-color var(--dur) var(--ease)",
+                }}
+                  className="hover:border-[var(--border-hover)]"
                 >
-                  <div className="flex items-start justify-between gap-4 mb-3">
+                  <div style={{ display: "flex", justifyContent: "space-between",
+                    alignItems: "flex-start", gap: "12px", marginBottom: "10px",
+                    flexWrap: "wrap" }}>
                     <div>
-                      <p className="font-bold">{req.service_name || "Servicio general"}</p>
-                      <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+                      <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "3px" }}>
+                        {req.service_name || "Servicio general"}
+                      </p>
+                      <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
                         {new Date(req.created_at).toLocaleDateString("es-CL", {
-                          day: "numeric", month: "long", year: "numeric"
-                        })}
+                          day: "numeric", month: "long", year: "numeric" })}
                       </p>
                     </div>
-                    <StatusBadge status={req.status} config={requestStatusConfig} />
+                    <StatusBadge status={req.status} config={requestStatus} />
                   </div>
 
-                  <p
-                    className="text-sm line-clamp-2 mb-3"
-                    style={{ color: "var(--color-text-muted)" }}
-                  >
+                  <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6,
+                    display: "-webkit-box", WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical", overflow: "hidden", marginBottom: "10px" }}>
                     {req.message}
                   </p>
 
-                  <div className="flex flex-wrap gap-4 text-xs"
-                    style={{ color: "var(--color-text-muted)" }}
-                  >
+                  <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
                     {req.budget && (
-                      <span>💰 Presupuesto: ${Number(req.budget).toLocaleString("es-CL")}</span>
+                      <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
+                        💰 ${Number(req.budget).toLocaleString("es-CL")}
+                      </span>
                     )}
                     {req.preferred_date && (
-                      <span>📅 Fecha preferida: {new Date(req.preferred_date).toLocaleDateString("es-CL")}</span>
+                      <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
+                        📅 {new Date(req.preferred_date).toLocaleDateString("es-CL")}
+                      </span>
                     )}
                   </div>
                 </div>
               ))}
             </div>
           )}
-        </div>
+        </>
       )}
 
       {/* ── Reservas ─────────────────────────────────────── */}
-      {activeTab === "bookings" && (
-        <div>
-          {loadingBookings && (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div key={i} className="h-24 rounded-2xl animate-pulse"
-                  style={{ backgroundColor: "var(--color-surface)" }}
-                />
-              ))}
+      {tab === "bookings" && (
+        <>
+          {loadingBooks && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {[...Array(3)].map((_, i) => <div key={i} className="skeleton" style={{ height: "96px" }} />)}
             </div>
           )}
 
-          {!loadingBookings && bookings.length === 0 && (
-            <div
-              className="rounded-2xl p-12 text-center"
-              style={{
-                backgroundColor: "var(--color-surface)",
-                border: "1px solid var(--color-border)",
-              }}
-            >
-              <p className="text-5xl mb-4">📅</p>
-              <p className="font-bold text-lg mb-2">Sin reservas todavía</p>
-              <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+          {!loadingBooks && bookings.length === 0 && (
+            <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: "var(--r-xl)", padding: "64px", textAlign: "center" }}>
+              <p style={{ fontSize: "40px", marginBottom: "16px" }}>📅</p>
+              <p style={{ fontSize: "16px", fontWeight: 500, marginBottom: "8px" }}>
+                Sin reservas todavía
+              </p>
+              <p style={{ fontSize: "14px", color: "var(--text-3)" }}>
                 Las reservas que hagas aparecerán aquí.
               </p>
             </div>
           )}
 
-          {!loadingBookings && bookings.length > 0 && (
-            <div className="space-y-3">
+          {!loadingBooks && bookings.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
               {bookings.map(booking => (
-                <div
-                  key={booking.id}
-                  className="rounded-2xl p-5"
-                  style={{
-                    backgroundColor: "var(--color-surface)",
-                    border: "1px solid var(--color-border)",
-                  }}
+                <div key={booking.id} style={{
+                  background: "var(--surface)", border: "1px solid var(--border)",
+                  borderRadius: "var(--r-lg)", padding: "18px 20px",
+                  transition: "border-color var(--dur) var(--ease)",
+                }}
+                  className="hover:border-[var(--border-hover)]"
                 >
-                  <div className="flex items-start justify-between gap-4 mb-3">
+                  <div style={{ display: "flex", justifyContent: "space-between",
+                    alignItems: "flex-start", gap: "12px", marginBottom: "10px",
+                    flexWrap: "wrap" }}>
                     <div>
-                      <p className="font-bold">{booking.service_name}</p>
-                      <p className="text-xs mt-0.5" style={{ color: "var(--color-text-muted)" }}>
+                      <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "3px" }}>
+                        {booking.service_name}
+                      </p>
+                      <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
                         📅 {new Date(booking.scheduled_date).toLocaleString("es-CL", {
-                          day: "numeric", month: "long",
-                          year: "numeric", hour: "2-digit", minute: "2-digit"
-                        })}
+                          day: "numeric", month: "long", year: "numeric",
+                          hour: "2-digit", minute: "2-digit" })}
                       </p>
                     </div>
-                    <StatusBadge status={booking.status} config={bookingStatusConfig} />
+                    <StatusBadge status={booking.status} config={bookingStatus} />
                   </div>
 
                   {booking.notes && (
-                    <p className="text-sm mb-3" style={{ color: "var(--color-text-muted)" }}>
+                    <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6,
+                      marginBottom: "10px" }}>
                       {booking.notes}
                     </p>
                   )}
 
-                  {/* Cancelar */}
                   {["pending", "confirmed"].includes(booking.status) && (
                     <button
                       onClick={() => cancelMutation.mutate(booking.id)}
                       disabled={cancelMutation.isPending}
-                      className="text-xs transition-colors disabled:opacity-50"
-                      style={{ color: "var(--color-danger)" }}
+                      style={{ fontSize: "12px", color: "var(--text-3)", background: "none",
+                        border: "none", cursor: "pointer", transition: "color var(--dur)",
+                        padding: 0, opacity: cancelMutation.isPending ? 0.5 : 1 }}
+                      className="hover:text-[var(--danger)]"
                     >
                       Cancelar reserva
                     </button>
@@ -280,7 +244,7 @@ export default function MyServices() {
               ))}
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   )

@@ -25,6 +25,12 @@ logger = logging.getLogger(__name__)
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_payment(request):
+    """
+    POST /api/v1/payments/create/
+    Body: { order_id, provider }
+
+    Crea la intención de pago según el proveedor elegido.
+    """
     order_id = request.data.get("order_id")
     provider = request.data.get("provider")
 
@@ -68,23 +74,9 @@ def create_payment(request):
         return Response({"provider": provider, **data})
 
     except Exception as e:
-        import traceback
-        error_detail = traceback.format_exc()
-        # Imprime en los logs de Docker
-        print("=" * 60)
-        print(f"ERROR CREANDO PAGO [{provider}]:")
-        print(f"Tipo: {type(e).__name__}")
-        print(f"Mensaje: {str(e)}")
-        print("Traceback completo:")
-        print(error_detail)
-        print("=" * 60)
-        logger.error(f"Error creando pago {provider}: {error_detail}")
+        logger.error(f"Error creando pago {provider}: {e}")
         return Response(
-            {
-                "error": str(e),
-                "type": type(e).__name__,
-                "detail": error_detail
-            },
+            {"error": "Error al procesar el pago. Intenta de nuevo."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
