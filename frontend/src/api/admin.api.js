@@ -7,7 +7,8 @@ const BASE = "/admin"
 export const getAdminDashboard  = () => api.get(`${BASE}/dashboard/`).then(r => r.data)
 export const getAdminOrders     = (params) => api.get(`${BASE}/orders/`, { params }).then(r => r.data)
 export const updateOrderStatus  = (id, status) => api.post(`${BASE}/orders/${id}/update_status/`, { status }).then(r => r.data)
-export const getAdminProducts   = (params) => api.get(`${BASE}/products/`, { params }).then(r => r.data)
+export const getAdminProducts = (params) =>
+  api.get("/admin/products/", { params }).then(r => r.data)
 export const getAdminUsers      = (params) => api.get(`${BASE}/users/`, { params }).then(r => r.data)
 export const getAdminPayments   = (params) => api.get(`${BASE}/payments/`, { params }).then(r => r.data)
 export const getAdminAcademy    = () => api.get(`${BASE}/academy/`).then(r => r.data)

@@ -6,6 +6,7 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 from django.shortcuts import get_object_or_404
+from apps.orders.models import Order, OrderItem
 
 from .models import Course, Lesson, Enrollment, LessonProgress
 from .serializers import (
@@ -82,6 +83,47 @@ class CourseViewSet(viewsets.ReadOnlyModelViewSet):
             )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    @action(detail=True, methods=["post"], permission_classes=[IsAuthenticated])
+    def purchase(self, request, slug=None):
+        """
+        POST /api/v1/courses/{slug}/purchase/
+        Crea una orden para comprar un curso de pago.
+        """
+        course = self.get_object()
+
+        if course.is_free:
+            return Response(
+                {"error": "Este curso es gratuito. Usa /enroll/ en su lugar."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        if Enrollment.objects.filter(user=request.user, course=course).exists():
+            return Response(
+                {"error": "Ya estás inscrito en este curso."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Crea la orden
+        order = Order.objects.create(
+            user=request.user,
+            email=request.user.email,
+            shipping_address="Curso digital — sin envío",
+            total=course.price,
+        )
+
+        OrderItem.objects.create(
+            order=order,
+            product=None,
+            product_name=f"Curso: {course.title}",
+            price=course.price,
+            quantity=1,
+        )
+
+        return Response({
+            "order_id": str(order.id),
+            "course_slug": course.slug,
+            "amount": float(course.price),
+        }, status=status.HTTP_201_CREATED)
 
 class EnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
     """

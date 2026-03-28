@@ -17,8 +17,17 @@ from apps.products.models import Product, Category, Brand
 from apps.products.serializers import ProductDetailSerializer, ProductListSerializer
 from apps.users.models import User
 from apps.payments.models import Payment, PaymentStatus
-from apps.academy.models import Course, Enrollment
+from apps.academy.models import Course, Enrollment, Lesson, Module
 from apps.services.models import Service, Booking, ServiceRequest
+from rest_framework import serializers as drf_serializers
+# Al inicio de views.py, donde están los otros imports de DRF
+from rest_framework.serializers import ModelSerializer
+
+from apps.products.models import ProductImage
+from rest_framework.parsers import MultiPartParser, FormParser
+from rest_framework.serializers import ModelSerializer as DRFModelSerializer
+
+
 
 
 
@@ -179,7 +188,6 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
 # ── Admin Products ───────────────────────────────────────────
 
 class AdminProductViewSet(viewsets.ModelViewSet):
-    """CRUD completo de productos para el admin."""
     permission_classes = [IsAdminOrStaff]
     serializer_class   = ProductDetailSerializer
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
@@ -189,10 +197,10 @@ class AdminProductViewSet(viewsets.ModelViewSet):
     lookup_field       = "id"
 
     def get_queryset(self):
+        # ← Sin filtro is_active — muestra TODOS los productos
         return Product.objects.select_related(
             "category", "brand"
         ).prefetch_related("images").all()
-
 
 # ── Admin Users ──────────────────────────────────────────────
 
@@ -505,3 +513,110 @@ def analytics_full(request):
             for item in enrollments_by_month
         ],
     })
+    
+class CourseAdminSerializer(ModelSerializer):
+    class Meta:
+        model = Course
+        fields = [
+            "id", "title", "slug", "description", "short_description",
+            "price", "level", "is_free", "is_published", "order",
+        ]
+
+class AdminCourseViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminOrStaff]
+    serializer_class   = CourseAdminSerializer
+    queryset           = Course.objects.all().order_by("order", "-created_at")
+    lookup_field       = "id"    
+    
+@api_view(["GET", "PATCH", "DELETE"])
+@permission_classes([IsAdminOrStaff])
+def admin_user_detail(request, pk):
+    try:
+        user = User.objects.get(id=pk)
+    except User.DoesNotExist:
+        return Response({"error": "No encontrado."}, status=404)
+
+    if request.method == "GET":
+        orders_count = Order.objects.filter(user=user).count()
+        total_spent  = Order.objects.filter(
+            user=user, status__in=["paid", "shipped", "completed"]
+        ).aggregate(t=Sum("total"))["t"] or 0
+        return Response({
+            "id":           str(user.id),
+            "email":        user.email,
+            "first_name":   user.first_name,
+            "last_name":    user.last_name,
+            "phone":        getattr(user, "phone", ""),
+            "is_active":    user.is_active,
+            "is_staff":     user.is_staff,
+            "date_joined":  user.date_joined.strftime("%Y-%m-%d"),
+            "orders_count": orders_count,
+            "total_spent":  float(total_spent),
+        })
+
+    elif request.method == "PATCH":
+        allowed = ["first_name", "last_name", "phone", "is_active", "is_staff"]
+        for field in allowed:
+            if field in request.data:
+                setattr(user, field, request.data[field])
+        user.save()
+        return Response({"detail": "Usuario actualizado."})
+
+    elif request.method == "DELETE":
+        user.delete()
+        return Response(status=204)    
+    
+    
+class ModuleAdminSerializer(ModelSerializer):
+    course_title = drf_serializers.CharField(source="course.title", read_only=True)
+    class Meta:
+        model  = Module
+        fields = ["id", "title", "order", "course", "course_title"]
+
+class LessonAdminSerializer(ModelSerializer):
+    module_title = drf_serializers.CharField(source="module.title", read_only=True)
+    class Meta:
+        model  = Lesson
+        fields = ["id", "title", "order", "is_free", "duration_minutes",
+                  "video_url", "module", "module_title"]
+
+class EnrollmentAdminSerializer(ModelSerializer):
+    user_email          = drf_serializers.CharField(source="user.email",   read_only=True)
+    course_title        = drf_serializers.CharField(source="course.title", read_only=True)
+    progress_percentage = drf_serializers.IntegerField(read_only=True)
+    class Meta:
+        model  = Enrollment
+        fields = ["id", "user_email", "course_title",
+                  "progress_percentage", "created_at"]
+
+class AdminModuleViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminOrStaff]
+    serializer_class   = ModuleAdminSerializer
+    queryset           = Module.objects.select_related("course").order_by("course", "order")
+    lookup_field       = "id"
+
+class AdminLessonViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminOrStaff]
+    serializer_class   = LessonAdminSerializer
+    queryset           = Lesson.objects.select_related("module").order_by("module", "order")
+    lookup_field       = "id"
+
+class AdminEnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
+    permission_classes = [IsAdminOrStaff]
+    serializer_class   = EnrollmentAdminSerializer
+    queryset           = Enrollment.objects.select_related(
+        "user", "course"
+    ).order_by("-created_at")
+    lookup_field       = "id"    
+    
+class ProductImageAdminSerializer(DRFModelSerializer):
+    class Meta:
+        from apps.products.models import ProductImage
+        model  = ProductImage
+        fields = ["id", "product", "image", "alt_text", "order", "is_primary"]
+
+class AdminProductImageViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAdminOrStaff]
+    parser_classes     = [MultiPartParser, FormParser]
+    queryset           = ProductImage.objects.all()
+    serializer_class   = ProductImageAdminSerializer    
