@@ -1,0 +1,603 @@
+/* ── LevelPro Admin — Dark Refined ─────────────────────────
+   Inspirado en dashboards premium: fondo profundo,
+   cards con bordes sutiles, verde como firma puntual.
+─────────────────────────────────────────────────────────── */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap');
+
+/* ── Variables ─────────────────────────────────────────── */
+:root {
+  --lp-bg:         #0d0f13;
+  --lp-surface:    #13161c;
+  --lp-surface-2:  #191c23;
+  --lp-surface-3:  #21252e;
+  --lp-border:     rgba(255,255,255,0.06);
+  --lp-border-2:   rgba(255,255,255,0.1);
+  --lp-text:       #e8eaf0;
+  --lp-text-2:     #8b909e;
+  --lp-text-3:     #525764;
+  --lp-accent:     #00e676;
+  --lp-accent-dim: rgba(0,230,118,0.1);
+  --lp-radius:     10px;
+  --lp-radius-sm:  6px;
+  --lp-shadow:     0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.2);
+}
+
+/* ── Base ──────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+
+body,
+html {
+  font-family: 'DM Sans', system-ui, sans-serif !important;
+  background: var(--lp-bg) !important;
+  color: var(--lp-text) !important;
+  font-size: 14px !important;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── Sidebar ───────────────────────────────────────────── */
+#nav-sidebar,
+.navigation-sidebar,
+[data-sidebar] {
+  background: var(--lp-surface) !important;
+  border-right: 1px solid var(--lp-border) !important;
+}
+
+/* Logo area */
+#nav-sidebar .logo,
+.sidebar-logo {
+  padding: 20px 16px !important;
+  border-bottom: 1px solid var(--lp-border) !important;
+}
+
+/* Nav items */
+#nav-sidebar a,
+.navigation-sidebar a {
+  color: var(--lp-text-2) !important;
+  font-size: 13px !important;
+  font-weight: 400 !important;
+  border-radius: var(--lp-radius-sm) !important;
+  transition: all 180ms ease !important;
+  padding: 8px 12px !important;
+}
+
+#nav-sidebar a:hover,
+.navigation-sidebar a:hover {
+  color: var(--lp-text) !important;
+  background: var(--lp-surface-2) !important;
+}
+
+#nav-sidebar a.active,
+.navigation-sidebar a.active,
+#nav-sidebar a[aria-current],
+.navigation-sidebar a[aria-current] {
+  color: var(--lp-accent) !important;
+  background: var(--lp-accent-dim) !important;
+}
+
+/* Section headers */
+#nav-sidebar .group-header,
+.navigation-sidebar .group-header,
+#nav-sidebar .apps-nav caption,
+#nav-sidebar th {
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.1em !important;
+  text-transform: uppercase !important;
+  color: var(--lp-text-3) !important;
+  padding: 16px 12px 6px !important;
+}
+
+/* ── Topbar ────────────────────────────────────────────── */
+#header,
+.topbar,
+header[role="banner"] {
+  background: var(--lp-surface) !important;
+  border-bottom: 1px solid var(--lp-border) !important;
+  box-shadow: none !important;
+  padding: 0 24px !important;
+  height: 60px !important;
+  display: flex !important;
+  align-items: center !important;
+}
+
+/* ── Contenido principal ───────────────────────────────── */
+#content,
+.content,
+main[role="main"],
+.main-content {
+  background: var(--lp-bg) !important;
+  padding: 28px 32px !important;
+}
+
+/* Breadcrumbs */
+.breadcrumbs,
+#breadcrumbs {
+  background: transparent !important;
+  padding: 0 0 20px !important;
+  font-size: 12px !important;
+  color: var(--lp-text-3) !important;
+  border: none !important;
+}
+
+.breadcrumbs a,
+#breadcrumbs a {
+  color: var(--lp-text-2) !important;
+}
+
+.breadcrumbs a:hover,
+#breadcrumbs a:hover {
+  color: var(--lp-text) !important;
+}
+
+/* Título de página */
+#content h1,
+.content h1,
+.page-title {
+  font-size: 22px !important;
+  font-weight: 600 !important;
+  color: var(--lp-text) !important;
+  margin-bottom: 24px !important;
+  letter-spacing: -0.01em !important;
+}
+
+/* ── Módulo / Card ─────────────────────────────────────── */
+.module,
+.card,
+[class*="module"] {
+  background: var(--lp-surface) !important;
+  border: 1px solid var(--lp-border) !important;
+  border-radius: var(--lp-radius) !important;
+  box-shadow: var(--lp-shadow) !important;
+  overflow: hidden !important;
+  margin-bottom: 16px !important;
+}
+
+.module h2,
+.module caption,
+.card h2,
+.card caption {
+  background: transparent !important;
+  color: var(--lp-text) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 14px 18px !important;
+  border-bottom: 1px solid var(--lp-border) !important;
+  letter-spacing: 0.01em !important;
+}
+
+/* ── Tablas ────────────────────────────────────────────── */
+#result_list,
+.results table,
+table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  background: var(--lp-surface) !important;
+  border: 1px solid var(--lp-border) !important;
+  border-radius: var(--lp-radius) !important;
+  overflow: hidden !important;
+}
+
+#result_list thead th,
+table thead th,
+th {
+  background: var(--lp-surface-2) !important;
+  color: var(--lp-text-3) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.07em !important;
+  padding: 11px 16px !important;
+  border-bottom: 1px solid var(--lp-border) !important;
+  white-space: nowrap !important;
+}
+
+#result_list thead th a,
+table thead th a {
+  color: var(--lp-text-3) !important;
+}
+
+#result_list thead th a:hover,
+table thead th a:hover {
+  color: var(--lp-text-2) !important;
+}
+
+#result_list tbody tr,
+table tbody tr {
+  border-bottom: 1px solid var(--lp-border) !important;
+  transition: background 150ms ease !important;
+}
+
+#result_list tbody tr:last-child,
+table tbody tr:last-child {
+  border-bottom: none !important;
+}
+
+#result_list tbody tr:hover,
+table tbody tr:hover {
+  background: var(--lp-surface-2) !important;
+}
+
+#result_list tbody td,
+table tbody td,
+td {
+  padding: 13px 16px !important;
+  font-size: 13px !important;
+  color: var(--lp-text) !important;
+  vertical-align: middle !important;
+  border-bottom: none !important;
+}
+
+/* Links en tablas */
+#result_list tbody td a,
+table tbody td a {
+  color: var(--lp-text) !important;
+  font-weight: 400 !important;
+  text-decoration: none !important;
+  transition: color 150ms !important;
+}
+
+#result_list tbody td a:hover,
+table tbody td a:hover {
+  color: var(--lp-accent) !important;
+}
+
+/* Filas seleccionadas */
+#result_list tbody tr.selected,
+table tbody tr.selected {
+  background: var(--lp-accent-dim) !important;
+}
+
+/* ── Checkboxes ────────────────────────────────────────── */
+input[type="checkbox"] {
+  accent-color: var(--lp-accent) !important;
+  width: 15px !important;
+  height: 15px !important;
+  cursor: pointer !important;
+}
+
+/* ── Formularios ───────────────────────────────────────── */
+.form-row,
+.fieldset,
+fieldset {
+  border: none !important;
+  padding: 0 !important;
+  margin-bottom: 16px !important;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="url"],
+input[type="password"],
+input[type="date"],
+input[type="datetime-local"],
+select,
+textarea {
+  background: var(--lp-surface-2) !important;
+  border: 1px solid var(--lp-border-2) !important;
+  border-radius: var(--lp-radius-sm) !important;
+  color: var(--lp-text) !important;
+  font-family: 'DM Sans', system-ui, sans-serif !important;
+  font-size: 13px !important;
+  padding: 9px 13px !important;
+  outline: none !important;
+  transition: border-color 150ms ease !important;
+  width: 100% !important;
+}
+
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="number"]:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--lp-accent) !important;
+  box-shadow: 0 0 0 2px var(--lp-accent-dim) !important;
+}
+
+label {
+  color: var(--lp-text-2) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  display: block !important;
+  margin-bottom: 6px !important;
+}
+
+.help {
+  color: var(--lp-text-3) !important;
+  font-size: 11px !important;
+  margin-top: 4px !important;
+}
+
+/* ── Botones ───────────────────────────────────────────── */
+.button,
+input[type="submit"],
+input[type="button"],
+button[type="submit"],
+.submit-row input {
+  background: var(--lp-accent) !important;
+  color: #000 !important;
+  border: none !important;
+  border-radius: var(--lp-radius-sm) !important;
+  font-family: 'DM Sans', system-ui, sans-serif !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 9px 20px !important;
+  cursor: pointer !important;
+  transition: all 150ms ease !important;
+}
+
+.button:hover,
+input[type="submit"]:hover,
+button[type="submit"]:hover {
+  background: #00ff85 !important;
+  transform: translateY(-1px) !important;
+}
+
+.button.default,
+input[type="submit"].default,
+.default {
+  background: var(--lp-accent) !important;
+  color: #000 !important;
+}
+
+/* Botón secundario */
+.button[name="_continue"],
+.button[name="_addanother"],
+input[name="_continue"],
+input[name="_addanother"] {
+  background: var(--lp-surface-3) !important;
+  color: var(--lp-text) !important;
+  border: 1px solid var(--lp-border-2) !important;
+}
+
+.button[name="_continue"]:hover,
+input[name="_continue"]:hover {
+  background: var(--lp-surface-2) !important;
+}
+
+/* Delete */
+.deletelink,
+a.deletelink {
+  background: rgba(248,113,113,0.1) !important;
+  color: #f87171 !important;
+  border: 1px solid rgba(248,113,113,0.2) !important;
+  border-radius: var(--lp-radius-sm) !important;
+  padding: 8px 16px !important;
+  font-size: 13px !important;
+  text-decoration: none !important;
+  transition: all 150ms !important;
+}
+
+.deletelink:hover,
+a.deletelink:hover {
+  background: rgba(248,113,113,0.2) !important;
+}
+
+/* ── Submit row ────────────────────────────────────────── */
+.submit-row {
+  background: var(--lp-surface) !important;
+  border: 1px solid var(--lp-border) !important;
+  border-radius: var(--lp-radius) !important;
+  padding: 14px 18px !important;
+  display: flex !important;
+  gap: 10px !important;
+  align-items: center !important;
+  margin-top: 16px !important;
+}
+
+/* ── Filtros ───────────────────────────────────────────── */
+#changelist-filter,
+.filter-panel {
+  background: var(--lp-surface) !important;
+  border: 1px solid var(--lp-border) !important;
+  border-radius: var(--lp-radius) !important;
+  padding: 16px !important;
+}
+
+#changelist-filter h2,
+#changelist-filter h3 {
+  color: var(--lp-text-3) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.08em !important;
+  margin-bottom: 8px !important;
+  padding: 0 !important;
+}
+
+#changelist-filter a,
+.filter-panel a {
+  color: var(--lp-text-2) !important;
+  font-size: 13px !important;
+  display: block !important;
+  padding: 5px 8px !important;
+  border-radius: var(--lp-radius-sm) !important;
+  transition: all 150ms !important;
+  text-decoration: none !important;
+}
+
+#changelist-filter a:hover,
+.filter-panel a:hover {
+  color: var(--lp-text) !important;
+  background: var(--lp-surface-2) !important;
+}
+
+#changelist-filter a.selected,
+.filter-panel a.selected {
+  color: var(--lp-accent) !important;
+  background: var(--lp-accent-dim) !important;
+}
+
+/* ── Search bar ────────────────────────────────────────── */
+#searchbar,
+input#searchbar,
+.search-input {
+  background: var(--lp-surface-2) !important;
+  border: 1px solid var(--lp-border-2) !important;
+  border-radius: var(--lp-radius-sm) !important;
+  color: var(--lp-text) !important;
+  font-size: 13px !important;
+  padding: 8px 14px !important;
+}
+
+#searchbar:focus,
+.search-input:focus {
+  border-color: var(--lp-accent) !important;
+  outline: none !important;
+}
+
+/* ── Actions bar ───────────────────────────────────────── */
+.actions,
+#changelist .actions {
+  background: var(--lp-surface-2) !important;
+  border: 1px solid var(--lp-border) !important;
+  border-radius: var(--lp-radius-sm) !important;
+  padding: 8px 12px !important;
+  margin-bottom: 12px !important;
+}
+
+/* ── Mensajes / Alertas ────────────────────────────────── */
+.messagelist li,
+.alert,
+ul.messagelist li {
+  border-radius: var(--lp-radius-sm) !important;
+  padding: 12px 16px !important;
+  font-size: 13px !important;
+  margin-bottom: 8px !important;
+  border: none !important;
+}
+
+.messagelist li.success,
+.alert-success {
+  background: rgba(0,230,118,0.1) !important;
+  color: var(--lp-accent) !important;
+  border-left: 3px solid var(--lp-accent) !important;
+}
+
+.messagelist li.error,
+.alert-error {
+  background: rgba(248,113,113,0.1) !important;
+  color: #f87171 !important;
+  border-left: 3px solid #f87171 !important;
+}
+
+.messagelist li.warning,
+.alert-warning {
+  background: rgba(250,204,21,0.1) !important;
+  color: #facc15 !important;
+  border-left: 3px solid #facc15 !important;
+}
+
+/* ── Paginación ────────────────────────────────────────── */
+.paginator,
+p.paginator {
+  color: var(--lp-text-2) !important;
+  font-size: 13px !important;
+  padding: 12px 0 !important;
+}
+
+.paginator a,
+p.paginator a {
+  color: var(--lp-text-2) !important;
+  padding: 5px 10px !important;
+  border-radius: var(--lp-radius-sm) !important;
+  border: 1px solid var(--lp-border) !important;
+  margin: 0 2px !important;
+  transition: all 150ms !important;
+}
+
+.paginator a:hover,
+p.paginator a:hover {
+  border-color: var(--lp-border-2) !important;
+  color: var(--lp-text) !important;
+}
+
+.paginator .this-page,
+p.paginator .this-page {
+  background: var(--lp-accent) !important;
+  color: #000 !important;
+  border-color: var(--lp-accent) !important;
+  padding: 5px 10px !important;
+  border-radius: var(--lp-radius-sm) !important;
+  font-weight: 600 !important;
+}
+
+/* ── Inline formsets ───────────────────────────────────── */
+.inline-group {
+  background: var(--lp-surface) !important;
+  border: 1px solid var(--lp-border) !important;
+  border-radius: var(--lp-radius) !important;
+  margin-top: 16px !important;
+  overflow: hidden !important;
+}
+
+.inline-group h2 {
+  background: var(--lp-surface-2) !important;
+  color: var(--lp-text) !important;
+  font-size: 13px !important;
+  font-weight: 600 !important;
+  padding: 12px 18px !important;
+  border-bottom: 1px solid var(--lp-border) !important;
+}
+
+.inline-related {
+  border-top: 1px solid var(--lp-border) !important;
+  padding: 16px 18px !important;
+}
+
+/* ── Tabs (Unfold) ─────────────────────────────────────── */
+.tab-group,
+[role="tablist"] {
+  border-bottom: 1px solid var(--lp-border) !important;
+  margin-bottom: 20px !important;
+}
+
+[role="tab"] {
+  color: var(--lp-text-2) !important;
+  font-size: 13px !important;
+  padding: 10px 16px !important;
+  border-bottom: 2px solid transparent !important;
+  transition: all 150ms !important;
+}
+
+[role="tab"][aria-selected="true"],
+[role="tab"].active {
+  color: var(--lp-accent) !important;
+  border-bottom-color: var(--lp-accent) !important;
+}
+
+/* ── Badges Unfold ─────────────────────────────────────── */
+.badge,
+[class*="badge"] {
+  border-radius: 100px !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  padding: 2px 8px !important;
+}
+
+/* ── Links generales ───────────────────────────────────── */
+a {
+  color: var(--lp-text-2) !important;
+  text-decoration: none !important;
+  transition: color 150ms !important;
+}
+
+a:hover {
+  color: var(--lp-text) !important;
+}
+
+/* ── Scrollbar ─────────────────────────────────────────── */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: var(--lp-bg); }
+::-webkit-scrollbar-thumb { background: var(--lp-surface-3); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: var(--lp-accent); }
+
+/* ── Selección ─────────────────────────────────────────── */
+::selection { background: var(--lp-accent); color: #000; }
+
+/* ── Responsive ────────────────────────────────────────── */
+@media (max-width: 768px) {
+  #content,
+  .content { padding: 16px !important; }
+}

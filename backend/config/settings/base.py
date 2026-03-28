@@ -36,7 +36,8 @@ INSTALLED_APPS = [
     'apps.orders',
     'apps.payments',
     'apps.academy',
-    'apps.services'
+    'apps.services',
+    'apps.analytics',
     
 ]
 

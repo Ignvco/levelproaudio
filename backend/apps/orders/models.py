@@ -36,7 +36,9 @@ class Cart(TimeStampedModel):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        verbose_name        = "Carrito"
+        verbose_name_plural = "Carritos"
+        ordering            = ["-created_at"]
 
     def __str__(self):
         return f"Cart {self.id} - {self.user}"
@@ -130,7 +132,9 @@ class Order(TimeStampedModel):
     )
 
     class Meta:
-        ordering = ["-created_at"]
+        verbose_name        = "Pedido"
+        verbose_name_plural = "Pedidos"
+        ordering            = ["-created_at"]
 
     def __str__(self):
         return f"Order #{self.id}"

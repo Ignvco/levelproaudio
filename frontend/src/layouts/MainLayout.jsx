@@ -9,7 +9,7 @@ import iconImg from "../assets/icon.png"
 
 // ── Navbar ─────────────────────────────────────────────────
 function Navbar() {
-  const [open, setOpen]       = useState(false)
+  const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const { isAuthenticated, user, logout } = useAuthStore()
   const cartCount = useCartStore(s =>
@@ -21,30 +21,38 @@ function Navbar() {
   useEffect(() => { setOpen(false) }, [location.pathname])
 
   useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 40)
+    }
+    window.addEventListener("scroll", handleScroll)
+    return () => window.removeEventListener("scroll", handleScroll)
+  }, [])
+
+  useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 40)
     window.addEventListener("scroll", fn, { passive: true })
     return () => window.removeEventListener("scroll", fn)
   }, [])
 
   const links = [
-    { to: "/shop",     label: "Tienda" },
-    { to: "/academy",  label: "Academia" },
+    { to: "/shop", label: "Tienda" },
+    { to: "/academy", label: "Academia" },
     { to: "/services", label: "Servicios" },
   ]
 
   return (
     <header
       style={{
-        position: "sticky",
+        position: "fixed",
         top: 0,
-        zIndex: 50,
-        transition: `background ${220}ms ease, border-color ${220}ms ease`,
-        background: scrolled
-          ? "rgba(8,8,8,0.92)"
-          : "transparent",
-        borderBottom: `1px solid ${scrolled ? "var(--border)" : "transparent"}`,
-        backdropFilter: scrolled ? "blur(24px)" : "none",
-        WebkitBackdropFilter: scrolled ? "blur(24px)" : "none",
+        left: 0,
+        width: "100%",
+        zIndex: 1000,
+        transition: "all 0.35s cubic-bezier(.4,0,.2,1)",
+        backdropFilter: scrolled ? "blur(18px)" : "none",
+        WebkitBackdropFilter: scrolled ? "blur(18px)" : "none",
+        background: scrolled ? "rgba(10,10,10,0.75)" : "transparent",
+        borderBottom: scrolled ? "1px solid var(--border)" : "1px solid transparent",
       }}
     >
       <div className="container" style={{ maxWidth: "var(--container)" }}>
@@ -58,7 +66,7 @@ function Navbar() {
 
           {/* Logo */}
           <Link to="/" style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
-            
+
             <img
               src={logoImg}
               alt="LevelPro Audio"
@@ -73,18 +81,38 @@ function Navbar() {
           </Link>
 
           {/* Nav — desktop */}
-          <nav style={{ display: "flex", alignItems: "center", gap: "4px" }}
+          <nav
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "4px",
+            }}
             className="hidden md:flex"
           >
             {links.map(({ to, label }) => (
-              <NavLink key={to} to={to}
+              <NavLink
+                key={to}
+                to={to}
                 style={({ isActive }) => ({
                   padding: "8px 16px",
                   borderRadius: "100px",
                   fontSize: "14px",
                   fontWeight: 400,
-                  color: isActive ? "var(--text)" : "var(--text-2)",
-                  background: isActive ? "var(--surface-2)" : "transparent",
+
+                  color: isActive
+                    ? "var(--text)"
+                    : scrolled
+                      ? "var(--text-2)"
+                      : "rgba(255,255,255,0.85)",
+
+                  background: isActive
+                    ? scrolled
+                      ? "var(--surface-2)"
+                      : "rgba(255,255,255,0.12)"
+                    : "transparent",
+
+                  backdropFilter: isActive && !scrolled ? "blur(8px)" : "none",
+
                   transition: "all var(--dur) var(--ease)",
                 })}
               >
@@ -182,6 +210,22 @@ function Navbar() {
                   >
                     Salir
                   </button>
+                  {/* Solo si es staff */}
+                  {(user?.is_staff || user?.is_superuser) && (
+                    <Link to="/admin"
+                      style={{
+                        padding: "7px 12px", borderRadius: "100px",
+                        fontSize: "11px", fontWeight: 600, letterSpacing: "0.06em",
+                        background: "var(--accent-glow)",
+                        color: "var(--accent)",
+                        border: "1px solid rgba(26,255,110,0.25)",
+                        transition: "all var(--dur) var(--ease)",
+                      }}
+                      className="hidden md:inline-flex items-center"
+                    >
+                      ADMIN
+                    </Link>
+                  )}
                 </>
               ) : (
                 <Link to="/login" className="btn btn-accent" style={{ padding: "9px 20px", fontSize: "13px" }}>
@@ -205,9 +249,9 @@ function Navbar() {
             >
               <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
                 {open ? (
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd"/>
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                 ) : (
-                  <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd"/>
+                  <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
                 )}
               </svg>
             </button>
@@ -341,10 +385,10 @@ function Footer() {
             </p>
             <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "10px" }}>
               {[
-                { label: "Academia",  to: "/academy" },
+                { label: "Academia", to: "/academy" },
                 { label: "Servicios", to: "/services" },
                 { label: "Mi cuenta", to: "/dashboard" },
-                { label: "Contacto",  to: "/services" },
+                { label: "Contacto", to: "/services" },
               ].map(({ label, to }) => (
                 <li key={label}>
                   <Link to={to} style={{ fontSize: "14px", color: "var(--text-2)", transition: "color var(--dur)" }}

@@ -69,24 +69,16 @@ class UserProfileSerializer(serializers.ModelSerializer):
     GET  /api/v1/users/me/
     PATCH /api/v1/users/me/
     """
-
     class Meta:
         model = User
-
         fields = [
-            'id',
-            'email',
-            'username',
-            'first_name',
-            'last_name',
-            'phone',
-            'address_street',
-            'address_city',
-            'address_province',
-            'address_zip'
-        ]
-
-        read_only_fields = ['id', 'email']
+            "id", "email", "username", "first_name", "last_name",
+            "phone", "address_street", "address_city",
+            "address_province", "address_zip",
+            "is_staff",  
+            "is_superuser", ]
+        
+        read_only_fields = ["id", "email", "is_staff", "is_superuser"]
 
 
 class UserSerializer(serializers.ModelSerializer):

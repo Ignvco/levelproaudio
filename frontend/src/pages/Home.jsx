@@ -6,6 +6,9 @@ import { getProducts } from "../api/products.api"
 import ProductCard from "../components/product/ProductCard"
 import iconImg from "../assets/icon.png"
 import fondoImg from "../assets/fondo.png"
+import fondoVideo from "../assets/wallpaper.mp4"
+
+
 
 // ── Hero ─────────────────────────────────────────────────────
 function Hero() {
@@ -17,16 +20,28 @@ function Hero() {
       position: "relative",
       overflow: "hidden",
     }}>
-      {/* Fondo textura sutil */}
+      {/* Video de fondo */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          objectFit: "cover",
+          opacity: 0.25,
+        }}
+      >
+        <source src={fondoVideo} type="video/mp4" />
+      </video>
       <div style={{
         position: "absolute",
         inset: 0,
-        backgroundImage: `url(${fondoImg})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center top",
-        opacity: 0.06,
+        background: "rgba(0, 0, 0, 0.11)",
       }} />
-
       {/* Glow verde — esquina inferior derecha */}
       <div style={{
         position: "absolute",
@@ -86,7 +101,7 @@ function Hero() {
             <Link to="/shop" className="btn btn-accent">
               Ver tienda
               <svg width="14" height="14" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3"/>
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
               </svg>
             </Link>
             <Link to="/academy" className="btn btn-ghost">
@@ -104,8 +119,8 @@ function Hero() {
           }}>
             {[
               { value: "+500", label: "Productos" },
-              { value: "+15",  label: "Marcas" },
-              { value: "+20",  label: "Cursos" },
+              { value: "+15", label: "Marcas" },
+              { value: "+20", label: "Cursos" },
             ].map(({ value, label }) => (
               <div key={label}>
                 <p style={{
@@ -213,12 +228,12 @@ function Hero() {
 // ── Categorías ───────────────────────────────────────────────
 function Categories() {
   const cats = [
-    { label: "Audio Pro",    icon: "🎛️", slug: "audio-pro" },
-    { label: "Micrófonos",   icon: "🎤", slug: "microfonos" },
+    { label: "Audio Pro", icon: "🎛️", slug: "audio-pro" },
+    { label: "Micrófonos", icon: "🎤", slug: "microfonos" },
     { label: "Instrumentos", icon: "🎸", slug: "instrumentos-musicales" },
-    { label: "Pedales",      icon: "🎚️", slug: "pedales" },
-    { label: "In-Ears",      icon: "🎧", slug: "in-ears" },
-    { label: "Academia",     icon: "🎓", slug: null, to: "/academy" },
+    { label: "Pedales", icon: "🎚️", slug: "pedales" },
+    { label: "In-Ears", icon: "🎧", slug: "in-ears" },
+    { label: "Academia", icon: "🎓", slug: null, to: "/academy" },
   ]
 
   return (
@@ -273,7 +288,7 @@ function Categories() {
 function Featured() {
   const { data, isLoading } = useQuery({
     queryKey: ["products", "featured"],
-    queryFn:  () => getProducts({ is_featured: true, page_size: 4 }),
+    queryFn: () => getProducts({ is_featured: true, page_size: 4 }),
   })
 
   const products = data?.results || data || []
@@ -385,10 +400,10 @@ function AcademyBanner() {
 // ── Value props ──────────────────────────────────────────────
 function ValueProps() {
   const items = [
-    { icon: "🚚", title: "Envíos Chile y Argentina",  desc: "Rápido, coordinado y seguro." },
-    { icon: "💳", title: "Múltiples medios de pago",  desc: "MercadoPago, PayPal, transferencia." },
-    { icon: "💬", title: "Atención inmediata",         desc: "Asesoramiento técnico por WhatsApp." },
-    { icon: "🎓", title: "Academia online",            desc: "Cursos de producción y live sound." },
+    { icon: "🚚", title: "Envíos Chile y Argentina", desc: "Rápido, coordinado y seguro." },
+    { icon: "💳", title: "Múltiples medios de pago", desc: "MercadoPago, PayPal, transferencia." },
+    { icon: "💬", title: "Atención inmediata", desc: "Asesoramiento técnico por WhatsApp." },
+    { icon: "🎓", title: "Academia online", desc: "Cursos de producción y live sound." },
   ]
 
   return (
