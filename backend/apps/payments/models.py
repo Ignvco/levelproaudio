@@ -63,9 +63,9 @@ class Payment(TimeStampedModel):
     raw_response = models.JSONField(null=True, blank=True)
 
     class Meta:
-        ordering = ["-created_at"]
-        verbose_name = "Pago"
+        verbose_name        = "Pago"
         verbose_name_plural = "Pagos"
+        ordering            = ["-created_at"]
 
     def __str__(self):
         return f"Payment {self.id} — {self.provider} — {self.status}"

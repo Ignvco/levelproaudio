@@ -18,6 +18,7 @@ services:
 
   # ─── Backend Django ─────────────────────────────────────
   backend:
+    working_dir: /app
     build:
       context: ./backend
       dockerfile: Dockerfile

@@ -61,8 +61,9 @@ class Service(TimeStampedModel):
         choices=PriceType.choices,
         default=PriceType.QUOTE
     )
-    is_active   = models.BooleanField(default=True)
-    is_featured = models.BooleanField(default=False)
+    is_active   = models.BooleanField(default=True,  verbose_name="Activo")
+    is_featured = models.BooleanField(default=False, verbose_name="Destacado")
+    
     order       = models.PositiveIntegerField(default=0)
 
     # Detalles adicionales

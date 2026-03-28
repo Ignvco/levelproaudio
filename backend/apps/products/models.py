@@ -96,7 +96,6 @@ class Product(TimeStampedModel):
     description = models.TextField(blank=True)
     short_description = models.CharField(max_length=500, blank=True)
 
-    price = models.DecimalField(max_digits=12, decimal_places=2)
     compare_price = models.DecimalField(
         max_digits=12,
         decimal_places=2,
@@ -114,14 +113,18 @@ class Product(TimeStampedModel):
 
     weight = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
 
-    is_active = models.BooleanField(default=True)
-    is_featured = models.BooleanField(default=False)
+    is_active   = models.BooleanField(default=True,  verbose_name="Activo")
+    is_featured = models.BooleanField(default=False, verbose_name="Destacado")
+    stock       = models.PositiveIntegerField(default=0, verbose_name="Stock")
+    price       = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Precio")
 
     seo_title = models.CharField(max_length=255, blank=True)
     seo_description = models.CharField(max_length=255, blank=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        verbose_name        = "Producto"
+        verbose_name_plural = "Productos"
+        ordering            = ["-created_at"]
 
     def __str__(self):
         return self.name

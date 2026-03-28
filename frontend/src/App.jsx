@@ -43,16 +43,39 @@ import PaymentFailure from "./pages/payment/PaymentFailure"
 import TransferInstructions from "./pages/payment/TransferInstructions"
 import NotFound from "./pages/NotFound"
 
+
+
+import AdminLayout      from "./layouts/AdminLayout"
+import AdminDashboard   from "./pages/admin/AdminDashboard"
+import AdminOrders      from "./pages/admin/AdminOrders"
+import AdminProducts    from "./pages/admin/AdminProducts"
+import AdminUsers       from "./pages/admin/AdminUsers"
+import AdminPayments    from "./pages/admin/AdminPayments"
+import AdminAcademy     from "./pages/admin/AdminAcademy"
+import AdminServices    from "./pages/admin/AdminServices"
+import AdminAnalytics from "./pages/admin/AdminAnalytics"
+
 // ── Rutas protegidas ────────────────────────────────────────
 function ProtectedRoute({ children }) {
   const { isAuthenticated } = useAuthStore()
   return isAuthenticated ? children : <Navigate to="/login" replace />
 }
 
+
+// Agrega después de ProtectedRoute en App.jsx
+function AdminRoute({ children }) {
+  const { isAuthenticated, user } = useAuthStore()
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  // Agrega console.log para debug
+  console.log("user admin check:", user?.is_staff, user?.is_superuser)
+  if (!user?.is_staff && !user?.is_superuser) return <Navigate to="/" replace />
+  return children
+}
 // ── App ─────────────────────────────────────────────────────
 function App() {
   return (
     <BrowserRouter>
+
       <Routes>
 
         {/* ── Públicas ── */}
@@ -67,7 +90,16 @@ function App() {
         <Route path="/services" element={<MainLayout><Services /></MainLayout>} />
         <Route path="/services/:slug" element={<MainLayout><ServiceDetail /></MainLayout>} />
 
-
+        <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
+          <Route index         element={<AdminDashboard />} />
+          <Route path="analytics" element={<AdminAnalytics />} />
+          <Route path="orders"   element={<AdminOrders />} />
+          <Route path="products" element={<AdminProducts />} />
+          <Route path="users"    element={<AdminUsers />} />
+          <Route path="payments" element={<AdminPayments />} />
+          <Route path="academy"  element={<AdminAcademy />} />
+          <Route path="services" element={<AdminServices />} />
+        </Route>
 
         {/* ── Auth ── */}
         <Route path="/login" element={<Login />} />
