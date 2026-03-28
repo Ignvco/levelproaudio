@@ -12,9 +12,7 @@ function Navbar() {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const { isAuthenticated, user, logout } = useAuthStore()
-  const cartCount = useCartStore(s =>
-    s.items.reduce((a, i) => a + i.quantity, 0)
-  )
+  const cartCount = useCartStore(s => s.getCount())
   const navigate = useNavigate()
   const location = useLocation()
 

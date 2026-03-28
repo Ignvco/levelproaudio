@@ -25,20 +25,29 @@ export default function Login() {
   })
 
   const onSubmit = async (data) => {
-    setLoading(true)
-    setError("")
-    try {
-      const { data: tokens } = await api.post("/auth/login/", data)
-      setTokens(tokens.access, tokens.refresh)
-      const { data: profile } = await api.get("/auth/profile/")
-      setUser(profile)
-      navigate("/dashboard")
-    } catch {
-      setError("Credenciales incorrectas.")
-    } finally {
-      setLoading(false)
+  setLoading(true)
+  setError("")
+  try {
+    const { data: tokens } = await api.post("/auth/login/", data)
+    setTokens(tokens.access, tokens.refresh)
+    const { data: profile } = await api.get("/auth/profile/")
+    setUser(profile)
+
+    // ── Redirección inteligente ──────────────────────────
+    const next = new URLSearchParams(window.location.search).get("next")
+    if (next) {
+      navigate(next)
+    } else if (profile.is_staff || profile.is_superuser) {
+      navigate("/admin")        // ← admin va al panel admin
+    } else {
+      navigate("/dashboard")    // ← usuarios normales van al dashboard
     }
+  } catch {
+    setError("Credenciales incorrectas.")
+  } finally {
+    setLoading(false)
   }
+}
 
   return (
     <div style={{

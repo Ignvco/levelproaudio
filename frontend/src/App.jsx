@@ -8,6 +8,9 @@ import { useAuthStore } from "./store/authStore"
 import Orders from "./pages/dashboard/Orders"
 import OrderDetail from "./pages/dashboard/OrderDetail"
 import Profile from "./pages/dashboard/Profile"
+import AdminLogin from "./pages/admin/AdminLogin"
+
+
 
 // Layouts
 import MainLayout from "./layouts/MainLayout"
@@ -45,20 +48,28 @@ import NotFound from "./pages/NotFound"
 
 
 
-import AdminLayout      from "./layouts/AdminLayout"
-import AdminDashboard   from "./pages/admin/AdminDashboard"
-import AdminOrders      from "./pages/admin/AdminOrders"
-import AdminProducts    from "./pages/admin/AdminProducts"
-import AdminUsers       from "./pages/admin/AdminUsers"
-import AdminPayments    from "./pages/admin/AdminPayments"
-import AdminAcademy     from "./pages/admin/AdminAcademy"
-import AdminServices    from "./pages/admin/AdminServices"
+import AdminLayout from "./layouts/AdminLayout"
+import AdminDashboard from "./pages/admin/AdminDashboard"
+import AdminOrders from "./pages/admin/AdminOrders"
+import AdminProducts from "./pages/admin/AdminProducts"
+import AdminUsers from "./pages/admin/AdminUsers"
+import AdminPayments from "./pages/admin/AdminPayments"
+import AdminAcademy from "./pages/admin/AdminAcademy"
+import AdminServices from "./pages/admin/AdminServices"
 import AdminAnalytics from "./pages/admin/AdminAnalytics"
+import AdminCategories from "./pages/admin/AdminCategories"
+import AdminBrands from "./pages/admin/AdminBrands"
+import AdminModules from "./pages/admin/AdminModules"
+import AdminLessons from "./pages/admin/AdminLessons"
+import AdminEnrollments from "./pages/admin/AdminEnrollments"
 
 // ── Rutas protegidas ────────────────────────────────────────
 function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuthStore()
-  return isAuthenticated ? children : <Navigate to="/login" replace />
+  const { isAuthenticated, user } = useAuthStore()
+  if (!isAuthenticated) return <Navigate to="/login" replace />
+  // Si es admin, lo mandamos al panel admin, no al dashboard de usuario
+  if (user?.is_staff || user?.is_superuser) return <Navigate to="/admin" replace />
+  return children
 }
 
 
@@ -78,6 +89,8 @@ function App() {
 
       <Routes>
 
+        <Route path="/admin/login" element={<AdminLogin />} />
+
         {/* ── Públicas ── */}
         <Route path="/" element={<MainLayout><Home /></MainLayout>} />
         <Route path="/shop" element={<MainLayout><Shop /></MainLayout>} />
@@ -91,14 +104,19 @@ function App() {
         <Route path="/services/:slug" element={<MainLayout><ServiceDetail /></MainLayout>} />
 
         <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-          <Route index         element={<AdminDashboard />} />
+          <Route index element={<AdminDashboard />} />
           <Route path="analytics" element={<AdminAnalytics />} />
-          <Route path="orders"   element={<AdminOrders />} />
+          <Route path="orders" element={<AdminOrders />} />
           <Route path="products" element={<AdminProducts />} />
-          <Route path="users"    element={<AdminUsers />} />
+          <Route path="users" element={<AdminUsers />} />
           <Route path="payments" element={<AdminPayments />} />
-          <Route path="academy"  element={<AdminAcademy />} />
+          <Route path="academy" element={<AdminAcademy />} />
           <Route path="services" element={<AdminServices />} />
+          <Route path="products/categories" element={<AdminCategories />} />
+          <Route path="products/brands" element={<AdminBrands />} />
+          <Route path="academy/modules" element={<AdminModules />} />
+          <Route path="academy/lessons" element={<AdminLessons />} />
+          <Route path="academy/enrollments" element={<AdminEnrollments />} />
         </Route>
 
         {/* ── Auth ── */}
@@ -202,7 +220,7 @@ function App() {
         />
 
         {/* ── 404 ── */}
-       <Route path="*" element={<NotFound />} />
+        <Route path="*" element={<NotFound />} />
 
       </Routes>
     </BrowserRouter>

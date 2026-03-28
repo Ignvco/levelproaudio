@@ -6,17 +6,17 @@ import { Link } from "react-router-dom"
 import { getServiceRequests, getBookings, cancelBooking } from "../../api/services.api"
 
 const requestStatus = {
-  pending:   { label: "Pendiente",  color: "#facc15" },
+  pending: { label: "Pendiente", color: "#facc15" },
   contacted: { label: "Contactado", color: "#60a5fa" },
-  accepted:  { label: "Aceptado",   color: "#4ade80" },
-  rejected:  { label: "Rechazado",  color: "#f87171" },
+  accepted: { label: "Aceptado", color: "#4ade80" },
+  rejected: { label: "Rechazado", color: "#f87171" },
 }
 
 const bookingStatus = {
-  pending:   { label: "Pendiente",  color: "#facc15" },
+  pending: { label: "Pendiente", color: "#facc15" },
   confirmed: { label: "Confirmado", color: "#4ade80" },
   completed: { label: "Completado", color: "#60a5fa" },
-  cancelled: { label: "Cancelado",  color: "#f87171" },
+  cancelled: { label: "Cancelado", color: "#f87171" },
 }
 
 function StatusBadge({ status, config }) {
@@ -57,10 +57,11 @@ function TabButton({ active, onClick, children, count }) {
 }
 
 export default function MyServices() {
-  const [tab, setTab]  = useState("requests")
-  const queryClient    = useQueryClient()
+  const [tab, setTab] = useState("requests")
+  const [expandedReq, setExpandedReq] = useState(null)
+  const queryClient = useQueryClient()
 
-  const { data: reqData,  isLoading: loadingReqs  } = useQuery({
+  const { data: reqData, isLoading: loadingReqs } = useQuery({
     queryKey: ["service-requests"], queryFn: getServiceRequests,
   })
   const { data: bookData, isLoading: loadingBooks } = useQuery({
@@ -69,20 +70,24 @@ export default function MyServices() {
 
   const cancelMutation = useMutation({
     mutationFn: cancelBooking,
-    onSuccess:  () => queryClient.invalidateQueries(["bookings"]),
+    onSuccess: () => queryClient.invalidateQueries(["bookings"]),
   })
 
-  const requests = reqData?.results  || reqData  || []
+  const requests = reqData?.results || reqData || []
   const bookings = bookData?.results || bookData || []
 
   return (
     <div style={{ padding: "clamp(32px, 5vw, 56px)", maxWidth: "720px" }}>
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between",
-        alignItems: "flex-start", marginBottom: "40px", flexWrap: "wrap", gap: "16px" }}>
-        <h1 style={{ fontFamily: "var(--font-serif)",
-          fontSize: "clamp(2rem, 4vw, 2.8rem)" }}>
+      <div style={{
+        display: "flex", justifyContent: "space-between",
+        alignItems: "flex-start", marginBottom: "40px", flexWrap: "wrap", gap: "16px"
+      }}>
+        <h1 style={{
+          fontFamily: "var(--font-serif)",
+          fontSize: "clamp(2rem, 4vw, 2.8rem)"
+        }}>
           Mis servicios
         </h1>
         <Link to="/services" className="btn btn-ghost" style={{ padding: "9px 18px", fontSize: "13px" }}>
@@ -110,8 +115,10 @@ export default function MyServices() {
           )}
 
           {!loadingReqs && requests.length === 0 && (
-            <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-              borderRadius: "var(--r-xl)", padding: "64px", textAlign: "center" }}>
+            <div style={{
+              background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: "var(--r-xl)", padding: "64px", textAlign: "center"
+            }}>
               <p style={{ fontSize: "40px", marginBottom: "16px" }}>🎚️</p>
               <p style={{ fontSize: "16px", fontWeight: 500, marginBottom: "8px" }}>
                 Sin solicitudes todavía
@@ -128,44 +135,71 @@ export default function MyServices() {
               {requests.map(req => (
                 <div key={req.id} style={{
                   background: "var(--surface)", border: "1px solid var(--border)",
-                  borderRadius: "var(--r-lg)", padding: "18px 20px",
+                  borderRadius: "var(--r-lg)", overflow: "hidden",
                   transition: "border-color var(--dur) var(--ease)",
-                }}
-                  className="hover:border-[var(--border-hover)]"
-                >
-                  <div style={{ display: "flex", justifyContent: "space-between",
-                    alignItems: "flex-start", gap: "12px", marginBottom: "10px",
-                    flexWrap: "wrap" }}>
+                }}>
+                  {/* Header clickeable */}
+                  <button
+                    onClick={() => setExpandedReq(expandedReq === req.id ? null : req.id)}
+                    style={{
+                      width: "100%", display: "flex", justifyContent: "space-between",
+                      alignItems: "flex-start", gap: "12px", padding: "18px 20px",
+                      background: "none", border: "none", cursor: "pointer", textAlign: "left",
+                    }}
+                  >
                     <div>
                       <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "3px" }}>
                         {req.service_name || "Servicio general"}
                       </p>
                       <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
                         {new Date(req.created_at).toLocaleDateString("es-CL", {
-                          day: "numeric", month: "long", year: "numeric" })}
+                          day: "numeric", month: "long", year: "numeric"
+                        })}
                       </p>
                     </div>
-                    <StatusBadge status={req.status} config={requestStatus} />
-                  </div>
-
-                  <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6,
-                    display: "-webkit-box", WebkitLineClamp: 2,
-                    WebkitBoxOrient: "vertical", overflow: "hidden", marginBottom: "10px" }}>
-                    {req.message}
-                  </p>
-
-                  <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-                    {req.budget && (
-                      <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                        💰 ${Number(req.budget).toLocaleString("es-CL")}
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                      <StatusBadge status={req.status} config={requestStatus} />
+                      <span style={{
+                        color: "var(--text-3)", fontSize: "14px",
+                        transition: "transform var(--dur)",
+                        transform: expandedReq === req.id ? "rotate(90deg)" : "none"
+                      }}>
+                        ›
                       </span>
-                    )}
-                    {req.preferred_date && (
-                      <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                        📅 {new Date(req.preferred_date).toLocaleDateString("es-CL")}
-                      </span>
-                    )}
-                  </div>
+                    </div>
+                  </button>
+
+                  {/* Detalle expandible */}
+                  {expandedReq === req.id && (
+                    <div style={{ padding: "0 20px 18px", borderTop: "1px solid var(--border)" }}>
+                      <p style={{
+                        fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6,
+                        marginTop: "14px", marginBottom: "12px"
+                      }}>
+                        {req.message}
+                      </p>
+                      <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
+                        {req.budget && (
+                          <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
+                            💰 Presupuesto: ${Number(req.budget).toLocaleString("es-CL")}
+                          </span>
+                        )}
+                        {req.preferred_date && (
+                          <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
+                            📅 Fecha preferida: {new Date(req.preferred_date).toLocaleDateString("es-CL")}
+                          </span>
+                        )}
+                      </div>
+                      <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+                        className="btn btn-ghost"
+                        style={{
+                          marginTop: "14px", fontSize: "12px", padding: "8px 16px",
+                          display: "inline-flex"
+                        }}>
+                        💬 Consultar por WhatsApp
+                      </a>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -183,8 +217,10 @@ export default function MyServices() {
           )}
 
           {!loadingBooks && bookings.length === 0 && (
-            <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-              borderRadius: "var(--r-xl)", padding: "64px", textAlign: "center" }}>
+            <div style={{
+              background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: "var(--r-xl)", padding: "64px", textAlign: "center"
+            }}>
               <p style={{ fontSize: "40px", marginBottom: "16px" }}>📅</p>
               <p style={{ fontSize: "16px", fontWeight: 500, marginBottom: "8px" }}>
                 Sin reservas todavía
@@ -205,9 +241,11 @@ export default function MyServices() {
                 }}
                   className="hover:border-[var(--border-hover)]"
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between",
+                  <div style={{
+                    display: "flex", justifyContent: "space-between",
                     alignItems: "flex-start", gap: "12px", marginBottom: "10px",
-                    flexWrap: "wrap" }}>
+                    flexWrap: "wrap"
+                  }}>
                     <div>
                       <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "3px" }}>
                         {booking.service_name}
@@ -215,15 +253,18 @@ export default function MyServices() {
                       <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
                         📅 {new Date(booking.scheduled_date).toLocaleString("es-CL", {
                           day: "numeric", month: "long", year: "numeric",
-                          hour: "2-digit", minute: "2-digit" })}
+                          hour: "2-digit", minute: "2-digit"
+                        })}
                       </p>
                     </div>
                     <StatusBadge status={booking.status} config={bookingStatus} />
                   </div>
 
                   {booking.notes && (
-                    <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6,
-                      marginBottom: "10px" }}>
+                    <p style={{
+                      fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6,
+                      marginBottom: "10px"
+                    }}>
                       {booking.notes}
                     </p>
                   )}
@@ -232,9 +273,11 @@ export default function MyServices() {
                     <button
                       onClick={() => cancelMutation.mutate(booking.id)}
                       disabled={cancelMutation.isPending}
-                      style={{ fontSize: "12px", color: "var(--text-3)", background: "none",
+                      style={{
+                        fontSize: "12px", color: "var(--text-3)", background: "none",
                         border: "none", cursor: "pointer", transition: "color var(--dur)",
-                        padding: 0, opacity: cancelMutation.isPending ? 0.5 : 1 }}
+                        padding: 0, opacity: cancelMutation.isPending ? 0.5 : 1
+                      }}
                       className="hover:text-[var(--danger)]"
                     >
                       Cancelar reserva

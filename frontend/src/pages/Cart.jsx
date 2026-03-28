@@ -89,9 +89,10 @@ function CartItem({ item }) {
 }
 
 export default function Cart() {
-  const { items, total, clearCart } = useCartStore()
-  const { isAuthenticated }         = useAuthStore()
-  const navigate                    = useNavigate()
+  const { items, clearCart, getTotal, getCount } = useCartStore()
+  const { isAuthenticated } = useAuthStore()
+  const navigate = useNavigate()
+  const total = getTotal()
 
   if (!items.length) return (
     <div style={{ minHeight: "80vh", display: "flex", flexDirection: "column",
@@ -160,7 +161,7 @@ export default function Cart() {
               alignItems: "center" }}>
               <span style={{ fontSize: "15px", fontWeight: 500 }}>Total</span>
               <span style={{ fontSize: "22px", fontWeight: 500 }}>
-                ${total.toLocaleString("es-CL")}
+                ${Number(total || 0).toLocaleString("es-CL")}
               </span>
             </div>
 
