@@ -1,10 +1,10 @@
 // pages/dashboard/OrderDetail.jsx
-
 import { useParams, Link, useNavigate } from "react-router-dom"
-import { useQuery, useMutation } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { getOrder } from "../../api/orders.api"
 import { createPayment } from "../../api/payments.api"
+import api from "../../api/client"
 
 const statusConfig = {
   pending:   { label: "Pendiente",  color: "#facc15", step: 1 },
@@ -15,8 +15,8 @@ const statusConfig = {
 }
 
 const PAYMENT_METHODS = [
-  { id: "mercadopago_cl", label: "MercadoPago",           icon: "💳" },
-  { id: "paypal",         label: "PayPal",                icon: "🌎" },
+  { id: "mercadopago_cl", label: "MercadoPago",            icon: "💳" },
+  { id: "paypal",         label: "PayPal",                 icon: "🌎" },
   { id: "global66",       label: "Transferencia Global66", icon: "🏦" },
 ]
 
@@ -38,15 +38,18 @@ function Timeline({ status }) {
   return (
     <div style={{ display: "flex", alignItems: "center" }}>
       {steps.map((step, i) => (
-        <div key={step} style={{ display: "flex", alignItems: "center",
-          flex: i < steps.length - 1 ? 1 : "none" }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "6px" }}>
+        <div key={step} style={{
+          display: "flex", alignItems: "center",
+          flex: i < steps.length - 1 ? 1 : "none",
+        }}>
+          <div style={{ display: "flex", flexDirection: "column",
+            alignItems: "center", gap: "6px" }}>
             <div style={{
               width: "28px", height: "28px", borderRadius: "50%",
               display: "flex", alignItems: "center", justifyContent: "center",
               fontSize: "11px", fontWeight: 600,
               background: i + 1 <= current ? "var(--accent)" : "var(--surface-3)",
-              color: i + 1 <= current ? "#000" : "var(--text-3)",
+              color:      i + 1 <= current ? "#000" : "var(--text-3)",
               transition: "all var(--dur) var(--ease)",
             }}>
               {i + 1 <= current ? "✓" : i + 1}
@@ -71,7 +74,7 @@ function Timeline({ status }) {
   )
 }
 
-// ── Panel de pago para órdenes pendientes ────────────────────
+// ── Panel de pago ────────────────────────────────────────────
 function PaymentPanel({ order }) {
   const navigate        = useNavigate()
   const [method, setMethod] = useState("mercadopago_cl")
@@ -102,11 +105,13 @@ function PaymentPanel({ order }) {
         <p style={{ fontSize: "14px", fontWeight: 500 }}>Pago pendiente</p>
       </div>
 
-      <p style={{ fontSize: "13px", color: "var(--text-2)", marginBottom: "16px", lineHeight: 1.6 }}>
+      <p style={{ fontSize: "13px", color: "var(--text-2)",
+        marginBottom: "16px", lineHeight: 1.6 }}>
         Elige un método para completar tu compra.
       </p>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "16px" }}>
+      <div style={{ display: "flex", flexDirection: "column",
+        gap: "8px", marginBottom: "16px" }}>
         {PAYMENT_METHODS.map(m => (
           <button key={m.id} onClick={() => setMethod(m.id)} style={{
             display: "flex", alignItems: "center", gap: "12px",
@@ -132,15 +137,21 @@ function PaymentPanel({ order }) {
       </div>
 
       {error && (
-        <p style={{ fontSize: "12px", color: "var(--danger)", marginBottom: "12px" }}>{error}</p>
+        <p style={{ fontSize: "12px", color: "var(--danger)",
+          marginBottom: "12px" }}>{error}</p>
       )}
 
-      <button onClick={() => mutation.mutate()} disabled={mutation.isPending}
+      <button
+        onClick={() => mutation.mutate()}
+        disabled={mutation.isPending}
         className="btn btn-accent"
         style={{ width: "100%", justifyContent: "center",
-          opacity: mutation.isPending ? 0.6 : 1 }}>
+          opacity: mutation.isPending ? 0.6 : 1 }}
+      >
         {mutation.isPending ? "Procesando..." :
-          method === "global66" ? "Ver instrucciones de transferencia" : "Continuar con el pago →"}
+          method === "global66"
+            ? "Ver instrucciones de transferencia"
+            : "Continuar con el pago →"}
       </button>
     </div>
   )
@@ -148,13 +159,24 @@ function PaymentPanel({ order }) {
 
 // ── OrderDetail ──────────────────────────────────────────────
 export default function OrderDetail() {
-  const { id } = useParams()
+  const { id }         = useParams()
+  const queryClient    = useQueryClient()
 
+  // ── Todos los hooks ARRIBA, antes de cualquier return ──────
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ["order", id],
     queryFn:  () => getOrder(id),
   })
 
+  const cancelMutation = useMutation({
+    mutationFn: () => api.delete(`/orders/${id}/`),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["order", id])
+      queryClient.invalidateQueries(["orders"])
+    },
+  })
+
+  // ── Early returns DESPUÉS de los hooks ────────────────────
   if (isLoading) return (
     <div style={{ padding: "clamp(32px, 5vw, 56px)", maxWidth: "640px",
       display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -166,8 +188,11 @@ export default function OrderDetail() {
 
   if (isError || !order) return (
     <div style={{ padding: "clamp(32px, 5vw, 56px)", textAlign: "center" }}>
-      <p style={{ color: "var(--text-3)", marginBottom: "16px" }}>Pedido no encontrado.</p>
-      <Link to="/dashboard/orders" style={{ color: "var(--text-2)", fontSize: "14px" }}>
+      <p style={{ color: "var(--text-3)", marginBottom: "16px" }}>
+        Pedido no encontrado.
+      </p>
+      <Link to="/dashboard/orders"
+        style={{ color: "var(--text-2)", fontSize: "14px" }}>
         ← Volver a mis pedidos
       </Link>
     </div>
@@ -180,7 +205,8 @@ export default function OrderDetail() {
       <div style={{ display: "flex", alignItems: "center", gap: "8px",
         fontSize: "13px", color: "var(--text-3)", marginBottom: "32px" }}>
         <Link to="/dashboard/orders"
-          style={{ transition: "color var(--dur)" }} className="hover:text-white">
+          style={{ transition: "color var(--dur)" }}
+          className="hover:text-white">
           Mis pedidos
         </Link>
         <span>/</span>
@@ -221,10 +247,13 @@ export default function OrderDetail() {
           <div key={i} style={{
             display: "flex", justifyContent: "space-between", alignItems: "center",
             padding: "14px 20px",
-            borderBottom: i < order.items.length - 1 ? "1px solid var(--border)" : "none",
+            borderBottom: i < order.items.length - 1
+              ? "1px solid var(--border)" : "none",
           }}>
             <div>
-              <p style={{ fontSize: "14px", marginBottom: "3px" }}>{item.product_name}</p>
+              <p style={{ fontSize: "14px", marginBottom: "3px" }}>
+                {item.product_name}
+              </p>
               <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
                 ${Number(item.price).toLocaleString("es-CL")} × {item.quantity}
               </p>
@@ -248,7 +277,7 @@ export default function OrderDetail() {
 
       {/* Datos de envío */}
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-lg)", padding: "20px 24px" }}>
+        borderRadius: "var(--r-lg)", padding: "20px 24px", marginBottom: "16px" }}>
         <p style={{ fontSize: "13px", fontWeight: 500, marginBottom: "16px" }}>
           Datos de envío
         </p>
@@ -269,6 +298,30 @@ export default function OrderDetail() {
           ))}
         </div>
       </div>
+
+      {/* Cancelar pedido */}
+      {order.status === "pending" && (
+        <button
+          onClick={() => {
+            if (window.confirm("¿Estás seguro que quieres cancelar este pedido?")) {
+              cancelMutation.mutate()
+            }
+          }}
+          disabled={cancelMutation.isPending}
+          style={{
+            width: "100%", padding: "12px",
+            borderRadius: "var(--r-md)", fontSize: "13px",
+            fontWeight: 500, cursor: "pointer",
+            background: "rgba(255,59,59,0.08)",
+            border: "1px solid rgba(255,59,59,0.2)",
+            color: "var(--danger)",
+            transition: "all var(--dur) var(--ease)",
+            opacity: cancelMutation.isPending ? 0.5 : 1,
+          }}
+        >
+          {cancelMutation.isPending ? "Cancelando..." : "Cancelar pedido"}
+        </button>
+      )}
 
     </div>
   )

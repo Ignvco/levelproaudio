@@ -62,6 +62,7 @@ import AdminBrands from "./pages/admin/AdminBrands"
 import AdminModules from "./pages/admin/AdminModules"
 import AdminLessons from "./pages/admin/AdminLessons"
 import AdminEnrollments from "./pages/admin/AdminEnrollments"
+import AdminProductImport from "./pages/admin/AdminProductImport"
 
 // ── Rutas protegidas ────────────────────────────────────────
 function ProtectedRoute({ children }) {
@@ -108,14 +109,11 @@ function App() {
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="products" element={<AdminProducts />} />
+          <Route path="products/import" element={<AdminProductImport />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="payments" element={<AdminPayments />} />
           <Route path="academy" element={<AdminAcademy />} />
           <Route path="services" element={<AdminServices />} />
-          <Route path="products/categories" element={<AdminCategories />} />
-          <Route path="products/brands" element={<AdminBrands />} />
-          <Route path="academy/modules" element={<AdminModules />} />
-          <Route path="academy/lessons" element={<AdminLessons />} />
           <Route path="academy/enrollments" element={<AdminEnrollments />} />
         </Route>
 

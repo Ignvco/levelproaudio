@@ -6,10 +6,16 @@ import { useQuery } from "@tanstack/react-query"
 import { getProduct } from "../api/products.api"
 import { useCartStore } from "../store/cartStore"
 
+// ── Galería ──────────────────────────────────────────────────
 function ImageGallery({ images, name }) {
   const [selected, setSelected] = useState(0)
 
-  if (!images?.length) return (
+  // Normaliza URL — usa image_url (path relativo) con fallback a image
+  const getUrl = (img) => img?.image_url || img?.image || null
+
+  const validImages = (images || []).filter(img => getUrl(img))
+
+  if (!validImages.length) return (
     <div style={{
       width: "100%", aspectRatio: "1",
       borderRadius: "var(--r-xl)", overflow: "hidden",
@@ -23,29 +29,46 @@ function ImageGallery({ images, name }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-      {/* Principal */}
+      {/* Imagen principal */}
       <div style={{
-        width: "100%", aspectRatio: "1", borderRadius: "var(--r-xl)",
-        overflow: "hidden", background: "var(--surface-2)",
-        border: "1px solid var(--border)",
+        width: "100%", aspectRatio: "1",
+        borderRadius: "var(--r-xl)", overflow: "hidden",
+        background: "var(--surface-2)", border: "1px solid var(--border)",
       }}>
-        <img src={images[selected]?.image} alt={name}
-          style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        <img
+          src={getUrl(validImages[selected])}
+          alt={`${name} — imagen ${selected + 1}`}
+          style={{ width: "100%", height: "100%", objectFit: "cover",
+            transition: "opacity 200ms ease" }}
+          onError={e => {
+            e.target.style.display = "none"
+          }}
+        />
       </div>
 
       {/* Thumbnails */}
-      {images.length > 1 && (
-        <div style={{ display: "flex", gap: "8px", overflowX: "auto", paddingBottom: "4px" }}>
-          {images.map((img, i) => (
-            <button key={img.id} onClick={() => setSelected(i)}
+      {validImages.length > 1 && (
+        <div style={{ display: "flex", gap: "8px",
+          overflowX: "auto", paddingBottom: "4px" }}>
+          {validImages.map((img, i) => (
+            <button
+              key={img.id || i}
+              onClick={() => setSelected(i)}
               style={{
-                flexShrink: 0, width: "64px", height: "64px",
+                flexShrink: 0, width: "72px", height: "72px",
                 borderRadius: "var(--r-md)", overflow: "hidden",
                 border: `2px solid ${i === selected ? "var(--text)" : "var(--border)"}`,
-                cursor: "pointer", background: "none", padding: 0,
+                cursor: "pointer", background: "var(--surface-2)",
+                padding: 0,
                 transition: "border-color var(--dur) var(--ease)",
-              }}>
-              <img src={img.image} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              }}
+            >
+              <img
+                src={getUrl(img)}
+                alt={`${name} ${i + 1}`}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                onError={e => { e.target.style.opacity = "0" }}
+              />
             </button>
           ))}
         </div>
@@ -54,15 +77,17 @@ function ImageGallery({ images, name }) {
   )
 }
 
+// ── ProductDetail ────────────────────────────────────────────
 export default function ProductDetail() {
-  const { slug }    = useParams()
-  const [qty, setQty] = useState(1)
+  const { slug }          = useParams()
+  const [qty, setQty]     = useState(1)
   const [added, setAdded] = useState(false)
-  const { addItem } = useCartStore()
+  const { addItem }       = useCartStore()
 
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ["product", slug],
     queryFn:  () => getProduct(slug),
+    retry:    1,
   })
 
   const handleAdd = () => {
@@ -72,12 +97,15 @@ export default function ProductDetail() {
   }
 
   if (isLoading) return (
-    <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "60px clamp(20px, 5vw, 60px)" }}>
+    <div style={{ maxWidth: "1100px", margin: "0 auto",
+      padding: "60px clamp(20px, 5vw, 60px)" }}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-        <div className="skeleton" style={{ aspectRatio: "1", borderRadius: "var(--r-xl)" }} />
+        <div className="skeleton"
+          style={{ aspectRatio: "1", borderRadius: "var(--r-xl)" }} />
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {[80, 50, 60, 40, 70].map((w, i) => (
-            <div key={i} className="skeleton" style={{ height: "20px", width: `${w}%` }} />
+            <div key={i} className="skeleton"
+              style={{ height: "20px", width: `${w}%` }} />
           ))}
         </div>
       </div>
@@ -86,7 +114,10 @@ export default function ProductDetail() {
 
   if (isError || !product) return (
     <div style={{ textAlign: "center", padding: "120px 20px" }}>
-      <p style={{ color: "var(--text-3)", marginBottom: "20px" }}>Producto no encontrado.</p>
+      <p style={{ fontSize: "48px", marginBottom: "16px" }}>🎧</p>
+      <p style={{ color: "var(--text-3)", marginBottom: "20px", fontSize: "15px" }}>
+        Producto no encontrado.
+      </p>
       <Link to="/shop" className="btn btn-ghost">← Volver a la tienda</Link>
     </div>
   )
@@ -102,21 +133,24 @@ export default function ProductDetail() {
         {/* Breadcrumb */}
         <nav style={{ display: "flex", alignItems: "center", gap: "8px",
           fontSize: "13px", color: "var(--text-3)", marginBottom: "40px" }}>
-          <Link to="/" className="hover:text-white" style={{ transition: "color var(--dur)" }}>
+          <Link to="/" className="hover:text-white"
+            style={{ transition: "color var(--dur)" }}>
             Inicio
           </Link>
           <span>/</span>
-          <Link to="/shop" className="hover:text-white" style={{ transition: "color var(--dur)" }}>
+          <Link to="/shop" className="hover:text-white"
+            style={{ transition: "color var(--dur)" }}>
             Tienda
           </Link>
           <span>/</span>
           <span style={{ color: "var(--text-2)" }}>{product.name}</span>
         </nav>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-16" style={{ alignItems: "start" }}>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-16"
+          style={{ alignItems: "start" }}>
 
           {/* Galería */}
-          <ImageGallery images={product.images} name={product.name} />
+          <ImageGallery images={product.images || []} name={product.name} />
 
           {/* Info */}
           <div style={{ display: "flex", flexDirection: "column", gap: "24px",
@@ -124,9 +158,10 @@ export default function ProductDetail() {
 
             {/* Marca + nombre */}
             <div>
-              {product.brand && (
-                <p style={{ fontSize: "12px", color: "var(--text-3)", textTransform: "uppercase",
-                  letterSpacing: "0.1em", fontWeight: 500, marginBottom: "8px" }}>
+              {product.brand?.name && (
+                <p style={{ fontSize: "12px", color: "var(--text-3)",
+                  textTransform: "uppercase", letterSpacing: "0.1em",
+                  fontWeight: 500, marginBottom: "8px" }}>
                   {product.brand.name}
                 </p>
               )}
@@ -135,7 +170,8 @@ export default function ProductDetail() {
                 {product.name}
               </h1>
               {product.sku && (
-                <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "6px" }}>
+                <p style={{ fontSize: "11px", color: "var(--text-3)",
+                  marginTop: "6px" }}>
                   SKU: {product.sku}
                 </p>
               )}
@@ -143,18 +179,19 @@ export default function ProductDetail() {
 
             {/* Precio */}
             <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
-              <span style={{ fontFamily: "var(--font-serif)", fontSize: "2.2rem",
-                fontWeight: 400, lineHeight: 1 }}>
+              <span style={{ fontFamily: "var(--font-serif)",
+                fontSize: "2.2rem", fontWeight: 400, lineHeight: 1 }}>
                 ${Number(product.price).toLocaleString("es-CL")}
               </span>
-              {product.has_discount && (
+              {product.has_discount && product.compare_price && (
                 <>
                   <span style={{ fontSize: "1.1rem", color: "var(--text-3)",
                     textDecoration: "line-through" }}>
                     ${Number(product.compare_price).toLocaleString("es-CL")}
                   </span>
                   <span style={{ padding: "2px 8px", borderRadius: "100px",
-                    background: "var(--accent)", color: "#000", fontSize: "12px", fontWeight: 600 }}>
+                    background: "var(--accent)", color: "#000",
+                    fontSize: "12px", fontWeight: 600 }}>
                     -{product.discount_percentage}%
                   </span>
                 </>
@@ -186,49 +223,54 @@ export default function ProductDetail() {
             {/* Cantidad + agregar */}
             {inStock && (
               <div style={{ display: "flex", gap: "12px" }}>
-                {/* Cantidad */}
                 <div style={{
                   display: "flex", alignItems: "center",
-                  border: "1px solid var(--border)", borderRadius: "var(--r-md)",
-                  overflow: "hidden", flexShrink: 0,
+                  border: "1px solid var(--border)",
+                  borderRadius: "var(--r-md)", overflow: "hidden", flexShrink: 0,
                 }}>
-                  <button onClick={() => setQty(q => Math.max(1, q - 1))}
+                  <button
+                    onClick={() => setQty(q => Math.max(1, q - 1))}
                     style={{ width: "40px", height: "44px", display: "flex",
                       alignItems: "center", justifyContent: "center",
-                      background: "none", border: "none", color: "var(--text-2)",
-                      cursor: "pointer", fontSize: "18px" }}>
+                      background: "none", border: "none",
+                      color: "var(--text-2)", cursor: "pointer", fontSize: "18px" }}>
                     −
                   </button>
                   <span style={{ width: "36px", textAlign: "center",
                     fontSize: "14px", fontWeight: 500 }}>
                     {qty}
                   </span>
-                  <button onClick={() => setQty(q => Math.min(product.stock, q + 1))}
+                  <button
+                    onClick={() => setQty(q => Math.min(product.stock, q + 1))}
                     style={{ width: "40px", height: "44px", display: "flex",
                       alignItems: "center", justifyContent: "center",
-                      background: "none", border: "none", color: "var(--text-2)",
-                      cursor: "pointer", fontSize: "18px" }}>
+                      background: "none", border: "none",
+                      color: "var(--text-2)", cursor: "pointer", fontSize: "18px" }}>
                     +
                   </button>
                 </div>
 
-                {/* Agregar */}
-                <button onClick={handleAdd} className="btn btn-accent"
-                  style={{ flex: 1, justifyContent: "center",
+                <button
+                  onClick={handleAdd}
+                  className="btn btn-accent"
+                  style={{
+                    flex: 1, justifyContent: "center",
                     background: added ? "var(--surface-3)" : "var(--accent)",
                     color: added ? "var(--text)" : "#000",
                     border: added ? "1px solid var(--border)" : "none",
-                    transition: "all 300ms var(--ease)" }}>
+                    transition: "all 300ms var(--ease)",
+                  }}>
                   {added ? "✓ Agregado" : "Agregar al carrito"}
                 </button>
               </div>
             )}
 
             {/* Categoría */}
-            {product.category && (
+            {product.category?.name && (
               <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
                 Categoría:{" "}
-                <Link to={`/shop?category=${product.category.slug}`}
+                <Link
+                  to={`/shop?category=${product.category.slug}`}
                   style={{ color: "var(--text-2)", transition: "color var(--dur)" }}
                   className="hover:text-white">
                   {product.category.name}
@@ -244,12 +286,13 @@ export default function ProductDetail() {
             marginTop: "80px", paddingTop: "48px",
             borderTop: "1px solid var(--border)",
           }}>
-            <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem",
-              marginBottom: "24px" }}>
+            <h2 style={{ fontFamily: "var(--font-serif)",
+              fontSize: "1.8rem", marginBottom: "24px" }}>
               Descripción
             </h2>
-            <div style={{ fontSize: "15px", color: "var(--text-2)", lineHeight: 1.8,
-              maxWidth: "680px" }}
+            <div
+              style={{ fontSize: "15px", color: "var(--text-2)",
+                lineHeight: 1.8, maxWidth: "680px" }}
               dangerouslySetInnerHTML={{ __html: product.description }}
             />
           </div>

@@ -160,6 +160,8 @@ export default function MyCourses() {
   const { data, isLoading } = useQuery({
     queryKey: ["enrollments"],
     queryFn:  getEnrollments,
+    refetchOnWindowFocus: true,
+    refetchInterval: 30000,
   })
 
   const enrollments = data?.results || data || []

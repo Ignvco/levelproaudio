@@ -16,11 +16,11 @@ export const useAuthStore = create(
       isAuthenticated: false,
 
       // Guarda tokens y marca al usuario como autenticado
-      setTokens: (access, refresh) => set({
-        token: access,
-        refreshToken: refresh,
-        isAuthenticated: true,
-      }),
+      setTokens: (access, refresh) => {
+        localStorage.setItem("accessToken", access)
+        localStorage.setItem("refreshToken", refresh)
+        set({ accessToken: access, refreshToken: refresh, isAuthenticated: true })
+      },
 
       // Guarda los datos del perfil del usuario
       setUser: (user) => set({ user }),

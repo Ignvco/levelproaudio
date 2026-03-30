@@ -109,6 +109,12 @@ export default function AdminAnalytics() {
     </div>
   )
 
+  if (!data) return (
+  <div style={{ padding: "40px", color: "var(--text-3)", fontSize: "14px" }}>
+    Error al cargar analytics. Revisa la consola del backend.
+  </div>
+)
+
   const {
     kpis,
     sales_by_month,

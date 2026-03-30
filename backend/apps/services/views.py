@@ -88,16 +88,14 @@ class BookingViewSet(viewsets.ModelViewSet):
 
 
 class ServiceRequestViewSet(viewsets.ModelViewSet):
-    """
-    GET  /api/v1/service-requests/       → mis solicitudes
-    POST /api/v1/service-requests/       → crear solicitud
-    GET  /api/v1/service-requests/{id}/  → detalle
-    """
     serializer_class   = ServiceRequestSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names  = ["get", "post", "head", "options"]
+    http_method_names  = ["get", "post", "patch", "head", "options"]
 
     def get_queryset(self):
         return ServiceRequest.objects.filter(
             user=self.request.user
         ).select_related("service").order_by("-created_at")
+
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)

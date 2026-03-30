@@ -34,12 +34,16 @@ function StatCard({ label, value, sub, accent, to }) {
     }}
       className="hover:border-[var(--border-hover)] hover:-translate-y-0.5"
     >
-      <p style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
-        letterSpacing: "0.08em", fontWeight: 500, marginBottom: "10px" }}>
+      <p style={{
+        fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
+        letterSpacing: "0.08em", fontWeight: 500, marginBottom: "10px"
+      }}>
         {label}
       </p>
-      <p style={{ fontFamily: "var(--font-serif)", fontSize: "2rem",
-        lineHeight: 1, color: accent ? "var(--accent)" : "var(--text)", marginBottom: "6px" }}>
+      <p style={{
+        fontFamily: "var(--font-serif)", fontSize: "2rem",
+        lineHeight: 1, color: accent ? "var(--accent)" : "var(--text)", marginBottom: "6px"
+      }}>
         {value}
       </p>
       {sub && <p style={{ fontSize: "12px", color: "var(--text-3)" }}>{sub}</p>}
@@ -50,9 +54,9 @@ function StatCard({ label, value, sub, accent, to }) {
 
 // ── Status badge ─────────────────────────────────────────────
 const statusColors = {
-  pending:   "#facc15",
-  paid:      "#4ade80",
-  shipped:   "#60a5fa",
+  pending: "#facc15",
+  paid: "#4ade80",
+  shipped: "#60a5fa",
   completed: "#4ade80",
   cancelled: "#f87171",
 }
@@ -77,16 +81,24 @@ function Badge({ status }) {
 export default function AdminDashboard() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-dashboard"],
-    queryFn:  getAdminDashboard,
+    queryFn: getAdminDashboard,
     refetchInterval: 60000,
   })
 
   if (isLoading) return (
-    <div style={{ padding: "40px", display: "grid",
-      gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
+    <div style={{
+      padding: "40px", display: "grid",
+      gridTemplateColumns: "repeat(4, 1fr)", gap: "12px"
+    }}>
       {[...Array(8)].map((_, i) => (
         <div key={i} className="skeleton" style={{ height: "100px" }} />
       ))}
+    </div>
+  )
+
+  if (!data) return (
+    <div style={{ padding: "40px", color: "var(--text-3)", fontSize: "14px" }}>
+      Error al cargar el dashboard. Revisa la consola del backend.
     </div>
   )
 
@@ -97,8 +109,10 @@ export default function AdminDashboard() {
 
       {/* Header */}
       <div style={{ marginBottom: "32px" }}>
-        <h1 style={{ fontFamily: "var(--font-serif)",
-          fontSize: "clamp(1.8rem, 3vw, 2.4rem)", marginBottom: "6px" }}>
+        <h1 style={{
+          fontFamily: "var(--font-serif)",
+          fontSize: "clamp(1.8rem, 3vw, 2.4rem)", marginBottom: "6px"
+        }}>
           Dashboard
         </h1>
         <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
@@ -135,6 +149,39 @@ export default function AdminDashboard() {
         />
       </div>
 
+      {/* Al final de la sección de stats, agrega: */}
+      <div style={{
+        background: "var(--surface)", border: "1px solid rgba(26,255,110,0.15)",
+        borderRadius: "var(--r-lg)", padding: "16px 20px",
+        marginBottom: "24px",
+        display: "flex", alignItems: "center",
+        justifyContent: "space-between", gap: "16px",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <div style={{
+            width: "36px", height: "36px", borderRadius: "50%",
+            background: "var(--accent-glow)",
+            border: "1px solid rgba(26,255,110,0.2)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            fontSize: "16px",
+          }}>
+            🏠
+          </div>
+          <div>
+            <p style={{ fontSize: "13px", fontWeight: 500 }}>Producto del Hero (Home)</p>
+            <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+              El primer producto con "Destacado = Sí" e imagen aparece en el hero del sitio.
+            </p>
+          </div>
+        </div>
+        <Link to="/admin/products" className="btn btn-ghost"
+          style={{ padding: "8px 16px", fontSize: "12px", flexShrink: 0 }}>
+          Gestionar productos →
+        </Link>
+      </div>
+
+
+
       {/* Segunda fila */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3" style={{ marginBottom: "32px" }}>
         <StatCard
@@ -168,21 +215,27 @@ export default function AdminDashboard() {
         }}
           className="lg:col-span-2"
         >
-          <div style={{ display: "flex", justifyContent: "space-between",
-            alignItems: "flex-start", marginBottom: "20px" }}>
+          <div style={{
+            display: "flex", justifyContent: "space-between",
+            alignItems: "flex-start", marginBottom: "20px"
+          }}>
             <div>
               <p style={{ fontSize: "13px", fontWeight: 500, marginBottom: "4px" }}>
                 Ventas — últimos 30 días
               </p>
-              <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem",
-                color: "var(--accent)", lineHeight: 1 }}>
+              <p style={{
+                fontFamily: "var(--font-serif)", fontSize: "1.8rem",
+                color: "var(--accent)", lineHeight: 1
+              }}>
                 ${Number(revenue.last_30_days).toLocaleString("es-CL")}
               </p>
             </div>
           </div>
           <SparkBar data={sales_chart} />
-          <div style={{ display: "flex", justifyContent: "space-between",
-            marginTop: "8px", fontSize: "11px", color: "var(--text-3)" }}>
+          <div style={{
+            display: "flex", justifyContent: "space-between",
+            marginTop: "8px", fontSize: "11px", color: "var(--text-3)"
+          }}>
             <span>Hace 30 días</span>
             <span>Hoy</span>
           </div>
@@ -201,19 +254,29 @@ export default function AdminDashboard() {
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {top_products.map((p, i) => (
-                <div key={i} style={{ display: "flex", justifyContent: "space-between",
-                  alignItems: "center", gap: "8px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px",
-                    minWidth: 0 }}>
-                    <span style={{ fontSize: "11px", color: "var(--text-3)",
-                      width: "16px", flexShrink: 0 }}>{i + 1}</span>
-                    <p style={{ fontSize: "13px", overflow: "hidden",
-                      textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <div key={i} style={{
+                  display: "flex", justifyContent: "space-between",
+                  alignItems: "center", gap: "8px"
+                }}>
+                  <div style={{
+                    display: "flex", alignItems: "center", gap: "8px",
+                    minWidth: 0
+                  }}>
+                    <span style={{
+                      fontSize: "11px", color: "var(--text-3)",
+                      width: "16px", flexShrink: 0
+                    }}>{i + 1}</span>
+                    <p style={{
+                      fontSize: "13px", overflow: "hidden",
+                      textOverflow: "ellipsis", whiteSpace: "nowrap"
+                    }}>
                       {p.product_name}
                     </p>
                   </div>
-                  <span style={{ fontSize: "12px", color: "var(--text-3)",
-                    flexShrink: 0 }}>
+                  <span style={{
+                    fontSize: "12px", color: "var(--text-3)",
+                    flexShrink: 0
+                  }}>
                     ×{p.total_sold}
                   </span>
                 </div>
@@ -228,12 +291,16 @@ export default function AdminDashboard() {
         background: "var(--surface)", border: "1px solid var(--border)",
         borderRadius: "var(--r-lg)", overflow: "hidden",
       }}>
-        <div style={{ display: "flex", justifyContent: "space-between",
+        <div style={{
+          display: "flex", justifyContent: "space-between",
           alignItems: "center", padding: "16px 20px",
-          borderBottom: "1px solid var(--border)" }}>
+          borderBottom: "1px solid var(--border)"
+        }}>
           <p style={{ fontSize: "13px", fontWeight: 500 }}>Últimas órdenes</p>
-          <Link to="/admin/orders" style={{ fontSize: "12px", color: "var(--text-3)",
-            transition: "color var(--dur)" }} className="hover:text-white">
+          <Link to="/admin/orders" style={{
+            fontSize: "12px", color: "var(--text-3)",
+            transition: "color var(--dur)"
+          }} className="hover:text-white">
             Ver todas →
           </Link>
         </div>

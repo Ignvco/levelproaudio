@@ -13,14 +13,18 @@ class User(AbstractUser):
     """
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField(unique=True)
-    phone = models.CharField(max_length=20, blank=True)
+    phone = models.CharField(
+    max_length=20,
+    blank=True,
+    default="",    # ← agrega esto
+    verbose_name="Teléfono"
+)
     
     # Dirección de envío por defecto
-    address_street = models.CharField(max_length=300, blank=True)
-    address_city = models.CharField(max_length=100, blank=True)
-    address_province = models.CharField(max_length=100, blank=True)
-    address_zip = models.CharField(max_length=20, blank=True)
-
+    address_street   = models.CharField(max_length=200, blank=True, default="")
+    address_city     = models.CharField(max_length=100, blank=True, default="")
+    address_province = models.CharField(max_length=100, blank=True, default="")
+    address_zip      = models.CharField(max_length=20,  blank=True, default="")
     USERNAME_FIELD = 'email'             # Login con email
     REQUIRED_FIELDS = ['username']
 
