@@ -1,24 +1,21 @@
 // api/client.js
-// Cliente axios base con interceptores JWT
-// - Adjunta el token Bearer automáticamente en cada request
-// - Si el token expiró (401), intenta renovarlo con el refreshToken
-// - Si el refresh también falla, hace logout automático
 
 import axios from "axios"
 import { useAuthStore } from "../store/authStore"
 
 const api = axios.create({
   baseURL: "/api/v1",
-  headers: {
-    "Content-Type": "application/json",
-  },
+  headers: { "Content-Type": "application/json" },
 })
 
-// ── Interceptor de REQUEST ──────────────────────────────
-// Antes de cada llamada, adjunta el token si existe
+// ── Request interceptor — agrega token en cada request ───────
 api.interceptors.request.use(
   (config) => {
-    const token = useAuthStore.getState().getToken()
+    // Lee el token directamente del localStorage como fallback
+    const storeToken = useAuthStore.getState().accessToken
+    const lsToken    = localStorage.getItem("accessToken")
+    const token      = storeToken || lsToken
+
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -27,46 +24,37 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
-// ── Interceptor de RESPONSE ─────────────────────────────
-// Si el backend responde 401 (token expirado), renueva y reintenta
+// ── Response interceptor — refresca token si expira ─────────
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const originalRequest = error.config
+    const original = error.config
 
-    // Evita loop infinito — solo reintenta una vez
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true
 
       try {
-        const { refreshToken, setTokens, logout } = useAuthStore.getState()
+        const refreshToken = useAuthStore.getState().refreshToken
+          || localStorage.getItem("refreshToken")
 
         if (!refreshToken) {
-          logout()
+          useAuthStore.getState().logout()
           return Promise.reject(error)
         }
 
-        // Pide un nuevo access token con el refresh token
-        const response = await axios.post(
-          `${import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1"}/auth/token/refresh/`,
-          { refresh: refreshToken }
-        )
+        const { data } = await axios.post("/api/v1/auth/token/refresh/", {
+          refresh: refreshToken,
+        })
 
-        const newAccessToken = response.data.access
-        const newRefreshToken = response.data.refresh
+        const newAccess = data.access
+        useAuthStore.getState().setTokens(newAccess, refreshToken)
+        localStorage.setItem("accessToken", newAccess)
 
-        // Guarda los nuevos tokens
-        setTokens(newAccessToken, newRefreshToken)
-
-        // Reintenta el request original con el nuevo token
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`
-        return api(originalRequest)
-
-      } catch (refreshError) {
-        // Si el refresh falló, cierra sesión
+        original.headers.Authorization = `Bearer ${newAccess}`
+        return api(original)
+      } catch {
         useAuthStore.getState().logout()
-        window.location.href = "/login"
-        return Promise.reject(refreshError)
+        return Promise.reject(error)
       }
     }
 

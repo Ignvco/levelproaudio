@@ -12,6 +12,13 @@ import fondoVideo from "../assets/wallpaper.mp4"
 
 // ── Hero ─────────────────────────────────────────────────────
 function Hero() {
+
+  const { data: featuredData } = useQuery({
+    queryKey: ["products", "hero"],
+    queryFn: () => getProducts({ is_featured: true, page_size: 1 }),
+  })
+  const heroProduct = featuredData?.results?.[0] || featuredData?.[0] || null
+
   return (
     <section style={{
       minHeight: "94vh",
@@ -152,74 +159,79 @@ function Hero() {
             borderRadius: "var(--r-xl)",
             background: "var(--surface)",
             border: "1px solid var(--border)",
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            gap: "16px",
-            position: "relative",
             overflow: "hidden",
+            position: "relative",
           }}>
-            {/* Textura dentro */}
-            <div style={{
-              position: "absolute",
-              inset: 0,
-              backgroundImage: `url(${fondoImg})`,
-              backgroundSize: "cover",
-              opacity: 0.08,
-            }} />
-            <img src={iconImg} alt="" style={{
-              width: "80px",
-              height: "80px",
-              filter: "brightness(0) invert(0.15)",
-              position: "relative",
-              zIndex: 1,
-            }} />
-            <p style={{
-              fontSize: "12px",
-              color: "var(--text-3)",
-              letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              position: "relative",
-              zIndex: 1,
-            }}>
-              Agregar imagen de producto destacado
-            </p>
+            {heroProduct?.primary_image ? (
+              <img
+                src={heroProduct.primary_image}
+                alt={heroProduct.name}
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  objectFit: "cover",
+                  transition: "transform 600ms var(--ease)",
+                }}
+              />
+            ) : (
+              <>
+                <div style={{
+                  position: "absolute", inset: 0,
+                  backgroundImage: `url(${fondoImg})`,
+                  backgroundSize: "cover", opacity: 0.08,
+                }} />
+                <div style={{
+                  width: "100%", height: "100%",
+                  display: "flex", flexDirection: "column",
+                  alignItems: "center", justifyContent: "center", gap: "12px",
+                }}>
+                  <img src={iconImg} alt="" style={{
+                    width: "64px", height: "64px",
+                    filter: "brightness(0) invert(0.15)",
+                  }} />
+                  <p style={{
+                    fontSize: "12px", color: "var(--text-3)",
+                    letterSpacing: "0.08em", textTransform: "uppercase"
+                  }}>
+                    Agrega un producto destacado
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
-          {/* Floating card */}
-          <div style={{
-            position: "absolute",
-            bottom: "32px",
-            left: "-24px",
-            background: "rgba(15,15,15,0.9)",
-            backdropFilter: "blur(20px)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--r-md)",
-            padding: "14px 18px",
-            display: "flex",
-            alignItems: "center",
-            gap: "12px",
-          }}>
+          {/* Floating card — solo si hay producto */}
+          {heroProduct && (
             <div style={{
-              width: "36px",
-              height: "36px",
-              borderRadius: "50%",
-              background: "var(--accent-glow)",
-              border: "1px solid rgba(26,255,110,0.2)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              fontSize: "18px",
+              position: "absolute", bottom: "28px", left: "-20px",
+              background: "rgba(15,15,15,0.92)",
+              backdropFilter: "blur(20px)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-md)",
+              padding: "12px 16px",
+              display: "flex", alignItems: "center", gap: "12px",
             }}>
-              🎧
+              <div style={{
+                width: "36px", height: "36px", borderRadius: "50%",
+                background: "var(--accent-glow)",
+                border: "1px solid rgba(26,255,110,0.2)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                fontSize: "16px",
+              }}>
+                🎧
+              </div>
+              <div>
+                <p style={{ fontSize: "13px", fontWeight: 500, marginBottom: "2px" }}>
+                  {heroProduct.name}
+                </p>
+                <p style={{ fontSize: "12px", color: "var(--accent)" }}>
+                  ${Number(heroProduct.price).toLocaleString("es-CL")}
+                </p>
+              </div>
             </div>
-            <div>
-              <p style={{ fontSize: "13px", fontWeight: 500, marginBottom: "2px" }}>Shure SM58</p>
-              <p style={{ fontSize: "12px", color: "var(--accent)" }}>$150.000</p>
-            </div>
-          </div>
+          )}
         </div>
+
       </div>
     </section>
   )

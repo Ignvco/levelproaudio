@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { NavLink, Link, useNavigate, useLocation, Outlet } from "react-router-dom"
 import { useAuthStore } from "../store/authStore"
-import iconImg from "../assets/icon.png"
+import logoImg from "../assets/logo.png"
 
 // ── NavGroup — fuera del array, antes de AdminLayout ────────
 function NavGroup({ item }) {
@@ -53,28 +53,27 @@ function NavGroup({ item }) {
 // ── navItems — solo datos, sin componentes adentro ───────────
 const navItems = [
   { to: "/admin",          label: "Dashboard", icon: "◈", end: true },
+  { to: "/admin/analytics", label: "Analytics", icon: "◉" },
   { to: "/admin/orders",   label: "Órdenes",   icon: "⊡" },
   {
     label: "Productos", icon: "⊞",
     children: [
-      { to: "/admin/products",            label: "Catálogo" },
-      { to: "/admin/products/categories", label: "Categorías" },
-      { to: "/admin/products/brands",     label: "Marcas" },
+      { to: "/admin/products",            label: "Catálogo" }
     ]
   },
+  { to: "/admin/products/import", label: "Importar",  icon: "↑" },
   { to: "/admin/users",    label: "Usuarios",  icon: "○" },
   { to: "/admin/payments", label: "Pagos",     icon: "◎" },
   {
     label: "Academia", icon: "▷",
     children: [
       { to: "/admin/academy",              label: "Cursos" },
-      { to: "/admin/academy/modules",      label: "Módulos" },
-      { to: "/admin/academy/lessons",      label: "Lecciones" },
+
       { to: "/admin/academy/enrollments",  label: "Inscripciones" },
     ]
   },
   { to: "/admin/services",  label: "Servicios", icon: "◇" },
-  { to: "/admin/analytics", label: "Analytics", icon: "◉" },
+  
 ]
 
 // ── AdminLayout ──────────────────────────────────────────────
@@ -99,9 +98,7 @@ export default function AdminLayout() {
         <div style={{ padding: "20px 16px", borderBottom: "1px solid var(--border)",
           display: "flex", alignItems: "center", gap: "10px" }}>
           <Link to="/" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <img src={iconImg} alt=""
-              style={{ width: "22px", filter: "brightness(0) invert(1)" }} />
-            <span style={{ fontSize: "13px", fontWeight: 500 }}>LevelPro</span>
+            <img src={logoImg} alt="LevelPro" style={{ height: "28px", filter: "brightness(0) invert(1)", maxWidth: "100px" }} />
           </Link>
           <span style={{
             marginLeft: "auto", fontSize: "10px", fontWeight: 600,

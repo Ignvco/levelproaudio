@@ -120,6 +120,14 @@ class Product(TimeStampedModel):
 
     seo_title = models.CharField(max_length=255, blank=True)
     seo_description = models.CharField(max_length=255, blank=True)
+    
+    course = models.OneToOneField(
+        'academy.Course',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='product',
+        help_text='Si este producto es un curso, vincúlalo aquí'
+)
 
     class Meta:
         verbose_name        = "Producto"
@@ -182,4 +190,6 @@ class ProductImage(TimeStampedModel):
                 is_primary=True
             ).exclude(pk=self.pk).update(is_primary=False)
         super().save(*args, **kwargs)
+        
+        
         

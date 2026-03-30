@@ -1,6 +1,4 @@
 # apps/payments/services.py
-# Lógica de negocio para cada proveedor de pago
-# Separado de las views para mantener las views limpias
 
 import mercadopago
 import paypalrestsdk
@@ -9,10 +7,9 @@ from .models import Payment, PaymentProvider, PaymentStatus
 from apps.orders.models import Order, OrderStatus
 
 
-# ── MercadoPago ──────────────────────────────────────────────
+# ── Helpers ──────────────────────────────────────────────────
 
 def get_mp_sdk(provider: str):
-    """Retorna el SDK de MercadoPago configurado según el país."""
     if provider == PaymentProvider.MERCADOPAGO_AR:
         token = settings.MP_AR_ACCESS_TOKEN
     else:
@@ -20,13 +17,40 @@ def get_mp_sdk(provider: str):
     return mercadopago.SDK(token)
 
 
-def create_mercadopago_preference(order: Order, provider: str) -> dict:
+def create_enrollment_if_course(order: Order) -> None:
     """
-    Crea una preferencia de pago en MercadoPago.
-    Retorna { preference_id, init_point (URL de checkout) }
+    Crea enrollment si el producto está vinculado a un curso.
+    También intenta por nombre como fallback.
     """
-    sdk = get_mp_sdk(provider)
+    try:
+        from apps.academy.models import Course, Enrollment
+        for item in order.items.all():
+            course = None
 
+            # Método 1 — producto vinculado directamente al curso
+            if item.product and hasattr(item.product, 'course') \
+               and item.product.course:
+                course = item.product.course
+
+            # Método 2 — busca por nombre como fallback
+            if not course:
+                course = Course.objects.filter(
+                    title__iexact=item.product_name
+                ).first()
+
+            if course and order.user:
+                Enrollment.objects.get_or_create(
+                    user=order.user,
+                    course=course,
+                )
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"Error creando enrollment: {e}")
+
+# ── MercadoPago ──────────────────────────────────────────────
+
+def create_mercadopago_preference(order: Order, provider: str) -> dict:
+    sdk      = get_mp_sdk(provider)
     currency = "ARS" if provider == PaymentProvider.MERCADOPAGO_AR else "CLP"
 
     items = []
@@ -49,13 +73,13 @@ def create_mercadopago_preference(order: Order, provider: str) -> dict:
             "failure": f"{settings.FRONTEND_URL}/payment/failure?order={order.id}",
             "pending": f"{settings.FRONTEND_URL}/payment/pending?order={order.id}",
         },
-        # auto_return solo funciona con URLs públicas (no localhost)
-        # Se activa automáticamente en producción
+        "auto_return":        "approved",
         "external_reference": str(order.id),
-        "notification_url":  f"{settings.BACKEND_URL}/api/v1/payments/webhook/mercadopago/cl/",
+        "notification_url":   f"{settings.BACKEND_URL}/api/v1/payments/webhook/mercadopago/cl/",
         "statement_descriptor": "LEVELPRO AUDIO",
         "expires": False,
     }
+
     result = sdk.preference().create(preference_data)
 
     if result["status"] != 201:
@@ -63,7 +87,6 @@ def create_mercadopago_preference(order: Order, provider: str) -> dict:
 
     preference = result["response"]
 
-    # Guarda el pago en estado pendiente
     Payment.objects.create(
         order=order,
         provider=provider,
@@ -83,29 +106,22 @@ def create_mercadopago_preference(order: Order, provider: str) -> dict:
 
 
 def process_mercadopago_webhook(data: dict, provider: str) -> None:
-    """
-    Procesa las notificaciones IPN de MercadoPago.
-    Actualiza el estado del pago y de la orden.
-    """
     topic = data.get("type") or data.get("topic")
-
     if topic not in ["payment", "merchant_order"]:
         return
 
-    sdk      = get_mp_sdk(provider)
-    mp_id    = data.get("data", {}).get("id") or data.get("id")
-
+    sdk   = get_mp_sdk(provider)
+    mp_id = data.get("data", {}).get("id") or data.get("id")
     if not mp_id:
         return
 
-    # Consulta el pago en MP
     result = sdk.payment().get(mp_id)
     if result["status"] != 200:
         return
 
-    mp_payment    = result["response"]
-    order_id      = mp_payment.get("external_reference")
-    mp_status     = mp_payment.get("status")
+    mp_payment = result["response"]
+    order_id   = mp_payment.get("external_reference")
+    mp_status  = mp_payment.get("status")
 
     if not order_id:
         return
@@ -115,19 +131,17 @@ def process_mercadopago_webhook(data: dict, provider: str) -> None:
     except Order.DoesNotExist:
         return
 
-    # Mapeo de estados MP → estados internos
     status_map = {
-        "approved":     PaymentStatus.APPROVED,
-        "pending":      PaymentStatus.PENDING,
-        "in_process":   PaymentStatus.IN_REVIEW,
-        "rejected":     PaymentStatus.REJECTED,
-        "cancelled":    PaymentStatus.CANCELLED,
-        "refunded":     PaymentStatus.REFUNDED,
+        "approved":   PaymentStatus.APPROVED,
+        "pending":    PaymentStatus.PENDING,
+        "in_process": PaymentStatus.IN_REVIEW,
+        "rejected":   PaymentStatus.REJECTED,
+        "cancelled":  PaymentStatus.CANCELLED,
+        "refunded":   PaymentStatus.REFUNDED,
     }
 
     internal_status = status_map.get(mp_status, PaymentStatus.PENDING)
 
-    # Actualiza o crea el registro de pago
     payment, _ = Payment.objects.update_or_create(
         external_id=str(mp_id),
         defaults={
@@ -139,7 +153,6 @@ def process_mercadopago_webhook(data: dict, provider: str) -> None:
         }
     )
 
-    # Si fue aprobado → marca la orden como pagada
     if internal_status == PaymentStatus.APPROVED:
         from django.utils import timezone
         payment.paid_at = timezone.now()
@@ -147,24 +160,20 @@ def process_mercadopago_webhook(data: dict, provider: str) -> None:
         order.status = OrderStatus.PAID
         order.save(update_fields=["status"])
         send_payment_confirmation_email(order)
+        create_enrollment_if_course(order)  # ← enrollment automático
 
 
 # ── PayPal ───────────────────────────────────────────────────
 
 def configure_paypal():
-    """Configura el SDK de PayPal."""
     paypalrestsdk.configure({
-        "mode":       settings.PAYPAL_MODE,
-        "client_id":  settings.PAYPAL_CLIENT_ID,
+        "mode":          settings.PAYPAL_MODE,
+        "client_id":     settings.PAYPAL_CLIENT_ID,
         "client_secret": settings.PAYPAL_CLIENT_SECRET,
     })
 
 
 def create_paypal_order(order: Order) -> dict:
-    """
-    Crea una orden de pago en PayPal.
-    Retorna { order_id, approve_url }
-    """
     configure_paypal()
 
     paypal_payment = paypalrestsdk.Payment({
@@ -198,7 +207,6 @@ def create_paypal_order(order: Order) -> dict:
     if not paypal_payment.create():
         raise ValueError(f"Error PayPal: {paypal_payment.error}")
 
-    # Guarda el pago pendiente
     approve_url = next(
         (l["href"] for l in paypal_payment.links if l["rel"] == "approval_url"),
         None
@@ -222,44 +230,34 @@ def create_paypal_order(order: Order) -> dict:
 
 
 def capture_paypal_payment(paypal_payment_id: str, payer_id: str) -> bool:
-    """
-    Captura el pago de PayPal después de que el usuario aprueba.
-    Retorna True si fue exitoso.
-    """
     configure_paypal()
-
     paypal_payment = paypalrestsdk.Payment.find(paypal_payment_id)
 
     if paypal_payment.execute({"payer_id": payer_id}):
-        # Busca el pago interno
         payment = Payment.objects.filter(
             preference_id=paypal_payment_id
         ).first()
 
         if payment:
             from django.utils import timezone
-            payment.status  = PaymentStatus.APPROVED
-            payment.paid_at = timezone.now()
+            payment.status      = PaymentStatus.APPROVED
+            payment.paid_at     = timezone.now()
             payment.raw_response = paypal_payment.to_dict()
             payment.save()
 
             payment.order.status = OrderStatus.PAID
             payment.order.save(update_fields=["status"])
             send_payment_confirmation_email(payment.order)
+            create_enrollment_if_course(payment.order)  # ← enrollment automático
 
         return True
 
     return False
 
 
-# ── Global66 / Transferencia manual ─────────────────────────
+# ── Global66 ─────────────────────────────────────────────────
 
 def get_global66_info(order: Order) -> dict:
-    """
-    Retorna los datos de transferencia via Global66.
-    No requiere API — es información estática de la cuenta.
-    """
-    # Crea el registro de pago pendiente
     Payment.objects.get_or_create(
         order=order,
         provider=PaymentProvider.GLOBAL66,
@@ -287,14 +285,9 @@ def get_global66_info(order: Order) -> dict:
     }
 
 
-# ── Emails ───────────────────────────────────────────────────
+# ── Emails ────────────────────────────────────────────────────
 
 def send_payment_confirmation_email(order: Order) -> None:
-    """
-    Envía email de confirmación de pago.
-    Por ahora usa el backend de consola de Django —
-    en producción conectaremos SendGrid o similar.
-    """
     from django.core.mail import send_mail
     from django.conf import settings as conf
 

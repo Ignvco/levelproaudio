@@ -45,20 +45,18 @@ class UserRegisterSerializer(serializers.ModelSerializer):
         return attrs
 
     def create(self, validated_data):
-        """
-        Crea el usuario utilizando el manager de Django.
-        """
-        validated_data.pop('password2')
-
         user = User.objects.create_user(
-            email=validated_data['email'],
-            username=validated_data.get('username'),
-            first_name=validated_data.get('first_name'),
-            last_name=validated_data.get('last_name'),
-            phone=validated_data.get('phone'),
-            password=validated_data['password']
+            email    = validated_data["email"],
+            username = validated_data.get("username", validated_data["email"]),
+            password = validated_data["password"],
+            first_name = validated_data.get("first_name", ""),
+            last_name  = validated_data.get("last_name", ""),
+            phone      = validated_data.get("phone", ""),           # ← default vacío
+            address_street   = validated_data.get("address_street", ""),
+            address_city     = validated_data.get("address_city", ""),
+            address_province = validated_data.get("address_province", ""),
+            address_zip      = validated_data.get("address_zip", ""),
         )
-
         return user
 
 

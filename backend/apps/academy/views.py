@@ -187,3 +187,23 @@ class LessonProgressViewSet(viewsets.ViewSet):
             LessonProgressSerializer(progress).data,
             status=status.HTTP_200_OK
         )
+        
+@action(detail=False, methods=["post"])
+def enroll_manual(self, request):
+    """
+    POST /api/v1/enrollments/enroll_manual/
+    Body: { course_slug }
+    Permite al admin crear una inscripción manualmente.
+    """
+    from .models import Course
+    slug   = request.data.get("course_slug")
+    try:
+        course = Course.objects.get(slug=slug)
+    except Course.DoesNotExist:
+        return Response({"error": "Curso no encontrado."}, status=404)
+
+    enrollment, created = Enrollment.objects.get_or_create(
+        user=request.user, course=course
+    )
+    return Response(EnrollmentSerializer(enrollment).data,
+        status=201 if created else 200)       
