@@ -294,7 +294,7 @@ function ProductForm({ product, onClose }) {
             {existingImages.map(img => (
               <div key={img.id} style={{ position: "relative" }}>
                 <img
-                  src={img.image}
+                  src={mediaUrl(img.image)}
                   alt={img.alt_text || ""}
                   style={{
                     width: "80px", height: "80px", objectFit: "cover",
@@ -1038,7 +1038,7 @@ export default function AdminProducts() {
                 border: "1px solid var(--border)"
               }}>
                 {p.primary_image ? (  // ← usa primary_image del serializer
-                  <img src={p.primary_image} alt=""
+                  <img src={mediaUrl(p.primary_image || p.images?.[0]?.image)} alt=""
                     style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : p.images?.[0]?.image ? (
                   <img src={p.images[0].image} alt=""

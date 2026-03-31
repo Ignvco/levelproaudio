@@ -3,6 +3,7 @@
 import { Link, useNavigate } from "react-router-dom"
 import { useCartStore } from "../store/cartStore"
 import { useAuthStore } from "../store/authStore"
+import { mediaUrl } from "../utils/mediaUrl"
 
 function CartItem({ item }) {
   const { updateQuantity, removeItem } = useCartStore()
@@ -20,7 +21,7 @@ function CartItem({ item }) {
         border: "1px solid var(--border)",
       }}>
         {product.primary_image ? (
-          <img src={product.primary_image} alt={product.name}
+          <img src={mediaUrl(product.primary_image)} alt={product.name}
             style={{ width: "100%", height: "100%", objectFit: "cover" }} />
         ) : (
           <div style={{ width: "100%", height: "100%", display: "flex",
