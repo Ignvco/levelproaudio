@@ -5,13 +5,15 @@ import { useParams, Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { getProduct } from "../api/products.api"
 import { useCartStore } from "../store/cartStore"
+import { mediaUrl } from "../utils/mediaUrl"
+
 
 // ── Galería ──────────────────────────────────────────────────
 function ImageGallery({ images, name }) {
   const [selected, setSelected] = useState(0)
 
   // Normaliza URL — usa image_url (path relativo) con fallback a image
-  const getUrl = (img) => img?.image_url || img?.image || null
+  const getUrl = (img) => mediaUrl(img?.image)
 
   const validImages = (images || []).filter(img => getUrl(img))
 

@@ -1,6 +1,7 @@
 // components/product/ProductCard.jsx
 
 import { Link } from "react-router-dom"
+import { mediaUrl } from "../../utils/mediaUrl"
 
 export default function ProductCard({ product }) {
   const inStock = Number(product.stock) > 0
@@ -20,8 +21,7 @@ export default function ProductCard({ product }) {
         overflow: "hidden",
       }}>
         {product.primary_image ? (
-          <img
-            src={product.primary_image}
+          <img src={mediaUrl(product.primary_image)}
             alt={product.name}
             style={{
               width: "100%",

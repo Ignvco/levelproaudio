@@ -168,6 +168,12 @@ class AdminProductViewSet(viewsets.ModelViewSet):
             return ProductDetailSerializer
         return AdminProductWriteSerializer
 
+    # ← agrega este método
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+
 
 class AdminCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
@@ -967,11 +973,10 @@ def download_template(request):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def product_images(request, product_id):
-    """GET /api/v1/admin/products/{id}/images/"""
     images = ProductImage.objects.filter(product_id=product_id).order_by("order")
     return Response([{
         "id":         str(img.id),
-        "image":      request.build_absolute_uri(img.image.url) if img.image else None,
+        "image":      img.image.url if img.image else None,  # ← relativa
         "alt_text":   img.alt_text,
         "order":      img.order,
         "is_primary": img.is_primary,
@@ -981,7 +986,6 @@ def product_images(request, product_id):
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 def product_image_upload(request, product_id):
-    """POST /api/v1/admin/products/{id}/images/upload/"""
     from apps.products.models import Product
     try:
         product = Product.objects.get(id=product_id)
@@ -1005,12 +1009,11 @@ def product_image_upload(request, product_id):
     )
     return Response({
         "id":         str(img.id),
-        "image":      request.build_absolute_uri(img.image.url),
+        "image":      img.image.url if img.image else None,  # ← relativa
         "alt_text":   img.alt_text,
         "order":      img.order,
         "is_primary": img.is_primary,
     }, status=201)
-
 
 @api_view(["DELETE"])
 @permission_classes([IsAdminOrStaff])

@@ -8,6 +8,7 @@ import os
 # BASE_DIR apunta a la carpeta backend/
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
+BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "http://localhost:8000")
 # Inicializa environ para leer el .env
 env = environ.Env()
 environ.Env.read_env(BASE_DIR.parent / '.env')  # Lee desde la raíz del repo
