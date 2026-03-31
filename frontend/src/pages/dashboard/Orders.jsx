@@ -1,9 +1,8 @@
 // pages/dashboard/Orders.jsx
 
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import { getOrders } from "../../api/orders.api"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../../api/client"
 
 const statusConfig = {

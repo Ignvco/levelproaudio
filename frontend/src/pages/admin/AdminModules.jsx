@@ -6,7 +6,7 @@ import api from "../../api/client"
 export default function AdminModules() {
   const { data, isLoading } = useQuery({
     queryKey: ["admin-modules"],
-    queryFn:  () => api.get("/admin/modules/").then(r => r.data),
+    queryFn:  () => api.get("/admin/academy/modules/").then(r => r.data), // ← corregido
   })
 
   const modules = data?.results || data || []
@@ -19,7 +19,7 @@ export default function AdminModules() {
           Módulos
         </h1>
         <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
-          {modules.length} módulos — gestiona desde el detalle de cada curso
+          {modules.length} módulos
         </p>
       </div>
       {isLoading ? (
@@ -35,11 +35,14 @@ export default function AdminModules() {
             padding: "10px 20px", borderBottom: "1px solid var(--border)",
             fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
             textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            <span>Módulo</span>
-            <span>Curso</span>
-            <span>Orden</span>
+            <span>Módulo</span><span>Curso</span><span>Orden</span>
           </div>
-          {modules.map((m, i) => (
+          {modules.length === 0 ? (
+            <div style={{ padding: "40px", textAlign: "center",
+              color: "var(--text-3)", fontSize: "14px" }}>
+              No hay módulos. Créalos desde la sección Cursos.
+            </div>
+          ) : modules.map((m, i) => (
             <div key={m.id} style={{
               display: "grid", gridTemplateColumns: "2fr 2fr 1fr",
               padding: "13px 20px", alignItems: "center",
@@ -47,17 +50,11 @@ export default function AdminModules() {
             }}>
               <span style={{ fontSize: "13px" }}>{m.title}</span>
               <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                {m.course_title || "—"}
+                {m.course_title || "—"} {/* ← ahora funciona con el serializer corregido */}
               </span>
               <span style={{ fontSize: "12px", color: "var(--text-3)" }}>{m.order}</span>
             </div>
           ))}
-          {modules.length === 0 && (
-            <div style={{ padding: "40px", textAlign: "center",
-              color: "var(--text-3)", fontSize: "14px" }}>
-              No hay módulos. Créalos desde la sección Cursos.
-            </div>
-          )}
         </div>
       )}
     </div>

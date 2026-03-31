@@ -52,28 +52,28 @@ function NavGroup({ item }) {
 
 // ── navItems — solo datos, sin componentes adentro ───────────
 const navItems = [
-  { to: "/admin",          label: "Dashboard", icon: "◈", end: true },
-  { to: "/admin/analytics", label: "Analytics", icon: "◉" },
-  { to: "/admin/orders",   label: "Órdenes",   icon: "⊡" },
+  { to: "/admin",           label: "Dashboard",  icon: "◈", end: true },
+  { to: "/admin/analytics", label: "Analytics",  icon: "◉" },
+  { to: "/admin/orders",    label: "Órdenes",    icon: "⊡" },
   {
     label: "Productos", icon: "⊞",
     children: [
-      { to: "/admin/products",            label: "Catálogo" }
+      { to: "/admin/products",        label: "Catálogo" },
+      { to: "/admin/products/import", label: "Importar" },  // ← dentro del grupo
     ]
   },
-  { to: "/admin/products/import", label: "Importar",  icon: "↑" },
-  { to: "/admin/users",    label: "Usuarios",  icon: "○" },
-  { to: "/admin/payments", label: "Pagos",     icon: "◎" },
+  { to: "/admin/users",     label: "Usuarios",   icon: "○" },
+  { to: "/admin/payments",  label: "Pagos",      icon: "◎" },
   {
     label: "Academia", icon: "▷",
     children: [
       { to: "/admin/academy",              label: "Cursos" },
-
+      { to: "/admin/academy/modules",      label: "Módulos" },   // ← agregado
+      { to: "/admin/academy/lessons",      label: "Lecciones" }, // ← agregado
       { to: "/admin/academy/enrollments",  label: "Inscripciones" },
     ]
   },
-  { to: "/admin/services",  label: "Servicios", icon: "◇" },
-  
+  { to: "/admin/services",  label: "Servicios",  icon: "◇" },
 ]
 
 // ── AdminLayout ──────────────────────────────────────────────
@@ -154,7 +154,7 @@ export default function AdminLayout() {
             className="hover:text-[var(--text-2)]">
             ← Ver sitio
           </Link>
-          <button onClick={() => { logout(); navigate("/admin/login") }}
+          <button onClick={() => { logout(); navigate("/login") }}
             style={{ width: "100%", display: "flex", alignItems: "center", gap: "8px",
               padding: "8px 10px", borderRadius: "var(--r-md)", fontSize: "12px",
               color: "var(--text-3)", background: "none", border: "none",

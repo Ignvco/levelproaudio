@@ -5,12 +5,12 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import api from "../../api/client"
 
 export default function AdminCategories() {
-  const [modal, setModal]   = useState(null)
-  const queryClient         = useQueryClient()
+  const [modal, setModal] = useState(null)
+  const queryClient       = useQueryClient()
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-categories"],
-    queryFn:  () => api.get("/categories/").then(r => r.data),
+    queryFn:  () => api.get("/admin/categories/").then(r => r.data), // ← admin endpoint
   })
 
   const categories = data?.results || data || []
@@ -20,11 +20,9 @@ export default function AdminCategories() {
       {modal !== null && (
         <CategoryModal
           category={modal}
+          categories={categories}
           onClose={() => setModal(null)}
-          onSave={() => {
-            queryClient.invalidateQueries(["admin-categories"])
-            setModal(null)
-          }}
+          onSave={() => { queryClient.invalidateQueries(["admin-categories"]); setModal(null) }}
         />
       )}
 
@@ -58,10 +56,7 @@ export default function AdminCategories() {
             padding: "10px 20px", borderBottom: "1px solid var(--border)",
             fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
             textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            <span>Nombre</span>
-            <span>Slug</span>
-            <span>Padre</span>
-            <span></span>
+            <span>Nombre</span><span>Slug</span><span>Tipo</span><span></span>
           </div>
           {categories.map((cat, i) => (
             <div key={cat.id} style={{
@@ -69,19 +64,16 @@ export default function AdminCategories() {
               padding: "13px 20px", alignItems: "center",
               borderTop: i > 0 ? "1px solid var(--border)" : "none",
               transition: "background var(--dur) var(--ease)",
-            }}
-              className="hover:bg-[var(--surface-2)]"
-            >
+            }} className="hover:bg-[var(--surface-2)]">
               <span style={{ fontSize: "13px" }}>{cat.name}</span>
               <span style={{ fontSize: "12px", color: "var(--text-3)",
                 fontFamily: "monospace" }}>{cat.slug}</span>
               <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                {cat.parent ? "Sub" : "Raíz"}
+                {cat.parent ? "Subcategoría" : "Raíz"}
               </span>
               <button onClick={() => setModal(cat)}
                 style={{ fontSize: "12px", color: "var(--text-2)", background: "none",
-                  border: "none", cursor: "pointer", transition: "color var(--dur)" }}
-                className="hover:text-white">
+                  border: "none", cursor: "pointer" }} className="hover:text-white">
                 Editar →
               </button>
             </div>
@@ -92,27 +84,40 @@ export default function AdminCategories() {
   )
 }
 
-function CategoryModal({ category, onClose, onSave }) {
+function CategoryModal({ category, categories, onClose, onSave }) {
   const [form, setForm] = useState({
-    name:        category?.name || "",
+    name:        category?.name        || "",
     description: category?.description || "",
-    is_active:   category?.is_active ?? true,
-    order:       category?.order ?? 0,
+    is_active:   category?.is_active   ?? true,
+    order:       category?.order       ?? 0,
+    parent:      category?.parent      || "",
   })
   const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState("")
 
   const handleSave = async () => {
+    if (!form.name.trim()) { setError("El nombre es requerido."); return }
     setSaving(true)
+    setError("")
     try {
+      const payload = {
+        ...form,
+        parent: form.parent || null,
+      }
       if (category?.id) {
-        await api.patch(`/categories/${category.slug}/`, form)
+        await api.patch(`/admin/categories/${category.id}/`, payload) // ← admin + ID
       } else {
-        await api.post("/categories/", form)
+        await api.post("/admin/categories/", payload)                 // ← admin
       }
       onSave()
-    } catch { }
-    finally { setSaving(false) }
+    } catch (e) {
+      setError(e.response?.data?.name?.[0] || "Error al guardar.")
+    } finally {
+      setSaving(false)
+    }
   }
+
+  const parentOptions = categories.filter(c => !c.parent && c.id !== category?.id)
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
@@ -130,26 +135,57 @@ function CategoryModal({ category, onClose, onSave }) {
             cursor: "pointer", color: "var(--text-3)", fontSize: "20px" }}>×</button>
         </div>
         <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "14px" }}>
-          {[
-            { key: "name",        label: "Nombre *",     type: "text" },
-            { key: "description", label: "Descripción",  type: "text" },
-            { key: "order",       label: "Orden",        type: "number" },
-          ].map(({ key, label, type }) => (
-            <div key={key}>
+          {error && (
+            <p style={{ fontSize: "12px", color: "var(--danger)", padding: "8px 12px",
+              background: "rgba(255,59,59,0.08)", borderRadius: "var(--r-sm)",
+              border: "1px solid rgba(255,59,59,0.2)" }}>
+              {error}
+            </p>
+          )}
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+              color: "var(--text-2)", marginBottom: "6px" }}>Nombre *</label>
+            <input value={form.name}
+              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
+              className="input" />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+              color: "var(--text-2)", marginBottom: "6px" }}>Descripción</label>
+            <input value={form.description}
+              onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              className="input" />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+              color: "var(--text-2)", marginBottom: "6px" }}>Categoría padre (opcional)</label>
+            <select value={form.parent}
+              onChange={e => setForm(f => ({ ...f, parent: e.target.value }))}
+              className="input">
+              <option value="">Sin padre (categoría raíz)</option>
+              {parentOptions.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div>
               <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-                color: "var(--text-2)", marginBottom: "6px" }}>{label}</label>
-              <input type={type} value={form[key]}
-                onChange={e => setForm(f => ({ ...f, [key]: e.target.value }))}
+                color: "var(--text-2)", marginBottom: "6px" }}>Orden</label>
+              <input type="number" value={form.order}
+                onChange={e => setForm(f => ({ ...f, order: Number(e.target.value) }))}
                 className="input" />
             </div>
-          ))}
-          <label style={{ display: "flex", alignItems: "center", gap: "8px",
-            cursor: "pointer", fontSize: "13px" }}>
-            <input type="checkbox" checked={form.is_active}
-              onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
-              style={{ accentColor: "var(--accent)" }} />
-            Activa
-          </label>
+            <div style={{ display: "flex", alignItems: "flex-end", paddingBottom: "2px" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: "8px",
+                cursor: "pointer", fontSize: "13px" }}>
+                <input type="checkbox" checked={form.is_active}
+                  onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
+                  style={{ accentColor: "var(--accent)" }} />
+                Activa
+              </label>
+            </div>
+          </div>
         </div>
         <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)",
           display: "flex", gap: "10px", justifyContent: "flex-end" }}>

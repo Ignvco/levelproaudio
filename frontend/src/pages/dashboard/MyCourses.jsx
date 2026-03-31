@@ -29,7 +29,8 @@ function ProgressRing({ pct, size = 48 }) {
 
 // ── Status pill ──────────────────────────────────────────────
 function StatusPill({ pct }) {
-  if (pct === 100) return (
+  if (pct === 100) 
+    return (
     <span style={{ fontSize: "11px", fontWeight: 500, color: "var(--accent)",
       padding: "2px 8px", borderRadius: "100px",
       background: "rgba(26,255,110,0.1)", border: "1px solid rgba(26,255,110,0.25)" }}>
@@ -161,7 +162,7 @@ export default function MyCourses() {
     queryKey: ["enrollments"],
     queryFn:  getEnrollments,
     refetchOnWindowFocus: true,
-    refetchInterval: 30000,
+    
   })
 
   const enrollments = data?.results || data || []

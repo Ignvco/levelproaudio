@@ -1,12 +1,12 @@
 // pages/admin/AdminProducts.jsx
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   getAdminProducts, createAdminProduct, updateAdminProduct, deleteAdminProduct,
   getAdminCategories, createAdminCategory, updateAdminCategory, deleteAdminCategory,
   getAdminBrands, createAdminBrand, updateAdminBrand, deleteAdminBrand,
-  uploadProductImage, deleteProductImage, getProductImages,
+  uploadProductImage, deleteProductImage, getProductImages, setPrimaryImage
 } from "../../api/admin.api"
 
 // ── Modal base ───────────────────────────────────────────────
@@ -73,9 +73,16 @@ function ProductForm({ product, onClose }) {
     queryKey: ["admin-brands"],
     queryFn: getAdminBrands,
   })
+  // ← Imágenes existentes — sin onSuccess
+  const { data: imagesData } = useQuery({
+    queryKey: ["product-images", product?.id],
+    queryFn: () => getProductImages(product.id),
+    enabled: !!product?.id,
+  })
 
   const categories = categoriesData?.results || categoriesData || []
   const brands = brandsData?.results || brandsData || []
+  const existingImages = imagesData?.results || imagesData || []
 
   const [form, setForm] = useState({
     name: product?.name || "",
@@ -91,67 +98,73 @@ function ProductForm({ product, onClose }) {
     is_active: product?.is_active ?? true,
     is_featured: product?.is_featured ?? false,
   })
-  const [images, setImages] = useState([])
-  const [existingImages, setExisting] = useState([])
+  const [newImages, setNewImages] = useState([])
   const [error, setError] = useState("")
-
-  // Carga imágenes existentes si es edición
-  useQuery({
-    queryKey: ["product-images", product?.id],
-    queryFn: () => getProductImages(product.id),
-    enabled: !!product?.id,
-    onSuccess: (data) => setExisting(data?.results || data || []),
-  })
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      const fd = new FormData()
-      Object.entries(form).forEach(([k, v]) => {
-        if (v !== "" && v !== null && v !== undefined) fd.append(k, v)
-      })
+      const payload = {
+        name: form.name,
+        short_description: form.short_description,
+        description: form.description,
+        price: form.price,
+        stock: form.stock,
+        product_type: form.product_type,
+        is_active: form.is_active,
+        is_featured: form.is_featured,
+      }
+      if (form.sku) payload.sku = form.sku
+      if (form.category) payload.category = form.category
+      if (form.brand) payload.brand = form.brand
+      if (form.compare_price) payload.compare_price = form.compare_price
 
       let saved
       if (product?.id) {
-        saved = await updateAdminProduct(product.id, fd)
+        saved = await updateAdminProduct(product.id, payload)
       } else {
-        saved = await createAdminProduct(fd)
+        saved = await createAdminProduct(payload)
       }
 
-      // Sube imágenes nuevas
-      for (const img of images) {
-        const imgFd = new FormData()
-        imgFd.append("image", img.file)
-        imgFd.append("order", img.order)
-        imgFd.append("is_primary", img.is_primary)
-        await uploadProductImage(saved.id, imgFd)
+      // Sube imágenes nuevas una por una
+      for (let i = 0; i < newImages.length; i++) {
+        const img = newImages[i]
+        const fd = new FormData()
+        fd.append("image", img.file)
+        fd.append("order", existingImages.length + i)
+        fd.append("is_primary", existingImages.length === 0 && i === 0 ? "true" : "false")
+        await uploadProductImage(saved.id, fd)
       }
-
       return saved
     },
     onSuccess: () => {
       queryClient.invalidateQueries(["admin-products"])
+      queryClient.invalidateQueries(["product-images", product?.id])
       onClose()
     },
     onError: (e) => {
-      console.log("ERROR DETALLE:", e.response?.data)  // ← agrega esto
       setError(JSON.stringify(e.response?.data) || "Error al guardar.")
     },
   })
 
   const deleteImageMutation = useMutation({
-    mutationFn: ({ productId, imageId }) => deleteProductImage(productId, imageId),
+    mutationFn: (imageId) => deleteProductImage(imageId), // ← solo imageId
+    onSuccess: () => queryClient.invalidateQueries(["product-images", product?.id]),
+  })
+
+  const primaryMutation = useMutation({
+    mutationFn: (imageId) => setPrimaryImage(imageId),
     onSuccess: () => queryClient.invalidateQueries(["product-images", product?.id]),
   })
 
   const handleImageAdd = (e) => {
     const files = Array.from(e.target.files)
-    const newImgs = files.map((file, i) => ({
+    const added = files.map((file, i) => ({
       file,
       preview: URL.createObjectURL(file),
-      order: existingImages.length + images.length + i,
-      is_primary: existingImages.length === 0 && images.length === 0 && i === 0,
+      order: existingImages.length + newImages.length + i,
+      is_primary: existingImages.length === 0 && newImages.length === 0 && i === 0,
     }))
-    setImages(prev => [...prev, ...newImgs])
+    setNewImages(prev => [...prev, ...added])
   }
 
   const inputSt = {
@@ -177,22 +190,24 @@ function ProductForm({ product, onClose }) {
       {/* Nombre + SKU */}
       <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "14px" }}>
         <Field label="Nombre" required>
-          <input value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+          <input value={form.name}
+            onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
             style={inputSt} placeholder="Ej: Shure SM58" />
         </Field>
         <Field label="SKU">
-          <input value={form.sku} onChange={e => setForm(p => ({ ...p, sku: e.target.value }))}
+          <input value={form.sku}
+            onChange={e => setForm(p => ({ ...p, sku: e.target.value }))}
             style={inputSt} placeholder="Ej: SHU-SM58" />
         </Field>
       </div>
 
       {/* Categoría + Marca */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-        <Field label="Categoría" required>
+        <Field label="Categoría">
           <select value={form.category}
             onChange={e => setForm(p => ({ ...p, category: e.target.value }))}
             style={inputSt}>
-            <option value="">— Seleccionar —</option>
+            <option value="">— Sin categoría —</option>
             {categories.map(c => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
@@ -221,21 +236,20 @@ function ProductForm({ product, onClose }) {
       <Field label="Descripción completa">
         <textarea value={form.description}
           onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-          rows={4} style={{ ...inputSt, resize: "vertical" }}
-          placeholder="Descripción detallada del producto..." />
+          rows={4} style={{ ...inputSt, resize: "vertical" }} />
       </Field>
 
-      {/* Precio + Compare price + Stock */}
+      {/* Precio + Compare + Stock */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
         <Field label="Precio" required>
           <input type="number" value={form.price}
             onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
-            style={inputSt} placeholder="150000" min="0" />
+            style={inputSt} min="0" placeholder="150000" />
         </Field>
         <Field label="Precio comparativo">
           <input type="number" value={form.compare_price}
             onChange={e => setForm(p => ({ ...p, compare_price: e.target.value }))}
-            style={inputSt} placeholder="200000" min="0" />
+            style={inputSt} min="0" placeholder="200000" />
         </Field>
         <Field label="Stock" required>
           <input type="number" value={form.stock}
@@ -244,9 +258,9 @@ function ProductForm({ product, onClose }) {
         </Field>
       </div>
 
-      {/* Tipo + Flags */}
+      {/* Tipo + Estado + Destacado */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
-        <Field label="Tipo de producto">
+        <Field label="Tipo">
           <select value={form.product_type}
             onChange={e => setForm(p => ({ ...p, product_type: e.target.value }))}
             style={inputSt}>
@@ -267,26 +281,113 @@ function ProductForm({ product, onClose }) {
           <select value={form.is_featured ? "1" : "0"}
             onChange={e => setForm(p => ({ ...p, is_featured: e.target.value === "1" }))}
             style={inputSt}>
-            <option value="0">No destacado</option>
-            <option value="1">Destacado</option>
+            <option value="0">No</option>
+            <option value="1">Sí</option>
           </select>
         </Field>
       </div>
 
-      {/* Imágenes existentes */}
+      {/* ── Imágenes existentes ── */}
       {existingImages.length > 0 && (
-        <Field label="Imágenes actuales">
+        <Field label={`Imágenes actuales (${existingImages.length})`}>
           <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
             {existingImages.map(img => (
               <div key={img.id} style={{ position: "relative" }}>
-                <img src={img.image} alt=""
+                <img
+                  src={img.image}
+                  alt={img.alt_text || ""}
                   style={{
-                    width: "72px", height: "72px", objectFit: "cover",
-                    borderRadius: "var(--r-sm)", border: "1px solid var(--border)"
+                    width: "80px", height: "80px", objectFit: "cover",
+                    borderRadius: "var(--r-sm)",
+                    border: img.is_primary
+                      ? "2px solid var(--accent)"
+                      : "1px solid var(--border)",
+                  }}
+                />
+                {img.is_primary && (
+                  <span style={{
+                    position: "absolute", top: "3px", left: "3px",
+                    fontSize: "9px", fontWeight: 700,
+                    background: "var(--accent)", color: "#000",
+                    padding: "1px 5px", borderRadius: "3px",
+                  }}>
+                    PRINCIPAL
+                  </span>
+                )}
+                <div style={{
+                  position: "absolute", bottom: 0, left: 0, right: 0,
+                  display: "flex", gap: "3px", padding: "4px",
+                  background: "linear-gradient(transparent, rgba(0,0,0,0.85))",
+                  borderRadius: "0 0 var(--r-sm) var(--r-sm)",
+                }}>
+                  {!img.is_primary && (
+                    <button
+                      onClick={() => primaryMutation.mutate(img.id)}
+                      disabled={primaryMutation.isPending}
+                      title="Hacer principal"
+                      style={{
+                        flex: 1, padding: "3px", borderRadius: "3px",
+                        fontSize: "10px", cursor: "pointer", fontWeight: 600,
+                        background: "rgba(26,255,110,0.3)",
+                        border: "1px solid rgba(26,255,110,0.5)",
+                        color: "var(--accent)",
+                      }}>
+                      ★
+                    </button>
+                  )}
+                  <button
+                    onClick={() => deleteImageMutation.mutate(img.id)}
+                    disabled={deleteImageMutation.isPending}
+                    title="Eliminar"
+                    style={{
+                      flex: 1, padding: "3px", borderRadius: "3px",
+                      fontSize: "10px", cursor: "pointer", fontWeight: 600,
+                      background: "rgba(255,59,59,0.3)",
+                      border: "1px solid rgba(255,59,59,0.5)",
+                      color: "#f87171",
+                    }}>
+                    ×
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Field>
+      )}
+
+      {/* ── Nuevas imágenes a subir ── */}
+      <Field label="Agregar imágenes nuevas">
+        <label style={{
+          display: "flex", alignItems: "center", gap: "10px",
+          padding: "12px 16px", borderRadius: "var(--r-md)",
+          border: "2px dashed var(--border)", cursor: "pointer",
+          color: "var(--text-2)", fontSize: "13px",
+          transition: "border-color var(--dur)",
+          marginBottom: newImages.length > 0 ? "10px" : "0",
+        }}
+          className="hover:border-[var(--border-hover)]"
+        >
+          <span style={{ fontSize: "20px" }}>📎</span>
+          Seleccionar imágenes (puedes elegir varias)
+          <input type="file" accept="image/*" multiple
+            onChange={handleImageAdd} style={{ display: "none" }} />
+        </label>
+
+        {newImages.length > 0 && (
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap" }}>
+            {newImages.map((img, i) => (
+              <div key={i} style={{ position: "relative" }}>
+                <img src={img.preview} alt=""
+                  style={{
+                    width: "80px", height: "80px", objectFit: "cover",
+                    borderRadius: "var(--r-sm)",
+                    border: img.is_primary
+                      ? "2px solid var(--accent)"
+                      : "1px solid var(--border)",
                   }} />
                 {img.is_primary && (
                   <span style={{
-                    position: "absolute", top: "2px", left: "2px",
+                    position: "absolute", top: "3px", left: "3px",
                     fontSize: "9px", fontWeight: 700,
                     background: "var(--accent)", color: "#000",
                     padding: "1px 5px", borderRadius: "3px",
@@ -295,86 +396,26 @@ function ProductForm({ product, onClose }) {
                   </span>
                 )}
                 <button
-                  onClick={() => deleteImageMutation.mutate({
-                    productId: product.id, imageId: img.id
-                  })}
+                  onClick={() => setNewImages(prev => prev.filter((_, j) => j !== i))}
                   style={{
                     position: "absolute", top: "-6px", right: "-6px",
                     width: "18px", height: "18px", borderRadius: "50%",
                     background: "var(--danger)", border: "none",
-                    color: "#fff", fontSize: "12px", cursor: "pointer",
+                    color: "#fff", fontSize: "11px", cursor: "pointer",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    lineHeight: 1,
-                  }}
-                >
+                  }}>
                   ×
                 </button>
               </div>
             ))}
           </div>
-        </Field>
-      )}
-
-      {/* Agregar nuevas imágenes */}
-      <Field label="Agregar imágenes">
-        <div>
-          <label style={{
-            display: "flex", alignItems: "center", gap: "10px",
-            padding: "12px 16px", borderRadius: "var(--r-md)",
-            border: "2px dashed var(--border)", cursor: "pointer",
-            color: "var(--text-2)", fontSize: "13px",
-            transition: "border-color var(--dur) var(--ease)",
-          }}
-            className="hover:border-[var(--border-hover)]"
-          >
-            <span style={{ fontSize: "20px" }}>📎</span>
-            Seleccionar imágenes (puedes elegir varias)
-            <input type="file" accept="image/*" multiple onChange={handleImageAdd}
-              style={{ display: "none" }} />
-          </label>
-
-          {images.length > 0 && (
-            <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "10px" }}>
-              {images.map((img, i) => (
-                <div key={i} style={{ position: "relative" }}>
-                  <img src={img.preview} alt=""
-                    style={{
-                      width: "72px", height: "72px", objectFit: "cover",
-                      borderRadius: "var(--r-sm)", border: "1px solid var(--accent)"
-                    }} />
-                  {img.is_primary && (
-                    <span style={{
-                      position: "absolute", top: "2px", left: "2px",
-                      fontSize: "9px", fontWeight: 700,
-                      background: "var(--accent)", color: "#000",
-                      padding: "1px 5px", borderRadius: "3px",
-                    }}>
-                      PRINCIPAL
-                    </span>
-                  )}
-                  <button
-                    onClick={() => setImages(prev => prev.filter((_, j) => j !== i))}
-                    style={{
-                      position: "absolute", top: "-6px", right: "-6px",
-                      width: "18px", height: "18px", borderRadius: "50%",
-                      background: "var(--danger)", border: "none",
-                      color: "#fff", fontSize: "12px", cursor: "pointer",
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        )}
       </Field>
 
       {/* Botones */}
       <div style={{
         display: "flex", gap: "10px", justifyContent: "flex-end",
-        paddingTop: "8px", borderTop: "1px solid var(--border)"
+        paddingTop: "8px", borderTop: "1px solid var(--border)",
       }}>
         <button onClick={onClose} className="btn btn-ghost"
           style={{ padding: "10px 20px" }}>
@@ -384,10 +425,7 @@ function ProductForm({ product, onClose }) {
           onClick={() => saveMutation.mutate()}
           disabled={saveMutation.isPending || !form.name || !form.price}
           className="btn btn-accent"
-          style={{
-            padding: "10px 24px",
-            opacity: saveMutation.isPending ? 0.6 : 1
-          }}>
+          style={{ padding: "10px 24px", opacity: saveMutation.isPending ? 0.6 : 1 }}>
           {saveMutation.isPending ? "Guardando..." :
             product ? "Guardar cambios" : "Crear producto"}
         </button>
@@ -657,11 +695,187 @@ function BrandForm({ brand, onClose }) {
   )
 }
 
+function ImagePanel({ product, onClose }) {
+  const queryClient = useQueryClient()
+  const fileRef = useRef(null)
+
+  const { data: imagesData, isLoading } = useQuery({
+    queryKey: ["product-images", product.id],
+    queryFn: () => getProductImages(product.id),
+  })
+  const images = imagesData?.results || imagesData || []
+
+  const uploadMutation = useMutation({
+    mutationFn: (file) => {
+      const fd = new FormData()
+      fd.append("image", file)
+      return uploadProductImage(product.id, fd)
+    },
+    onSuccess: () => queryClient.invalidateQueries(["product-images", product.id]),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: deleteProductImage,
+    onSuccess: () => queryClient.invalidateQueries(["product-images", product.id]),
+  })
+
+  const primaryMutation = useMutation({
+    mutationFn: setPrimaryImage,
+    onSuccess: () => queryClient.invalidateQueries(["product-images", product.id]),
+  })
+
+  return (
+    <div style={{
+      position: "fixed", top: 0, right: 0, bottom: 0,
+      width: "440px", zIndex: 100,
+      background: "var(--surface)",
+      borderLeft: "1px solid var(--border)",
+      display: "flex", flexDirection: "column",
+      boxShadow: "-20px 0 60px rgba(0,0,0,0.4)",
+    }}>
+      {/* Header */}
+      <div style={{
+        padding: "20px 24px", borderBottom: "1px solid var(--border)",
+        display: "flex", justifyContent: "space-between", alignItems: "center"
+      }}>
+        <div>
+          <p style={{
+            fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
+            letterSpacing: "0.08em", marginBottom: "4px"
+          }}>Imágenes</p>
+          <p style={{
+            fontSize: "14px", fontWeight: 500, overflow: "hidden",
+            textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "300px"
+          }}>
+            {product.name}
+          </p>
+        </div>
+        <button onClick={onClose} style={{
+          background: "none", border: "none",
+          cursor: "pointer", color: "var(--text-3)", fontSize: "20px"
+        }}
+          className="hover:text-white">×</button>
+      </div>
+
+      {/* Contenido */}
+      <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
+
+        {/* Upload */}
+        <input
+          ref={fileRef} type="file" accept="image/*" multiple
+          style={{ display: "none" }}
+          onChange={e => {
+            Array.from(e.target.files).forEach(f => uploadMutation.mutate(f))
+            e.target.value = ""
+          }}
+        />
+        <button
+          onClick={() => fileRef.current?.click()}
+          disabled={uploadMutation.isPending}
+          style={{
+            width: "100%", padding: "14px",
+            borderRadius: "var(--r-md)", fontSize: "13px",
+            border: "2px dashed var(--border)",
+            background: "transparent", color: "var(--text-2)",
+            cursor: "pointer", marginBottom: "20px",
+            transition: "all var(--dur) var(--ease)",
+          }}
+          className="hover:border-[var(--border-hover)] hover:text-white"
+        >
+          {uploadMutation.isPending
+            ? "Subiendo..."
+            : "+ Agregar imágenes (puedes seleccionar varias)"}
+        </button>
+
+        {/* Grid de imágenes */}
+        {isLoading ? (
+          <div className="grid grid-cols-2 gap-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="skeleton" style={{ aspectRatio: "1" }} />
+            ))}
+          </div>
+        ) : images.length === 0 ? (
+          <div style={{
+            textAlign: "center", padding: "40px 0",
+            color: "var(--text-3)", fontSize: "13px"
+          }}>
+            Sin imágenes todavía. Agrega la primera arriba.
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {images.map(img => (
+              <div key={img.id} style={{
+                position: "relative", borderRadius: "var(--r-md)",
+                overflow: "hidden", border: `2px solid ${img.is_primary
+                  ? "var(--accent)" : "var(--border)"}`,
+                aspectRatio: "1",
+              }}>
+                <img src={img.image} alt={img.alt_text}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+
+                {/* Badge principal */}
+                {img.is_primary && (
+                  <span style={{
+                    position: "absolute", top: "8px", left: "8px",
+                    padding: "2px 8px", borderRadius: "100px",
+                    background: "var(--accent)", color: "#000",
+                    fontSize: "10px", fontWeight: 600,
+                  }}>
+                    Principal
+                  </span>
+                )}
+
+                {/* Acciones */}
+                <div style={{
+                  position: "absolute", bottom: 0, left: 0, right: 0,
+                  padding: "8px", display: "flex", gap: "6px",
+                  background: "linear-gradient(transparent, rgba(0,0,0,0.8))",
+                }}>
+                  {!img.is_primary && (
+                    <button
+                      onClick={() => primaryMutation.mutate(img.id)}
+                      disabled={primaryMutation.isPending}
+                      style={{
+                        flex: 1, padding: "5px 8px", borderRadius: "var(--r-sm)",
+                        fontSize: "11px", fontWeight: 500, cursor: "pointer",
+                        background: "rgba(26,255,110,0.2)",
+                        border: "1px solid rgba(26,255,110,0.4)",
+                        color: "var(--accent)",
+                      }}>
+                      Principal
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (window.confirm("¿Eliminar esta imagen?")) {
+                        deleteMutation.mutate(img.id)
+                      }
+                    }}
+                    disabled={deleteMutation.isPending}
+                    style={{
+                      flex: 1, padding: "5px 8px", borderRadius: "var(--r-sm)",
+                      fontSize: "11px", fontWeight: 500, cursor: "pointer",
+                      background: "rgba(255,59,59,0.2)",
+                      border: "1px solid rgba(255,59,59,0.3)",
+                      color: "var(--danger)",
+                    }}>
+                    Eliminar
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
 // ── AdminProducts ────────────────────────────────────────────
 export default function AdminProducts() {
   const [search, setSearch] = useState("")
   const [tab, setTab] = useState("products")
   const [modal, setModal] = useState(null)
+  const [imagePanel, setImagePanel] = useState(null)
   // modal = { type: "product"|"category"|"brand", item: null|object }
 
   const queryClient = useQueryClient()
@@ -824,7 +1038,10 @@ export default function AdminProducts() {
                 background: "var(--surface-2)", overflow: "hidden",
                 border: "1px solid var(--border)"
               }}>
-                {p.images?.[0]?.image ? (
+                {p.primary_image ? (  // ← usa primary_image del serializer
+                  <img src={p.primary_image} alt=""
+                    style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                ) : p.images?.[0]?.image ? (
                   <img src={p.images[0].image} alt=""
                     style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (

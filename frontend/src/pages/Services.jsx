@@ -22,6 +22,7 @@ function ServiceCard({ service }) {
       <div style={{
         width: "100%", aspectRatio: "16/9",
         background: "var(--surface-2)", overflow: "hidden", flexShrink: 0,
+        position: "relative",
       }}>
         {service.thumbnail ? (
           <img src={service.thumbnail} alt={service.name}

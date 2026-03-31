@@ -8,33 +8,28 @@ class LessonSerializer(serializers.ModelSerializer):
     is_locked = serializers.SerializerMethodField()
 
     class Meta:
-        model = Lesson
+        model  = Lesson
         fields = [
             "id", "title", "video_url", "description",
             "order", "is_free", "duration_minutes", "is_locked",
         ]
 
     def get_is_locked(self, obj):
-        """
-        Una lección está bloqueada si no es free
-        y el usuario no está inscrito en el curso.
-        """
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return not obj.is_free
         enrolled = Enrollment.objects.filter(
-            user=request.user,
-            course=obj.module.course
+            user=request.user, course=obj.module.course
         ).exists()
         return not enrolled and not obj.is_free
 
 
 class ModuleSerializer(serializers.ModelSerializer):
-    lessons = LessonSerializer(many=True, read_only=True)
+    lessons       = LessonSerializer(many=True, read_only=True)
     lessons_count = serializers.SerializerMethodField()
 
     class Meta:
-        model = Module
+        model  = Module
         fields = ["id", "title", "order", "lessons", "lessons_count"]
 
     def get_lessons_count(self, obj):
@@ -42,7 +37,6 @@ class ModuleSerializer(serializers.ModelSerializer):
 
 
 class CourseListSerializer(serializers.ModelSerializer):
-    """Serializer liviano para la grilla de cursos."""
     total_lessons  = serializers.IntegerField(read_only=True)
     total_duration = serializers.IntegerField(read_only=True)
     enrolled_count = serializers.IntegerField(read_only=True)
@@ -50,7 +44,7 @@ class CourseListSerializer(serializers.ModelSerializer):
     is_enrolled    = serializers.SerializerMethodField()
 
     class Meta:
-        model = Course
+        model  = Course
         fields = [
             "id", "title", "slug", "short_description",
             "thumbnail", "price", "level", "level_display",
@@ -68,7 +62,6 @@ class CourseListSerializer(serializers.ModelSerializer):
 
 
 class CourseDetailSerializer(serializers.ModelSerializer):
-    """Serializer completo para la página de detalle."""
     modules        = ModuleSerializer(many=True, read_only=True)
     total_lessons  = serializers.IntegerField(read_only=True)
     total_duration = serializers.IntegerField(read_only=True)
@@ -78,7 +71,7 @@ class CourseDetailSerializer(serializers.ModelSerializer):
     progress       = serializers.SerializerMethodField()
 
     class Meta:
-        model = Course
+        model  = Course
         fields = [
             "id", "title", "slug", "description", "short_description",
             "thumbnail", "preview_url", "price", "level", "level_display",
@@ -106,15 +99,19 @@ class CourseDetailSerializer(serializers.ModelSerializer):
 
 
 class EnrollmentSerializer(serializers.ModelSerializer):
-    course = CourseListSerializer(read_only=True)
+    course              = CourseListSerializer(read_only=True)
     progress_percentage = serializers.IntegerField(read_only=True)
 
     class Meta:
-        model = Enrollment
-        fields = ["id", "course", "progress_percentage", "created_at"]
+        model  = Enrollment
+        fields = [
+            "id", "course", "progress_percentage",
+            "completed_at",   # ← agregado
+            "created_at",
+        ]
 
 
 class LessonProgressSerializer(serializers.ModelSerializer):
     class Meta:
-        model = LessonProgress
+        model  = LessonProgress
         fields = ["id", "lesson", "completed", "updated_at"]

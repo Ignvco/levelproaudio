@@ -50,16 +50,20 @@ class AdminBrandSerializer(drf_serializers.ModelSerializer):
 
 
 class AdminModuleSerializer(drf_serializers.ModelSerializer):
+    course_title = drf_serializers.CharField(source="course.title", read_only=True)
+
     class Meta:
         model  = Module
-        fields = ["id", "title", "order", "course"]
+        fields = ["id", "title", "order", "course", "course_title"]
 
 
 class AdminLessonSerializer(drf_serializers.ModelSerializer):
+    module_title = drf_serializers.CharField(source="module.title", read_only=True)
+
     class Meta:
         model  = Lesson
         fields = ["id", "title", "video_url", "description",
-                  "order", "is_free", "duration_minutes", "module"]
+                  "order", "is_free", "duration_minutes", "module", "module_title"]
 
 
 class CourseAdminSerializer(drf_serializers.ModelSerializer):
@@ -167,11 +171,13 @@ class AdminProductViewSet(viewsets.ModelViewSet):
 
 class AdminCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
-    serializer_class   = AdminCategorySerializer
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
     queryset           = Category.objects.all().order_by("order", "name")
     filter_backends    = [filters.SearchFilter]
     search_fields      = ["name"]
+
+    # ← usa siempre AdminCategorySerializer (no lo pisa con get_serializer_class)
+    serializer_class   = AdminCategorySerializer
     
     def get_serializer_class(self):
         return CategorySerializer
@@ -212,9 +218,11 @@ class AdminProductImageViewSet(viewsets.ModelViewSet):
             ).order_by("order")
         return ProductImage.objects.all().order_by("order")
 
-    def get_serializer_class(self):
-        return ProductImageSerializer
-
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["request"] = self.request
+        return context
+    
     def create(self, request, *args, **kwargs):
         product_pk = self.kwargs.get("product_pk")
         if not product_pk:
@@ -435,6 +443,38 @@ def admin_users(request):
 
     return Response({"results": data, "count": users.count()})
 
+@api_view(["PATCH", "DELETE"])
+@permission_classes([IsAdminOrStaff])
+def admin_user_detail(request, user_id):
+    """PATCH/DELETE /api/v1/admin/users/{id}/"""
+    try:
+        user = User.objects.get(id=user_id)
+    except User.DoesNotExist:
+        return Response({"error": "Usuario no encontrado."}, status=404)
+
+    if request.method == "PATCH":
+        allowed = ["first_name", "last_name", "phone", "is_active", "is_staff"]
+        for field in allowed:
+            if field in request.data:
+                setattr(user, field, request.data[field])
+        user.save(update_fields=[f for f in allowed if f in request.data])
+        return Response({"detail": "Usuario actualizado."})
+
+    if request.method == "DELETE":
+        user.delete()
+        return Response({"detail": "Usuario eliminado."}, status=204)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAdminOrStaff])
+def admin_delete_enrollment(request, enrollment_id):
+    """DELETE /api/v1/admin/academy/enrollments/{id}/"""
+    try:
+        enrollment = Enrollment.objects.get(id=enrollment_id)
+        enrollment.delete()
+        return Response({"deleted": True})
+    except Enrollment.DoesNotExist:
+        return Response({"error": "No encontrada."}, status=404)
 
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
@@ -467,8 +507,10 @@ def admin_payments(request):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_academy(request):
+    from django.db.models import Count as DCount
     courses = Course.objects.annotate(
-        enrollment_count=Count("enrollments")
+        enrollment_count=DCount("enrollments", distinct=True),
+        lessons_count=DCount("modules__lessons", distinct=True),  # ← agrega
     ).order_by("-created_at")
 
     return Response({
@@ -481,8 +523,7 @@ def admin_academy(request):
             "is_free":          c.is_free,
             "level":            c.level,
             "enrollment_count": c.enrollment_count,
-            "total_lessons":    c.total_lessons,
-            # Path relativo — proxy Vite lo resuelve
+            "total_lessons":    c.lessons_count,  # ← usa anotación, no property
             "thumbnail":        c.thumbnail.url if c.thumbnail else None,
         } for c in courses]
     })
@@ -520,6 +561,67 @@ def admin_services(request):
         } for r in requests_qs],
     })
 
+@api_view(["GET", "POST"])
+@permission_classes([IsAdminOrStaff])
+def admin_services_crud(request):
+    """GET/POST /api/v1/admin/services/list/"""
+    from apps.services.models import Service, ServiceCategory
+    from apps.services.serializers import ServiceDetailSerializer
+
+    if request.method == "GET":
+        services = Service.objects.select_related("category").order_by("order", "name")
+        return Response({
+            "results": [{
+                "id":               str(s.id),
+                "name":             s.name,
+                "slug":             s.slug,
+                "category_name":    s.category.name if s.category else "—",
+                "price_display":    s.price_display,
+                "price_type":       s.price_type,
+                "is_active":        s.is_active,
+                "is_featured":      s.is_featured,
+                "thumbnail":        s.thumbnail.url if s.thumbnail else None,
+            } for s in services]
+        })
+
+    # POST — crear servicio
+    from django.utils.text import slugify
+    data = request.data
+    service = Service.objects.create(
+        name             = data.get("name", ""),
+        slug             = slugify(data.get("name", "")),
+        short_description= data.get("short_description", ""),
+        description      = data.get("description", ""),
+        price_type       = data.get("price_type", "quote"),
+        price            = data.get("price") or None,
+        is_active        = data.get("is_active", True),
+        is_featured      = data.get("is_featured", False),
+        order            = data.get("order", 0),
+    )
+    return Response({"id": str(service.id), "name": service.name}, status=201)
+
+
+@api_view(["PATCH", "DELETE"])
+@permission_classes([IsAdminOrStaff])
+def admin_service_detail(request, service_id):
+    """PATCH/DELETE /api/v1/admin/services/{id}/"""
+    from apps.services.models import Service
+    try:
+        service = Service.objects.get(id=service_id)
+    except Service.DoesNotExist:
+        return Response({"error": "No encontrado."}, status=404)
+
+    if request.method == "DELETE":
+        service.delete()
+        return Response({"deleted": True})
+
+    allowed = ["name", "short_description", "description", "price_type",
+               "price", "is_active", "is_featured", "order"]
+    for field in allowed:
+        if field in request.data:
+            setattr(service, field, request.data[field])
+    service.save()
+    return Response({"id": str(service.id), "name": service.name})
 
 @api_view(["PATCH"])
 @permission_classes([IsAdminOrStaff])
@@ -861,3 +963,77 @@ def download_template(request):
     response["Content-Disposition"] = 'attachment; filename="plantilla_productos_levelproaudio.xlsx"'
     wb.save(response)
     return response
+
+@api_view(["GET"])
+@permission_classes([IsAdminOrStaff])
+def product_images(request, product_id):
+    """GET /api/v1/admin/products/{id}/images/"""
+    images = ProductImage.objects.filter(product_id=product_id).order_by("order")
+    return Response([{
+        "id":         str(img.id),
+        "image":      request.build_absolute_uri(img.image.url) if img.image else None,
+        "alt_text":   img.alt_text,
+        "order":      img.order,
+        "is_primary": img.is_primary,
+    } for img in images])
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminOrStaff])
+def product_image_upload(request, product_id):
+    """POST /api/v1/admin/products/{id}/images/upload/"""
+    from apps.products.models import Product
+    try:
+        product = Product.objects.get(id=product_id)
+    except Product.DoesNotExist:
+        return Response({"error": "Producto no encontrado."}, status=404)
+
+    image_file = request.FILES.get("image")
+    if not image_file:
+        return Response({"error": "No se recibió imagen."}, status=400)
+
+    is_primary = not ProductImage.objects.filter(
+        product=product, is_primary=True
+    ).exists()
+
+    img = ProductImage.objects.create(
+        product    = product,
+        image      = image_file,
+        alt_text   = request.data.get("alt_text", product.name),
+        is_primary = is_primary,
+        order      = ProductImage.objects.filter(product=product).count(),
+    )
+    return Response({
+        "id":         str(img.id),
+        "image":      request.build_absolute_uri(img.image.url),
+        "alt_text":   img.alt_text,
+        "order":      img.order,
+        "is_primary": img.is_primary,
+    }, status=201)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAdminOrStaff])
+def product_image_delete(request, image_id):
+    """DELETE /api/v1/admin/images/{id}/delete/"""
+    try:
+        img = ProductImage.objects.get(id=image_id)
+        img.image.delete(save=False)
+        img.delete()
+        return Response({"deleted": True})
+    except ProductImage.DoesNotExist:
+        return Response({"error": "No encontrada."}, status=404)
+
+
+@api_view(["PATCH"])
+@permission_classes([IsAdminOrStaff])
+def product_image_set_primary(request, image_id):
+    """PATCH /api/v1/admin/images/{id}/primary/"""
+    try:
+        img = ProductImage.objects.get(id=image_id)
+        ProductImage.objects.filter(product=img.product).update(is_primary=False)
+        img.is_primary = True
+        img.save(update_fields=["is_primary"])
+        return Response({"is_primary": True})
+    except ProductImage.DoesNotExist:
+        return Response({"error": "No encontrada."}, status=404)

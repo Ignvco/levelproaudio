@@ -5,51 +5,36 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction
-from .models import Cart, CartItem, Order, OrderItem
-from .serializers import CartSerializer, OrderSerializer, CartItemSerializer
+from .models import Cart, CartItem, Order, OrderItem, OrderStatus
+from .serializers import CartSerializer, OrderSerializer
 from apps.products.models import Product
 
 
 class CartViewSet(viewsets.ModelViewSet):
-    """
-    Carrito del usuario autenticado.
-    GET    /api/v1/cart/           → ver carrito activo
-    POST   /api/v1/cart/items/     → agregar item
-    PATCH  /api/v1/cart/items/{id} → actualizar cantidad
-    DELETE /api/v1/cart/items/{id} → eliminar item
-    """
-    serializer_class = CartSerializer
+    serializer_class   = CartSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         return Cart.objects.filter(
-            user=self.request.user,
-            is_active=True
+            user=self.request.user, is_active=True
         ).prefetch_related("items__product")
 
     def get_or_create_cart(self):
         cart, _ = Cart.objects.get_or_create(
-            user=self.request.user,
-            is_active=True
+            user=self.request.user, is_active=True
         )
         return cart
 
     @action(detail=False, methods=["get"])
     def active(self, request):
-        """GET /api/v1/cart/active/ → carrito activo del usuario"""
         cart = self.get_or_create_cart()
-        serializer = CartSerializer(cart)
-        return Response(serializer.data)
+        return Response(CartSerializer(cart).data)
 
     @action(detail=False, methods=["post"])
     def add_item(self, request):
-        """
-        POST /api/v1/cart/add_item/
-        Body: { product_id, quantity }
-        """
-        cart = self.get_or_create_cart()
+        cart       = self.get_or_create_cart()
         product_id = request.data.get("product_id")
-        quantity = int(request.data.get("quantity", 1))
+        quantity   = int(request.data.get("quantity", 1))
 
         try:
             product = Product.objects.get(id=product_id, is_active=True)
@@ -66,11 +51,8 @@ class CartViewSet(viewsets.ModelViewSet):
             )
 
         item, created = CartItem.objects.get_or_create(
-            cart=cart,
-            product=product,
-            defaults={"quantity": quantity}
+            cart=cart, product=product, defaults={"quantity": quantity}
         )
-
         if not created:
             item.quantity = min(item.quantity + quantity, product.stock)
             item.save()
@@ -79,35 +61,24 @@ class CartViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["delete"])
     def clear(self, request):
-        """DELETE /api/v1/cart/clear/ → vaciar carrito"""
         cart = self.get_or_create_cart()
         cart.items.all().delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class OrderViewSet(viewsets.ModelViewSet):
-    """
-    Pedidos del usuario.
-    GET  /api/v1/orders/       → historial
-    GET  /api/v1/orders/{id}/  → detalle
-    POST /api/v1/orders/       → crear orden
-    """
-    serializer_class = OrderSerializer
+    serializer_class   = OrderSerializer
     permission_classes = [IsAuthenticated]
-    http_method_names = ["get", "post","delete", "head", "options"]
+    http_method_names  = ["get", "post", "delete", "head", "options"]
 
     def get_queryset(self):
         return Order.objects.filter(
             user=self.request.user
-        ).prefetch_related("items").order_by("-created_at")
+        ).prefetch_related("items", "payments").order_by("-created_at")
 
     @transaction.atomic
     def create(self, request):
-        """
-        Crea una orden con sus items en una sola transacción.
-        Si algo falla, revierte todo — no quedan órdenes a medias.
-        """
-        data = request.data
+        data       = request.data
         items_data = data.get("items", [])
 
         if not items_data:
@@ -116,7 +87,21 @@ class OrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Calcular total desde los items reales (no confiar en el frontend)
+        # Verifica stock ANTES de crear la orden
+        for item_data in items_data:
+            try:
+                product = Product.objects.get(id=item_data["product"])
+            except Product.DoesNotExist:
+                return Response(
+                    {"error": f"Producto {item_data['product']} no existe."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if product.stock < int(item_data["quantity"]):
+                return Response(
+                    {"error": f"Stock insuficiente para {product.name}."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
         total = sum(
             float(item["price"]) * int(item["quantity"])
             for item in items_data
@@ -130,50 +115,39 @@ class OrderViewSet(viewsets.ModelViewSet):
             total=total,
         )
 
-        # Crear cada OrderItem y descontar stock
         for item_data in items_data:
-            try:
-                product = Product.objects.get(id=item_data["product"])
-            except Product.DoesNotExist:
-                raise ValueError(f"Producto {item_data['product']} no existe.")
-
+            product = Product.objects.get(id=item_data["product"])
             OrderItem.objects.create(
-                order=order,
-                product=product,
-                product_name=item_data.get("product_name", product.name),
-                price=item_data["price"],
-                quantity=item_data["quantity"],
+                order        = order,
+                product      = product,
+                product_name = item_data.get("product_name", product.name),
+                price        = item_data["price"],
+                quantity     = item_data["quantity"],
             )
-
-            # Descontar stock
             product.stock = max(0, product.stock - int(item_data["quantity"]))
             product.save(update_fields=["stock"])
 
-        serializer = OrderSerializer(order)
-        return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+        return Response(
+            OrderSerializer(order).data,
+            status=status.HTTP_201_CREATED
+        )
+
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
-        """
-        DELETE /api/v1/orders/{id}/
-        Cancela la orden y restablece el stock de cada producto.
-        Solo se puede cancelar si está en estado 'pending'.
-        """
         order = self.get_object()
 
-        if order.status != "pending":
+        if order.status != OrderStatus.PENDING:
             return Response(
                 {"error": "Solo puedes cancelar órdenes pendientes."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Restablecer stock de cada item
         for item in order.items.all():
             if item.product:
-                item.product.stock = item.product.stock + item.quantity
+                item.product.stock += item.quantity
                 item.product.save(update_fields=["stock"])
 
-        order.status = "cancelled"
+        order.status = OrderStatus.CANCELLED
         order.save(update_fields=["status"])
 
         return Response(

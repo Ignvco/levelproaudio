@@ -42,16 +42,17 @@ class BrandSerializer(serializers.ModelSerializer):
 
 
 class ProductImageSerializer(serializers.ModelSerializer):
-    image_url = serializers.SerializerMethodField()
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model  = ProductImage
-        fields = ["id", "image", "image_url", "alt_text", "order", "is_primary"]
+        fields = ["id", "image", "alt_text", "order", "is_primary"]
 
-    def get_image_url(self, obj):
-        if not obj.image:
-            return None
-        return obj.image.url
+    def get_image(self, obj):
+        request = self.context.get("request")
+        if obj.image and request:
+            return request.build_absolute_uri(obj.image.url)
+        return obj.image.url if obj.image else None
 
 
 class ProductListSerializer(serializers.ModelSerializer):

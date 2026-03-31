@@ -24,7 +24,7 @@ export default function AdminEnrollments() {
   )
 
   const deleteMutation = useMutation({
-    mutationFn: (id) => api.delete(`/admin/enrollments/${id}/`),
+    mutationFn: (id) => api.delete(`/admin/academy/enrollments/${id}/`),
     onSuccess: () => queryClient.invalidateQueries(["admin-enrollments"]),
   })
 

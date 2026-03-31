@@ -10,7 +10,7 @@ export default function AdminBrands() {
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-brands"],
-    queryFn:  () => api.get("/brands/").then(r => r.data),
+    queryFn:  () => api.get("/admin/brands/").then(r => r.data), // ← admin endpoint
   })
 
   const brands = data?.results || data || []
@@ -21,10 +21,7 @@ export default function AdminBrands() {
         <BrandModal
           brand={modal}
           onClose={() => setModal(null)}
-          onSave={() => {
-            queryClient.invalidateQueries(["admin-brands"])
-            setModal(null)
-          }}
+          onSave={() => { queryClient.invalidateQueries(["admin-brands"]); setModal(null) }}
         />
       )}
 
@@ -58,10 +55,7 @@ export default function AdminBrands() {
             padding: "10px 20px", borderBottom: "1px solid var(--border)",
             fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
             textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            <span>Nombre</span>
-            <span>Slug</span>
-            <span>Website</span>
-            <span></span>
+            <span>Nombre</span><span>Slug</span><span>Website</span><span></span>
           </div>
           {brands.map((brand, i) => (
             <div key={brand.id} style={{
@@ -69,9 +63,7 @@ export default function AdminBrands() {
               padding: "13px 20px", alignItems: "center",
               borderTop: i > 0 ? "1px solid var(--border)" : "none",
               transition: "background var(--dur) var(--ease)",
-            }}
-              className="hover:bg-[var(--surface-2)]"
-            >
+            }} className="hover:bg-[var(--surface-2)]">
               <span style={{ fontSize: "13px" }}>{brand.name}</span>
               <span style={{ fontSize: "12px", color: "var(--text-3)",
                 fontFamily: "monospace" }}>{brand.slug}</span>
@@ -81,8 +73,7 @@ export default function AdminBrands() {
               </span>
               <button onClick={() => setModal(brand)}
                 style={{ fontSize: "12px", color: "var(--text-2)", background: "none",
-                  border: "none", cursor: "pointer" }}
-                className="hover:text-white">
+                  border: "none", cursor: "pointer" }} className="hover:text-white">
                 Editar →
               </button>
             </div>
@@ -100,18 +91,24 @@ function BrandModal({ brand, onClose, onSave }) {
     is_active: brand?.is_active ?? true,
   })
   const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState("")
 
   const handleSave = async () => {
+    if (!form.name.trim()) { setError("El nombre es requerido."); return }
     setSaving(true)
+    setError("")
     try {
       if (brand?.id) {
-        await api.patch(`/brands/${brand.slug}/`, form)
+        await api.patch(`/admin/brands/${brand.id}/`, form) // ← admin endpoint con ID
       } else {
-        await api.post("/brands/", form)
+        await api.post("/admin/brands/", form)              // ← admin endpoint
       }
       onSave()
-    } catch { }
-    finally { setSaving(false) }
+    } catch (e) {
+      setError(e.response?.data?.name?.[0] || "Error al guardar.")
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -130,6 +127,13 @@ function BrandModal({ brand, onClose, onSave }) {
             cursor: "pointer", color: "var(--text-3)", fontSize: "20px" }}>×</button>
         </div>
         <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "14px" }}>
+          {error && (
+            <p style={{ fontSize: "12px", color: "var(--danger)", padding: "8px 12px",
+              background: "rgba(255,59,59,0.08)", borderRadius: "var(--r-sm)",
+              border: "1px solid rgba(255,59,59,0.2)" }}>
+              {error}
+            </p>
+          )}
           {[
             { key: "name",    label: "Nombre *" },
             { key: "website", label: "Website" },
@@ -142,6 +146,13 @@ function BrandModal({ brand, onClose, onSave }) {
                 className="input" />
             </div>
           ))}
+          <label style={{ display: "flex", alignItems: "center", gap: "8px",
+            cursor: "pointer", fontSize: "13px" }}>
+            <input type="checkbox" checked={form.is_active}
+              onChange={e => setForm(f => ({ ...f, is_active: e.target.checked }))}
+              style={{ accentColor: "var(--accent)" }} />
+            Activa
+          </label>
         </div>
         <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)",
           display: "flex", gap: "10px", justifyContent: "flex-end" }}>

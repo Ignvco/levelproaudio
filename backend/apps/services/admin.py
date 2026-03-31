@@ -1,38 +1,40 @@
 # apps/services/admin.py
 
 from django.contrib import admin
-from django.utils.html import format_html
+from django.utils import timezone
 from .models import ServiceCategory, Service, Booking, ServiceRequest
 
 
 @admin.register(ServiceCategory)
 class ServiceCategoryAdmin(admin.ModelAdmin):
-    list_display    = ["icon", "name", "slug", "order"]
+    list_display        = ["name", "icon", "order"]  # ← quitado is_active que no existe
     prepopulated_fields = {"slug": ("name",)}
-    ordering        = ["order"]
+    ordering            = ["order"]
+    search_fields       = ["name"]
 
 
 @admin.register(Service)
 class ServiceAdmin(admin.ModelAdmin):
-    list_display    = [
+    list_display  = [
         "name", "category", "price_type",
-        "price_display_admin", "is_active", "is_featured", "order"
+        "price_display", "is_active", "is_featured"
     ]
-    list_filter     = ["is_active", "is_featured", "price_type", "category"]
-    search_fields   = ["name", "description"]
+    list_filter   = ["is_active", "is_featured", "price_type", "category"]
+    search_fields = ["name"]
     prepopulated_fields = {"slug": ("name",)}
-    readonly_fields = ["created_at", "updated_at"]
+    readonly_fields     = ["price_display", "created_at", "updated_at"]
 
     fieldsets = (
-        ("Información principal", {
-            "fields": ("name", "slug", "category", "short_description", "description", "thumbnail")
+        ("Información", {
+            "fields": ("name", "slug", "category", "short_description",
+                       "description", "thumbnail")
         }),
-        ("Precio y duración", {
+        ("Precio", {
+            # ← usa price (no base_price) y quita price_display del form
             "fields": ("price_type", "price", "duration_hours")
         }),
         ("Entregables", {
-            "fields": ("deliverables",),
-            "description": "Escribe un entregable por línea."
+            "fields": ("deliverables",)
         }),
         ("Visibilidad", {
             "fields": ("is_active", "is_featured", "order")
@@ -43,75 +45,45 @@ class ServiceAdmin(admin.ModelAdmin):
         }),
     )
 
-    def price_display_admin(self, obj):
-        return format_html(
-            '<span style="color:var(--accent);">{}</span>',
-            obj.price_display
-        )
-    price_display_admin.short_description = "Precio"
-
 
 @admin.register(Booking)
 class BookingAdmin(admin.ModelAdmin):
-    list_display    = ["user", "service", "scheduled_date", "status_badge", "created_at"]
-    list_filter     = ["status", "service"]
-    search_fields   = ["user__email", "service__name"]
-    readonly_fields = ["created_at", "updated_at"]
+    list_display  = ["user", "service", "scheduled_date", "status", "created_at"]
+    list_filter   = ["status", "service"]
+    search_fields = ["user__email"]
+    ordering      = ["-created_at"]
 
-    status_colors = {
-        "pending":   "#f59e0b",
-        "confirmed": "#00e676",
-        "completed": "#3b82f6",
-        "cancelled": "#ff4444",
-    }
+    actions = ["confirm_bookings", "complete_bookings"]
 
-    def status_badge(self, obj):
-        color = self.status_colors.get(obj.status, "#888")
-        return format_html(
-            '<span style="color:{};font-weight:bold;">{}</span>',
-            color, obj.get_status_display()
-        )
-    status_badge.short_description = "Estado"
+    @admin.action(description="Confirmar reservas seleccionadas")
+    def confirm_bookings(self, request, queryset):
+        queryset.update(status="confirmed", confirmed_at=timezone.now())
+
+    @admin.action(description="Marcar como completadas")
+    def complete_bookings(self, request, queryset):
+        queryset.update(status="completed")
 
 
 @admin.register(ServiceRequest)
 class ServiceRequestAdmin(admin.ModelAdmin):
-    list_display    = [
-        "name", "email", "service", "budget",
-        "preferred_date", "status_badge", "created_at"
-    ]
-    list_filter     = ["status", "service"]
-    search_fields   = ["name", "email", "message"]
+    list_display  = ["name", "email", "service", "status", "created_at"]
+    list_filter   = ["status"]
+    search_fields = ["name", "email"]
+    ordering      = ["-created_at"]
     readonly_fields = ["created_at", "updated_at"]
 
     fieldsets = (
+        ("Cliente", {
+            "fields": ("user", "name", "email", "phone")
+        }),
         ("Solicitud", {
-            "fields": ("user", "service", "name", "email", "phone", "message")
+            "fields": ("service", "message", "budget", "preferred_date")
         }),
-        ("Detalles", {
-            "fields": ("budget", "preferred_date", "status")
-        }),
-        ("Notas internas", {
-            "fields": ("admin_notes",),
-            "classes": ("collapse",)
+        ("Gestión", {
+            "fields": ("status", "admin_notes")
         }),
         ("Auditoría", {
             "fields": ("created_at", "updated_at"),
             "classes": ("collapse",)
         }),
     )
-
-    status_colors = {
-        "pending":   "#f59e0b",
-        "contacted": "#3b82f6",
-        "accepted":  "#00e676",
-        "rejected":  "#ff4444",
-    }
-
-    def status_badge(self, obj):
-        color = self.status_colors.get(obj.status, "#888")
-        return format_html(
-            '<span style="color:{};font-weight:bold;">{}</span>',
-            color, obj.get_status_display()
-        )
-    status_badge.short_description = "Estado"

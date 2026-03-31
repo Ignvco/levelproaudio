@@ -19,8 +19,6 @@ export const createOrder = async (payload) => {
   return response.data
 }
 
-
-
 // ── Carrito ──────────────────────────────────────────────────
 export const getActiveCart = async () => {
   const response = await api.get("/cart/active/")

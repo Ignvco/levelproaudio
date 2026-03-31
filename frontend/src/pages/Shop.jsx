@@ -9,16 +9,18 @@ import ProductCard from "../components/product/ProductCard"
 export default function Shop() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState(searchParams.get("search") || "")
+  const [page, setPage] = useState(1)
 
   const filters = {
-    search:        searchParams.get("search") || undefined,
+    search: searchParams.get("search") || undefined,
     category__slug: searchParams.get("category") || undefined,
-    ordering:      searchParams.get("ordering") || "-created_at",
+    ordering: searchParams.get("ordering") || "-created_at",
+    page,
   }
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["products", filters],
-    queryFn:  () => getProducts(filters),
+    queryKey: ["products", filters, page],
+    queryFn: () => getProducts(filters),
   })
 
   const products = data?.results || []
@@ -121,10 +123,18 @@ export default function Shop() {
             {/* Paginación */}
             {(data?.next || data?.previous) && (
               <div style={{ display: "flex", justifyContent: "center", gap: "12px", marginTop: "48px" }}>
-                <button disabled={!data.previous} className="btn btn-ghost" style={{ opacity: data.previous ? 1 : 0.4 }}>
+                <button
+                  disabled={!data.previous}
+                  onClick={() => setPage(p => p - 1)}
+                  className="btn btn-ghost"
+                  style={{ opacity: data.previous ? 1 : 0.4 }}>
                   ← Anterior
                 </button>
-                <button disabled={!data.next} className="btn btn-ghost" style={{ opacity: data.next ? 1 : 0.4 }}>
+                <button
+                  disabled={!data.next}
+                  onClick={() => setPage(p => p + 1)}
+                  className="btn btn-ghost"
+                  style={{ opacity: data.next ? 1 : 0.4 }}>
                   Siguiente →
                 </button>
               </div>
