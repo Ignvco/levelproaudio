@@ -1,12 +1,14 @@
 // pages/CourseDetail.jsx
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { getCourse, enrollCourse, purchaseCourse } from "../api/academy.api"
+import {
+  getCourse, enrollCourse, purchaseCourse,
+  markLessonComplete, getCourseProgress
+} from "../api/academy.api"
 import { createPayment } from "../api/payments.api"
 import { useAuthStore } from "../store/authStore"
-import fondoImg from "../assets/fondo.png"
 
 // ── Video Player ─────────────────────────────────────────────
 function VideoPlayer({ url, title }) {
@@ -102,8 +104,8 @@ function ProgressBar({ percentage }) {
           transition: "width 0.5s ease",
         }} />
       </div>
-      <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--accent)",
-        flexShrink: 0 }}>
+      <span style={{ fontSize: "12px", fontWeight: 500,
+        color: "var(--accent)", flexShrink: 0 }}>
         {percentage}%
       </span>
     </div>
@@ -133,7 +135,6 @@ function EnrollmentReceipt({ course, onClose, navigate }) {
         }}>
           ✓
         </div>
-
         <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.6rem",
           marginBottom: "8px" }}>
           ¡Inscripción exitosa!
@@ -145,8 +146,6 @@ function EnrollmentReceipt({ course, onClose, navigate }) {
         <p style={{ fontSize: "15px", fontWeight: 500, marginBottom: "20px" }}>
           {course?.title}
         </p>
-
-        {/* Comprobante */}
         <div style={{
           padding: "14px 16px", borderRadius: "var(--r-md)",
           background: "var(--surface-2)", border: "1px solid var(--border)",
@@ -173,7 +172,6 @@ function EnrollmentReceipt({ course, onClose, navigate }) {
             </div>
           ))}
         </div>
-
         <div style={{ display: "flex", gap: "10px" }}>
           <button onClick={onClose} className="btn btn-accent"
             style={{ flex: 1, justifyContent: "center", fontSize: "13px" }}>
@@ -204,16 +202,35 @@ export default function CourseDetail() {
   const [paymentMethod,   setPaymentMethod]   = useState("mercadopago_cl")
   const [purchaseOrderId, setPurchaseOrderId] = useState(null)
 
+  // ── Curso ────────────────────────────────────────────────
   const { data: course, isLoading, isError } = useQuery({
     queryKey: ["course", slug],
     queryFn:  () => getCourse(slug),
-    onSuccess: (data) => {
-      const first = data.modules?.[0]?.lessons?.[0]
-      if (first && !first.is_locked && !activeLesson) {
-        setActiveLesson(first)
-      }
-    },
   })
+
+  // ── Selecciona primera lección al cargar ─────────────────
+  useEffect(() => {
+    if (!course) return
+    const first = course.modules?.[0]?.lessons?.[0]
+    if (first && !first.is_locked && !activeLesson) {
+      setActiveLesson(first)
+    }
+  }, [course])
+
+  // ── Progreso del backend ─────────────────────────────────
+  const { data: progressData } = useQuery({
+    queryKey: ["course-progress", slug],
+    queryFn:  () => getCourseProgress(slug),
+    enabled:  !!course?.is_enrolled,
+  })
+
+  useEffect(() => {
+    if (!progressData) return
+    const completed = progressData
+      .filter(p => p.completed)
+      .map(p => p.lesson)
+    setCompletedIds(new Set(completed))
+  }, [progressData])
 
   // ── Inscripción gratuita ─────────────────────────────────
   const enrollMutation = useMutation({
@@ -225,7 +242,7 @@ export default function CourseDetail() {
     },
   })
 
-  // ── Compra de curso de pago ──────────────────────────────
+  // ── Compra de curso ──────────────────────────────────────
   const purchaseMutation = useMutation({
     mutationFn: () => purchaseCourse(slug),
     onSuccess: (data) => {
@@ -253,15 +270,18 @@ export default function CourseDetail() {
   // ── Marcar lección completa ──────────────────────────────
   const handleMarkComplete = async (lesson) => {
     if (!isAuthenticated || !course?.is_enrolled) return
+    const isCompleted = completedIds.has(lesson.id)
     const newSet = new Set(completedIds)
-    if (newSet.has(lesson.id)) newSet.delete(lesson.id)
+    if (isCompleted) newSet.delete(lesson.id)
     else newSet.add(lesson.id)
-    setCompletedIds(newSet)
+    setCompletedIds(newSet) // optimistic update
     try {
-      const { markLessonComplete } = await import("../api/academy.api")
-      await markLessonComplete(lesson.id, !completedIds.has(lesson.id))
+      await markLessonComplete(lesson.id, !isCompleted)
       queryClient.invalidateQueries(["course", slug])
-    } catch (e) { console.error(e) }
+      queryClient.invalidateQueries(["course-progress", slug])
+    } catch {
+      setCompletedIds(completedIds) // revert
+    }
   }
 
   const handleEnrollOrBuy = () => {
@@ -269,21 +289,21 @@ export default function CourseDetail() {
       navigate(`/login?next=/academy/${slug}`)
       return
     }
-    if (course.is_free) {
-      enrollMutation.mutate()
-    } else {
-      purchaseMutation.mutate()
-    }
+    if (course.is_free) enrollMutation.mutate()
+    else purchaseMutation.mutate()
   }
 
   const allLessons = course?.modules?.flatMap(m => m.lessons) || []
+
+  const localProgress = allLessons.length
+    ? Math.round((completedIds.size / allLessons.length) * 100)
+    : course?.progress || 0
 
   // ── Loading ──────────────────────────────────────────────
   if (isLoading) return (
     <div style={{ maxWidth: "1280px", margin: "0 auto",
       padding: "clamp(40px, 6vw, 80px) clamp(20px, 5vw, 60px)" }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "48px" }}
-        className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-12">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-12">
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <div className="skeleton" style={{ aspectRatio: "16/9", borderRadius: "var(--r-lg)" }} />
           <div className="skeleton" style={{ height: "32px", width: "60%" }} />
@@ -296,9 +316,7 @@ export default function CourseDetail() {
 
   if (isError || !course) return (
     <div style={{ textAlign: "center", padding: "80px 24px" }}>
-      <p style={{ color: "var(--text-3)", marginBottom: "16px" }}>
-        Curso no encontrado.
-      </p>
+      <p style={{ color: "var(--text-3)", marginBottom: "16px" }}>Curso no encontrado.</p>
       <Link to="/academy" style={{ color: "var(--accent)", fontSize: "14px" }}>
         ← Volver a la academia
       </Link>
@@ -315,7 +333,6 @@ export default function CourseDetail() {
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
 
-      {/* Comprobante inscripción gratuita */}
       {showReceipt && (
         <EnrollmentReceipt
           course={course}
@@ -330,8 +347,7 @@ export default function CourseDetail() {
         {/* Breadcrumb */}
         <nav style={{ display: "flex", alignItems: "center", gap: "8px",
           fontSize: "13px", color: "var(--text-3)", marginBottom: "32px" }}>
-          <Link to="/academy"
-            style={{ transition: "color var(--dur)" }}
+          <Link to="/academy" style={{ transition: "color var(--dur)" }}
             className="hover:text-white">
             Academia
           </Link>
@@ -339,19 +355,16 @@ export default function CourseDetail() {
           <span style={{ color: "var(--text)" }}>{course.title}</span>
         </nav>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "48px",
-          alignItems: "start" }}
-          className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-12"
-        >
-          {/* ── Columna principal ──────────────────────── */}
+        <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-12"
+          style={{ alignItems: "start" }}>
+
+          {/* ── Columna principal ── */}
           <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
 
-            {/* Reproductor o thumbnail */}
             {activeLesson ? (
               <>
                 <VideoPlayer url={activeLesson.video_url} title={activeLesson.title} />
 
-                {/* Info lección activa */}
                 <div style={{ display: "flex", alignItems: "flex-start",
                   justifyContent: "space-between", gap: "16px" }}>
                   <div>
@@ -369,8 +382,7 @@ export default function CourseDetail() {
                     <button
                       onClick={() => handleMarkComplete(activeLesson)}
                       style={{
-                        flexShrink: 0,
-                        display: "flex", alignItems: "center", gap: "8px",
+                        flexShrink: 0, display: "flex", alignItems: "center", gap: "8px",
                         padding: "8px 14px", borderRadius: "var(--r-md)",
                         fontSize: "12px", fontWeight: 500, cursor: "pointer",
                         transition: "all var(--dur) var(--ease)",
@@ -386,8 +398,7 @@ export default function CourseDetail() {
                   )}
                 </div>
 
-                {/* Progreso */}
-                {course.is_enrolled && course.progress !== undefined && (
+                {course.is_enrolled && (
                   <div style={{
                     padding: "16px 20px", borderRadius: "var(--r-md)",
                     background: "var(--surface)", border: "1px solid var(--border)",
@@ -399,7 +410,7 @@ export default function CourseDetail() {
                         {completedIds.size}/{allLessons.length} lecciones
                       </span>
                     </div>
-                    <ProgressBar percentage={course.progress} />
+                    <ProgressBar percentage={localProgress} />
                   </div>
                 )}
               </>
@@ -425,8 +436,7 @@ export default function CourseDetail() {
                 <span style={{
                   fontSize: "11px", fontWeight: 500, color: levelInfo.color,
                   padding: "2px 10px", borderRadius: "100px",
-                  background: `${levelInfo.color}14`,
-                  border: `1px solid ${levelInfo.color}30`,
+                  background: `${levelInfo.color}14`, border: `1px solid ${levelInfo.color}30`,
                 }}>
                   {levelInfo.label}
                 </span>
@@ -449,8 +459,7 @@ export default function CourseDetail() {
               </h1>
 
               {course.description && (
-                <p style={{ fontSize: "15px", color: "var(--text-2)",
-                  lineHeight: 1.7 }}>
+                <p style={{ fontSize: "15px", color: "var(--text-2)", lineHeight: 1.7 }}>
                   {course.description}
                 </p>
               )}
@@ -486,13 +495,12 @@ export default function CourseDetail() {
             ))}
           </div>
 
-          {/* ── Sidebar ────────────────────────────────── */}
+          {/* ── Sidebar ── */}
           <div style={{ position: "sticky", top: "88px" }}>
             <div style={{
               background: "var(--surface)", border: "1px solid var(--border)",
               borderRadius: "var(--r-xl)", overflow: "hidden",
             }}>
-              {/* Precio */}
               <div style={{ padding: "24px 24px 20px" }}>
                 <p style={{
                   fontFamily: "var(--font-serif)", fontSize: "2.2rem",
@@ -513,7 +521,6 @@ export default function CourseDetail() {
               <div style={{ padding: "0 24px 24px",
                 display: "flex", flexDirection: "column", gap: "12px" }}>
 
-                {/* ── Estado: Inscrito ── */}
                 {course.is_enrolled ? (
                   <>
                     <div style={{
@@ -526,11 +533,9 @@ export default function CourseDetail() {
                       <span>✓</span>
                       <span>Estás inscrito en este curso</span>
                     </div>
-                    <ProgressBar percentage={course.progress || 0} />
+                    <ProgressBar percentage={localProgress} />
                   </>
-
                 ) : !showPayment ? (
-                  /* ── Botón inscribirse / comprar ── */
                   <button
                     onClick={handleEnrollOrBuy}
                     disabled={enrollMutation.isPending || purchaseMutation.isPending}
@@ -539,41 +544,29 @@ export default function CourseDetail() {
                       opacity: (enrollMutation.isPending || purchaseMutation.isPending) ? 0.7 : 1 }}>
                     {enrollMutation.isPending || purchaseMutation.isPending
                       ? "Procesando..."
-                      : course.is_free
-                      ? "Inscribirse gratis"
-                      : `Comprar curso`}
+                      : course.is_free ? "Inscribirse gratis" : "Comprar curso"}
                   </button>
-
                 ) : (
-                  /* ── Selector de método de pago ── */
                   <div>
                     <p style={{ fontSize: "13px", fontWeight: 500, marginBottom: "10px" }}>
                       Elige método de pago:
                     </p>
-
                     {[
-                      { id: "mercadopago_cl", label: "MercadoPago", icon: "💳",
-                        desc: "Tarjetas, Khipu, efectivo" },
-                      { id: "paypal",         label: "PayPal",      icon: "🌎",
-                        desc: "Tarjetas internacionales" },
-                      { id: "global66",       label: "Transferencia", icon: "🏦",
-                        desc: "Global66 — pago manual" },
+                      { id: "mercadopago_cl", label: "MercadoPago",  icon: "💳", desc: "Tarjetas, Khipu, efectivo" },
+                      { id: "paypal",         label: "PayPal",       icon: "🌎", desc: "Tarjetas internacionales" },
+                      { id: "global66",       label: "Transferencia",icon: "🏦", desc: "Global66 — pago manual" },
                     ].map(m => (
                       <button key={m.id} onClick={() => setPaymentMethod(m.id)} style={{
                         width: "100%", display: "flex", alignItems: "center",
                         gap: "10px", padding: "10px 12px", borderRadius: "var(--r-md)",
                         marginBottom: "6px", cursor: "pointer",
                         transition: "all var(--dur) var(--ease)",
-                        background: paymentMethod === m.id
-                          ? "var(--surface-2)" : "transparent",
-                        border: `1px solid ${paymentMethod === m.id
-                          ? "var(--border-hover)" : "var(--border)"}`,
+                        background: paymentMethod === m.id ? "var(--surface-2)" : "transparent",
+                        border: `1px solid ${paymentMethod === m.id ? "var(--border-hover)" : "var(--border)"}`,
                       }}>
                         <div style={{
-                          width: "14px", height: "14px", borderRadius: "50%",
-                          flexShrink: 0,
-                          border: `2px solid ${paymentMethod === m.id
-                            ? "var(--accent)" : "var(--border)"}`,
+                          width: "14px", height: "14px", borderRadius: "50%", flexShrink: 0,
+                          border: `2px solid ${paymentMethod === m.id ? "var(--accent)" : "var(--border)"}`,
                           display: "flex", alignItems: "center", justifyContent: "center",
                         }}>
                           {paymentMethod === m.id && (
@@ -588,13 +581,11 @@ export default function CourseDetail() {
                         </div>
                       </button>
                     ))}
-
                     <button
                       onClick={() => payMutation.mutate()}
                       disabled={payMutation.isPending}
                       className="btn btn-accent"
-                      style={{ width: "100%", justifyContent: "center",
-                        marginTop: "8px",
+                      style={{ width: "100%", justifyContent: "center", marginTop: "8px",
                         opacity: payMutation.isPending ? 0.7 : 1 }}>
                       {payMutation.isPending
                         ? "Redirigiendo..."
@@ -602,17 +593,12 @@ export default function CourseDetail() {
                         ? "Ver instrucciones de transferencia"
                         : "Ir al pago →"}
                     </button>
-
                     <button
-                      onClick={() => {
-                        setShowPayment(false)
-                        setPurchaseOrderId(null)
-                      }}
+                      onClick={() => { setShowPayment(false); setPurchaseOrderId(null) }}
                       style={{
                         width: "100%", fontSize: "12px", color: "var(--text-3)",
                         background: "none", border: "none", cursor: "pointer",
-                        marginTop: "6px", padding: "6px",
-                        transition: "color var(--dur)",
+                        marginTop: "6px", padding: "6px", transition: "color var(--dur)",
                       }}
                       className="hover:text-[var(--text-2)]">
                       Cancelar
@@ -620,7 +606,6 @@ export default function CourseDetail() {
                   </div>
                 )}
 
-                {/* Qué incluye */}
                 <div style={{
                   paddingTop: "16px", borderTop: "1px solid var(--border)",
                   display: "flex", flexDirection: "column", gap: "8px",

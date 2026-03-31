@@ -83,8 +83,10 @@ function Modal({ title, onClose, children, wide }) {
 function Field({ label, required, children }) {
   return (
     <div>
-      <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-        color: "var(--text-2)", marginBottom: "7px" }}>
+      <label style={{
+        display: "block", fontSize: "12px", fontWeight: 500,
+        color: "var(--text-2)", marginBottom: "7px"
+      }}>
         {label}{required && <span style={{ color: "var(--accent)" }}> *</span>}
       </label>
       {children}
@@ -102,18 +104,18 @@ const inputSt = {
 function CourseForm({ course, onClose }) {
   const queryClient = useQueryClient()
   const [form, setForm] = useState({
-    title:             course?.title             || "",
+    title: course?.title || "",
     short_description: course?.short_description || "",
-    description:       course?.description       || "",
-    price:             course?.price             || "0",
-    level:             course?.level             || "beginner",
-    is_free:           course?.is_free           ?? false,
-    is_published:      course?.is_published      ?? false,
-    preview_url:       course?.preview_url       || "",
+    description: course?.description || "",
+    price: course?.price || "0",
+    level: course?.level || "beginner",
+    is_free: course?.is_free ?? false,
+    is_published: course?.is_published ?? false,
+    preview_url: course?.preview_url || "",
   })
-  const [thumb, setThumb]           = useState(null)
-  const [thumbPreview, setPreview]  = useState(course?.thumbnail || null)
-  const [error, setError]           = useState("")
+  const [thumb, setThumb] = useState(null)
+  const [thumbPreview, setPreview] = useState(course?.thumbnail || null)
+  const [error, setError] = useState("")
 
   const mutation = useMutation({
     mutationFn: () => {
@@ -134,9 +136,11 @@ function CourseForm({ course, onClose }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
       {error && (
-        <div style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
+        <div style={{
+          padding: "10px 14px", borderRadius: "var(--r-md)",
           background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.2)",
-          color: "var(--danger)", fontSize: "13px" }}>
+          color: "var(--danger)", fontSize: "13px"
+        }}>
           {error}
         </div>
       )}
@@ -209,8 +213,10 @@ function CourseForm({ course, onClose }) {
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           {thumbPreview && (
             <img src={thumbPreview} alt=""
-              style={{ width: "80px", height: "48px", objectFit: "cover",
-                borderRadius: "var(--r-sm)", border: "1px solid var(--border)" }} />
+              style={{
+                width: "80px", height: "48px", objectFit: "cover",
+                borderRadius: "var(--r-sm)", border: "1px solid var(--border)"
+              }} />
           )}
           <label style={{
             padding: "10px 16px", borderRadius: "var(--r-md)",
@@ -229,8 +235,10 @@ function CourseForm({ course, onClose }) {
         </div>
       </Field>
 
-      <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end",
-        paddingTop: "8px", borderTop: "1px solid var(--border)" }}>
+      <div style={{
+        display: "flex", gap: "10px", justifyContent: "flex-end",
+        paddingTop: "8px", borderTop: "1px solid var(--border)"
+      }}>
         <button onClick={onClose} className="btn btn-ghost" style={{ padding: "10px 20px" }}>
           Cancelar
         </button>
@@ -249,8 +257,8 @@ function CourseForm({ course, onClose }) {
 function ModuleForm({ module, courseId, courses, onClose }) {
   const queryClient = useQueryClient()
   const [form, setForm] = useState({
-    title:  module?.title  || "",
-    order:  module?.order  || 0,
+    title: module?.title || "",
+    order: module?.order || 0,
     course: courseId || module?.course || "",
   })
   const [error, setError] = useState("")
@@ -269,9 +277,11 @@ function ModuleForm({ module, courseId, courses, onClose }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
       {error && (
-        <div style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
+        <div style={{
+          padding: "10px 14px", borderRadius: "var(--r-md)",
           background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.2)",
-          color: "var(--danger)", fontSize: "13px" }}>
+          color: "var(--danger)", fontSize: "13px"
+        }}>
           {error}
         </div>
       )}
@@ -302,8 +312,10 @@ function ModuleForm({ module, courseId, courses, onClose }) {
           style={inputSt} min="0" />
       </Field>
 
-      <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end",
-        paddingTop: "8px", borderTop: "1px solid var(--border)" }}>
+      <div style={{
+        display: "flex", gap: "10px", justifyContent: "flex-end",
+        paddingTop: "8px", borderTop: "1px solid var(--border)"
+      }}>
         <button onClick={onClose} className="btn btn-ghost"
           style={{ padding: "10px 20px" }}>
           Cancelar
@@ -325,20 +337,20 @@ function LessonForm({ lesson, moduleId, onClose }) {
 
   // Carga módulos para el selector
   const { data: modulesData } = useQuery({
-  queryKey: ["admin-all-modules"],
-  queryFn:  () => api.get("/admin/academy/modules/").then(r => r.data), // ← corregido
-  enabled:  !moduleId,
-})
+    queryKey: ["admin-all-modules"],
+    queryFn: () => api.get("/admin/academy/modules/").then(r => r.data), // ← corregido
+    enabled: !moduleId,
+  })
   const allModules = modulesData?.results || modulesData || []
 
   const [form, setForm] = useState({
-    title:            lesson?.title            || "",
-    video_url:        lesson?.video_url        || "",
-    description:      lesson?.description      || "",
+    title: lesson?.title || "",
+    video_url: lesson?.video_url || "",
+    description: lesson?.description || "",
     duration_minutes: lesson?.duration_minutes || 0,
-    order:            lesson?.order            || 0,
-    is_free:          lesson?.is_free          ?? false,
-    module:           moduleId || lesson?.module || "",
+    order: lesson?.order || 0,
+    is_free: lesson?.is_free ?? false,
+    module: moduleId || lesson?.module || "",
   })
   const [error, setError] = useState("")
 
@@ -356,9 +368,11 @@ function LessonForm({ lesson, moduleId, onClose }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
       {error && (
-        <div style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
+        <div style={{
+          padding: "10px 14px", borderRadius: "var(--r-md)",
           background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.2)",
-          color: "var(--danger)", fontSize: "13px" }}>
+          color: "var(--danger)", fontSize: "13px"
+        }}>
           {error}
         </div>
       )}
@@ -418,8 +432,10 @@ function LessonForm({ lesson, moduleId, onClose }) {
         </Field>
       </div>
 
-      <div style={{ display: "flex", gap: "10px", justifyContent: "flex-end",
-        paddingTop: "8px", borderTop: "1px solid var(--border)" }}>
+      <div style={{
+        display: "flex", gap: "10px", justifyContent: "flex-end",
+        paddingTop: "8px", borderTop: "1px solid var(--border)"
+      }}>
         <button onClick={onClose} className="btn btn-ghost"
           style={{ padding: "10px 20px" }}>
           Cancelar
@@ -437,20 +453,20 @@ function LessonForm({ lesson, moduleId, onClose }) {
 
 // ── Course Card expandible ───────────────────────────────────
 function CourseCard({ course, onEdit, onDelete }) {
-  const queryClient       = useQueryClient()
+  const queryClient = useQueryClient()
   const [expanded, setExpanded] = useState(false)
-  const [modal, setModal]       = useState(null)
+  const [modal, setModal] = useState(null)
 
   const { data: modulesData } = useQuery({
     queryKey: ["admin-modules", course.id],
-    queryFn:  () => getModules(course.id),
-    enabled:  expanded,
+    queryFn: () => getModules(course.id),
+    enabled: expanded,
   })
   const modules = modulesData?.results || modulesData || []
 
   const delModMutation = useMutation({
     mutationFn: deleteModule,
-    onSuccess:  () => queryClient.invalidateQueries(["admin-modules", course.id]),
+    onSuccess: () => queryClient.invalidateQueries(["admin-modules", course.id]),
   })
 
   const levelColors = {
@@ -470,8 +486,10 @@ function CourseCard({ course, onEdit, onDelete }) {
         className="hover:border-[var(--border-hover)]"
       >
         {/* Header de la card */}
-        <div style={{ display: "flex", gap: "16px", padding: "16px 20px",
-          alignItems: "flex-start" }}>
+        <div style={{
+          display: "flex", gap: "16px", padding: "16px 20px",
+          alignItems: "flex-start"
+        }}>
 
           {/* Thumbnail */}
           <div style={{
@@ -483,8 +501,10 @@ function CourseCard({ course, onEdit, onDelete }) {
               <img src={course.thumbnail} alt={course.title}
                 style={{ width: "100%", height: "100%", objectFit: "cover" }} />
             ) : (
-              <div style={{ width: "100%", height: "100%", display: "flex",
-                alignItems: "center", justifyContent: "center", fontSize: "20px" }}>
+              <div style={{
+                width: "100%", height: "100%", display: "flex",
+                alignItems: "center", justifyContent: "center", fontSize: "20px"
+              }}>
                 🎛️
               </div>
             )}
@@ -492,8 +512,10 @@ function CourseCard({ course, onEdit, onDelete }) {
 
           {/* Info */}
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center",
-              gap: "8px", marginBottom: "6px", flexWrap: "wrap" }}>
+            <div style={{
+              display: "flex", alignItems: "center",
+              gap: "8px", marginBottom: "6px", flexWrap: "wrap"
+            }}>
               <p style={{ fontSize: "14px", fontWeight: 500 }}>{course.title}</p>
               <span style={{
                 fontSize: "10px", fontWeight: 600, padding: "1px 7px",
@@ -517,8 +539,10 @@ function CourseCard({ course, onEdit, onDelete }) {
               </span>
             </div>
 
-            <div style={{ display: "flex", gap: "16px", fontSize: "12px",
-              color: "var(--text-3)" }}>
+            <div style={{
+              display: "flex", gap: "16px", fontSize: "12px",
+              color: "var(--text-3)"
+            }}>
               <span>
                 {course.is_free ? (
                   <span style={{ color: "var(--accent)" }}>Gratis</span>
@@ -564,11 +588,15 @@ function CourseCard({ course, onEdit, onDelete }) {
 
         {/* Módulos expandidos */}
         {expanded && (
-          <div style={{ borderTop: "1px solid var(--border)",
-            padding: "16px 20px", background: "var(--surface-2)" }}>
+          <div style={{
+            borderTop: "1px solid var(--border)",
+            padding: "16px 20px", background: "var(--surface-2)"
+          }}>
 
-            <div style={{ display: "flex", justifyContent: "space-between",
-              alignItems: "center", marginBottom: "12px" }}>
+            <div style={{
+              display: "flex", justifyContent: "space-between",
+              alignItems: "center", marginBottom: "12px"
+            }}>
               <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--text-2)" }}>
                 Módulos ({modules.length})
               </p>
@@ -585,8 +613,10 @@ function CourseCard({ course, onEdit, onDelete }) {
             </div>
 
             {modules.length === 0 ? (
-              <p style={{ fontSize: "13px", color: "var(--text-3)",
-                textAlign: "center", padding: "16px 0" }}>
+              <p style={{
+                fontSize: "13px", color: "var(--text-3)",
+                textAlign: "center", padding: "16px 0"
+              }}>
                 Sin módulos. Agrega el primero.
               </p>
             ) : (
@@ -639,20 +669,20 @@ function CourseCard({ course, onEdit, onDelete }) {
 
 // ── Module Row con lecciones ─────────────────────────────────
 function ModuleRow({ module, onEdit, onDelete }) {
-  const queryClient             = useQueryClient()
+  const queryClient = useQueryClient()
   const [expanded, setExpanded] = useState(false)
-  const [modal, setModal]       = useState(null)
+  const [modal, setModal] = useState(null)
 
   const { data: lessonsData } = useQuery({
     queryKey: ["admin-lessons", module.id],
-    queryFn:  () => getLessons(module.id),
-    enabled:  expanded,
+    queryFn: () => getLessons(module.id),
+    enabled: expanded,
   })
   const lessons = lessonsData?.results || lessonsData || []
 
   const delLessonMutation = useMutation({
     mutationFn: deleteLesson,
-    onSuccess:  () => queryClient.invalidateQueries(["admin-lessons", module.id]),
+    onSuccess: () => queryClient.invalidateQueries(["admin-lessons", module.id]),
   })
 
   return (
@@ -661,11 +691,15 @@ function ModuleRow({ module, onEdit, onDelete }) {
         background: "var(--surface)", border: "1px solid var(--border)",
         borderRadius: "var(--r-md)", overflow: "hidden",
       }}>
-        <div style={{ display: "flex", alignItems: "center",
-          justifyContent: "space-between", padding: "11px 16px" }}>
+        <div style={{
+          display: "flex", alignItems: "center",
+          justifyContent: "space-between", padding: "11px 16px"
+        }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <span style={{ fontSize: "11px", color: "var(--text-3)",
-              width: "20px", textAlign: "center" }}>
+            <span style={{
+              fontSize: "11px", color: "var(--text-3)",
+              width: "20px", textAlign: "center"
+            }}>
               {module.order}
             </span>
             <p style={{ fontSize: "13px" }}>{module.title}</p>
@@ -697,10 +731,14 @@ function ModuleRow({ module, onEdit, onDelete }) {
 
         {/* Lecciones */}
         {expanded && (
-          <div style={{ borderTop: "1px solid var(--border)",
-            padding: "12px 16px", background: "var(--surface-2)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between",
-              alignItems: "center", marginBottom: "10px" }}>
+          <div style={{
+            borderTop: "1px solid var(--border)",
+            padding: "12px 16px", background: "var(--surface-2)"
+          }}>
+            <div style={{
+              display: "flex", justifyContent: "space-between",
+              alignItems: "center", marginBottom: "10px"
+            }}>
               <p style={{ fontSize: "11px", color: "var(--text-3)" }}>
                 {lessons.length} lección{lessons.length !== 1 ? "es" : ""}
               </p>
@@ -717,8 +755,10 @@ function ModuleRow({ module, onEdit, onDelete }) {
             </div>
 
             {lessons.length === 0 ? (
-              <p style={{ fontSize: "12px", color: "var(--text-3)",
-                textAlign: "center", padding: "8px 0" }}>
+              <p style={{
+                fontSize: "12px", color: "var(--text-3)",
+                textAlign: "center", padding: "8px 0"
+              }}>
                 Sin lecciones todavía.
               </p>
             ) : (
@@ -731,8 +771,10 @@ function ModuleRow({ module, onEdit, onDelete }) {
                     background: "var(--surface)", border: "1px solid var(--border)",
                   }}>
                     <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <span style={{ fontSize: "11px", color: "var(--text-3)",
-                        width: "16px", textAlign: "center" }}>
+                      <span style={{
+                        fontSize: "11px", color: "var(--text-3)",
+                        width: "16px", textAlign: "center"
+                      }}>
                         {lesson.order}
                       </span>
                       <div>
@@ -796,27 +838,30 @@ function ModuleRow({ module, onEdit, onDelete }) {
 // ── AdminAcademy ─────────────────────────────────────────────
 // ── AdminAcademy — con tabs ──────────────────────────────────
 export default function AdminAcademy() {
-  const queryClient   = useQueryClient()
+  const queryClient = useQueryClient()
   const [modal, setModal] = useState(null)
-  const [tab, setTab]     = useState("courses")
+  const [tab, setTab] = useState("courses")
 
   // ── Datos ────────────────────────────────────────────────
   const { data: coursesData, isLoading: loadingCourses } = useQuery({
     queryKey: ["admin-academy-full"],
-    queryFn:  getAcademyFull,
+    queryFn: getAcademyFull,
+    refetchOnMount: true,
   })
 
   const { data: modulesData, isLoading: loadingModules } = useQuery({
-  queryKey: ["admin-all-modules"],
-  queryFn:  () => api.get("/admin/academy/modules/").then(r => r.data), // ← corregido
-  enabled:  tab === "modules",
-})
+    queryKey: ["admin-all-modules"],
+    queryFn: () => api.get("/admin/academy/modules/").then(r => r.data), // ← corregido
+    enabled: tab === "modules",
+    refetchOnMount: true,
+  })
 
-const { data: lessonsData, isLoading: loadingLessons } = useQuery({
-  queryKey: ["admin-all-lessons"],
-  queryFn:  () => api.get("/admin/academy/lessons/").then(r => r.data), // ← corregido
-  enabled:  tab === "lessons",
-})
+  const { data: lessonsData, isLoading: loadingLessons } = useQuery({
+    queryKey: ["admin-all-lessons"],
+    queryFn: () => api.get("/admin/academy/lessons/").then(r => r.data), // ← corregido
+    enabled: tab === "lessons",
+    refetchOnMount: true,
+  })
 
   const courses = coursesData?.results || []
   const modules = modulesData?.results || modulesData || []
@@ -824,24 +869,25 @@ const { data: lessonsData, isLoading: loadingLessons } = useQuery({
 
   const deleteMutation = useMutation({
     mutationFn: deleteCourse,
-    onSuccess:  () => queryClient.invalidateQueries(["admin-academy-full"]),
+    onSuccess: () => queryClient.invalidateQueries(["admin-academy-full"]),
   })
   const delModMutation = useMutation({
     mutationFn: deleteModule,
-    onSuccess:  () => queryClient.invalidateQueries(["admin-all-modules"]),
+    onSuccess: () => queryClient.invalidateQueries(["admin-all-modules"]),
   })
   const delLessonMutation = useMutation({
     mutationFn: deleteLesson,
-    onSuccess:  () => queryClient.invalidateQueries(["admin-all-lessons"]),
+    onSuccess: () => queryClient.invalidateQueries(["admin-all-lessons"]),
   })
 
   const totalEnrollments = courses.reduce((a, c) => a + (c.enrollment_count || 0), 0)
 
   const tabs = [
     { key: "courses", label: `Cursos (${courses.length})` },
-    { key: "modules", label: `Módulos (${modules.length})` },
-    { key: "lessons", label: `Lecciones (${lessons.length})` },
+    { key: "modules", label: `Módulos${tab === "modules" ? ` (${modules.length})` : ""}` },
+    { key: "lessons", label: `Lecciones${tab === "lessons" ? ` (${lessons.length})` : ""}` },
   ]
+
 
   const actionBtnSt = (color) => ({
     padding: "4px 10px", borderRadius: "100px", fontSize: "11px",
@@ -853,12 +899,16 @@ const { data: lessonsData, isLoading: loadingLessons } = useQuery({
     <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between",
+      <div style={{
+        display: "flex", justifyContent: "space-between",
         alignItems: "flex-start", marginBottom: "24px",
-        flexWrap: "wrap", gap: "16px" }}>
+        flexWrap: "wrap", gap: "16px"
+      }}>
         <div>
-          <h1 style={{ fontFamily: "var(--font-serif)",
-            fontSize: "clamp(1.8rem, 3vw, 2.4rem)", marginBottom: "6px" }}>
+          <h1 style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: "clamp(1.8rem, 3vw, 2.4rem)", marginBottom: "6px"
+          }}>
             Academia
           </h1>
           <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
@@ -869,7 +919,7 @@ const { data: lessonsData, isLoading: loadingLessons } = useQuery({
           onClick={() => setModal({
             type: tab === "modules" ? "module"
               : tab === "lessons" ? "lesson"
-              : "course",
+                : "course",
             item: null,
             courseId: null,
             moduleId: null,
@@ -878,7 +928,7 @@ const { data: lessonsData, isLoading: loadingLessons } = useQuery({
           style={{ padding: "10px 20px", fontSize: "13px" }}>
           + {tab === "modules" ? "Nuevo módulo"
             : tab === "lessons" ? "Nueva lección"
-            : "Nuevo curso"}
+              : "Nuevo curso"}
         </button>
       </div>
 
@@ -907,8 +957,10 @@ const { data: lessonsData, isLoading: loadingLessons } = useQuery({
               ))}
             </div>
           ) : courses.length === 0 ? (
-            <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-              borderRadius: "var(--r-xl)", padding: "60px", textAlign: "center" }}>
+            <div style={{
+              background: "var(--surface)", border: "1px solid var(--border)",
+              borderRadius: "var(--r-xl)", padding: "60px", textAlign: "center"
+            }}>
               <p style={{ fontSize: "40px", marginBottom: "16px" }}>🎛️</p>
               <p style={{ fontSize: "16px", fontWeight: 500, marginBottom: "16px" }}>
                 No hay cursos todavía
@@ -939,8 +991,10 @@ const { data: lessonsData, isLoading: loadingLessons } = useQuery({
 
       {/* ── TAB MÓDULOS ── */}
       {tab === "modules" && (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-lg)", overflow: "hidden" }}>
+        <div style={{
+          background: "var(--surface)", border: "1px solid var(--border)",
+          borderRadius: "var(--r-lg)", overflow: "hidden"
+        }}>
 
           {/* Header tabla */}
           <div style={{
@@ -956,15 +1010,19 @@ const { data: lessonsData, isLoading: loadingLessons } = useQuery({
           </div>
 
           {loadingModules ? (
-            <div style={{ padding: "20px", display: "flex",
-              flexDirection: "column", gap: "8px" }}>
+            <div style={{
+              padding: "20px", display: "flex",
+              flexDirection: "column", gap: "8px"
+            }}>
               {[...Array(4)].map((_, i) => (
                 <div key={i} className="skeleton" style={{ height: "48px" }} />
               ))}
             </div>
           ) : modules.length === 0 ? (
-            <div style={{ padding: "40px", textAlign: "center",
-              color: "var(--text-3)", fontSize: "14px" }}>
+            <div style={{
+              padding: "40px", textAlign: "center",
+              color: "var(--text-3)", fontSize: "14px"
+            }}>
               No hay módulos. Créalos desde la pestaña Cursos o desde aquí.
             </div>
           ) : modules.map((mod, i) => (
@@ -978,7 +1036,7 @@ const { data: lessonsData, isLoading: loadingLessons } = useQuery({
             >
               <span style={{ fontSize: "13px" }}>{mod.title}</span>
               <span style={{ fontSize: "12px", color: "var(--text-2)" }}>
-                {courses.find(c => c.id === mod.course)?.title || `Curso ${mod.course?.slice(0,8)}`}
+                {courses.find(c => c.id === mod.course)?.title || `Curso ${mod.course?.slice(0, 8)}`}
               </span>
               <span style={{ fontSize: "12px", color: "var(--text-3)" }}>{mod.order}</span>
               <div style={{ display: "flex", gap: "6px" }}>
@@ -1002,8 +1060,10 @@ const { data: lessonsData, isLoading: loadingLessons } = useQuery({
 
       {/* ── TAB LECCIONES ── */}
       {tab === "lessons" && (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-lg)", overflow: "hidden" }}>
+        <div style={{
+          background: "var(--surface)", border: "1px solid var(--border)",
+          borderRadius: "var(--r-lg)", overflow: "hidden"
+        }}>
 
           <div style={{
             display: "grid", gridTemplateColumns: "2fr 1.5fr 1fr 1fr 1fr 80px",
@@ -1020,15 +1080,19 @@ const { data: lessonsData, isLoading: loadingLessons } = useQuery({
           </div>
 
           {loadingLessons ? (
-            <div style={{ padding: "20px", display: "flex",
-              flexDirection: "column", gap: "8px" }}>
+            <div style={{
+              padding: "20px", display: "flex",
+              flexDirection: "column", gap: "8px"
+            }}>
               {[...Array(5)].map((_, i) => (
                 <div key={i} className="skeleton" style={{ height: "48px" }} />
               ))}
             </div>
           ) : lessons.length === 0 ? (
-            <div style={{ padding: "40px", textAlign: "center",
-              color: "var(--text-3)", fontSize: "14px" }}>
+            <div style={{
+              padding: "40px", textAlign: "center",
+              color: "var(--text-3)", fontSize: "14px"
+            }}>
               No hay lecciones. Créalas desde Cursos o desde aquí.
             </div>
           ) : lessons.map((lesson, i) => (
@@ -1044,8 +1108,10 @@ const { data: lessonsData, isLoading: loadingLessons } = useQuery({
                 <p style={{ fontSize: "13px" }}>{lesson.title}</p>
                 {lesson.video_url && (
                   <a href={lesson.video_url} target="_blank" rel="noreferrer"
-                    style={{ fontSize: "11px", color: "var(--text-3)",
-                      transition: "color var(--dur)" }}
+                    style={{
+                      fontSize: "11px", color: "var(--text-3)",
+                      transition: "color var(--dur)"
+                    }}
                     className="hover:text-[var(--accent)]">
                     Ver video ↗
                   </a>
@@ -1064,9 +1130,9 @@ const { data: lessonsData, isLoading: loadingLessons } = useQuery({
               <span style={{
                 fontSize: "11px", fontWeight: 500, padding: "2px 8px",
                 borderRadius: "100px", display: "inline-block",
-                color:      lesson.is_free ? "var(--accent)" : "var(--text-3)",
+                color: lesson.is_free ? "var(--accent)" : "var(--text-3)",
                 background: lesson.is_free ? "var(--accent-glow)" : "var(--surface-3)",
-                border:     `1px solid ${lesson.is_free
+                border: `1px solid ${lesson.is_free
                   ? "rgba(26,255,110,0.2)" : "var(--border)"}`,
               }}>
                 {lesson.is_free ? "Gratis" : "Pago"}

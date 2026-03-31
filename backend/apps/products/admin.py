@@ -23,11 +23,11 @@ class BrandAdmin(admin.ModelAdmin):
 
 
 class ProductImageInline(admin.TabularInline):
-    model   = ProductImage
-    extra   = 4          # ← 4 slots vacíos para agregar fotos
-    fields  = ["image_preview", "image", "alt_text", "order", "is_primary"]
+    model           = ProductImage
+    extra           = 4
+    fields          = ["image_preview", "image", "alt_text", "order", "is_primary"]
     readonly_fields = ["image_preview"]
-    ordering = ["order"]
+    ordering        = ["order"]
 
     def image_preview(self, obj):
         if obj.image:
@@ -43,18 +43,19 @@ class ProductImageInline(admin.TabularInline):
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display  = [
-        "name", "category", "brand", "price",
-        "stock_display", "is_active", "is_featured", "discount_badge"
+        "image_thumbnail", "name", "category", "brand",
+        "price", "stock_display", "is_active", "is_featured", "discount_badge"
     ]
     list_filter   = ["is_active", "is_featured", "category", "brand", "product_type"]
     search_fields = ["name", "sku"]
     prepopulated_fields = {"slug": ("name",)}
-    readonly_fields     = ["created_at", "updated_at"]
+    readonly_fields     = ["image_thumbnail", "created_at", "updated_at"]
     inlines             = [ProductImageInline]
 
     fieldsets = (
         ("Información Principal", {
-            "fields": ("name", "slug", "sku", "category", "brand", "product_type")
+            "fields": ("name", "slug", "sku", "category", "brand",
+                       "product_type", "course")
         }),
         ("Descripción", {
             "fields": ("short_description", "description")
@@ -75,8 +76,23 @@ class ProductAdmin(admin.ModelAdmin):
         }),
     )
 
+    # ← miniatura en el listado
+    def image_thumbnail(self, obj):
+        img = obj.images.filter(is_primary=True).first() \
+              or obj.images.order_by("order").first()
+        if img and img.image:
+            return format_html(
+                '<img src="{}" style="width:48px;height:48px;'
+                'object-fit:cover;border-radius:4px;" />',
+                img.image.url
+            )
+        return "—"
+    image_thumbnail.short_description = ""
+
     def stock_display(self, obj):
-        color = "#ff4444" if obj.stock == 0 else "#f59e0b" if obj.stock <= 5 else "#00e676"
+        color = "#ff4444" if obj.stock == 0 \
+                else "#f59e0b" if obj.stock <= 5 \
+                else "#00e676"
         return format_html(
             '<span style="color:{};font-weight:bold;">{}</span>',
             color, obj.stock

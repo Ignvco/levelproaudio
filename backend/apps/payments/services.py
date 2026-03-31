@@ -75,7 +75,7 @@ def create_mercadopago_preference(order: Order, provider: str) -> dict:
         },
         "auto_return":        "approved",
         "external_reference": str(order.id),
-        "notification_url":   f"{settings.BACKEND_URL}/api/v1/payments/webhook/mercadopago/cl/",
+        "notification_url": f"{settings.BACKEND_URL}/api/v1/payments/webhook/mercadopago/{'ar' if provider == PaymentProvider.MERCADOPAGO_AR else 'cl'}/",
         "statement_descriptor": "LEVELPRO AUDIO",
         "expires": False,
     }
