@@ -49,11 +49,28 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ["id", "image", "alt_text", "order", "is_primary"]
 
     def get_image(self, obj):
+        if not obj.image:
+            return None
         request = self.context.get("request")
-        if obj.image and request:
+        # Si tiene request, construye URL absoluta
+        if request:
             return request.build_absolute_uri(obj.image.url)
-        return obj.image.url if obj.image else None
+        # Fallback — URL relativa con /media/ prefix
+        return obj.image.url
 
+def build_image_url(image_field, request=None):
+    """
+    Devuelve la URL de la imagen.
+    En desarrollo: relativa (/media/...) — Vite la proxea a backend:8000
+    En producción: relativa — Nginx la sirve directamente
+    NUNCA usar build_absolute_uri porque devuelve el hostname del contenedor Docker.
+    """
+    if not image_field:
+        return None
+    try:
+        return image_field.url  # ← siempre relativa: /media/products/foto.jpg
+    except Exception:
+        return None
 
 class ProductListSerializer(serializers.ModelSerializer):
     primary_image = serializers.SerializerMethodField()

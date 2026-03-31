@@ -8,7 +8,7 @@ import {
   getAdminBrands, createAdminBrand, updateAdminBrand, deleteAdminBrand,
   uploadProductImage, deleteProductImage, getProductImages, setPrimaryImage
 } from "../../api/admin.api"
-
+import { mediaUrl } from "../../utils/mediaUrl"
 // ── Modal base ───────────────────────────────────────────────
 function Modal({ title, onClose, children }) {
   return (
@@ -67,55 +67,55 @@ function ProductForm({ product, onClose }) {
 
   const { data: categoriesData } = useQuery({
     queryKey: ["admin-categories"],
-    queryFn: getAdminCategories,
+    queryFn:  getAdminCategories,
   })
   const { data: brandsData } = useQuery({
     queryKey: ["admin-brands"],
-    queryFn: getAdminBrands,
+    queryFn:  getAdminBrands,
   })
   // ← Imágenes existentes — sin onSuccess
   const { data: imagesData } = useQuery({
     queryKey: ["product-images", product?.id],
-    queryFn: () => getProductImages(product.id),
-    enabled: !!product?.id,
+    queryFn:  () => getProductImages(product.id),
+    enabled:  !!product?.id,
   })
 
-  const categories = categoriesData?.results || categoriesData || []
-  const brands = brandsData?.results || brandsData || []
-  const existingImages = imagesData?.results || imagesData || []
+  const categories     = categoriesData?.results || categoriesData || []
+  const brands         = brandsData?.results     || brandsData     || []
+  const existingImages = imagesData?.results     || imagesData     || []
 
   const [form, setForm] = useState({
-    name: product?.name || "",
-    sku: product?.sku || "",
-    category: product?.category?.id || "",
-    brand: product?.brand?.id || "",
+    name:              product?.name              || "",
+    sku:               product?.sku               || "",
+    category:          product?.category?.id      || "",
+    brand:             product?.brand?.id         || "",
     short_description: product?.short_description || "",
-    description: product?.description || "",
-    price: product?.price || "",
-    compare_price: product?.compare_price || "",
-    stock: product?.stock || 0,
-    product_type: product?.product_type || "stock",
-    is_active: product?.is_active ?? true,
-    is_featured: product?.is_featured ?? false,
+    description:       product?.description       || "",
+    price:             product?.price             || "",
+    compare_price:     product?.compare_price     || "",
+    stock:             product?.stock             || 0,
+    product_type:      product?.product_type      || "stock",
+    is_active:         product?.is_active         ?? true,
+    is_featured:       product?.is_featured       ?? false,
   })
   const [newImages, setNewImages] = useState([])
-  const [error, setError] = useState("")
+  const [error, setError]         = useState("")
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
-        name: form.name,
+        name:              form.name,
         short_description: form.short_description,
-        description: form.description,
-        price: form.price,
-        stock: form.stock,
-        product_type: form.product_type,
-        is_active: form.is_active,
-        is_featured: form.is_featured,
+        description:       form.description,
+        price:             form.price,
+        stock:             form.stock,
+        product_type:      form.product_type,
+        is_active:         form.is_active,
+        is_featured:       form.is_featured,
       }
-      if (form.sku) payload.sku = form.sku
-      if (form.category) payload.category = form.category
-      if (form.brand) payload.brand = form.brand
+      if (form.sku)           payload.sku           = form.sku
+      if (form.category)      payload.category      = form.category
+      if (form.brand)         payload.brand         = form.brand
       if (form.compare_price) payload.compare_price = form.compare_price
 
       let saved
@@ -127,10 +127,10 @@ function ProductForm({ product, onClose }) {
 
       // Sube imágenes nuevas una por una
       for (let i = 0; i < newImages.length; i++) {
-        const img = newImages[i]
-        const fd = new FormData()
-        fd.append("image", img.file)
-        fd.append("order", existingImages.length + i)
+        const img  = newImages[i]
+        const fd   = new FormData()
+        fd.append("image",      img.file)
+        fd.append("order",      existingImages.length + i)
         fd.append("is_primary", existingImages.length === 0 && i === 0 ? "true" : "false")
         await uploadProductImage(saved.id, fd)
       }
@@ -148,20 +148,20 @@ function ProductForm({ product, onClose }) {
 
   const deleteImageMutation = useMutation({
     mutationFn: (imageId) => deleteProductImage(imageId), // ← solo imageId
-    onSuccess: () => queryClient.invalidateQueries(["product-images", product?.id]),
+    onSuccess:  () => queryClient.invalidateQueries(["product-images", product?.id]),
   })
 
   const primaryMutation = useMutation({
     mutationFn: (imageId) => setPrimaryImage(imageId),
-    onSuccess: () => queryClient.invalidateQueries(["product-images", product?.id]),
+    onSuccess:  () => queryClient.invalidateQueries(["product-images", product?.id]),
   })
 
   const handleImageAdd = (e) => {
     const files = Array.from(e.target.files)
     const added = files.map((file, i) => ({
       file,
-      preview: URL.createObjectURL(file),
-      order: existingImages.length + newImages.length + i,
+      preview:    URL.createObjectURL(file),
+      order:      existingImages.length + newImages.length + i,
       is_primary: existingImages.length === 0 && newImages.length === 0 && i === 0,
     }))
     setNewImages(prev => [...prev, ...added])
@@ -433,7 +433,6 @@ function ProductForm({ product, onClose }) {
     </div>
   )
 }
-
 // ── Formulario de Categoría ──────────────────────────────────
 function CategoryForm({ category, categories, onClose }) {
   const queryClient = useQueryClient()
@@ -810,7 +809,7 @@ function ImagePanel({ product, onClose }) {
                   ? "var(--accent)" : "var(--border)"}`,
                 aspectRatio: "1",
               }}>
-                <img src={img.image} alt={img.alt_text}
+                <img src={mediaUrl(img.image)} alt={img.alt_text}
                   style={{ width: "100%", height: "100%", objectFit: "cover" }} />
 
                 {/* Badge principal */}

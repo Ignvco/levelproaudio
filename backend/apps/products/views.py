@@ -45,5 +45,5 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
 
     def get_serializer_context(self):
         ctx = super().get_serializer_context()
-        ctx["request"] = self.request
+        ctx["request"] = self.request  # ← ya estaba, verificar que esté
         return ctx
