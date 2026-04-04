@@ -2,11 +2,13 @@
 
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
+import { getBrands } from "../api/products.api"
 import { getProducts } from "../api/products.api"
 import ProductCard from "../components/product/ProductCard"
 import iconImg from "../assets/icon.png"
 import fondoImg from "../assets/fondo.png"
 import fondoVideo from "../assets/wallpaper.mp4"
+import { mediaUrl } from "../utils/mediaUrl"
 
 
 
@@ -18,6 +20,7 @@ function Hero() {
     queryFn: () => getProducts({ is_featured: true, page_size: 1 }),
   })
   const heroProduct = featuredData?.results?.[0] || featuredData?.[0] || null
+  
 
   return (
     <section style={{
@@ -203,23 +206,38 @@ function Hero() {
           {/* Floating card — solo si hay producto */}
           {heroProduct && (
             <div style={{
-              position: "absolute", bottom: "28px", left: "-20px",
-              background: "rgba(15,15,15,0.92)",
+              position: "absolute", bottom: "32px", left: "-24px",
+              background: "rgba(15,15,15,0.9)",
               backdropFilter: "blur(20px)",
               border: "1px solid var(--border)",
               borderRadius: "var(--r-md)",
-              padding: "12px 16px",
+              padding: "14px 18px",
               display: "flex", alignItems: "center", gap: "12px",
-            }}>
+              }}>
+              
+              {/* Logo de marca o ícono */}
               <div style={{
                 width: "36px", height: "36px", borderRadius: "50%",
-                background: "var(--accent-glow)",
-                border: "1px solid rgba(26,255,110,0.2)",
+                background: "var(--surface-3)",
+                border: "1px solid var(--border)",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                fontSize: "16px",
-              }}>
-                🎧
+                overflow: "hidden", flexShrink: 0,
+                }}>
+                {heroProduct.brand?.logo ? (
+                  <img
+                    src={mediaUrl(heroProduct.brand.logo)}
+                    alt={heroProduct.brand.name || ""}
+                    style={{
+                      width: "100%", height: "100%", objectFit: "contain",
+                      padding: "4px", filter: "brightness(0) invert(1)"
+                    }}
+                    
+                  />
+                ) : (
+                   <span style={{ fontSize: "16px" }}>🎧</span>
+                )}
               </div>
+              
               <div>
                 <p style={{ fontSize: "13px", fontWeight: 500, marginBottom: "2px" }}>
                   {heroProduct.name}
@@ -409,6 +427,75 @@ function AcademyBanner() {
   )
 }
 
+// ── Sección Marcas ───────────────────────────────────────────
+function BrandsSection() {
+  const { data } = useQuery({
+    queryKey: ["brands"],
+    queryFn: getBrands,
+  })
+  const brands = (data?.results || data || []).filter(b => b.is_active)
+  if (!brands.length) return null
+
+  return (
+    <section style={{ padding: "60px 0", borderTop: "1px solid var(--border)" }}>
+      <div className="container" style={{ maxWidth: "var(--container)" }}>
+        <p style={{
+          fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
+          textTransform: "uppercase", letterSpacing: "0.1em",
+          textAlign: "center", marginBottom: "32px",
+        }}>
+          Marcas con las que trabajamos
+        </p>
+        <div style={{
+          display: "flex", flexWrap: "wrap", gap: "12px",
+          alignItems: "center", justifyContent: "center",
+        }}>
+          {brands.map((brand) => (
+            <a
+              key={brand.id}
+              href={brand.website || "#"}
+              target={brand.website ? "_blank" : "_self"}
+              rel="noreferrer"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                padding: "12px 20px",
+                borderRadius: "var(--r-lg)",
+                border: "1px solid var(--border)",
+                background: "var(--surface)",
+                transition: "all var(--dur) var(--ease)",
+                minWidth: "100px",
+                height: "56px",
+                opacity: 0.6,
+              }}
+              className="hover:opacity-100 hover:border-[var(--border-hover)]"
+            >
+              {brand.logo ? (
+                <img
+                 src={mediaUrl(brand.logo)}
+                  alt={brand.name}
+                  style={{
+                    maxHeight: "28px", maxWidth: "100px",
+                    objectFit: "contain",
+                    filter: "brightness(0) invert(1)",
+                  }}
+                />
+              ) : (
+                <span style={{ fontSize: "13px", fontWeight: 500, color: "var(--text-2)" }}>
+                  {brand.name}
+                </span>
+              )}
+            </a>
+          ))}
+        </div>
+      </div>
+    </section >
+  )
+}
+
+
+
 // ── Value props ──────────────────────────────────────────────
 function ValueProps() {
   const items = [
@@ -442,12 +529,14 @@ function ValueProps() {
 }
 
 export default function Home() {
+  // En el return de Home, agrega <BrandsSection /> entre AcademyBanner y ValueProps:
   return (
     <>
       <Hero />
       <Categories />
       <Featured />
       <AcademyBanner />
+      <BrandsSection />   {/* ← nueva */}
       <ValueProps />
     </>
   )

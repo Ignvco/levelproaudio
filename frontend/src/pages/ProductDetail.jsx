@@ -40,8 +40,10 @@ function ImageGallery({ images, name }) {
         <img
           src={getUrl(validImages[selected])}
           alt={`${name} — imagen ${selected + 1}`}
-          style={{ width: "100%", height: "100%", objectFit: "cover",
-            transition: "opacity 200ms ease" }}
+          style={{
+            width: "100%", height: "100%", objectFit: "cover",
+            transition: "opacity 200ms ease"
+          }}
           onError={e => {
             e.target.style.display = "none"
           }}
@@ -50,8 +52,10 @@ function ImageGallery({ images, name }) {
 
       {/* Thumbnails */}
       {validImages.length > 1 && (
-        <div style={{ display: "flex", gap: "8px",
-          overflowX: "auto", paddingBottom: "4px" }}>
+        <div style={{
+          display: "flex", gap: "8px",
+          overflowX: "auto", paddingBottom: "4px"
+        }}>
           {validImages.map((img, i) => (
             <button
               key={img.id || i}
@@ -81,15 +85,15 @@ function ImageGallery({ images, name }) {
 
 // ── ProductDetail ────────────────────────────────────────────
 export default function ProductDetail() {
-  const { slug }          = useParams()
-  const [qty, setQty]     = useState(1)
+  const { slug } = useParams()
+  const [qty, setQty] = useState(1)
   const [added, setAdded] = useState(false)
-  const { addItem }       = useCartStore()
+  const { addItem } = useCartStore()
 
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ["product", slug],
-    queryFn:  () => getProduct(slug),
-    retry:    1,
+    queryFn: () => getProduct(slug),
+    retry: 1,
   })
 
   const handleAdd = () => {
@@ -99,8 +103,10 @@ export default function ProductDetail() {
   }
 
   if (isLoading) return (
-    <div style={{ maxWidth: "1100px", margin: "0 auto",
-      padding: "60px clamp(20px, 5vw, 60px)" }}>
+    <div style={{
+      maxWidth: "1100px", margin: "0 auto",
+      padding: "60px clamp(20px, 5vw, 60px)"
+    }}>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
         <div className="skeleton"
           style={{ aspectRatio: "1", borderRadius: "var(--r-xl)" }} />
@@ -127,14 +133,20 @@ export default function ProductDetail() {
   const inStock = Number(product.stock) > 0
 
   return (
-    <div style={{ background: "var(--bg)", minHeight: "100vh",
-      padding: "clamp(40px, 6vw, 80px) 0" }}>
-      <div style={{ maxWidth: "1100px", margin: "0 auto",
-        padding: "0 clamp(20px, 5vw, 60px)" }}>
+    <div style={{
+      background: "var(--bg)", minHeight: "100vh",
+      padding: "clamp(40px, 6vw, 80px) 0"
+    }}>
+      <div style={{
+        maxWidth: "1100px", margin: "0 auto",
+        padding: "0 clamp(20px, 5vw, 60px)"
+      }}>
 
         {/* Breadcrumb */}
-        <nav style={{ display: "flex", alignItems: "center", gap: "8px",
-          fontSize: "13px", color: "var(--text-3)", marginBottom: "40px" }}>
+        <nav style={{
+          display: "flex", alignItems: "center", gap: "8px",
+          fontSize: "13px", color: "var(--text-3)", marginBottom: "40px"
+        }}>
           <Link to="/" className="hover:text-white"
             style={{ transition: "color var(--dur)" }}>
             Inicio
@@ -155,25 +167,55 @@ export default function ProductDetail() {
           <ImageGallery images={product.images || []} name={product.name} />
 
           {/* Info */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "24px",
-            position: "sticky", top: "88px" }}>
+          <div style={{
+            display: "flex", flexDirection: "column", gap: "24px",
+            position: "sticky", top: "88px"
+          }}>
 
             {/* Marca + nombre */}
             <div>
               {product.brand?.name && (
-                <p style={{ fontSize: "12px", color: "var(--text-3)",
+                <p style={{
+                  fontSize: "12px", color: "var(--text-3)",
                   textTransform: "uppercase", letterSpacing: "0.1em",
-                  fontWeight: 500, marginBottom: "8px" }}>
-                  {product.brand.name}
+                  fontWeight: 500, marginBottom: "8px"
+                }}>
+                  {product.brand.website ? (
+                    <a
+                      href={product.brand.website}
+                      target="_blank"
+                      rel="noreferrer"
+                      style={{
+                        color: "var(--text-3)", transition: "color var(--dur)",
+                        display: "inline-flex", alignItems: "center", gap: "6px",
+                      }}
+                      className="hover:text-white"
+                    >
+                      {product.brand.logo && (
+                        <img src={mediaUrl(product.brand.logo)} alt={product.brand.name}
+                          style={{
+                            height: "14px", objectFit: "contain",
+                            filter: "brightness(0) invert(0.5)"
+                          }} />
+                      )}
+                      {product.brand.name}
+                    </a>
+                  ) : (
+                    product.brand.name
+                  )}
                 </p>
               )}
-              <h1 style={{ fontFamily: "var(--font-serif)",
-                fontSize: "clamp(1.8rem, 3.5vw, 2.5rem)", lineHeight: 1.1 }}>
+              <h1 style={{
+                fontFamily: "var(--font-serif)",
+                fontSize: "clamp(1.8rem, 3.5vw, 2.5rem)", lineHeight: 1.1
+              }}>
                 {product.name}
               </h1>
               {product.sku && (
-                <p style={{ fontSize: "11px", color: "var(--text-3)",
-                  marginTop: "6px" }}>
+                <p style={{
+                  fontSize: "11px", color: "var(--text-3)",
+                  marginTop: "6px"
+                }}>
                   SKU: {product.sku}
                 </p>
               )}
@@ -181,19 +223,25 @@ export default function ProductDetail() {
 
             {/* Precio */}
             <div style={{ display: "flex", alignItems: "baseline", gap: "12px" }}>
-              <span style={{ fontFamily: "var(--font-serif)",
-                fontSize: "2.2rem", fontWeight: 400, lineHeight: 1 }}>
+              <span style={{
+                fontFamily: "var(--font-serif)",
+                fontSize: "2.2rem", fontWeight: 400, lineHeight: 1
+              }}>
                 ${Number(product.price).toLocaleString("es-CL")}
               </span>
               {product.has_discount && product.compare_price && (
                 <>
-                  <span style={{ fontSize: "1.1rem", color: "var(--text-3)",
-                    textDecoration: "line-through" }}>
+                  <span style={{
+                    fontSize: "1.1rem", color: "var(--text-3)",
+                    textDecoration: "line-through"
+                  }}>
                     ${Number(product.compare_price).toLocaleString("es-CL")}
                   </span>
-                  <span style={{ padding: "2px 8px", borderRadius: "100px",
+                  <span style={{
+                    padding: "2px 8px", borderRadius: "100px",
                     background: "var(--accent)", color: "#000",
-                    fontSize: "12px", fontWeight: 600 }}>
+                    fontSize: "12px", fontWeight: 600
+                  }}>
                     -{product.discount_percentage}%
                   </span>
                 </>
@@ -232,22 +280,28 @@ export default function ProductDetail() {
                 }}>
                   <button
                     onClick={() => setQty(q => Math.max(1, q - 1))}
-                    style={{ width: "40px", height: "44px", display: "flex",
+                    style={{
+                      width: "40px", height: "44px", display: "flex",
                       alignItems: "center", justifyContent: "center",
                       background: "none", border: "none",
-                      color: "var(--text-2)", cursor: "pointer", fontSize: "18px" }}>
+                      color: "var(--text-2)", cursor: "pointer", fontSize: "18px"
+                    }}>
                     −
                   </button>
-                  <span style={{ width: "36px", textAlign: "center",
-                    fontSize: "14px", fontWeight: 500 }}>
+                  <span style={{
+                    width: "36px", textAlign: "center",
+                    fontSize: "14px", fontWeight: 500
+                  }}>
                     {qty}
                   </span>
                   <button
                     onClick={() => setQty(q => Math.min(product.stock, q + 1))}
-                    style={{ width: "40px", height: "44px", display: "flex",
+                    style={{
+                      width: "40px", height: "44px", display: "flex",
                       alignItems: "center", justifyContent: "center",
                       background: "none", border: "none",
-                      color: "var(--text-2)", cursor: "pointer", fontSize: "18px" }}>
+                      color: "var(--text-2)", cursor: "pointer", fontSize: "18px"
+                    }}>
                     +
                   </button>
                 </div>
@@ -288,13 +342,49 @@ export default function ProductDetail() {
             marginTop: "80px", paddingTop: "48px",
             borderTop: "1px solid var(--border)",
           }}>
-            <h2 style={{ fontFamily: "var(--font-serif)",
-              fontSize: "1.8rem", marginBottom: "24px" }}>
-              Descripción
-            </h2>
+            {/* Header con logo */}
+            <div style={{
+              display: "flex", alignItems: "center",
+              justifyContent: "space-between", marginBottom: "24px"
+            }}>
+              <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem" }}>
+                Descripción
+              </h2>
+              {product.brand && (
+                <a
+                  href={product.brand.website || "#"}
+                  target={product.brand.website ? "_blank" : "_self"}
+                  rel="noreferrer"
+                  style={{
+                    display: "flex", alignItems: "center", gap: "10px",
+                    padding: "10px 16px", borderRadius: "var(--r-md)",
+                    border: "1px solid var(--border)",
+                    background: "var(--surface)",
+                    transition: "all var(--dur) var(--ease)",
+                    opacity: 0.7,
+                  }}
+                  className="hover:opacity-100 hover:border-[var(--border-hover)]"
+                >
+                  {product.brand.logo ? (
+                    <img src={mediaUrl(product.brand.logo)} alt={product.brand.name}
+                      style={{
+                        height: "20px", objectFit: "contain",
+                        filter: "brightness(0) invert(1)"
+                      }} />
+                  ) : (
+                    <span style={{ fontSize: "12px", color: "var(--text-2)" }}>
+                      {product.brand.name}
+                    </span>
+                  )}
+                </a>
+              )}
+            </div>
+
             <div
-              style={{ fontSize: "15px", color: "var(--text-2)",
-                lineHeight: 1.8, maxWidth: "680px" }}
+              style={{
+                fontSize: "15px", color: "var(--text-2)",
+                lineHeight: 1.8, maxWidth: "680px"
+              }}
               dangerouslySetInnerHTML={{ __html: product.description }}
             />
           </div>

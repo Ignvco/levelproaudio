@@ -48,9 +48,15 @@ export const deleteAdminCategory = (id) =>
 
 // ── Brands ───────────────────────────────────────────────────
 export const getAdminBrands  = (params) => api.get(`${BASE}/brands/`, { params }).then(r => r.data)
-export const createAdminBrand = (data) => api.post(`${BASE}/brands/`, data).then(r => r.data)
+export const createAdminBrand = (data) =>
+  api.post(`${BASE}/brands/`, data, {
+    headers: { "Content-Type": "multipart/form-data" }
+  }).then(r => r.data)
+
 export const updateAdminBrand = (id, data) =>
-  api.patch(`${BASE}/brands/${id}/`, data).then(r => r.data)
+  api.patch(`${BASE}/brands/${id}/`, data, {
+    headers: { "Content-Type": "multipart/form-data" }
+  }).then(r => r.data)
 export const deleteAdminBrand = (id) =>
   api.delete(`${BASE}/brands/${id}/`).then(r => r.data)
 

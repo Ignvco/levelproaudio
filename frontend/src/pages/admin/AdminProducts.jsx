@@ -1,6 +1,14 @@
 // pages/admin/AdminProducts.jsx
 
-import { useState, useRef } from "react"
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+} from "@dnd-kit/core"
+import {
+  SortableContext, verticalListSortingStrategy,
+  useSortable, arrayMove,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+import { useState, useRef, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   getAdminProducts, createAdminProduct, updateAdminProduct, deleteAdminProduct,
@@ -9,6 +17,9 @@ import {
   uploadProductImage, deleteProductImage, getProductImages, setPrimaryImage
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
+import api from "../../api/client" 
+
+
 // ── Modal base ───────────────────────────────────────────────
 function Modal({ title, onClose, children }) {
   return (
@@ -570,6 +581,97 @@ function CategoryForm({ category, categories, onClose }) {
   )
 }
 
+function SortableCategoryRow({ cat, categories, onEdit, onDelete }) {
+  // Normaliza parent
+  const getId    = (val) => (val && typeof val === "object" ? val.id : val)
+  const parentId = getId(cat.parent)
+  const isChild  = !!parentId
+  const parentName = isChild
+    ? categories.find(c => c.id === parentId)?.name
+    : null
+
+  const { attributes, listeners, setNodeRef,
+    transform, transition, isDragging } = useSortable({ id: cat.id })
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={{
+        display: "grid", gridTemplateColumns: "32px 2fr 1.5fr 1fr 1fr 80px",
+        padding: "13px 20px", alignItems: "center",
+        borderTop: "1px solid var(--border)",
+        transition: transition || "all var(--dur) var(--ease)",
+        transform: CSS.Transform.toString(transform),
+        background: isDragging
+          ? "var(--surface-3)"
+          : isChild
+            ? "rgba(255,255,255,0.01)"  // ← fondo levemente diferente para hijos
+            : "transparent",
+        opacity: isDragging ? 0.8 : 1,
+      }}
+      className="hover:bg-[var(--surface-2)]"
+    >
+      {/* Handle */}
+      <div {...attributes} {...listeners}
+        style={{ cursor: "grab", color: "var(--text-3)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          fontSize: "16px", userSelect: "none" }}
+        title="Arrastrar">
+        ⠿
+      </div>
+
+      {/* Nombre con indentación si es hijo */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        {isChild && (
+          <span style={{ color: "var(--border)", fontSize: "13px",
+            paddingLeft: "12px", flexShrink: 0 }}>
+            └
+          </span>
+        )}
+        <span style={{
+          fontSize: "13px",
+          color: isChild ? "var(--text-2)" : "var(--text)",
+          fontWeight: isChild ? 400 : 500,
+        }}>
+          {cat.name}
+        </span>
+      </div>
+
+      {/* Padre */}
+      <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
+        {parentName || "—"}
+      </span>
+
+      <span style={{ fontSize: "12px", color: "var(--text-3)" }}>{cat.order}</span>
+
+      <span style={{
+        fontSize: "11px", padding: "2px 8px", borderRadius: "100px",
+        fontWeight: 500, display: "inline-block",
+        color:      cat.is_active ? "#4ade80" : "var(--text-3)",
+        background: cat.is_active ? "rgba(74,222,128,0.1)" : "var(--surface-3)",
+        border:     `1px solid ${cat.is_active ? "rgba(74,222,128,0.25)" : "var(--border)"}`,
+      }}>
+        {cat.is_active ? "Activa" : "Inactiva"}
+      </span>
+
+      <div style={{ display: "flex", gap: "6px" }}>
+        <button onClick={() => onEdit(cat)}
+          style={{ padding: "5px 10px", borderRadius: "100px", fontSize: "11px",
+            cursor: "pointer", color: "#60a5fa",
+            background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.25)" }}>
+          ✎
+        </button>
+        <button onClick={() => onDelete(cat)}
+          style={{ padding: "5px 10px", borderRadius: "100px", fontSize: "11px",
+            cursor: "pointer", color: "#f87171",
+            background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)" }}>
+          ×
+        </button>
+      </div>
+    </div>
+  )
+}
+
 // ── Formulario de Marca ──────────────────────────────────────
 function BrandForm({ brand, onClose }) {
   const queryClient = useQueryClient()
@@ -583,26 +685,24 @@ function BrandForm({ brand, onClose }) {
   const [error, setError] = useState("")
 
   const mutation = useMutation({
-    mutationFn: () => {
-      if (logoFile) {
-        const fd = new FormData()
-        Object.entries(form).forEach(([k, v]) => {
-          if (v !== null && v !== undefined && v !== "") fd.append(k, v)
-        })
-        fd.append("logo", logoFile)
-        return brand ? updateAdminBrand(brand.id, fd) : createAdminBrand(fd)
-      }
-      // Sin logo — JSON directo
-      return brand
-        ? updateAdminBrand(brand.id, form)
-        : createAdminBrand(form)
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries(["admin-brands"])
-      onClose()
-    },
-    onError: (e) => setError(JSON.stringify(e.response?.data) || "Error al guardar."),
-  })
+  mutationFn: () => {
+    // ← SIEMPRE usar FormData, nunca JSON cuando hay archivos
+    const fd = new FormData()
+    fd.append("name",      form.name)
+    fd.append("website",   form.website   || "")
+    fd.append("is_active", form.is_active)
+    if (logoFile) fd.append("logo", logoFile)
+    
+    return brand
+      ? updateAdminBrand(brand.id, fd)
+      : createAdminBrand(fd)
+  },
+  onSuccess: () => {
+    queryClient.invalidateQueries(["admin-brands"])
+    onClose()
+  },
+  onError: (e) => setError(JSON.stringify(e.response?.data) || "Error al guardar."),
+})
 
   const inputSt = {
     width: "100%", padding: "10px 14px",
@@ -638,7 +738,7 @@ function BrandForm({ brand, onClose }) {
       <Field label="Logo de la marca">
         <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
           {logoPreview && (
-            <img src={logoPreview} alt="Logo"
+            <img src={mediaUrl(logoPreview)} alt="Logo"
               style={{
                 width: "64px", height: "64px", objectFit: "contain",
                 borderRadius: "var(--r-sm)", border: "1px solid var(--border)",
@@ -927,6 +1027,68 @@ export default function AdminProducts() {
     color, background: `${color}14`, borderColor: `${color}30`,
   })
 
+    // ── Estado para el orden local
+  const [sortedCats, setSortedCats] = useState([])
+  const [savingOrder, setSavingOrder] = useState(false)
+
+  useEffect(() => {
+  if (!categories.length) return
+
+  const toStr = (val) => {
+    if (!val) return null
+    if (typeof val === "object") return String(val.id)
+    return String(val)
+  }
+
+  const parents = categories
+    .filter(c => !c.parent)
+    .sort((a, b) => (a.order || 0) - (b.order || 0))
+
+  const ordered = []
+  parents.forEach(parent => {
+    ordered.push(parent)
+    const children = categories
+      .filter(c => toStr(c.parent) === toStr(parent.id))
+      .sort((a, b) => (a.order || 0) - (b.order || 0))
+    ordered.push(...children)
+  })
+
+  const orphans = categories.filter(c =>
+    c.parent && !categories.find(p => toStr(p.id) === toStr(c.parent))
+  )
+  ordered.push(...orphans)
+
+  setSortedCats(ordered)
+}, [categories])
+
+  const sensors = useSensors(useSensor(PointerSensor))
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    setSortedCats(prev => {
+      const oldIdx = prev.findIndex(c => c.id === active.id)
+      const newIdx = prev.findIndex(c => c.id === over.id)
+      return arrayMove(prev, oldIdx, newIdx)
+    })
+  }
+
+  const saveOrder = async () => {
+    setSavingOrder(true)
+    try {
+      await Promise.all(
+        sortedCats.map((cat, idx) =>
+          api.patch(`/admin/categories/${cat.id}/`, { order: idx + 1 })
+        )
+      )
+      queryClient.invalidateQueries(["admin-categories"])
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setSavingOrder(false)
+    }
+  }
+
   return (
     <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
 
@@ -1106,76 +1268,60 @@ export default function AdminProducts() {
 
       {/* ── TAB CATEGORÍAS ── */}
       {tab === "categories" && (
-        <div style={{
-          background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-lg)", overflow: "hidden"
-        }}>
-          <div style={{
-            display: "grid", gridTemplateColumns: "2fr 1.5fr 1fr 1fr 80px",
-            padding: "10px 20px", borderBottom: "1px solid var(--border)",
-            fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
-            textTransform: "uppercase", letterSpacing: "0.08em",
-          }}>
-            <span>Nombre</span>
-            <span>Padre</span>
-            <span>Orden</span>
-            <span>Estado</span>
-            <span>Acciones</span>
-          </div>
+  <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
+    borderRadius: "var(--r-lg)", overflow: "hidden" }}>
 
-          {loadingCats ? (
-            <div style={{
-              padding: "20px", display: "flex",
-              flexDirection: "column", gap: "8px"
-            }}>
-              {[...Array(4)].map((_, i) => (
-                <div key={i} className="skeleton" style={{ height: "48px" }} />
-              ))}
-            </div>
-          ) : categories.length === 0 ? (
-            <div style={{
-              padding: "40px", textAlign: "center",
-              color: "var(--text-3)", fontSize: "14px"
-            }}>
-              No hay categorías. Crea la primera.
-            </div>
-          ) : categories.map((c, i) => (
-            <div key={c.id} style={{
-              ...rowSt,
-              display: "grid", gridTemplateColumns: "2fr 1.5fr 1fr 1fr 80px",
-              borderTop: i > 0 ? "1px solid var(--border)" : "none",
-            }}
-              className="hover:bg-[var(--surface-2)]"
-            >
-              <span style={{ fontSize: "13px" }}>{c.name}</span>
-              <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                {categories.find(p => p.id === c.parent)?.name || "—"}
-              </span>
-              <span style={{ fontSize: "12px", color: "var(--text-3)" }}>{c.order}</span>
-              <span style={{
-                fontSize: "11px", padding: "2px 8px", borderRadius: "100px",
-                fontWeight: 500, display: "inline-block",
-                color: c.is_active ? "#4ade80" : "var(--text-3)",
-                background: c.is_active ? "rgba(74,222,128,0.1)" : "var(--surface-3)",
-                border: `1px solid ${c.is_active ? "rgba(74,222,128,0.25)" : "var(--border)"}`,
-              }}>
-                {c.is_active ? "Activa" : "Inactiva"}
-              </span>
-              <div style={{ display: "flex", gap: "6px" }}>
-                <button onClick={() => setModal({ type: "category", item: c })}
-                  style={actionBtnSt("#60a5fa")}>✎</button>
-                <button
-                  onClick={() => {
-                    if (window.confirm(`¿Eliminar categoría "${c.name}"?`)) {
-                      deleteCatMutation.mutate(c.id)
-                    }
-                  }}
-                  style={actionBtnSt("#f87171")}>×</button>
-              </div>
-            </div>
+    {/* Botón guardar orden */}
+    <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)",
+      display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+        ⠿ Arrastrá las filas para reordenar
+      </p>
+      <button onClick={saveOrder} disabled={savingOrder}
+        className="btn btn-accent"
+        style={{ padding: "7px 16px", fontSize: "12px", opacity: savingOrder ? 0.6 : 1 }}>
+        {savingOrder ? "Guardando..." : "Guardar orden"}
+      </button>
+    </div>
+
+    {/* Header */}
+    <div style={{ display: "grid", gridTemplateColumns: "32px 2fr 1.5fr 1fr 1fr 80px",
+      padding: "10px 20px", borderBottom: "1px solid var(--border)",
+      fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
+      textTransform: "uppercase", letterSpacing: "0.08em" }}>
+      <span></span>
+      <span>Nombre</span><span>Padre</span>
+      <span>Orden</span><span>Estado</span><span>Acciones</span>
+    </div>
+
+    {loadingCats ? (
+      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "8px" }}>
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="skeleton" style={{ height: "48px" }} />
+        ))}
+      </div>
+    ) : (
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={sortedCats.map(c => c.id)} strategy={verticalListSortingStrategy}>
+          {sortedCats.map(c => (
+            <SortableCategoryRow
+              key={c.id}
+              cat={c}
+              categories={sortedCats}
+              onEdit={(cat) => setModal({ type: "category", item: cat })}
+              onDelete={(cat) => {
+                if (window.confirm(`¿Eliminar "${cat.name}"?`)) {
+                  deleteCatMutation.mutate(cat.id)
+                }
+              }}
+            />
           ))}
-        </div>
-      )}
+        </SortableContext>
+      </DndContext>
+    )}
+  </div>
+)}
+    
 
       {/* ── TAB MARCAS ── */}
       {tab === "brands" && (
@@ -1228,7 +1374,7 @@ export default function AdminProducts() {
                 padding: "6px", overflow: "hidden"
               }}>
                 {b.logo ? (
-                  <img src={b.logo} alt={b.name}
+                  <img src={mediaUrl(b.logo)} alt={b.name}
                     style={{ width: "100%", height: "100%", objectFit: "contain" }} />
                 ) : (
                   <span style={{ fontSize: "16px" }}>🏷️</span>

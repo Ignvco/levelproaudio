@@ -1,11 +1,150 @@
 // layouts/MainLayout.jsx
 
-import { useState, useEffect } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Link, NavLink, useNavigate, useLocation } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
 import { useAuthStore } from "../store/authStore"
 import { useCartStore } from "../store/cartStore"
+import { getCategories } from "../api/products.api"
 import logoImg from "../assets/logo.png"
 import iconImg from "../assets/icon.png"
+import api from "../api/client" 
+
+// ── Dropdown Tienda ──────────────────────────────────────────
+function ShopDropdown({ visible, onMouseEnter, onMouseLeave }) {
+  const { data: catsData } = useQuery({
+    queryKey: ["categories-nav"],
+    queryFn:  getCategories,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const all    = catsData?.results || catsData || []
+  const getId  = (val) => (val && typeof val === "object" ? val.id : val)
+  const roots  = all.filter(c => c.is_active && !getId(c.parent))
+  const childCats = all.filter(c => c.is_active && !!getId(c.parent))
+
+  return (
+    <div
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      style={{
+        position: "fixed", top: "64px", left: 0,
+        width: "100vw", zIndex: 999,
+        opacity: visible ? 1 : 0,
+        transform: visible ? "translateY(0px)" : "translateY(-6px)",
+        pointerEvents: visible ? "auto" : "none",
+        transition: "opacity 200ms ease, transform 200ms ease",
+      }}>
+      <div style={{
+        background: "rgba(10,10,10,0.92)",
+        backdropFilter: "blur(28px)",
+        WebkitBackdropFilter: "blur(28px)",
+        borderBottom: "1px solid rgba(255,255,255,0.07)",
+        borderTop: "1px solid rgba(255,255,255,0.05)",
+        padding: "32px 0 36px",
+      }}>
+        <div style={{
+          maxWidth: "var(--container)", margin: "0 auto",
+          padding: "0 clamp(20px, 5vw, 60px)",
+          display: "flex", gap: "0",
+        }}>
+
+          {/* Ver todo */}
+          <div style={{ minWidth: "160px", paddingRight: "40px" }}>
+            <Link to="/shop" style={{ textDecoration: "none" }}>
+              <p style={{ fontSize: "13px", fontWeight: 500,
+                color: "rgba(255,255,255,0.9)", marginBottom: "10px" }}
+                className="hover:text-[var(--accent)]">
+                Ver todo
+              </p>
+            </Link>
+            <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.35)", lineHeight: 1.5 }}>
+              Catálogo completo
+            </p>
+          </div>
+
+          {/* Separador */}
+          <div style={{
+            width: "1px", background: "rgba(255,255,255,0.07)",
+            margin: "0 40px 0 0", alignSelf: "stretch",
+          }} />
+
+          {/* Columnas por categoría raíz */}
+          <div style={{ display: "flex", gap: "0", flex: 1 }}>
+            {roots.length === 0 ? (
+              <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.3)", alignSelf: "center" }}>
+                Cargando...
+              </p>
+            ) : roots.map((cat, idx) => {
+              const subs   = childCats.filter(c => getId(c.parent) === cat.id)
+              const isLast = idx === roots.length - 1
+
+              return (
+                <div key={cat.id} style={{
+                  flex: 1,
+                  paddingRight: isLast ? 0 : "40px",
+                  borderRight: isLast ? "none" : "1px solid rgba(255,255,255,0.07)",
+                  marginRight: isLast ? 0 : "40px",
+                }}>
+                  <Link to={`/shop?category=${cat.slug}`} style={{ textDecoration: "none" }}>
+                    <p style={{ fontSize: "13px", fontWeight: 500,
+                      color: "rgba(255,255,255,0.9)", marginBottom: "12px" }}
+                      className="hover:text-[var(--accent)]">
+                      {cat.name}
+                    </p>
+                  </Link>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {subs.length === 0 ? (
+                      <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.2)" }}>—</p>
+                    ) : subs.map(sub => (
+                      <Link key={sub.id} to={`/shop?category=${sub.slug}`}
+                        style={{ textDecoration: "none" }}>
+                        <p style={{ fontSize: "12px",
+                          color: "rgba(255,255,255,0.4)", lineHeight: 1.4 }}
+                          className="hover:text-white">
+                          {sub.name}
+                        </p>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Acceso rápido */}
+          <div style={{
+            paddingLeft: "40px",
+            borderLeft: "1px solid rgba(255,255,255,0.07)",
+            minWidth: "160px",
+            display: "flex", flexDirection: "column", gap: "10px",
+          }}>
+            <p style={{ fontSize: "11px", fontWeight: 500,
+              color: "rgba(255,255,255,0.3)",
+              textTransform: "uppercase", letterSpacing: "0.08em",
+              marginBottom: "4px" }}>
+              Acceso rápido
+            </p>
+            {[
+              { to: "/shop?is_featured=true", label: "Destacados" },
+              { to: "/academy",               label: "Academia" },
+              { to: "/services",              label: "Servicios" },
+            ].map(({ to, label }) => (
+              <Link key={to} to={to} style={{ textDecoration: "none" }}>
+                <p style={{ fontSize: "12px", color: "rgba(255,255,255,0.4)" }}
+                  className="hover:text-white">
+                  {label} →
+                </p>
+              </Link>
+            ))}
+          </div>
+
+        </div>
+      </div>
+    </div>
+  )
+}
 
 // ── Navbar ─────────────────────────────────────────────────
 function Navbar() {
@@ -16,21 +155,25 @@ function Navbar() {
   const navigate = useNavigate()
   const location = useLocation()
 
-  useEffect(() => { setOpen(false) }, [location.pathname])
+  const [shopOpen, setShopOpen] = useState(false)
+  const shopTimer = useRef(null)
 
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 40)
-    }
-    window.addEventListener("scroll", handleScroll)
-    return () => window.removeEventListener("scroll", handleScroll)
-  }, [])
+
+
+  useEffect(() => { setOpen(false) }, [location.pathname])
+  useEffect(() => { setShopOpen(false) }, [location.pathname])
+
 
   useEffect(() => {
     const fn = () => setScrolled(window.scrollY > 40)
     window.addEventListener("scroll", fn, { passive: true })
     return () => window.removeEventListener("scroll", fn)
   }, [])
+
+  const openShop = () => { clearTimeout(shopTimer.current); setShopOpen(true) }
+  const closeShop = () => { shopTimer.current = setTimeout(() => setShopOpen(false), 120) }
+
+
 
   const links = [
     { to: "/shop", label: "Tienda" },
@@ -39,263 +182,308 @@ function Navbar() {
   ]
 
   return (
-    <header
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        zIndex: 1000,
-        transition: "all 0.35s cubic-bezier(.4,0,.2,1)",
-        backdropFilter: scrolled ? "blur(18px)" : "none",
-        WebkitBackdropFilter: scrolled ? "blur(18px)" : "none",
-        background: scrolled ? "rgba(10,10,10,0.75)" : "transparent",
-        borderBottom: scrolled ? "1px solid var(--border)" : "1px solid transparent",
-      }}
-    >
-      <div className="container" style={{ maxWidth: "var(--container)" }}>
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          height: "64px",
-          gap: "24px",
-        }}>
+    <>
+      {/* Overlay invisible — cierra al click fuera */}
+      {shopOpen && (
+        <div
+          onClick={() => setShopOpen(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 998 }}
+        />
+      )}
 
-          {/* Logo */}
-          <Link to="/" style={{ display: "flex", alignItems: "center", gap: "10px", flexShrink: 0 }}>
+      {/* Dropdown — fuera del header para que no quede recortado */}
+      <ShopDropdown
+        visible={shopOpen}
+        onMouseEnter={openShop}
+        onMouseLeave={closeShop}
+      />
 
-            <img
-              src={logoImg}
-              alt="LevelPro Audio"
-              style={{
-                height: "45px",
-                objectFit: "contain",
-                filter: "brightness(0) invert(1)",
-                maxWidth: "130px",
-                display: window.innerWidth < 480 ? "none" : "block",
-              }}
-            />
-          </Link>
+      <header
+        style={{
+          position: "fixed",
+          top: 0, left: 0, width: "100%",
+          zIndex: 1000,
+          transition: "all 0.35s cubic-bezier(.4,0,.2,1)",
+          backdropFilter: scrolled ? "blur(18px)" : "none",
+          WebkitBackdropFilter: scrolled ? "blur(18px)" : "none",
+          background: scrolled ? "rgba(10,10,10,0.75)" : "transparent",
+          borderBottom: scrolled
+            ? "1px solid var(--border)"
+            : "1px solid transparent",
+        }}
+      >
+        <div className="container" style={{ maxWidth: "var(--container)" }}>
+          <div style={{
+            display: "flex", alignItems: "center",
+            justifyContent: "space-between",
+            height: "64px", gap: "24px",
+          }}>
 
-          {/* Nav — desktop */}
-          <nav
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "4px",
-            }}
-            className="hidden md:flex"
-          >
-            {links.map(({ to, label }) => (
-              <NavLink
-                key={to}
-                to={to}
-                style={({ isActive }) => ({
-                  padding: "8px 16px",
-                  borderRadius: "100px",
-                  fontSize: "14px",
-                  fontWeight: 400,
-
-                  color: isActive
-                    ? "var(--text)"
-                    : scrolled
-                      ? "var(--text-2)"
-                      : "rgba(255,255,255,0.85)",
-
-                  background: isActive
-                    ? scrolled
-                      ? "var(--surface-2)"
-                      : "rgba(255,255,255,0.12)"
-                    : "transparent",
-
-                  backdropFilter: isActive && !scrolled ? "blur(8px)" : "none",
-
-                  transition: "all var(--dur) var(--ease)",
-                })}
-              >
-                {label}
-              </NavLink>
-            ))}
-          </nav>
-
-          {/* Acciones */}
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-
-            {/* Carrito */}
-            <Link to="/cart" style={{
-              position: "relative",
-              padding: "8px",
-              color: "var(--text-2)",
-              borderRadius: "100px",
-              transition: "color var(--dur)",
-              display: "flex",
-            }}
-              className="hover:text-white"
-            >
-              <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"
-                />
-              </svg>
-              {cartCount > 0 && (
-                <span style={{
-                  position: "absolute",
-                  top: "2px",
-                  right: "2px",
-                  width: "16px",
-                  height: "16px",
-                  borderRadius: "50%",
-                  background: "var(--accent)",
-                  color: "#000",
-                  fontSize: "10px",
-                  fontWeight: 600,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                }}>
-                  {cartCount > 9 ? "9+" : cartCount}
-                </span>
-              )}
+            {/* Logo */}
+            <Link to="/" style={{
+              display: "flex", alignItems: "center",
+              gap: "10px", flexShrink: 0
+            }}>
+              <img src={logoImg} alt="LevelPro Audio"
+                style={{
+                  height: "45px", objectFit: "contain",
+                  filter: "brightness(0) invert(1)", maxWidth: "130px",
+                  display: window.innerWidth < 480 ? "none" : "block",
+                }} />
             </Link>
 
-            {/* Auth — desktop */}
-            <div className="hidden md:flex" style={{ alignItems: "center", gap: "8px" }}>
-              {isAuthenticated ? (
-                <>
-                  <Link to="/dashboard" style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "8px",
-                    padding: "7px 14px",
+            {/* Nav — desktop */}
+            <nav style={{ display: "flex", alignItems: "center", gap: "4px" }}
+              className="hidden md:flex">
+
+              {/* ── Tienda con dropdown ── */}
+              <div
+                onMouseEnter={openShop}
+                onMouseLeave={closeShop}
+                style={{ position: "relative" }}
+              >
+                <NavLink
+                  to="/shop"
+                  style={({ isActive }) => ({
+                    padding: "8px 16px",
                     borderRadius: "100px",
-                    border: "1px solid var(--border)",
-                    fontSize: "13px",
-                    color: "var(--text-2)",
+                    fontSize: "14px", fontWeight: 400,
+                    display: "flex", alignItems: "center", gap: "5px",
+                    color: isActive || shopOpen
+                      ? "var(--text)"
+                      : scrolled ? "var(--text-2)" : "rgba(255,255,255,0.85)",
+                    background: isActive || shopOpen
+                      ? scrolled
+                        ? "var(--surface-2)"
+                        : "rgba(255,255,255,0.12)"
+                      : "transparent",
+                    backdropFilter: (isActive || shopOpen) && !scrolled
+                      ? "blur(8px)" : "none",
                     transition: "all var(--dur) var(--ease)",
-                  }}
-                    className="hover:border-[var(--border-hover)] hover:text-white"
-                  >
-                    <div style={{
-                      width: "22px",
-                      height: "22px",
-                      borderRadius: "50%",
-                      background: "var(--surface-3)",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      color: "var(--text)",
-                    }}>
-                      {user?.first_name?.[0]?.toUpperCase() || "U"}
-                    </div>
-                    {user?.first_name || "Cuenta"}
-                  </Link>
-                  <button
-                    onClick={() => { logout(); navigate("/") }}
+                    textDecoration: "none",
+                  })}
+                >
+                  Tienda
+                  {/* Chevron */}
+                  <svg width="10" height="6" viewBox="0 0 10 6" fill="none"
                     style={{
-                      padding: "7px 14px",
-                      borderRadius: "100px",
-                      fontSize: "13px",
-                      color: "var(--text-3)",
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      transition: "color var(--dur)",
-                    }}
-                    className="hover:text-[var(--text-2)]"
-                  >
-                    Salir
-                  </button>
-                  {/* Solo si es staff */}
-                  {(user?.is_staff || user?.is_superuser) && (
-                    <Link to="/admin"
-                      style={{
+                      transition: "transform 200ms ease",
+                      transform: shopOpen ? "rotate(180deg)" : "rotate(0deg)",
+                      opacity: 0.55,
+                    }}>
+                    <path d="M1 1L5 5L9 1" stroke="currentColor"
+                      strokeWidth="1.5" strokeLinecap="round"
+                      strokeLinejoin="round" />
+                  </svg>
+                </NavLink>
+              </div>
+
+              {/* Academia y Servicios — igual que antes */}
+              {[
+                { to: "/academy", label: "Academia" },
+                { to: "/services", label: "Servicios" },
+              ].map(({ to, label }) => (
+                <NavLink
+                  key={to} to={to}
+                  style={({ isActive }) => ({
+                    padding: "8px 16px",
+                    borderRadius: "100px",
+                    fontSize: "14px", fontWeight: 400,
+                    color: isActive
+                      ? "var(--text)"
+                      : scrolled ? "var(--text-2)" : "rgba(255,255,255,0.85)",
+                    background: isActive
+                      ? scrolled ? "var(--surface-2)" : "rgba(255,255,255,0.12)"
+                      : "transparent",
+                    backdropFilter: isActive && !scrolled ? "blur(8px)" : "none",
+                    transition: "all var(--dur) var(--ease)",
+                    textDecoration: "none",
+                  })}
+                >
+                  {label}
+                </NavLink>
+              ))}
+            </nav>
+
+            {/* Acciones derechas — igual que tu código original */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+
+              {/* Carrito */}
+              <Link to="/cart" style={{
+                position: "relative", padding: "8px",
+                color: "var(--text-2)", borderRadius: "100px",
+                transition: "color var(--dur)", display: "flex",
+              }} className="hover:text-white">
+                <svg width="20" height="20" fill="none"
+                  stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                {cartCount > 0 && (
+                  <span style={{
+                    position: "absolute", top: "2px", right: "2px",
+                    width: "16px", height: "16px", borderRadius: "50%",
+                    background: "var(--accent)", color: "#000",
+                    fontSize: "10px", fontWeight: 600,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {cartCount > 9 ? "9+" : cartCount}
+                  </span>
+                )}
+              </Link>
+
+              {/* Auth — desktop */}
+              <div className="hidden md:flex"
+                style={{ alignItems: "center", gap: "8px" }}>
+                {isAuthenticated ? (
+                  <>
+                    {/* Avatar sin texto "Cuenta" */}
+                    <Link to="/dashboard" style={{
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      width: "32px", height: "32px", borderRadius: "50%",
+                      background: "var(--surface-3)",
+                      border: "1px solid var(--border)",
+                      fontSize: "12px", fontWeight: 600, color: "var(--text)",
+                      transition: "border-color var(--dur)",
+                      textDecoration: "none",
+                    }} className="hover:border-[var(--border-hover)]"
+                      title={user?.first_name || user?.email}>
+                      {(user?.first_name?.[0] || user?.email?.[0] || "U").toUpperCase()}
+                    </Link>
+
+                    {/* ADMIN */}
+                    {(user?.is_staff || user?.is_superuser) && (
+                      <Link to="/admin" style={{
                         padding: "7px 12px", borderRadius: "100px",
                         fontSize: "11px", fontWeight: 600, letterSpacing: "0.06em",
                         background: "var(--accent-glow)",
                         color: "var(--accent)",
                         border: "1px solid rgba(26,255,110,0.25)",
                         transition: "all var(--dur) var(--ease)",
+                        textDecoration: "none",
+                      }} className="hidden md:inline-flex items-center">
+                        ADMIN
+                      </Link>
+                    )}
+
+                    <button
+                      onClick={() => { logout(); navigate("/") }}
+                      style={{
+                        padding: "7px 14px", borderRadius: "100px",
+                        fontSize: "13px", color: "var(--text-3)",
+                        background: "none", border: "none",
+                        cursor: "pointer", transition: "color var(--dur)",
                       }}
-                      className="hidden md:inline-flex items-center"
-                    >
-                      ADMIN
-                    </Link>
-                  )}
-                </>
-              ) : (
-                <Link to="/login" className="btn btn-accent" style={{ padding: "9px 20px", fontSize: "13px" }}>
-                  Ingresar
-                </Link>
-              )}
-            </div>
-
-            {/* Hamburger */}
-            <button
-              onClick={() => setOpen(!open)}
-              className="md:hidden"
-              style={{
-                padding: "8px",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-                color: "var(--text-2)",
-              }}
-              aria-label="Menu"
-            >
-              <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-                {open ? (
-                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                      className="hover:text-[var(--text-2)]">
+                      Salir
+                    </button>
+                  </>
                 ) : (
-                  <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
-                )}
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Mobile menu */}
-      {open && (
-        <div style={{
-          background: "var(--surface)",
-          borderTop: "1px solid var(--border)",
-          padding: "16px 0 24px",
-        }}>
-          <div className="container" style={{ maxWidth: "var(--container)" }}>
-            {links.map(({ to, label }) => (
-              <NavLink key={to} to={to} style={({ isActive }) => ({
-                display: "block",
-                padding: "12px 0",
-                fontSize: "16px",
-                color: isActive ? "var(--text)" : "var(--text-2)",
-                borderBottom: "1px solid var(--border)",
-              })}>
-                {label}
-              </NavLink>
-            ))}
-            <div style={{ marginTop: "16px", display: "flex", gap: "10px" }}>
-              {isAuthenticated ? (
-                <>
-                  <Link to="/dashboard" className="btn btn-white" style={{ flex: 1, justifyContent: "center", padding: "11px" }}>
-                    Mi cuenta
+                  <Link to="/login" className="btn btn-accent"
+                    style={{ padding: "9px 20px", fontSize: "13px" }}>
+                    Ingresar
                   </Link>
-                  <button onClick={() => { logout(); navigate("/") }} className="btn btn-ghost" style={{ padding: "11px 20px" }}>
-                    Salir
-                  </button>
-                </>
-              ) : (
-                <Link to="/login" className="btn btn-accent" style={{ flex: 1, justifyContent: "center" }}>
-                  Ingresar
-                </Link>
-              )}
+                )}
+              </div>
+
+              {/* Hamburger — mobile */}
+              <button onClick={() => setOpen(!open)} className="md:hidden"
+                style={{
+                  padding: "8px", background: "none", border: "none",
+                  cursor: "pointer", color: "var(--text-2)"
+                }}
+                aria-label="Menu">
+                <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+                  {open ? (
+                    <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                  ) : (
+                    <path fillRule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clipRule="evenodd" />
+                  )}
+                </svg>
+              </button>
             </div>
           </div>
         </div>
-      )}
-    </header>
+
+        {/* Mobile menu — igual que antes */}
+        {open && (
+          <div style={{
+            background: "var(--surface)",
+            borderTop: "1px solid var(--border)",
+            padding: "16px 0 24px",
+          }}>
+            <div className="container" style={{ maxWidth: "var(--container)" }}>
+              {[
+                { to: "/shop", label: "Tienda" },
+                { to: "/academy", label: "Academia" },
+                { to: "/services", label: "Servicios" },
+              ].map(({ to, label }) => (
+                <NavLink key={to} to={to}
+                  onClick={() => setOpen(false)}
+                  style={({ isActive }) => ({
+                    display: "block", padding: "12px 0", fontSize: "16px",
+                    color: isActive ? "var(--text)" : "var(--text-2)",
+                    borderBottom: "1px solid var(--border)",
+                    textDecoration: "none",
+                  })}>
+                  {label}
+                </NavLink>
+              ))}
+              <div style={{ marginTop: "16px", display: "flex", gap: "10px" }}>
+                {isAuthenticated ? (
+                  <>
+                    <Link to="/dashboard" className="btn btn-white"
+                      style={{ flex: 1, justifyContent: "center", padding: "11px" }}
+                      onClick={() => setOpen(false)}>
+                      Mi cuenta
+                    </Link>
+                    <button onClick={() => { logout(); navigate("/"); setOpen(false) }}
+                      className="btn btn-ghost" style={{ padding: "11px 20px" }}>
+                      Salir
+                    </button>
+                  </>
+                ) : (
+                  <Link to="/login" className="btn btn-accent"
+                    style={{ flex: 1, justifyContent: "center" }}
+                    onClick={() => setOpen(false)}>
+                    Ingresar
+                  </Link>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </header>
+    </>
+  )
+}
+
+
+function FooterCategoryLinks() {
+  const { data: catsData } = useQuery({
+    queryKey: ["categories-nav"],
+    queryFn: getCategories,
+    staleTime: 5 * 60 * 1000,
+  })
+  const cats = (catsData?.results || catsData || [])
+    .filter(c => c.is_active)
+    .slice(0, 6)
+
+  return (
+    <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "10px" }}>
+      {cats.map(cat => (
+        <li key={cat.id}>
+          <Link
+            to={`/shop?category=${cat.slug}`}
+            style={{ fontSize: "14px", color: "var(--text-2)", transition: "color var(--dur)" }}
+            className="hover:text-white"
+          >
+            {cat.name}
+          </Link>
+        </li>
+      ))}
+    </ul>
   )
 }
 
@@ -360,20 +548,13 @@ function Footer() {
 
           {/* Tienda */}
           <div>
-            <p style={{ fontSize: "12px", fontWeight: 500, color: "var(--text-3)", letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "16px" }}>
+            <p style={{
+              fontSize: "12px", fontWeight: 500, color: "var(--text-3)",
+              letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "16px"
+            }}>
               Tienda
             </p>
-            <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "10px" }}>
-              {["Audio Pro", "Micrófonos", "Pedales", "In-Ears", "Instrumentos"].map(item => (
-                <li key={item}>
-                  <Link to="/shop" style={{ fontSize: "14px", color: "var(--text-2)", transition: "color var(--dur)" }}
-                    className="hover:text-white"
-                  >
-                    {item}
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <FooterCategoryLinks />
           </div>
 
           {/* LevelPro */}

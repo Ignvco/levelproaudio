@@ -13,7 +13,7 @@ from .serializers import (
 
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset           = Category.objects.filter(is_active=True, parent=None)
+    queryset = Category.objects.filter(is_active=True).order_by("order", "name")
     serializer_class   = CategorySerializer
     permission_classes = [AllowAny]
     lookup_field       = "slug"

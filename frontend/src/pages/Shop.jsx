@@ -19,9 +19,9 @@ export default function Shop() {
   }
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ["products", filters, page],
-    queryFn: () => getProducts(filters),
-  })
+  queryKey: ["products", filters],  // ← solo filters
+  queryFn:  () => getProducts(filters),
+})
 
   const products = data?.results || []
 
