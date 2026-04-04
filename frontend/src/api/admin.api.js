@@ -116,3 +116,34 @@ export const importProducts    = (formData) =>
   }).then(r => r.data)
 export const downloadTemplate  = () =>
   api.get(`${BASE}/products/template/`, { responseType: "blob" }).then(r => r.data)
+
+
+// Al final del archivo, agrega:
+
+// ── FINANZAS ─────────────────────────────────────────────────
+export const getFinanceSummary     = () =>
+  api.get(`${BASE}/finance/summary/`).then(r => r.data)
+
+export const getFinanceCategories  = () =>
+  api.get(`${BASE}/finance/categories/`).then(r => r.data)
+
+export const createFinanceCategory = (data) =>
+  api.post(`${BASE}/finance/categories/`, data).then(r => r.data)
+
+export const updateFinanceCategory = (id, data) =>
+  api.patch(`${BASE}/finance/categories/${id}/`, data).then(r => r.data)
+
+export const deleteFinanceCategory = (id) =>
+  api.delete(`${BASE}/finance/categories/${id}/`)
+
+export const getWithdrawals        = () =>
+  api.get(`${BASE}/finance/withdrawals/`).then(r => r.data)
+
+export const createWithdrawal      = (data) =>
+  api.post(`${BASE}/finance/withdrawals/`, data).then(r => r.data)
+
+export const deleteWithdrawal      = (id) =>
+  api.delete(`${BASE}/finance/withdrawals/${id}/`)
+
+export const updatePaymentStatus = (id, status) =>
+  api.patch(`${BASE}/payments/${id}/status/`, { status }).then(r => r.data)

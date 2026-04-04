@@ -64,26 +64,27 @@ def create_mercadopago_preference(order: Order, provider: str) -> dict:
         })
 
     preference_data = {
-        "items": items,
-        "payer": {
-            "email": order.email,
-        },
-        "back_urls": {
-            "success": f"{settings.FRONTEND_URL}/payment/success?order={order.id}",
-            "failure": f"{settings.FRONTEND_URL}/payment/failure?order={order.id}",
-            "pending": f"{settings.FRONTEND_URL}/payment/pending?order={order.id}",
-        },
-        "auto_return":        "approved",
-        "external_reference": str(order.id),
-        "notification_url": f"{settings.BACKEND_URL}/api/v1/payments/webhook/mercadopago/{'ar' if provider == PaymentProvider.MERCADOPAGO_AR else 'cl'}/",
-        "statement_descriptor": "LEVELPRO AUDIO",
-        "expires": False,
-    }
+    "items": items,
+    "payer": {
+        "email": order.email,
+    },
+    "back_urls": {
+        "success": f"{settings.FRONTEND_URL}/payment/success?order={order.id}",
+        "failure": f"{settings.FRONTEND_URL}/payment/failure?order={order.id}",
+        "pending": f"{settings.FRONTEND_URL}/payment/pending?order={order.id}",
+    },
+    "external_reference": str(order.id),
+    "notification_url": f"{settings.BACKEND_URL}/api/v1/payments/webhook/mercadopago/{'ar' if provider == PaymentProvider.MERCADOPAGO_AR else 'cl'}/",
+    "statement_descriptor": "LEVELPRO AUDIO",
+    "expires": False,
+}
 
     result = sdk.preference().create(preference_data)
 
     if result["status"] != 201:
         raise ValueError(f"Error MP: {result['response']}")
+    
+    
 
     preference = result["response"]
 

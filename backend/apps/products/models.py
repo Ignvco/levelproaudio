@@ -84,6 +84,12 @@ class Product(TimeStampedModel):
         max_digits=12, decimal_places=2, null=True, blank=True
     )
 
+    cost_price = models.DecimalField(
+        max_digits=12, decimal_places=2,
+        null=True, blank=True,
+        help_text="Costo real del producto (capital invertido)"
+    )
+
     product_type = models.CharField(
         max_length=20, choices=ProductType.choices, default=ProductType.STOCK
     )
@@ -120,6 +126,8 @@ class Product(TimeStampedModel):
         if self.sku == "":
             self.sku = None
         super().save(*args, **kwargs)
+
+    
 
     @property
     def has_discount(self):

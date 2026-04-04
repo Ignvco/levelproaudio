@@ -112,6 +112,7 @@ class AdminProductWriteSerializer(drf_serializers.ModelSerializer):
             "slug": {"required": False, "allow_blank": True},
         }
 
+        
 
 # ═══════════════════════════════════════════════════════════
 # VIEWSETS
@@ -136,20 +137,56 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=["post"])
     def update_status(self, request, pk=None):
+        from apps.analytics.models import IncomeRecord
+        from apps.payments.models import Payment
+        from decimal import Decimal
+        from django.utils import timezone
+
         order      = self.get_object()
         new_status = request.data.get("status")
         valid      = [s[0] for s in OrderStatus.choices]
+
         if new_status not in valid:
-            return Response(
-                {"error": f"Estado inválido. Opciones: {valid}"},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+            return Response({"error": "Estado inválido."}, status=400)
+
         order.status = new_status
         order.save(update_fields=["status"])
+
+        # ── Sincroniza pagos ─────────────────────────────────────
+        pago = order.payments.first()
+
+        if new_status in ["paid", "shipped", "completed"]:
+            # Aprueba el pago si existía pendiente
+            if pago and pago.status != "approved":
+                pago.status  = "approved"
+                pago.paid_at = timezone.now()
+                pago.save(update_fields=["status", "paid_at"])
+
+            # ── Crea IncomeRecord si no existe ───────────────────
+            if not IncomeRecord.objects.filter(order=order).exists():
+                record = IncomeRecord.objects.create(
+                    order       = order,
+                    payment     = pago,
+                    amount      = Decimal(str(order.total)),
+                    description = f"Venta — Orden #{str(order.id)[:8].upper()}",
+                    source      = "payment",
+                )
+                record.create_distributions()
+
+        elif new_status == "cancelled":
+            # Cancela el pago
+            if pago and pago.status not in ["refunded"]:
+                pago.status = "cancelled"
+                pago.save(update_fields=["status"])
+
+            # Elimina IncomeRecord
+            IncomeRecord.objects.filter(order=order).delete()
+
         return Response({"status": new_status, "detail": "Estado actualizado."})
 
 
 class AdminProductViewSet(viewsets.ModelViewSet):
+    """CRUD completo de productos para el admin."""
     permission_classes = [IsAdminOrStaff]
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
@@ -164,15 +201,108 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         ).prefetch_related("images").all()
 
     def get_serializer_class(self):
+        # Lectura → serializer completo con relaciones
         if self.action in ["list", "retrieve"]:
             return ProductDetailSerializer
-        return AdminProductWriteSerializer
+        # Escritura → procesamos manualmente para aceptar IDs y cost_price
+        return ProductDetailSerializer  # fallback
 
-    # ← agrega este método
     def get_serializer_context(self):
         context = super().get_serializer_context()
         context["request"] = self.request
         return context
+
+    def _save_product(self, request, product=None):
+        from decimal import Decimal, InvalidOperation
+        from django.utils.text import slugify
+
+        data = request.data
+
+        if product is None:
+            product = Product()
+
+        # ── Campos de texto ──────────────────────────────────────
+        text_fields = [
+            "name", "sku", "short_description", "description",
+            "product_type", "seo_title", "seo_description",
+        ]
+        for field in text_fields:
+            if field in data:
+                val = data[field]
+                # SKU vacío → None (respeta UNIQUE)
+                if field == "sku" and val == "":
+                    val = None
+                setattr(product, field, val)
+
+        # ── Campos decimales — siempre convertir a Decimal ───────
+        decimal_fields = ["price", "compare_price", "cost_price"]
+        for field in decimal_fields:
+            if field in data:
+                val = data[field]
+                if val == "" or val is None:
+                    setattr(product, field, None)
+                else:
+                    try:
+                        setattr(product, field, Decimal(str(val)))
+                    except (InvalidOperation, TypeError):
+                        setattr(product, field, None)
+
+        # ── Stock — entero ───────────────────────────────────────
+        if "stock" in data:
+            try:
+                product.stock = int(data["stock"])
+            except (ValueError, TypeError):
+                product.stock = 0
+
+        # ── Booleanos ────────────────────────────────────────────
+        bool_fields = ["is_active", "is_featured"]
+        for field in bool_fields:
+            if field in data:
+                val = data[field]
+                if isinstance(val, str):
+                    val = val.lower() in ["true", "1", "yes"]
+                setattr(product, field, val)
+
+        # ── Slug automático ──────────────────────────────────────
+        if not product.slug and product.name:
+            product.slug = slugify(product.name)
+
+        # ── Relaciones por ID ────────────────────────────────────
+        if "category" in data:
+            cat_id = data["category"]
+            product.category_id = cat_id if cat_id else None
+
+        if "brand" in data:
+            brand_id = data["brand"]
+            product.brand_id = brand_id if brand_id else None
+
+        product.save()
+        return product
+
+    
+    def create(self, request, *args, **kwargs):
+        try:
+            product = self._save_product(request)
+            serializer = ProductDetailSerializer(
+                product, context=self.get_serializer_context()
+            )
+            return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def update(self, request, *args, **kwargs):
+        product = self.get_object()
+        try:
+            product = self._save_product(request, product)
+            serializer = ProductDetailSerializer(
+                product, context=self.get_serializer_context()
+            )
+            return Response(serializer.data)
+        except Exception as e:
+            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    def partial_update(self, request, *args, **kwargs):
+        return self.update(request, *args, **kwargs)
 
 
 class AdminCategoryViewSet(viewsets.ModelViewSet):
@@ -509,6 +639,75 @@ def admin_payments(request):
 
     return Response({"results": data, "total_approved": float(total_approved)})
 
+@api_view(["PATCH"])
+@permission_classes([IsAdminOrStaff])
+def admin_update_payment_status(request, payment_id):
+    """PATCH /api/v1/admin/payments/{id}/status/"""
+    from apps.payments.models import Payment
+    from apps.analytics.models import IncomeRecord
+    from decimal import Decimal
+
+    try:
+        payment = Payment.objects.select_related("order").get(id=payment_id)
+    except Payment.DoesNotExist:
+        return Response({"error": "Pago no encontrado."}, status=404)
+
+    new_status = request.data.get("status")
+    valid = ["pending", "approved", "rejected", "cancelled", "refunded"]
+    if new_status not in valid:
+        return Response({"error": f"Estado inválido. Opciones: {valid}"}, status=400)
+
+    old_status = payment.status
+    payment.status = new_status
+
+    if new_status == "approved" and old_status != "approved":
+        from django.utils import timezone
+        payment.paid_at = timezone.now()
+
+    payment.save()
+
+    # ── Sincroniza la orden ──────────────────────────────────
+    order = payment.order
+    if new_status == "approved":
+        order.status = "paid"
+        order.save(update_fields=["status"])
+
+        # ── Crea IncomeRecord si no existe ───────────────────
+        if not IncomeRecord.objects.filter(order=order).exists():
+            record = IncomeRecord.objects.create(
+                payment     = payment,
+                order       = order,
+                amount      = Decimal(str(payment.amount)),
+                description = f"Pago aprobado — Orden #{str(order.id)[:8].upper()}",
+                source      = "payment",
+            )
+            record.create_distributions()
+
+    elif new_status in ["rejected", "cancelled"]:
+        # Cancela la orden si no hay otro pago aprobado
+        other_approved = order.payments.filter(
+            status="approved"
+        ).exclude(id=payment.id).exists()
+        if not other_approved:
+            order.status = "cancelled"
+            order.save(update_fields=["status"])
+            # Elimina IncomeRecord si existía
+            IncomeRecord.objects.filter(order=order).delete()
+
+    elif new_status == "refunded":
+        order.status = "cancelled"
+        order.save(update_fields=["status"])
+        # Marca el IncomeRecord como reembolsado eliminándolo
+        IncomeRecord.objects.filter(order=order).delete()
+
+    return Response({
+        "id":         str(payment.id),
+        "status":     payment.status,
+        "order_id":   str(order.id),
+        "order_status": order.status,
+    })
+    
+    
 
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
@@ -1040,3 +1239,214 @@ def product_image_set_primary(request, image_id):
         return Response({"is_primary": True})
     except ProductImage.DoesNotExist:
         return Response({"error": "No encontrada."}, status=404)
+    
+    
+    # ── MÓDULO FINANCIERO ────────────────────────────────────────
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAdminOrStaff])
+def admin_finance_categories(request):
+    """GET/POST /api/v1/admin/finance/categories/"""
+    from apps.analytics.models import DistributionCategory
+
+    if request.method == "GET":
+        cats = DistributionCategory.objects.all()
+        return Response([{
+            "id":         str(c.id),
+            "name":       c.name,
+            "percentage": float(c.percentage),
+            "color":      c.color,
+            "icon":       c.icon,
+            "order":      c.order,
+            "is_active":  c.is_active,
+        } for c in cats])
+
+    # POST — nueva categoría
+    cat = DistributionCategory.objects.create(
+        name       = request.data.get("name", "Nueva categoría"),
+        percentage = request.data.get("percentage", 0),
+        color      = request.data.get("color", "#888888"),
+        icon       = request.data.get("icon", "💰"),
+        order      = DistributionCategory.objects.count() + 1,
+    )
+    return Response({"id": str(cat.id), "name": cat.name}, status=201)
+
+
+@api_view(["PATCH", "DELETE"])
+@permission_classes([IsAdminOrStaff])
+def admin_finance_category_detail(request, cat_id):
+    """PATCH/DELETE /api/v1/admin/finance/categories/{id}/"""
+    from apps.analytics.models import DistributionCategory
+    try:
+        cat = DistributionCategory.objects.get(id=cat_id)
+    except DistributionCategory.DoesNotExist:
+        return Response({"error": "No encontrada."}, status=404)
+
+    if request.method == "DELETE":
+        cat.delete()
+        return Response({"deleted": True})
+
+    for field in ["name", "percentage", "color", "icon", "order", "is_active"]:
+        if field in request.data:
+            setattr(cat, field, request.data[field])
+    cat.save()
+    return Response({"id": str(cat.id), "name": cat.name})
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminOrStaff])
+def admin_finance_summary(request):
+    """GET /api/v1/admin/finance/summary/"""
+    from apps.analytics.models import (
+        DistributionCategory, IncomeDistribution, Withdrawal, IncomeRecord
+    )
+    from django.db.models import Sum
+
+    categories = DistributionCategory.objects.filter(is_active=True)
+    summary = []
+
+    for cat in categories:
+        total_in  = IncomeDistribution.objects.filter(
+            category=cat
+        ).aggregate(t=Sum("amount"))["t"] or 0
+
+        total_out = Withdrawal.objects.filter(
+            category=cat
+        ).aggregate(t=Sum("amount"))["t"] or 0
+
+        balance = float(total_in) - float(total_out)
+
+        summary.append({
+            "id":         str(cat.id),
+            "name":       cat.name,
+            "percentage": float(cat.percentage),
+            "color":      cat.color,
+            "icon":       cat.icon,
+            "total_in":   float(total_in),
+            "total_out":  float(total_out),
+            "balance":    balance,
+        })
+
+    # Totales generales
+    total_income = IncomeRecord.objects.aggregate(
+        t=Sum("amount"))["t"] or 0
+    total_withdrawn = Withdrawal.objects.aggregate(
+        t=Sum("amount"))["t"] or 0
+
+    # Últimos ingresos
+    from apps.analytics.models import IncomeRecord
+    recent = IncomeRecord.objects.select_related(
+        "order", "payment"
+    ).order_by("-created_at")[:20]
+
+    recent_data = [{
+        "id":          str(r.id),
+        "amount":      float(r.amount),
+        "description": r.description,
+        "source":      r.source,
+        "created_at":  r.created_at.strftime("%d/%m/%Y %H:%M"),
+        "distributions": [{
+            "category_name":  d.category.name,
+            "category_color": d.category.color,
+            "category_icon":  d.category.icon,
+            "amount":         float(d.amount),
+        } for d in r.distributions.all()],
+    } for r in recent]
+
+    return Response({
+        "summary":          summary,
+        "total_income":     float(total_income),
+        "total_withdrawn":  float(total_withdrawn),
+        "net_balance":      float(total_income) - float(total_withdrawn),
+        "recent_income":    recent_data,
+    })
+
+
+@api_view(["GET", "POST"])
+@permission_classes([IsAdminOrStaff])
+def admin_finance_withdrawals(request):
+    """GET/POST /api/v1/admin/finance/withdrawals/"""
+    from apps.analytics.models import Withdrawal, DistributionCategory
+
+    if request.method == "GET":
+        ws = Withdrawal.objects.select_related("category").order_by("-created_at")[:50]
+        return Response([{
+            "id":            str(w.id),
+            "category_name": w.category.name,
+            "category_color":w.category.color,
+            "category_icon": w.category.icon,
+            "amount":        float(w.amount),
+            "destination":   w.destination,
+            "notes":         w.notes,
+            "reference":     w.reference,
+            "created_at":    w.created_at.strftime("%d/%m/%Y %H:%M"),
+        } for w in ws])
+
+    # POST — registrar retiro
+    try:
+        cat = DistributionCategory.objects.get(id=request.data.get("category_id"))
+    except DistributionCategory.DoesNotExist:
+        return Response({"error": "Categoría no encontrada."}, status=400)
+
+    w = Withdrawal.objects.create(
+        category    = cat,
+        amount      = request.data.get("amount"),
+        destination = request.data.get("destination", ""),
+        notes       = request.data.get("notes", ""),
+        reference   = request.data.get("reference", ""),
+    )
+    return Response({"id": str(w.id), "created": True}, status=201)
+
+
+@api_view(["DELETE"])
+@permission_classes([IsAdminOrStaff])
+def admin_finance_withdrawal_delete(request, withdrawal_id):
+    """DELETE /api/v1/admin/finance/withdrawals/{id}/"""
+    from apps.analytics.models import Withdrawal
+    try:
+        w = Withdrawal.objects.get(id=withdrawal_id)
+        w.delete()
+        return Response({"deleted": True})
+    except Withdrawal.DoesNotExist:
+        return Response({"error": "No encontrado."}, status=404)
+    
+@api_view(["GET"])
+@permission_classes([IsAdminOrStaff])
+def admin_finance_by_product(request):
+    """GET /api/v1/admin/finance/by-product/"""
+    from apps.orders.models import OrderItem
+    from django.db.models import Sum, F, DecimalField, ExpressionWrapper
+    from decimal import Decimal
+
+    # Solo órdenes pagadas
+    items = OrderItem.objects.filter(
+        order__status__in=["paid", "shipped", "completed"]
+    ).select_related("product").values(
+        "product__name", "product__sku", "product__cost_price"
+    ).annotate(
+        units_sold    = Sum("quantity"),
+        total_revenue = Sum(
+            ExpressionWrapper(F("price") * F("quantity"),
+            output_field=DecimalField())
+        ),
+    ).order_by("-total_revenue")
+
+    results = []
+    for item in items:
+        cost_price    = item["product__cost_price"] or Decimal("0")
+        total_cost    = cost_price * item["units_sold"]
+        profit        = item["total_revenue"] - total_cost
+        margin        = round(float(profit) / float(item["total_revenue"]) * 100, 1) \
+                        if item["total_revenue"] else 0
+
+        results.append({
+            "product_name":  item["product__name"],
+            "sku":           item["product__sku"],
+            "units_sold":    item["units_sold"],
+            "total_revenue": float(item["total_revenue"]),
+            "total_cost":    float(total_cost),
+            "profit":        float(profit),
+            "margin":        margin,
+        })
+
+    return Response({"results": results})    
