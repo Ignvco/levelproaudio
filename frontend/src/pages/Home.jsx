@@ -461,9 +461,9 @@ function BrandsSection() {
                 alignItems: "center",
                 justifyContent: "center",
                 padding: "12px 20px",
-                borderRadius: "var(--r-lg)",
-                border: "1px solid var(--border)",
-                background: "var(--surface)",
+                
+                border: "0px solid var(--border)",
+               
                 transition: "all var(--dur) var(--ease)",
                 minWidth: "100px",
                 height: "56px",

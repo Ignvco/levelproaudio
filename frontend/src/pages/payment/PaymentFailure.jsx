@@ -1,47 +1,64 @@
-// pages/payment/PaymentFailure.jsx
+// pages/PaymentFailure.jsx
 
-import { Link } from "react-router-dom"
+import { useSearchParams, Link } from "react-router-dom"
 
 export default function PaymentFailure() {
+  const [searchParams] = useSearchParams()
+  const orderId = searchParams.get("order")
+
   return (
     <div style={{
-      minHeight: "100vh", display: "flex", alignItems: "center",
-      justifyContent: "center", padding: "40px", background: "var(--bg)",
+      minHeight: "100vh", background: "var(--bg)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+      padding: "clamp(24px, 5vw, 60px)",
     }}>
       <div style={{
-        width: "100%", maxWidth: "400px", textAlign: "center",
-        background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-xl)", padding: "48px 40px",
+        width: "100%", maxWidth: "480px",
+        display: "flex", flexDirection: "column", gap: "16px",
       }}>
         <div style={{
-          width: "64px", height: "64px", borderRadius: "50%",
-          background: "rgba(255,59,59,0.08)", border: "1px solid rgba(255,59,59,0.2)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: "22px", margin: "0 auto 24px", color: "var(--danger)",
+          background: "var(--surface)",
+          border: "1px solid rgba(248,113,113,0.2)",
+          borderRadius: "var(--r-xl)", padding: "40px 32px",
+          textAlign: "center",
         }}>
-          ✕
+          <div style={{
+            width: "72px", height: "72px", borderRadius: "50%",
+            background: "rgba(248,113,113,0.1)",
+            border: "2px solid rgba(248,113,113,0.3)",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto 20px", fontSize: "32px",
+          }}>
+            ✕
+          </div>
+
+          <h1 style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: "clamp(1.6rem, 3vw, 2.2rem)",
+            marginBottom: "10px",
+          }}>
+            El pago no se completó
+          </h1>
+
+          <p style={{ fontSize: "14px", color: "var(--text-2)", lineHeight: 1.6 }}>
+            No se realizó ningún cobro. Podés intentarlo nuevamente con
+            otro método de pago.
+          </p>
         </div>
 
-        <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem",
-          marginBottom: "12px" }}>
-          Pago no completado.
-        </h1>
-        <p style={{ fontSize: "14px", color: "var(--text-2)", lineHeight: 1.7, marginBottom: "32px" }}>
-          El pago fue cancelado o rechazado. No se realizó ningún cobro.
-          Puedes intentar con otro método de pago.
-        </p>
-
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          <Link to="/checkout" className="btn btn-accent" style={{ justifyContent: "center" }}>
-            Intentar de nuevo
+        <div style={{ display: "flex", gap: "12px" }}>
+          {orderId && (
+            <Link
+              to={`/dashboard/orders/${orderId}`}
+              className="btn btn-accent"
+              style={{ flex: 1, justifyContent: "center" }}>
+              Reintentar pago
+            </Link>
+          )}
+          <Link to="/shop" className="btn btn-ghost"
+            style={{ flex: 1, justifyContent: "center" }}>
+            Volver a la tienda
           </Link>
-          <Link to="/cart" className="btn btn-ghost" style={{ justifyContent: "center" }}>
-            Volver al carrito
-          </Link>
-          <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
-            className="btn btn-ghost" style={{ justifyContent: "center", color: "#4ade80", borderColor: "rgba(74,222,128,0.2)" }}>
-            💬 Necesito ayuda
-          </a>
         </div>
       </div>
     </div>

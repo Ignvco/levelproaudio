@@ -118,7 +118,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "id", "name", "slug", "sku",
             "category", "brand",
             "description", "short_description",
-            "price", "compare_price",
+            "price", "compare_price", "cost_price",
             "has_discount", "discount_percentage",
             "stock", "in_stock", "is_featured",
             "primary_image", "images",

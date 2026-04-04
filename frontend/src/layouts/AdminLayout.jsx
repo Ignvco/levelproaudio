@@ -54,6 +54,7 @@ function NavGroup({ item }) {
 const navItems = [
   { to: "/admin",           label: "Dashboard",  icon: "◈", end: true },
   { to: "/admin/analytics", label: "Analytics",  icon: "◉" },
+  { to: "/admin/finance", label: "Finanzas", icon: "⧫" },
   { to: "/admin/orders",    label: "Órdenes",    icon: "⊡" },
   {
     label: "Productos", icon: "⊞",

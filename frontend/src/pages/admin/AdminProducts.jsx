@@ -17,7 +17,7 @@ import {
   uploadProductImage, deleteProductImage, getProductImages, setPrimaryImage
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
-import api from "../../api/client" 
+import api from "../../api/client"
 
 
 // ── Modal base ───────────────────────────────────────────────
@@ -84,7 +84,6 @@ function ProductForm({ product, onClose }) {
     queryKey: ["admin-brands"],
     queryFn:  getAdminBrands,
   })
-  // ← Imágenes existentes — sin onSuccess
   const { data: imagesData } = useQuery({
     queryKey: ["product-images", product?.id],
     queryFn:  () => getProductImages(product.id),
@@ -95,6 +94,18 @@ function ProductForm({ product, onClose }) {
   const brands         = brandsData?.results     || brandsData     || []
   const existingImages = imagesData?.results     || imagesData     || []
 
+  // ── Valores iniciales calculados ─────────────────────────────
+  const precioInicial   = Number(product?.price)         || 0
+  const costoInicial    = Number(product?.cost_price)    || 0
+  const compareInicial  = Number(product?.compare_price) || 0
+  const descuentoInicial = precioInicial > 0 && compareInicial > precioInicial
+    ? Math.round((1 - precioInicial / compareInicial) * 100).toString()
+    : ""
+  const margenInicial = precioInicial > 0 && costoInicial > 0
+    ? Math.round((precioInicial - costoInicial) / precioInicial * 100)
+    : 30
+
+  // ── Estados del formulario ────────────────────────────────────
   const [form, setForm] = useState({
     name:              product?.name              || "",
     sku:               product?.sku               || "",
@@ -103,15 +114,42 @@ function ProductForm({ product, onClose }) {
     short_description: product?.short_description || "",
     description:       product?.description       || "",
     price:             product?.price             || "",
+    cost_price:        product?.cost_price        || "",
     compare_price:     product?.compare_price     || "",
     stock:             product?.stock             || 0,
     product_type:      product?.product_type      || "stock",
     is_active:         product?.is_active         ?? true,
     is_featured:       product?.is_featured       ?? false,
   })
-  const [newImages, setNewImages] = useState([])
-  const [error, setError]         = useState("")
 
+  // ── Estados de la calculadora (NO duplicados) ─────────────────
+  const [ivaRate,      setIvaRate]      = useState(19)
+  const [marginRate,   setMarginRate]   = useState(margenInicial)
+  const [discountRate, setDiscountRate] = useState(descuentoInicial)
+  const [newImages,    setNewImages]    = useState([])
+  const [error,        setError]        = useState("")
+
+  // ── Calculadora de precios ────────────────────────────────────
+  const calcular = () => {
+    const costo    = Number(form.cost_price) || 0
+    const iva      = costo * (ivaRate / 100)
+    const costoIva = costo + iva
+    const precioSugerido = marginRate < 100
+      ? costoIva / (1 - marginRate / 100)
+      : 0
+    const precioVenta = Number(form.price) || 0
+    const margenReal  = precioVenta > 0 && costo > 0
+      ? (precioVenta - costo) / precioVenta * 100
+      : 0
+    const precioComparacion = discountRate && Number(discountRate) > 0
+      ? precioVenta / (1 - Number(discountRate) / 100)
+      : 0
+    return { costo, iva, costoIva, precioSugerido, margenReal, precioComparacion }
+  }
+
+  const calc = calcular()
+
+  // ── Mutations ─────────────────────────────────────────────────
   const saveMutation = useMutation({
     mutationFn: async () => {
       const payload = {
@@ -128,6 +166,7 @@ function ProductForm({ product, onClose }) {
       if (form.category)      payload.category      = form.category
       if (form.brand)         payload.brand         = form.brand
       if (form.compare_price) payload.compare_price = form.compare_price
+      if (form.cost_price)    payload.cost_price    = form.cost_price
 
       let saved
       if (product?.id) {
@@ -136,10 +175,9 @@ function ProductForm({ product, onClose }) {
         saved = await createAdminProduct(payload)
       }
 
-      // Sube imágenes nuevas una por una
       for (let i = 0; i < newImages.length; i++) {
-        const img  = newImages[i]
-        const fd   = new FormData()
+        const img = newImages[i]
+        const fd  = new FormData()
         fd.append("image",      img.file)
         fd.append("order",      existingImages.length + i)
         fd.append("is_primary", existingImages.length === 0 && i === 0 ? "true" : "false")
@@ -158,7 +196,7 @@ function ProductForm({ product, onClose }) {
   })
 
   const deleteImageMutation = useMutation({
-    mutationFn: (imageId) => deleteProductImage(imageId), // ← solo imageId
+    mutationFn: (imageId) => deleteProductImage(imageId),
     onSuccess:  () => queryClient.invalidateQueries(["product-images", product?.id]),
   })
 
@@ -250,53 +288,287 @@ function ProductForm({ product, onClose }) {
           rows={4} style={{ ...inputSt, resize: "vertical" }} />
       </Field>
 
-      {/* Precio + Compare + Stock */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
-        <Field label="Precio" required>
-          <input type="number" value={form.price}
-            onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
-            style={inputSt} min="0" placeholder="150000" />
-        </Field>
-        <Field label="Precio comparativo">
-          <input type="number" value={form.compare_price}
-            onChange={e => setForm(p => ({ ...p, compare_price: e.target.value }))}
-            style={inputSt} min="0" placeholder="200000" />
-        </Field>
-        <Field label="Stock" required>
-          <input type="number" value={form.stock}
-            onChange={e => setForm(p => ({ ...p, stock: parseInt(e.target.value) || 0 }))}
-            style={inputSt} min="0" />
-        </Field>
+     {/* ── SECCIÓN PRECIOS ── */}
+<div style={{
+  border: "1px solid var(--border)",
+  borderRadius: "var(--r-lg)",
+  overflow: "hidden",
+}}>
+
+  {/* Header de la sección */}
+  <div style={{
+    padding: "12px 20px",
+    borderBottom: "1px solid var(--border)",
+    background: "var(--surface-2)",
+    display: "flex", alignItems: "center", gap: "10px",
+  }}>
+    <span style={{ fontSize: "16px" }}>💹</span>
+    <p style={{ fontSize: "13px", fontWeight: 600, letterSpacing: "0.04em" }}>
+      Precios y márgenes
+    </p>
+  </div>
+
+  <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "20px" }}>
+
+    {/* ── PANEL 1: Costo + IVA ── */}
+    <div style={{
+      display: "grid", gridTemplateColumns: "1fr 1fr",
+      gap: "12px",
+    }}>
+      {/* Costo */}
+      <div>
+        <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+          color: "var(--text-2)", marginBottom: "7px" }}>
+          Costo del producto *
+        </label>
+        <input type="number" value={form.cost_price}
+          onChange={e => setForm(p => ({ ...p, cost_price: e.target.value }))}
+          style={inputSt} placeholder="0" min="0" />
+        <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "5px" }}>
+          Precio de compra — solo visible para vos
+        </p>
       </div>
 
-      {/* Tipo + Estado + Destacado */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "14px" }}>
-        <Field label="Tipo">
-          <select value={form.product_type}
-            onChange={e => setForm(p => ({ ...p, product_type: e.target.value }))}
-            style={inputSt}>
-            <option value="stock">En stock</option>
-            <option value="preorder">Preorden</option>
-            <option value="on_demand">A pedido</option>
-          </select>
-        </Field>
-        <Field label="Estado">
-          <select value={form.is_active ? "1" : "0"}
-            onChange={e => setForm(p => ({ ...p, is_active: e.target.value === "1" }))}
-            style={inputSt}>
-            <option value="1">Activo</option>
-            <option value="0">Inactivo</option>
-          </select>
-        </Field>
-        <Field label="Destacado">
-          <select value={form.is_featured ? "1" : "0"}
-            onChange={e => setForm(p => ({ ...p, is_featured: e.target.value === "1" }))}
-            style={inputSt}>
-            <option value="0">No</option>
-            <option value="1">Sí</option>
-          </select>
-        </Field>
+      {/* IVA + resultado */}
+      <div style={{
+        display: "grid", gridTemplateColumns: "80px 1fr", gap: "10px", alignItems: "start",
+      }}>
+        <div>
+          <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+            color: "var(--text-2)", marginBottom: "7px" }}>
+            IVA %
+          </label>
+          <input type="number" value={ivaRate}
+            onChange={e => setIvaRate(Number(e.target.value) || 0)}
+            style={inputSt} min="0" max="100" />
+        </div>
+        <div style={{
+          padding: "10px 14px", borderRadius: "var(--r-md)",
+          background: "rgba(250,204,21,0.06)",
+          border: "1px solid rgba(250,204,21,0.2)",
+          marginTop: "26px",
+        }}>
+          <p style={{ fontSize: "11px", color: "var(--text-3)", marginBottom: "3px" }}>
+            IVA: <span style={{ color: "#facc15", fontWeight: 600 }}>
+              +${Math.round(calc.iva).toLocaleString("es-CL")}
+            </span>
+          </p>
+          <p style={{ fontSize: "11px", color: "var(--text-3)" }}>
+            Con IVA: <span style={{ color: "var(--text-2)", fontWeight: 500 }}>
+              ${Math.round(calc.costoIva).toLocaleString("es-CL")}
+            </span>
+          </p>
+        </div>
       </div>
+    </div>
+
+    {/* Divisor */}
+    <div style={{ height: "1px", background: "var(--border)" }} />
+
+    {/* ── PANEL 2: Margen + Precio sugerido + Precio de venta ── */}
+    <div style={{ display: "grid", gridTemplateColumns: "90px 1fr 1fr", gap: "12px", alignItems: "end" }}>
+      <div>
+        <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+          color: "var(--text-2)", marginBottom: "7px" }}>
+          Margen %
+        </label>
+        <input type="number" value={marginRate}
+          onChange={e => setMarginRate(Number(e.target.value) || 0)}
+          style={inputSt} min="0" max="99" />
+      </div>
+
+      {/* Precio sugerido */}
+      <div style={{
+        padding: "14px 16px", borderRadius: "var(--r-md)",
+        background: "rgba(26,255,110,0.05)",
+        border: "1px solid rgba(26,255,110,0.2)",
+        display: "flex", flexDirection: "column", gap: "6px",
+      }}>
+        <p style={{ fontSize: "11px", color: "var(--text-3)" }}>
+          Precio sugerido (costo + IVA + margen)
+        </p>
+        <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.5rem",
+          color: "var(--accent)", lineHeight: 1 }}>
+          ${Math.round(calc.precioSugerido).toLocaleString("es-CL")}
+        </p>
+        <button type="button"
+          onClick={() => setForm(p => ({
+            ...p, price: Math.round(calc.precioSugerido).toString()
+          }))}
+          style={{
+            fontSize: "11px", color: "var(--accent)", fontWeight: 500,
+            background: "none", border: "none", cursor: "pointer",
+            padding: 0, textAlign: "left",
+          }}>
+          Usar este precio →
+        </button>
+      </div>
+
+      {/* Precio de venta */}
+      <div>
+        <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+          color: "var(--text-2)", marginBottom: "7px" }}>
+          Precio de venta *
+        </label>
+        <input type="number" value={form.price}
+          onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
+          style={{
+            ...inputSt,
+            border: `1px solid ${
+              Number(form.price) > 0 && Number(form.price) >= Math.round(calc.costoIva)
+                ? "rgba(26,255,110,0.4)"
+                : "var(--border)"
+            }`,
+          }}
+          placeholder="0" min="0" />
+        {Number(form.price) > 0 && Number(form.price) < Math.round(calc.costoIva) && (
+          <p style={{ fontSize: "11px", color: "var(--danger)", marginTop: "5px" }}>
+            ⚠️ Precio menor al costo con IVA
+          </p>
+        )}
+      </div>
+    </div>
+
+    {/* ── PANEL 3: Indicador de margen real ── */}
+    {Number(form.price) > 0 && Number(form.cost_price) > 0 && (
+      <div style={{
+        padding: "14px 18px", borderRadius: "var(--r-md)",
+        background: "var(--surface-2)",
+        border: `1px solid ${
+          calc.margenReal > 20 ? "rgba(26,255,110,0.2)"
+          : calc.margenReal > 0 ? "rgba(250,204,21,0.2)"
+          : "rgba(248,113,113,0.2)"
+        }`,
+        display: "flex", alignItems: "center",
+        justifyContent: "space-between", gap: "20px",
+        flexWrap: "wrap",
+      }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+          {/* Margen % grande */}
+          <p style={{
+            fontFamily: "var(--font-serif)", fontSize: "2rem", lineHeight: 1,
+            color: calc.margenReal > 20 ? "var(--accent)"
+              : calc.margenReal > 0 ? "#facc15"
+              : "var(--danger)",
+          }}>
+            {calc.margenReal.toFixed(1)}%
+          </p>
+          <div>
+            <p style={{ fontSize: "13px", fontWeight: 500, marginBottom: "3px" }}>
+              Margen real sobre precio de venta
+            </p>
+            <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+              Ganancia: ${Math.round(
+                (Number(form.price) || 0) - (Number(form.cost_price) || 0)
+              ).toLocaleString("es-CL")} por unidad
+            </p>
+          </div>
+        </div>
+
+        {/* Mini breakdown */}
+        <div style={{ display: "flex", gap: "20px", fontSize: "12px" }}>
+          {[
+            { label: "Costo",     value: Number(form.cost_price) || 0,  color: "#f87171" },
+            { label: "IVA",       value: Math.round(calc.iva),          color: "#facc15" },
+            { label: "Ganancia",  value: Math.round((Number(form.price)||0) - (Number(form.cost_price)||0) - Math.round(calc.iva)), color: "var(--accent)" },
+          ].map(({ label, value, color }) => (
+            <div key={label} style={{ textAlign: "center" }}>
+              <p style={{ color: "var(--text-3)", marginBottom: "2px" }}>{label}</p>
+              <p style={{ fontWeight: 600, color }}>
+                ${Math.max(0, value).toLocaleString("es-CL")}
+              </p>
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    {/* Divisor */}
+    <div style={{ height: "1px", background: "var(--border)" }} />
+
+    {/* ── PANEL 4: Descuento (opcional) ── */}
+    <div style={{ display: "grid", gridTemplateColumns: "90px 1fr", gap: "12px", alignItems: "end" }}>
+      <div>
+        <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+          color: "var(--text-2)", marginBottom: "7px" }}>
+          Descuento %
+          <span style={{ color: "var(--text-3)", fontWeight: 400, marginLeft: "6px" }}>
+            (opcional)
+          </span>
+        </label>
+        <input type="number" value={discountRate}
+          onChange={e => {
+            const pct = e.target.value
+            setDiscountRate(pct)
+            const precio = Number(form.price) || 0
+            if (Number(pct) > 0 && Number(pct) < 100 && precio > 0) {
+              const original = Math.round(precio / (1 - Number(pct) / 100))
+              setForm(p => ({ ...p, compare_price: original.toString() }))
+            } else {
+              setForm(p => ({ ...p, compare_price: "" }))
+            }
+          }}
+          style={inputSt} min="0" max="99" placeholder="—" />
+      </div>
+
+      {/* Vista previa del descuento */}
+      {calc.precioComparacion > 0 ? (
+        <div style={{
+          padding: "12px 16px", borderRadius: "var(--r-md)",
+          background: "var(--surface-2)", border: "1px solid var(--border)",
+          display: "flex", alignItems: "center", gap: "16px",
+        }}>
+          <div>
+            <p style={{ fontSize: "11px", color: "var(--text-3)", marginBottom: "4px" }}>
+              El cliente ve en la tienda
+            </p>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <p style={{ fontSize: "1.2rem", fontFamily: "var(--font-serif)",
+                color: "var(--text-3)", textDecoration: "line-through" }}>
+                ${Math.round(calc.precioComparacion).toLocaleString("es-CL")}
+              </p>
+              <span style={{
+                fontSize: "12px", fontWeight: 700,
+                background: "var(--accent)", color: "#000",
+                padding: "2px 8px", borderRadius: "100px",
+              }}>
+                -{discountRate}%
+              </span>
+              <p style={{ fontSize: "1.1rem", fontFamily: "var(--font-serif)",
+                color: "var(--text)", fontWeight: 500 }}>
+                ${Number(form.price || 0).toLocaleString("es-CL")}
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div style={{
+          padding: "12px 16px", borderRadius: "var(--r-md)",
+          background: "var(--surface-2)", border: "1px solid var(--border)",
+          fontSize: "12px", color: "var(--text-3)",
+          display: "flex", alignItems: "center",
+        }}>
+          Sin descuento — el precio se muestra sin tachar
+        </div>
+      )}
+    </div>
+
+    {/* Divisor */}
+    <div style={{ height: "1px", background: "var(--border)" }} />
+
+    {/* ── Stock ── */}
+    <div style={{ maxWidth: "200px" }}>
+      <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+        color: "var(--text-2)", marginBottom: "7px" }}>
+        Stock *
+      </label>
+      <input type="number" value={form.stock}
+        onChange={e => setForm(p => ({ ...p, stock: parseInt(e.target.value) || 0 }))}
+        style={inputSt} min="0" />
+    </div>
+
+  </div>
+</div>
 
       {/* ── Imágenes existentes ── */}
       {existingImages.length > 0 && (
@@ -583,9 +855,9 @@ function CategoryForm({ category, categories, onClose }) {
 
 function SortableCategoryRow({ cat, categories, onEdit, onDelete }) {
   // Normaliza parent
-  const getId    = (val) => (val && typeof val === "object" ? val.id : val)
+  const getId = (val) => (val && typeof val === "object" ? val.id : val)
   const parentId = getId(cat.parent)
-  const isChild  = !!parentId
+  const isChild = !!parentId
   const parentName = isChild
     ? categories.find(c => c.id === parentId)?.name
     : null
@@ -613,9 +885,11 @@ function SortableCategoryRow({ cat, categories, onEdit, onDelete }) {
     >
       {/* Handle */}
       <div {...attributes} {...listeners}
-        style={{ cursor: "grab", color: "var(--text-3)",
+        style={{
+          cursor: "grab", color: "var(--text-3)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: "16px", userSelect: "none" }}
+          fontSize: "16px", userSelect: "none"
+        }}
         title="Arrastrar">
         ⠿
       </div>
@@ -623,8 +897,10 @@ function SortableCategoryRow({ cat, categories, onEdit, onDelete }) {
       {/* Nombre con indentación si es hijo */}
       <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
         {isChild && (
-          <span style={{ color: "var(--border)", fontSize: "13px",
-            paddingLeft: "12px", flexShrink: 0 }}>
+          <span style={{
+            color: "var(--border)", fontSize: "13px",
+            paddingLeft: "12px", flexShrink: 0
+          }}>
             └
           </span>
         )}
@@ -647,24 +923,28 @@ function SortableCategoryRow({ cat, categories, onEdit, onDelete }) {
       <span style={{
         fontSize: "11px", padding: "2px 8px", borderRadius: "100px",
         fontWeight: 500, display: "inline-block",
-        color:      cat.is_active ? "#4ade80" : "var(--text-3)",
+        color: cat.is_active ? "#4ade80" : "var(--text-3)",
         background: cat.is_active ? "rgba(74,222,128,0.1)" : "var(--surface-3)",
-        border:     `1px solid ${cat.is_active ? "rgba(74,222,128,0.25)" : "var(--border)"}`,
+        border: `1px solid ${cat.is_active ? "rgba(74,222,128,0.25)" : "var(--border)"}`,
       }}>
         {cat.is_active ? "Activa" : "Inactiva"}
       </span>
 
       <div style={{ display: "flex", gap: "6px" }}>
         <button onClick={() => onEdit(cat)}
-          style={{ padding: "5px 10px", borderRadius: "100px", fontSize: "11px",
+          style={{
+            padding: "5px 10px", borderRadius: "100px", fontSize: "11px",
             cursor: "pointer", color: "#60a5fa",
-            background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.25)" }}>
+            background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.25)"
+          }}>
           ✎
         </button>
         <button onClick={() => onDelete(cat)}
-          style={{ padding: "5px 10px", borderRadius: "100px", fontSize: "11px",
+          style={{
+            padding: "5px 10px", borderRadius: "100px", fontSize: "11px",
             cursor: "pointer", color: "#f87171",
-            background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)" }}>
+            background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.25)"
+          }}>
           ×
         </button>
       </div>
@@ -685,24 +965,24 @@ function BrandForm({ brand, onClose }) {
   const [error, setError] = useState("")
 
   const mutation = useMutation({
-  mutationFn: () => {
-    // ← SIEMPRE usar FormData, nunca JSON cuando hay archivos
-    const fd = new FormData()
-    fd.append("name",      form.name)
-    fd.append("website",   form.website   || "")
-    fd.append("is_active", form.is_active)
-    if (logoFile) fd.append("logo", logoFile)
-    
-    return brand
-      ? updateAdminBrand(brand.id, fd)
-      : createAdminBrand(fd)
-  },
-  onSuccess: () => {
-    queryClient.invalidateQueries(["admin-brands"])
-    onClose()
-  },
-  onError: (e) => setError(JSON.stringify(e.response?.data) || "Error al guardar."),
-})
+    mutationFn: () => {
+      // ← SIEMPRE usar FormData, nunca JSON cuando hay archivos
+      const fd = new FormData()
+      fd.append("name", form.name)
+      fd.append("website", form.website || "")
+      fd.append("is_active", form.is_active)
+      if (logoFile) fd.append("logo", logoFile)
+
+      return brand
+        ? updateAdminBrand(brand.id, fd)
+        : createAdminBrand(fd)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries(["admin-brands"])
+      onClose()
+    },
+    onError: (e) => setError(JSON.stringify(e.response?.data) || "Error al guardar."),
+  })
 
   const inputSt = {
     width: "100%", padding: "10px 14px",
@@ -794,181 +1074,7 @@ function BrandForm({ brand, onClose }) {
   )
 }
 
-function ImagePanel({ product, onClose }) {
-  const queryClient = useQueryClient()
-  const fileRef = useRef(null)
 
-  const { data: imagesData, isLoading } = useQuery({
-    queryKey: ["product-images", product.id],
-    queryFn: () => getProductImages(product.id),
-  })
-  const images = imagesData?.results || imagesData || []
-
-  const uploadMutation = useMutation({
-    mutationFn: (file) => {
-      const fd = new FormData()
-      fd.append("image", file)
-      return uploadProductImage(product.id, fd)
-    },
-    onSuccess: () => queryClient.invalidateQueries(["product-images", product.id]),
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: deleteProductImage,
-    onSuccess: () => queryClient.invalidateQueries(["product-images", product.id]),
-  })
-
-  const primaryMutation = useMutation({
-    mutationFn: setPrimaryImage,
-    onSuccess: () => queryClient.invalidateQueries(["product-images", product.id]),
-  })
-
-  return (
-    <div style={{
-      position: "fixed", top: 0, right: 0, bottom: 0,
-      width: "440px", zIndex: 100,
-      background: "var(--surface)",
-      borderLeft: "1px solid var(--border)",
-      display: "flex", flexDirection: "column",
-      boxShadow: "-20px 0 60px rgba(0,0,0,0.4)",
-    }}>
-      {/* Header */}
-      <div style={{
-        padding: "20px 24px", borderBottom: "1px solid var(--border)",
-        display: "flex", justifyContent: "space-between", alignItems: "center"
-      }}>
-        <div>
-          <p style={{
-            fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
-            letterSpacing: "0.08em", marginBottom: "4px"
-          }}>Imágenes</p>
-          <p style={{
-            fontSize: "14px", fontWeight: 500, overflow: "hidden",
-            textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "300px"
-          }}>
-            {product.name}
-          </p>
-        </div>
-        <button onClick={onClose} style={{
-          background: "none", border: "none",
-          cursor: "pointer", color: "var(--text-3)", fontSize: "20px"
-        }}
-          className="hover:text-white">×</button>
-      </div>
-
-      {/* Contenido */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px" }}>
-
-        {/* Upload */}
-        <input
-          ref={fileRef} type="file" accept="image/*" multiple
-          style={{ display: "none" }}
-          onChange={e => {
-            Array.from(e.target.files).forEach(f => uploadMutation.mutate(f))
-            e.target.value = ""
-          }}
-        />
-        <button
-          onClick={() => fileRef.current?.click()}
-          disabled={uploadMutation.isPending}
-          style={{
-            width: "100%", padding: "14px",
-            borderRadius: "var(--r-md)", fontSize: "13px",
-            border: "2px dashed var(--border)",
-            background: "transparent", color: "var(--text-2)",
-            cursor: "pointer", marginBottom: "20px",
-            transition: "all var(--dur) var(--ease)",
-          }}
-          className="hover:border-[var(--border-hover)] hover:text-white"
-        >
-          {uploadMutation.isPending
-            ? "Subiendo..."
-            : "+ Agregar imágenes (puedes seleccionar varias)"}
-        </button>
-
-        {/* Grid de imágenes */}
-        {isLoading ? (
-          <div className="grid grid-cols-2 gap-3">
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="skeleton" style={{ aspectRatio: "1" }} />
-            ))}
-          </div>
-        ) : images.length === 0 ? (
-          <div style={{
-            textAlign: "center", padding: "40px 0",
-            color: "var(--text-3)", fontSize: "13px"
-          }}>
-            Sin imágenes todavía. Agrega la primera arriba.
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            {images.map(img => (
-              <div key={img.id} style={{
-                position: "relative", borderRadius: "var(--r-md)",
-                overflow: "hidden", border: `2px solid ${img.is_primary
-                  ? "var(--accent)" : "var(--border)"}`,
-                aspectRatio: "1",
-              }}>
-                <img src={mediaUrl(img.image)} alt={img.alt_text}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-
-                {/* Badge principal */}
-                {img.is_primary && (
-                  <span style={{
-                    position: "absolute", top: "8px", left: "8px",
-                    padding: "2px 8px", borderRadius: "100px",
-                    background: "var(--accent)", color: "#000",
-                    fontSize: "10px", fontWeight: 600,
-                  }}>
-                    Principal
-                  </span>
-                )}
-
-                {/* Acciones */}
-                <div style={{
-                  position: "absolute", bottom: 0, left: 0, right: 0,
-                  padding: "8px", display: "flex", gap: "6px",
-                  background: "linear-gradient(transparent, rgba(0,0,0,0.8))",
-                }}>
-                  {!img.is_primary && (
-                    <button
-                      onClick={() => primaryMutation.mutate(img.id)}
-                      disabled={primaryMutation.isPending}
-                      style={{
-                        flex: 1, padding: "5px 8px", borderRadius: "var(--r-sm)",
-                        fontSize: "11px", fontWeight: 500, cursor: "pointer",
-                        background: "rgba(26,255,110,0.2)",
-                        border: "1px solid rgba(26,255,110,0.4)",
-                        color: "var(--accent)",
-                      }}>
-                      Principal
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      if (window.confirm("¿Eliminar esta imagen?")) {
-                        deleteMutation.mutate(img.id)
-                      }
-                    }}
-                    disabled={deleteMutation.isPending}
-                    style={{
-                      flex: 1, padding: "5px 8px", borderRadius: "var(--r-sm)",
-                      fontSize: "11px", fontWeight: 500, cursor: "pointer",
-                      background: "rgba(255,59,59,0.2)",
-                      border: "1px solid rgba(255,59,59,0.3)",
-                      color: "var(--danger)",
-                    }}>
-                    Eliminar
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
 // ── AdminProducts ────────────────────────────────────────────
 export default function AdminProducts() {
   const [search, setSearch] = useState("")
@@ -1027,39 +1133,39 @@ export default function AdminProducts() {
     color, background: `${color}14`, borderColor: `${color}30`,
   })
 
-    // ── Estado para el orden local
+  // ── Estado para el orden local
   const [sortedCats, setSortedCats] = useState([])
   const [savingOrder, setSavingOrder] = useState(false)
 
   useEffect(() => {
-  if (!categories.length) return
+    if (!categories.length) return
 
-  const toStr = (val) => {
-    if (!val) return null
-    if (typeof val === "object") return String(val.id)
-    return String(val)
-  }
+    const toStr = (val) => {
+      if (!val) return null
+      if (typeof val === "object") return String(val.id)
+      return String(val)
+    }
 
-  const parents = categories
-    .filter(c => !c.parent)
-    .sort((a, b) => (a.order || 0) - (b.order || 0))
-
-  const ordered = []
-  parents.forEach(parent => {
-    ordered.push(parent)
-    const children = categories
-      .filter(c => toStr(c.parent) === toStr(parent.id))
+    const parents = categories
+      .filter(c => !c.parent)
       .sort((a, b) => (a.order || 0) - (b.order || 0))
-    ordered.push(...children)
-  })
 
-  const orphans = categories.filter(c =>
-    c.parent && !categories.find(p => toStr(p.id) === toStr(c.parent))
-  )
-  ordered.push(...orphans)
+    const ordered = []
+    parents.forEach(parent => {
+      ordered.push(parent)
+      const children = categories
+        .filter(c => toStr(c.parent) === toStr(parent.id))
+        .sort((a, b) => (a.order || 0) - (b.order || 0))
+      ordered.push(...children)
+    })
 
-  setSortedCats(ordered)
-}, [categories])
+    const orphans = categories.filter(c =>
+      c.parent && !categories.find(p => toStr(p.id) === toStr(c.parent))
+    )
+    ordered.push(...orphans)
+
+    setSortedCats(ordered)
+  }, [categories])
 
   const sensors = useSensors(useSensor(PointerSensor))
 
@@ -1268,60 +1374,66 @@ export default function AdminProducts() {
 
       {/* ── TAB CATEGORÍAS ── */}
       {tab === "categories" && (
-  <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-    borderRadius: "var(--r-lg)", overflow: "hidden" }}>
+        <div style={{
+          background: "var(--surface)", border: "1px solid var(--border)",
+          borderRadius: "var(--r-lg)", overflow: "hidden"
+        }}>
 
-    {/* Botón guardar orden */}
-    <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--border)",
-      display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
-        ⠿ Arrastrá las filas para reordenar
-      </p>
-      <button onClick={saveOrder} disabled={savingOrder}
-        className="btn btn-accent"
-        style={{ padding: "7px 16px", fontSize: "12px", opacity: savingOrder ? 0.6 : 1 }}>
-        {savingOrder ? "Guardando..." : "Guardar orden"}
-      </button>
-    </div>
+          {/* Botón guardar orden */}
+          <div style={{
+            padding: "12px 20px", borderBottom: "1px solid var(--border)",
+            display: "flex", justifyContent: "space-between", alignItems: "center"
+          }}>
+            <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+              ⠿ Arrastrá las filas para reordenar
+            </p>
+            <button onClick={saveOrder} disabled={savingOrder}
+              className="btn btn-accent"
+              style={{ padding: "7px 16px", fontSize: "12px", opacity: savingOrder ? 0.6 : 1 }}>
+              {savingOrder ? "Guardando..." : "Guardar orden"}
+            </button>
+          </div>
 
-    {/* Header */}
-    <div style={{ display: "grid", gridTemplateColumns: "32px 2fr 1.5fr 1fr 1fr 80px",
-      padding: "10px 20px", borderBottom: "1px solid var(--border)",
-      fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
-      textTransform: "uppercase", letterSpacing: "0.08em" }}>
-      <span></span>
-      <span>Nombre</span><span>Padre</span>
-      <span>Orden</span><span>Estado</span><span>Acciones</span>
-    </div>
+          {/* Header */}
+          <div style={{
+            display: "grid", gridTemplateColumns: "32px 2fr 1.5fr 1fr 1fr 80px",
+            padding: "10px 20px", borderBottom: "1px solid var(--border)",
+            fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
+            textTransform: "uppercase", letterSpacing: "0.08em"
+          }}>
+            <span></span>
+            <span>Nombre</span><span>Padre</span>
+            <span>Orden</span><span>Estado</span><span>Acciones</span>
+          </div>
 
-    {loadingCats ? (
-      <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "8px" }}>
-        {[...Array(4)].map((_, i) => (
-          <div key={i} className="skeleton" style={{ height: "48px" }} />
-        ))}
-      </div>
-    ) : (
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-        <SortableContext items={sortedCats.map(c => c.id)} strategy={verticalListSortingStrategy}>
-          {sortedCats.map(c => (
-            <SortableCategoryRow
-              key={c.id}
-              cat={c}
-              categories={sortedCats}
-              onEdit={(cat) => setModal({ type: "category", item: cat })}
-              onDelete={(cat) => {
-                if (window.confirm(`¿Eliminar "${cat.name}"?`)) {
-                  deleteCatMutation.mutate(cat.id)
-                }
-              }}
-            />
-          ))}
-        </SortableContext>
-      </DndContext>
-    )}
-  </div>
-)}
-    
+          {loadingCats ? (
+            <div style={{ padding: "20px", display: "flex", flexDirection: "column", gap: "8px" }}>
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="skeleton" style={{ height: "48px" }} />
+              ))}
+            </div>
+          ) : (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={sortedCats.map(c => c.id)} strategy={verticalListSortingStrategy}>
+                {sortedCats.map(c => (
+                  <SortableCategoryRow
+                    key={c.id}
+                    cat={c}
+                    categories={sortedCats}
+                    onEdit={(cat) => setModal({ type: "category", item: cat })}
+                    onDelete={(cat) => {
+                      if (window.confirm(`¿Eliminar "${cat.name}"?`)) {
+                        deleteCatMutation.mutate(cat.id)
+                      }
+                    }}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
+          )}
+        </div>
+      )}
+
 
       {/* ── TAB MARCAS ── */}
       {tab === "brands" && (

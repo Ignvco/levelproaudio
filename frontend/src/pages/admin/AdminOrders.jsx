@@ -37,12 +37,16 @@ function Badge({ status }) {
 function OrderDetailPanel({ order, onClose, onStatusChange }) {
   const queryClient = useQueryClient()
   const mutation = useMutation({
-    mutationFn: (s) => updateOrderStatus(order.id, s),
-    onSuccess: () => {
-      queryClient.invalidateQueries(["admin-orders"])
-      queryClient.invalidateQueries(["admin-dashboard"])
-    },
-  })
+  mutationFn: (s) => updateOrderStatus(order.id, s),
+  onSuccess: () => {
+    // ← Invalida todo lo relacionado
+    queryClient.invalidateQueries(["admin-orders"])
+    queryClient.invalidateQueries(["admin-dashboard"])
+    queryClient.invalidateQueries(["admin-payments"])        // ← nuevo
+    queryClient.invalidateQueries(["admin-finance-summary"]) // ← nuevo
+    queryClient.invalidateQueries(["admin-finance-withdrawals"]) // ← nuevo
+  },
+})
 
   return (
     <div style={{

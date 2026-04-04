@@ -14,6 +14,7 @@ from .views import (
     AdminLessonViewSet,
     admin_users,
     admin_payments,
+    admin_update_payment_status,
     admin_academy,
     admin_services,
     admin_services_crud,
@@ -22,6 +23,12 @@ from .views import (
     admin_enrollments,
     admin_user_detail, 
     admin_delete_enrollment,
+    admin_finance_categories,
+    admin_finance_category_detail,
+    admin_finance_summary,
+    admin_finance_withdrawals,
+    admin_finance_withdrawal_delete,
+    admin_finance_by_product,
     update_booking_status,
     update_request_status,
     import_products,
@@ -52,6 +59,14 @@ urlpatterns = [
 
     # Pagos
     path("payments/",          admin_payments,     name="admin-payments"),
+    path("payments/<uuid:payment_id>/status/", admin_update_payment_status, name="admin-payment-status"),
+    path("finance/by-product/", admin_finance_by_product, name="finance-by-product"),
+    path("finance/summary/",                            admin_finance_summary,              name="finance-summary"),
+    path("finance/categories/",                         admin_finance_categories,           name="finance-categories"),
+    path("finance/categories/<uuid:cat_id>/",           admin_finance_category_detail,      name="finance-category-detail"),
+    path("finance/withdrawals/",                        admin_finance_withdrawals,          name="finance-withdrawals"),
+    path("finance/withdrawals/<uuid:withdrawal_id>/",   admin_finance_withdrawal_delete,    name="finance-withdrawal-delete"),
+    path("finance/by-product/",                         admin_finance_by_product,           name="finance-by-product"),
 
     # Academia
     path("academy/",           admin_academy,      name="admin-academy"),
