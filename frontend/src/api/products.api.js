@@ -1,23 +1,13 @@
-// api/products.api.js
-
 import api from "./client"
 
-export const getProducts = async (params = {}) => {
-  const response = await api.get("/products/", { params })
-  return response.data
-}
+export const getProducts = (params) =>
+  api.get("/products/", { params }).then(r => r.data)  // ← .then obligatorio
 
-export const getProduct = async (slug) => {
-  const response = await api.get(`/products/${slug}/`)
-  return response.data
-}
+export const getProduct = (slug) =>
+  api.get(`/products/${slug}/`).then(r => r.data)
 
-export const getCategories = async () => {
-  const response = await api.get("/categories/")
-  return response.data
-}
+export const getCategories = () =>
+  api.get("/categories/").then(r => r.data)
 
-export const getBrands = async () => {
-  const response = await api.get("/brands/")
-  return response.data
-}
+export const getBrands = () =>
+  api.get("/brands/").then(r => r.data)

@@ -4,15 +4,21 @@ from .models import Category, Brand, Product, ProductImage
 
 
 class CategorySerializer(serializers.ModelSerializer):
-    children = serializers.SerializerMethodField()
+    # Fuerza parent como UUID puro — nunca como objeto anidado
+    parent = serializers.PrimaryKeyRelatedField(
+        queryset=Category.objects.all(),
+        allow_null=True,
+        required=False,
+    )
 
     class Meta:
         model  = Category
-        fields = ["id", "name", "slug", "parent", "description",
-                  "image", "order", "is_active", "children"]
+        fields = [
+            "id", "name", "slug", "parent",
+            "description", "image", "order", "is_active",
+        ]
         extra_kwargs = {
-            "slug":   {"required": False, "allow_blank": True},
-            "parent": {"required": False, "allow_null": True},
+            "slug": {"required": False, "allow_blank": True},
         }
 
     def validate(self, data):
@@ -21,9 +27,11 @@ class CategorySerializer(serializers.ModelSerializer):
             data["slug"] = slugify(data.get("name", ""))
         return data
 
-    def get_children(self, obj):
-        children = obj.children.filter(is_active=True)
-        return CategorySerializer(children, many=True).data
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        # parent devuelve solo el UUID string, no el objeto completo
+        ret["parent"] = str(instance.parent_id) if instance.parent_id else None
+        return ret
 
 
 class BrandSerializer(serializers.ModelSerializer):
