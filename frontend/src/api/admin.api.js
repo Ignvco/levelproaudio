@@ -147,3 +147,34 @@ export const deleteWithdrawal      = (id) =>
 
 export const updatePaymentStatus = (id, status) =>
   api.patch(`${BASE}/payments/${id}/status/`, { status }).then(r => r.data)
+
+
+// Inventario
+export const getInventorySummary    = () =>
+  api.get(`${BASE}/inventory/summary/`).then(r => r.data)
+
+export const getInventoryAlerts     = () =>
+  api.get(`${BASE}/inventory/alerts/`).then(r => r.data)
+
+export const getInventoryRotation   = () =>
+  api.get(`${BASE}/inventory/rotation/`).then(r => r.data)
+
+export const getInventoryByCategory = () =>
+  api.get(`${BASE}/inventory/by-category/`).then(r => r.data)
+
+export const getExecutiveDashboard = () =>
+  api.get(`${BASE}/executive/`).then(r => r.data)
+
+
+// Loyalty — admin
+export const getLoyaltySummary  = () =>
+  api.get(`${BASE}/loyalty/admin/summary/`).then(r => r.data)
+
+export const getLoyaltyConfig   = () =>
+  api.get(`${BASE}/loyalty/admin/config/`).then(r => r.data)
+
+export const updateLoyaltyConfig = (data) =>
+  api.patch(`${BASE}/loyalty/admin/config/`, data).then(r => r.data)
+
+export const adjustLoyaltyPoints = (data) =>
+  api.post(`${BASE}/loyalty/admin/adjust/`, data).then(r => r.data)

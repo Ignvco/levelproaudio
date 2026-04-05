@@ -6,8 +6,11 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
 from rest_framework import serializers as drf_serializers
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
-from django.db.models import Sum, Count, Avg, Q
+from django.db.models import Sum, Count as DCount, Avg, Q, F, ExpressionWrapper, DecimalField
+from django.db.models import Count
+from django.db.models import F as Fdb
 from django.db.models.functions import TruncDay, TruncMonth
+from django.utils import timezone as tz
 from django.utils import timezone
 from django.views.decorators.csrf import csrf_exempt
 from datetime import timedelta
@@ -19,12 +22,19 @@ from apps.products.models import Product, Category, Brand, ProductImage
 from apps.products.serializers import (
     ProductDetailSerializer, ProductListSerializer, ProductImageSerializer, CategorySerializer, BrandSerializer
 )
+import openpyxl 
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+from django.http import HttpResponse
+from django.utils.text import slugify
+
+from decimal import Decimal
 from apps.users.models import User
 from apps.payments.models import Payment
 from apps.academy.models import Course, Module, Lesson, Enrollment
-from apps.services.models import Service, Booking, ServiceRequest
+from apps.services.models import Service, Booking, ServiceRequest, ServiceCategory
 from apps.products.importers import import_from_excel, import_from_csv
-from apps.analytics.models import DistributionCategory
+from apps.analytics.models import DistributionCategory, IncomeRecord, IncomeDistribution, Withdrawal
+from apps.services.serializers import ServiceDetailSerializer
 
 # ═══════════════════════════════════════════════════════════
 # SERIALIZERS
@@ -643,9 +653,7 @@ def admin_payments(request):
 @permission_classes([IsAdminOrStaff])
 def admin_update_payment_status(request, payment_id):
     """PATCH /api/v1/admin/payments/{id}/status/"""
-    from apps.payments.models import Payment
-    from apps.analytics.models import IncomeRecord
-    from decimal import Decimal
+    
 
     try:
         payment = Payment.objects.select_related("order").get(id=payment_id)
@@ -712,7 +720,7 @@ def admin_update_payment_status(request, payment_id):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_academy(request):
-    from django.db.models import Count as DCount
+   
     courses = Course.objects.annotate(
         enrollment_count=DCount("enrollments", distinct=True),
         lessons_count=DCount("modules__lessons", distinct=True),  # ← agrega
@@ -770,8 +778,7 @@ def admin_services(request):
 @permission_classes([IsAdminOrStaff])
 def admin_services_crud(request):
     """GET/POST /api/v1/admin/services/list/"""
-    from apps.services.models import Service, ServiceCategory
-    from apps.services.serializers import ServiceDetailSerializer
+   
 
     if request.method == "GET":
         services = Service.objects.select_related("category").order_by("order", "name")
@@ -790,7 +797,7 @@ def admin_services_crud(request):
         })
 
     # POST — crear servicio
-    from django.utils.text import slugify
+    
     data = request.data
     service = Service.objects.create(
         name             = data.get("name", ""),
@@ -810,7 +817,7 @@ def admin_services_crud(request):
 @permission_classes([IsAdminOrStaff])
 def admin_service_detail(request, service_id):
     """PATCH/DELETE /api/v1/admin/services/{id}/"""
-    from apps.services.models import Service
+    
     try:
         service = Service.objects.get(id=service_id)
     except Service.DoesNotExist:
@@ -855,7 +862,7 @@ def update_request_status(request, pk):
 
     # Acepta → crea Booking automáticamente
     if sr.status == "accepted" and old_status != "accepted" and sr.service:
-        from django.utils import timezone as tz
+        
         scheduled = (
             tz.datetime.combine(
                 sr.preferred_date,
@@ -1069,9 +1076,7 @@ def download_template(request):
     GET /api/v1/admin/products/template/
     Descarga el Excel plantilla con todas las columnas y ejemplos.
     """
-    import openpyxl
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-    from django.http import HttpResponse
+    
 
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -1185,7 +1190,7 @@ def product_images(request, product_id):
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 def product_image_upload(request, product_id):
-    from apps.products.models import Product
+    
     try:
         product = Product.objects.get(id=product_id)
     except Product.DoesNotExist:
@@ -1247,7 +1252,7 @@ def product_image_set_primary(request, image_id):
 @permission_classes([IsAdminOrStaff])
 def admin_finance_categories(request):
     """GET/POST /api/v1/admin/finance/categories/"""
-    from apps.analytics.models import DistributionCategory
+    
 
     if request.method == "GET":
         cats = DistributionCategory.objects.all().order_by("order")
@@ -1301,7 +1306,7 @@ def admin_finance_category_detail(request, cat_id):
 
     # Recalcula distribuciones si cambiaron los %
     if "percentage" in request.data or "cat_type" in request.data:
-        from apps.analytics.models import IncomeDistribution, IncomeRecord
+        
         IncomeDistribution.objects.all().delete()
         for record in IncomeRecord.objects.all():
             record.create_distributions()
@@ -1320,10 +1325,7 @@ def admin_finance_category_detail(request, cat_id):
 @permission_classes([IsAdminOrStaff])
 def admin_finance_summary(request):
     """GET /api/v1/admin/finance/summary/"""
-    from apps.analytics.models import (
-        DistributionCategory, IncomeDistribution, Withdrawal, IncomeRecord
-    )
-    from django.db.models import Sum
+    
 
     categories = DistributionCategory.objects.filter(is_active=True)
     summary = []
@@ -1358,7 +1360,7 @@ def admin_finance_summary(request):
         t=Sum("amount"))["t"] or 0
 
     # Últimos ingresos
-    from apps.analytics.models import IncomeRecord
+    
     recent = IncomeRecord.objects.select_related(
         "order", "payment"
     ).order_by("-created_at")[:20]
@@ -1390,8 +1392,7 @@ def admin_finance_summary(request):
 @permission_classes([IsAdminOrStaff])
 def admin_finance_withdrawals(request):
     """GET/POST /api/v1/admin/finance/withdrawals/"""
-    from apps.analytics.models import Withdrawal, DistributionCategory
-
+    
     if request.method == "GET":
         ws = Withdrawal.objects.select_related("category").order_by("-created_at")[:50]
         return Response([{
@@ -1426,7 +1427,7 @@ def admin_finance_withdrawals(request):
 @permission_classes([IsAdminOrStaff])
 def admin_finance_withdrawal_delete(request, withdrawal_id):
     """DELETE /api/v1/admin/finance/withdrawals/{id}/"""
-    from apps.analytics.models import Withdrawal
+    
     try:
         w = Withdrawal.objects.get(id=withdrawal_id)
         w.delete()
@@ -1438,9 +1439,7 @@ def admin_finance_withdrawal_delete(request, withdrawal_id):
 @permission_classes([IsAdminOrStaff])
 def admin_finance_by_product(request):
     """GET /api/v1/admin/finance/by-product/"""
-    from apps.orders.models import OrderItem
-    from django.db.models import Sum, F, DecimalField, ExpressionWrapper
-    from decimal import Decimal
+    
 
     # Solo órdenes pagadas
     items = OrderItem.objects.filter(
@@ -1474,3 +1473,258 @@ def admin_finance_by_product(request):
         })
 
     return Response({"results": results})    
+
+
+# ── INVENTARIO INTELIGENTE ────────────────────────────────────
+
+@api_view(["GET"])
+@permission_classes([IsAdminOrStaff])
+def inventory_summary(request):
+    """KPIs generales del inventario"""
+    
+    products = Product.objects.filter(is_active=True)
+
+    # Valor total del inventario (stock × cost_price)
+    valor_inventario = sum(
+        (p.stock * p.cost_price)
+        for p in products
+        if p.cost_price and p.stock > 0
+    )
+
+    # Valor a precio de venta
+    valor_venta = sum(
+        (p.stock * p.price)
+        for p in products
+        if p.stock > 0
+    )
+
+    total_productos  = products.count()
+    sin_stock        = products.filter(stock=0).count()
+    stock_critico    = products.filter(stock__gt=0, stock__lte=F("stock_min")).count()
+    stock_ok         = products.filter(stock__gt=F("stock_min")).count()
+
+    return Response({
+        "valor_inventario":  float(valor_inventario),
+        "valor_venta":       float(valor_venta),
+        "ganancia_potencial": float(valor_venta - valor_inventario),
+        "total_productos":   total_productos,
+        "sin_stock":         sin_stock,
+        "stock_critico":     stock_critico,
+        "stock_ok":          stock_ok,
+    })
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminOrStaff])
+def inventory_alerts(request):
+    """Productos con stock bajo o sin stock"""
+
+    products = Product.objects.filter(
+        is_active=True,
+        stock__lte=F("stock_min")
+    ).select_related("category", "brand").order_by("stock")
+
+    data = []
+    for p in products:
+        primary_img = p.images.filter(is_primary=True).first() or p.images.first()
+        data.append({
+            "id":         str(p.id),
+            "name":       p.name,
+            "sku":        p.sku,
+            "stock":      p.stock,
+            "stock_min":  p.stock_min,
+            "price":      float(p.price),
+            "cost_price": float(p.cost_price) if p.cost_price else None,
+            "category":   p.category.name if p.category else None,
+            "brand":      p.brand.name if p.brand else None,
+            "image":      primary_img.image.url if primary_img else None,
+            "status":     "sin_stock" if p.stock == 0 else "critico",
+        })
+
+    return Response(data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminOrStaff])
+def inventory_rotation(request):
+    """Productos más y menos vendidos con rotación"""
+    from apps.orders.models import OrderItem
+    from apps.products.models import Product
+    from django.db.models import Sum, Count, F
+
+    # Ventas por producto (últimos 30 días)
+    from django.utils import timezone
+    from datetime import timedelta
+    hace_30 = timezone.now() - timedelta(days=30)
+
+    ventas = OrderItem.objects.filter(
+        order__created_at__gte=hace_30,
+        order__status__in=["paid", "shipped", "completed"]
+    ).values(
+        "product__id", "product__name", "product__stock",
+        "product__price", "product__cost_price"
+    ).annotate(
+        unidades_vendidas=Sum("quantity"),
+        ingresos=Sum(F("quantity") * F("price")),
+    ).order_by("-unidades_vendidas")[:20]
+
+    data = []
+    for v in ventas:
+        data.append({
+            "product_id":       str(v["product__id"]) if v["product__id"] else None,
+            "name":             v["product__name"],
+            "stock_actual":     v["product__stock"],
+            "unidades_vendidas":v["unidades_vendidas"] or 0,
+            "ingresos":         float(v["ingresos"] or 0),
+        })
+
+    return Response(data)
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminOrStaff])
+def inventory_value_by_category(request):
+    """Valor del inventario por categoría"""
+
+    categories = Category.objects.filter(is_active=True)
+    data = []
+
+    for cat in categories:
+        products = Product.objects.filter(
+            category=cat, is_active=True, stock__gt=0
+        )
+        valor = sum(
+            float(p.stock * p.cost_price)
+            for p in products if p.cost_price
+        )
+        unidades = sum(p.stock for p in products)
+        data.append({
+            "category": cat.name,
+            "valor_inventario": valor,
+            "unidades": unidades,
+            "productos": products.count(),
+        })
+
+    return Response(sorted(data, key=lambda x: x["valor_inventario"], reverse=True))
+
+@api_view(["GET"])
+@permission_classes([IsAdminOrStaff])
+def executive_dashboard(request):
+    """Dashboard ejecutivo — KPIs del negocio para mobile"""
+
+    hoy        = timezone.now()
+    hoy_inicio = hoy.replace(hour=0, minute=0, second=0, microsecond=0)
+    ayer_inicio = hoy_inicio - timedelta(days=1)
+    semana_inicio = hoy_inicio - timedelta(days=7)
+    mes_inicio    = hoy_inicio - timedelta(days=30)
+    mes_anterior  = hoy_inicio - timedelta(days=60)
+
+    # ── Ventas ───────────────────────────────────────────────
+    def get_ventas(desde, hasta=None):
+        qs = Order.objects.filter(
+            status__in=["paid", "shipped", "completed"],
+            created_at__gte=desde,
+        )
+        if hasta:
+            qs = qs.filter(created_at__lt=hasta)
+        return qs.aggregate(
+            total=Sum("total"),
+            count=Count("id"),
+        )
+
+    ventas_hoy        = get_ventas(hoy_inicio)
+    ventas_ayer       = get_ventas(ayer_inicio, hoy_inicio)
+    ventas_semana     = get_ventas(semana_inicio)
+    ventas_mes        = get_ventas(mes_inicio)
+    ventas_mes_ant    = get_ventas(mes_anterior, mes_inicio)
+
+    def variacion(actual, anterior):
+        a = float(actual or 0)
+        p = float(anterior or 0)
+        if p == 0:
+            return 100 if a > 0 else 0
+        return round(((a - p) / p) * 100, 1)
+
+    # ── Órdenes del día ──────────────────────────────────────
+    ordenes_hoy = Order.objects.filter(
+        created_at__gte=hoy_inicio
+    ).select_related().order_by("-created_at")[:5]
+
+    ordenes_hoy_data = [{
+        "id":     str(o.id),
+        "status": o.status,
+        "total":  float(o.total),
+        "email":  o.email,
+        "hora":   o.created_at.strftime("%H:%M"),
+    } for o in ordenes_hoy]
+
+    # ── Inventario crítico ───────────────────────────────────
+    
+    criticos = Product.objects.filter(
+        is_active=True,
+        stock__lte=Fdb("stock_min")
+    ).count()
+
+    sin_stock = Product.objects.filter(
+        is_active=True, stock=0
+    ).count()
+
+    # ── Utilidad neta del mes ───────────────────────────────
+    try:
+        utilidad_cat = DistributionCategory.objects.filter(
+            cat_type="remainder"
+        ).first()
+        utilidad_mes = IncomeDistribution.objects.filter(
+            category=utilidad_cat,
+            record__order__created_at__gte=mes_inicio,
+        ).aggregate(t=Sum("amount"))["t"] or 0
+    except Exception:
+        utilidad_mes = 0
+
+    # ── Gráfico ventas 7 días ────────────────────────────────
+    ventas_7dias = []
+    for i in range(6, -1, -1):
+        dia_inicio = hoy_inicio - timedelta(days=i)
+        dia_fin    = dia_inicio + timedelta(days=1)
+        v = Order.objects.filter(
+            status__in=["paid", "shipped", "completed"],
+            created_at__gte=dia_inicio,
+            created_at__lt=dia_fin,
+        ).aggregate(total=Sum("total"), count=Count("id"))
+        ventas_7dias.append({
+            "dia":   dia_inicio.strftime("%a"),
+            "fecha": dia_inicio.strftime("%d/%m"),
+            "total": float(v["total"] or 0),
+            "count": v["count"] or 0,
+        })
+
+    # ── Top 3 productos del mes ──────────────────────────────
+    from apps.orders.models import OrderItem
+    top_productos = OrderItem.objects.filter(
+        order__status__in=["paid", "shipped", "completed"],
+        order__created_at__gte=mes_inicio,
+    ).values("product_name").annotate(
+        unidades=Sum("quantity"),
+        ingresos=Sum(F("quantity") * F("price")),
+    ).order_by("-ingresos")[:3]
+
+    return Response({
+        "ventas": {
+            "hoy":            float(ventas_hoy["total"] or 0),
+            "hoy_count":      ventas_hoy["count"] or 0,
+            "ayer":           float(ventas_ayer["total"] or 0),
+            "semana":         float(ventas_semana["total"] or 0),
+            "mes":            float(ventas_mes["total"] or 0),
+            "mes_anterior":   float(ventas_mes_ant["total"] or 0),
+            "var_dia":        variacion(ventas_hoy["total"], ventas_ayer["total"]),
+            "var_mes":        variacion(ventas_mes["total"], ventas_mes_ant["total"]),
+        },
+        "utilidad_mes":    float(utilidad_mes),
+        "inventario": {
+            "criticos":  criticos,
+            "sin_stock": sin_stock,
+        },
+        "ordenes_hoy":     ordenes_hoy_data,
+        "ventas_7dias":    ventas_7dias,
+        "top_productos":   list(top_productos),
+    })

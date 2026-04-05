@@ -39,7 +39,7 @@ urlpatterns = [
         SpectacularRedocView.as_view(url_name="schema"),
         name="redoc",
     ),
-
+    path("api/v1/loyalty/", include("apps.loyalty.urls")),
 ]
 # Sirve archivos media en desarrollo
 if settings.DEBUG:

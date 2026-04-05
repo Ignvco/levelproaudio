@@ -96,6 +96,11 @@ class Product(TimeStampedModel):
 
     # ← declarado UNA sola vez
     stock     = models.PositiveIntegerField(default=0, verbose_name="Stock")
+    stock_min = models.PositiveIntegerField(
+        default=5,
+        verbose_name="Stock mínimo",
+        help_text="Alerta cuando el stock baje de este nivel"
+    )
     weight    = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     is_active   = models.BooleanField(default=True,  verbose_name="Activo")
     is_featured = models.BooleanField(default=False, verbose_name="Destacado")
