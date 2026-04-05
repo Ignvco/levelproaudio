@@ -3,18 +3,19 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminOrders, updateOrderStatus } from "../../api/admin.api"
+import { generateDocumentFromOrder, downloadDocument } from "../../api/admin.api"
 
 const statusColors = {
-  pending:   "#facc15",
-  paid:      "#4ade80",
-  shipped:   "#60a5fa",
+  pending: "#facc15",
+  paid: "#4ade80",
+  shipped: "#60a5fa",
   completed: "#4ade80",
   cancelled: "#f87171",
 }
 const statusLabels = {
-  pending:   "Pendiente",
-  paid:      "Pagado",
-  shipped:   "Enviado",
+  pending: "Pendiente",
+  paid: "Pagado",
+  shipped: "Enviado",
   completed: "Completado",
   cancelled: "Cancelado",
 }
@@ -37,16 +38,27 @@ function Badge({ status }) {
 function OrderDetailPanel({ order, onClose, onStatusChange }) {
   const queryClient = useQueryClient()
   const mutation = useMutation({
-  mutationFn: (s) => updateOrderStatus(order.id, s),
-  onSuccess: () => {
-    // ← Invalida todo lo relacionado
-    queryClient.invalidateQueries(["admin-orders"])
-    queryClient.invalidateQueries(["admin-dashboard"])
-    queryClient.invalidateQueries(["admin-payments"])        // ← nuevo
-    queryClient.invalidateQueries(["admin-finance-summary"]) // ← nuevo
-    queryClient.invalidateQueries(["admin-finance-withdrawals"]) // ← nuevo
-  },
-})
+    mutationFn: (s) => updateOrderStatus(order.id, s),
+    onSuccess: () => {
+      // ← Invalida todo lo relacionado
+      queryClient.invalidateQueries(["admin-orders"])
+      queryClient.invalidateQueries(["admin-dashboard"])
+      queryClient.invalidateQueries(["admin-payments"])        // ← nuevo
+      queryClient.invalidateQueries(["admin-finance-summary"]) // ← nuevo
+      queryClient.invalidateQueries(["admin-finance-withdrawals"]) // ← nuevo
+    },
+  })
+
+  const [docResult, setDocResult] = useState(null)
+
+  const docMutation = useMutation({
+    mutationFn: (tipo) => generateDocumentFromOrder(order.id, tipo),
+    onSuccess: (data) => setDocResult(data),
+    onError: (e) => {
+      const msg = e?.response?.data?.error || "Error al generar documento"
+      alert(msg)
+    },
+  })
 
   return (
     <div style={{
@@ -64,8 +76,10 @@ function OrderDetailPanel({ order, onClose, onStatusChange }) {
         display: "flex", justifyContent: "space-between", alignItems: "center",
       }}>
         <div>
-          <p style={{ fontSize: "11px", color: "var(--text-3)",
-            textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "4px" }}>
+          <p style={{
+            fontSize: "11px", color: "var(--text-3)",
+            textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "4px"
+          }}>
             Orden
           </p>
           <p style={{ fontSize: "15px", fontWeight: 500, fontFamily: "monospace" }}>
@@ -85,24 +99,31 @@ function OrderDetailPanel({ order, onClose, onStatusChange }) {
       </div>
 
       {/* Contenido scrollable */}
-      <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px",
-        display: "flex", flexDirection: "column", gap: "20px" }}>
+      <div style={{
+        flex: 1, overflowY: "auto", padding: "20px 24px",
+        display: "flex", flexDirection: "column", gap: "20px"
+      }}>
 
         {/* Estado actual + cambiar */}
         <div style={{
           background: "var(--surface-2)", border: "1px solid var(--border)",
           borderRadius: "var(--r-md)", padding: "16px",
         }}>
-          <p style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
-            letterSpacing: "0.08em", marginBottom: "12px" }}>
+          <p style={{
+            fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
+            letterSpacing: "0.08em", marginBottom: "12px"
+          }}>
             Estado del pedido
           </p>
-          <div style={{ display: "flex", alignItems: "center",
-            justifyContent: "space-between", marginBottom: "14px" }}>
+          <div style={{
+            display: "flex", alignItems: "center",
+            justifyContent: "space-between", marginBottom: "14px"
+          }}>
             <Badge status={order.status} />
             <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
               {order.created_at ? new Date(order.created_at).toLocaleDateString("es-CL", {
-                day: "numeric", month: "long", year: "numeric" }) : "—"}
+                day: "numeric", month: "long", year: "numeric"
+              }) : "—"}
             </span>
           </div>
 
@@ -143,13 +164,15 @@ function OrderDetailPanel({ order, onClose, onStatusChange }) {
           background: "var(--surface-2)", border: "1px solid var(--border)",
           borderRadius: "var(--r-md)", padding: "16px",
         }}>
-          <p style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
-            letterSpacing: "0.08em", marginBottom: "12px" }}>
+          <p style={{
+            fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
+            letterSpacing: "0.08em", marginBottom: "12px"
+          }}>
             Cliente
           </p>
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {[
-              { label: "Email",     value: order.email },
+              { label: "Email", value: order.email },
               { label: "Dirección", value: order.shipping_address },
               ...(order.notes ? [{ label: "Notas", value: order.notes }] : []),
             ].map(({ label, value }) => (
@@ -170,9 +193,11 @@ function OrderDetailPanel({ order, onClose, onStatusChange }) {
           background: "var(--surface-2)", border: "1px solid var(--border)",
           borderRadius: "var(--r-md)", overflow: "hidden",
         }}>
-          <p style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
+          <p style={{
+            fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
             letterSpacing: "0.08em", padding: "12px 16px",
-            borderBottom: "1px solid var(--border)" }}>
+            borderBottom: "1px solid var(--border)"
+          }}>
             Productos ({order.items_count})
           </p>
           {order.items?.map((item, i) => (
@@ -183,16 +208,20 @@ function OrderDetailPanel({ order, onClose, onStatusChange }) {
                 ? "1px solid var(--border)" : "none",
             }}>
               <div style={{ minWidth: 0 }}>
-                <p style={{ fontSize: "13px", overflow: "hidden",
-                  textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                <p style={{
+                  fontSize: "13px", overflow: "hidden",
+                  textOverflow: "ellipsis", whiteSpace: "nowrap"
+                }}>
                   {item.product_name}
                 </p>
                 <p style={{ fontSize: "11px", color: "var(--text-3)" }}>
                   ${Number(item.price).toLocaleString("es-CL")} × {item.quantity}
                 </p>
               </div>
-              <span style={{ fontSize: "13px", fontWeight: 500, flexShrink: 0,
-                marginLeft: "12px" }}>
+              <span style={{
+                fontSize: "13px", fontWeight: 500, flexShrink: 0,
+                marginLeft: "12px"
+              }}>
                 ${Number(item.subtotal).toLocaleString("es-CL")}
               </span>
             </div>
@@ -205,8 +234,10 @@ function OrderDetailPanel({ order, onClose, onStatusChange }) {
             background: "var(--surface-3)",
           }}>
             <span style={{ fontSize: "13px", fontWeight: 500 }}>Total</span>
-            <span style={{ fontSize: "16px", fontWeight: 500,
-              color: "var(--accent)" }}>
+            <span style={{
+              fontSize: "16px", fontWeight: 500,
+              color: "var(--accent)"
+            }}>
               ${Number(order.total).toLocaleString("es-CL")}
             </span>
           </div>
@@ -218,9 +249,11 @@ function OrderDetailPanel({ order, onClose, onStatusChange }) {
             background: "var(--surface-2)", border: "1px solid var(--border)",
             borderRadius: "var(--r-md)", overflow: "hidden",
           }}>
-            <p style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
+            <p style={{
+              fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
               letterSpacing: "0.08em", padding: "12px 16px",
-              borderBottom: "1px solid var(--border)" }}>
+              borderBottom: "1px solid var(--border)"
+            }}>
               Pagos
             </p>
             {order.payments.map((p, i) => (
@@ -244,41 +277,97 @@ function OrderDetailPanel({ order, onClose, onStatusChange }) {
           </div>
         )}
         {/* Dentro del OrderDetailPanel, al final */}
-{order.status !== "pending" && order.status !== "cancelled" && (
-  <div style={{ marginTop: "16px" }}>
-    {order.has_document ? (
-      <button
-        onClick={async () => {
-          const resp = await downloadDocument(order.document_id)
-          const url  = window.URL.createObjectURL(new Blob([resp.data]))
-          const link = document.createElement("a")
-          link.href  = url
-          link.setAttribute("download", `${order.document_folio}.pdf`)
-          document.body.appendChild(link)
-          link.click()
-          link.remove()
-        }}
-        style={{
-          width: "100%", padding: "10px",
-          borderRadius: "var(--r-md)",
-          background: "var(--surface-2)",
-          border: "1px solid var(--border)",
-          color: "var(--text-2)", fontSize: "13px",
-          cursor: "pointer",
-        }}>
-        ⬇️ Descargar {order.document_tipo || "boleta"}
-      </button>
-    ) : (
-      <a href={`/admin/billing`} style={{
-        display: "block", textAlign: "center",
-        fontSize: "12px", color: "var(--text-3)",
-        padding: "8px",
-      }}>
-        🧾 Generar boleta/factura →
-      </a>
-    )}
-  </div>
-)}
+        {order.status !== "pending" && order.status !== "cancelled" && (
+          <div style={{ marginTop: "16px" }}>
+            {order.has_document ? (
+              <button
+                onClick={async () => {
+                  const resp = await downloadDocument(order.document_id)
+                  const url = window.URL.createObjectURL(new Blob([resp.data]))
+                  const link = document.createElement("a")
+                  link.href = url
+                  link.setAttribute("download", `${order.document_folio}.pdf`)
+                  document.body.appendChild(link)
+                  link.click()
+                  link.remove()
+                }}
+                style={{
+                  width: "100%", padding: "10px",
+                  borderRadius: "var(--r-md)",
+                  background: "var(--surface-2)",
+                  border: "1px solid var(--border)",
+                  color: "var(--text-2)", fontSize: "13px",
+                  cursor: "pointer",
+                }}>
+                ⬇️ Descargar {order.document_tipo || "boleta"}
+              </button>
+            ) : (
+              <a href={`/admin/billing`} style={{
+                display: "block", textAlign: "center",
+                fontSize: "12px", color: "var(--text-3)",
+                padding: "8px",
+              }}>
+                🧾 Generar boleta/factura →
+              </a>
+            )}
+          </div>
+        )}
+        {/* Generar boleta desde la orden */}
+        {["paid", "shipped", "completed"].includes(order.status) && (
+          <div style={{
+            marginTop: "16px", paddingTop: "16px",
+            borderTop: "1px solid var(--border)"
+          }}>
+            <p style={{
+              fontSize: "12px", color: "var(--text-3)",
+              marginBottom: "10px"
+            }}>
+              Documentos tributarios
+            </p>
+
+            {docResult ? (
+              <div style={{ display: "flex", gap: "8px" }}>
+                <button
+                  onClick={async () => {
+                    const resp = await downloadDocument(docResult.id)
+                    const url = window.URL.createObjectURL(new Blob([resp.data]))
+                    const link = document.createElement("a")
+                    link.href = url
+                    link.setAttribute("download", `${docResult.folio}.pdf`)
+                    document.body.appendChild(link)
+                    link.click()
+                    link.remove()
+                  }}
+                  style={{
+                    flex: 1, padding: "9px", borderRadius: "var(--r-md)",
+                    background: "var(--accent)", border: "none",
+                    color: "#000", fontSize: "12px", fontWeight: 600,
+                    cursor: "pointer",
+                  }}>
+                  ⬇️ {docResult.folio} — Descargar PDF
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: "8px" }}>
+                {["boleta", "factura"].map(tipo => (
+                  <button
+                    key={tipo}
+                    onClick={() => docMutation.mutate(tipo)}
+                    disabled={docMutation.isPending}
+                    style={{
+                      flex: 1, padding: "9px", borderRadius: "var(--r-md)",
+                      background: "var(--surface-2)",
+                      border: "1px solid var(--border)",
+                      color: "var(--text-2)", fontSize: "12px",
+                      cursor: "pointer", textTransform: "capitalize",
+                    }}>
+                    {docMutation.isPending ? "..." : `🧾 ${tipo}`}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -287,12 +376,12 @@ function OrderDetailPanel({ order, onClose, onStatusChange }) {
 // ── AdminOrders ──────────────────────────────────────────────
 export default function AdminOrders() {
   const [statusFilter, setStatusFilter] = useState("")
-  const [search, setSearch]             = useState("")
+  const [search, setSearch] = useState("")
   const [selectedOrder, setSelectedOrder] = useState(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-orders", statusFilter, search],
-    queryFn:  () => getAdminOrders({
+    queryFn: () => getAdminOrders({
       ...(statusFilter && { status: statusFilter }),
       ...(search && { search }),
     }),
@@ -305,8 +394,10 @@ export default function AdminOrders() {
 
       {/* Header */}
       <div style={{ marginBottom: "28px" }}>
-        <h1 style={{ fontFamily: "var(--font-serif)",
-          fontSize: "clamp(1.8rem, 3vw, 2.4rem)", marginBottom: "6px" }}>
+        <h1 style={{
+          fontFamily: "var(--font-serif)",
+          fontSize: "clamp(1.8rem, 3vw, 2.4rem)", marginBottom: "6px"
+        }}>
           Órdenes
         </h1>
         <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
@@ -366,8 +457,10 @@ export default function AdminOrders() {
           </div>
 
           {orders.length === 0 ? (
-            <div style={{ padding: "40px", textAlign: "center",
-              color: "var(--text-3)", fontSize: "14px" }}>
+            <div style={{
+              padding: "40px", textAlign: "center",
+              color: "var(--text-3)", fontSize: "14px"
+            }}>
               No hay órdenes con estos filtros.
             </div>
           ) : orders.map((order, i) => (
@@ -388,12 +481,16 @@ export default function AdminOrders() {
               }}
               className="hover:bg-[var(--surface-2)]"
             >
-              <span style={{ fontSize: "12px", fontFamily: "monospace",
-                color: "var(--text-2)" }}>
+              <span style={{
+                fontSize: "12px", fontFamily: "monospace",
+                color: "var(--text-2)"
+              }}>
                 #{order.id.slice(0, 8).toUpperCase()}
               </span>
-              <span style={{ fontSize: "13px", overflow: "hidden",
-                textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <span style={{
+                fontSize: "13px", overflow: "hidden",
+                textOverflow: "ellipsis", whiteSpace: "nowrap"
+              }}>
                 {order.email}
               </span>
               <span style={{ fontSize: "13px", fontWeight: 500 }}>

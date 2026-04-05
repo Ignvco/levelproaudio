@@ -15,15 +15,15 @@ import {
 const TABS = ["Documentos", "Generar", "Configuración"]
 
 const estadoColors = {
-  emitido:  { color: "#4ade80", label: "Emitido"  },
-  enviado:  { color: "#60a5fa", label: "Enviado"  },
-  anulado:  { color: "#f87171", label: "Anulado"  },
+  emitido: { color: "#4ade80", label: "Emitido" },
+  enviado: { color: "#60a5fa", label: "Enviado" },
+  anulado: { color: "#f87171", label: "Anulado" },
 }
 
 const tipoColors = {
-  boleta:      { color: "#facc15", label: "Boleta"       },
-  factura:     { color: "#60a5fa", label: "Factura"      },
-  nota_credito:{ color: "#f87171", label: "Nota Crédito" },
+  boleta: { color: "#facc15", label: "Boleta" },
+  factura: { color: "#60a5fa", label: "Factura" },
+  nota_credito: { color: "#f87171", label: "Nota Crédito" },
 }
 
 function DocBadge({ tipo }) {
@@ -60,7 +60,7 @@ function TabDocumentos() {
 
   const { data = [], isLoading } = useQuery({
     queryKey: ["billing-documents"],
-    queryFn:  getBillingDocuments,
+    queryFn: getBillingDocuments,
   })
 
   const sendMutation = useMutation({
@@ -82,9 +82,9 @@ function TabDocumentos() {
   const handleDownload = async (doc) => {
     try {
       const response = await downloadDocument(doc.id)
-      const url  = window.URL.createObjectURL(new Blob([response.data]))
+      const url = window.URL.createObjectURL(new Blob([response.data]))
       const link = document.createElement("a")
-      link.href  = url
+      link.href = url
       link.setAttribute("download", `${doc.folio}.pdf`)
       document.body.appendChild(link)
       link.click()
@@ -150,8 +150,10 @@ function TabDocumentos() {
             gap: "8px",
           }}>
             <div>
-              <p style={{ fontSize: "13px", fontFamily: "monospace",
-                fontWeight: 600 }}>
+              <p style={{
+                fontSize: "13px", fontFamily: "monospace",
+                fontWeight: 600
+              }}>
                 {doc.folio}
               </p>
               <p style={{ fontSize: "11px", color: "var(--text-3)" }}>
@@ -159,8 +161,10 @@ function TabDocumentos() {
               </p>
             </div>
             <DocBadge tipo={doc.tipo} />
-            <span style={{ fontSize: "12px", overflow: "hidden",
-              textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{
+              fontSize: "12px", overflow: "hidden",
+              textOverflow: "ellipsis", whiteSpace: "nowrap"
+            }}>
               {doc.orden_email}
             </span>
             <span style={{ fontSize: "13px", fontWeight: 500 }}>
@@ -293,15 +297,15 @@ function TabDocumentos() {
 function TabGenerar() {
   const queryClient = useQueryClient()
   const [form, setForm] = useState({
-    order_id:        "",
-    tipo:            "boleta",
+    order_id: "",
+    tipo: "boleta",
     receptor_nombre: "",
-    receptor_rut:    "",
-    receptor_giro:   "",
-    notas:           "",
+    receptor_rut: "",
+    receptor_giro: "",
+    notas: "",
   })
   const [result, setResult] = useState(null)
-  const [error,  setError]  = useState("")
+  const [error, setError] = useState("")
 
   const mutation = useMutation({
     mutationFn: (data) => generateDocument(data),
@@ -322,8 +326,10 @@ function TabGenerar() {
   }
 
   return (
-    <div style={{ maxWidth: "560px",
-      display: "flex", flexDirection: "column", gap: "20px" }}>
+    <div style={{
+      maxWidth: "560px",
+      display: "flex", flexDirection: "column", gap: "20px"
+    }}>
 
       {result ? (
         <div style={{
@@ -333,26 +339,34 @@ function TabGenerar() {
           textAlign: "center",
         }}>
           <p style={{ fontSize: "32px", marginBottom: "12px" }}>✅</p>
-          <h3 style={{ fontFamily: "var(--font-serif)",
-            fontSize: "1.4rem", marginBottom: "8px" }}>
+          <h3 style={{
+            fontFamily: "var(--font-serif)",
+            fontSize: "1.4rem", marginBottom: "8px"
+          }}>
             Documento generado
           </h3>
-          <p style={{ fontSize: "20px", fontFamily: "monospace",
-            color: "var(--accent)", marginBottom: "16px" }}>
+          <p style={{
+            fontSize: "20px", fontFamily: "monospace",
+            color: "var(--accent)", marginBottom: "16px"
+          }}>
             {result.folio}
           </p>
-          <p style={{ fontSize: "13px", color: "var(--text-3)",
-            marginBottom: "20px" }}>
+          <p style={{
+            fontSize: "13px", color: "var(--text-3)",
+            marginBottom: "20px"
+          }}>
             Total: ${Math.round(result.total).toLocaleString("es-CL")}
           </p>
-          <div style={{ display: "flex", gap: "10px",
-            justifyContent: "center" }}>
+          <div style={{
+            display: "flex", gap: "10px",
+            justifyContent: "center"
+          }}>
             <button
               onClick={async () => {
                 const resp = await downloadDocument(result.id)
-                const url  = window.URL.createObjectURL(new Blob([resp.data]))
+                const url = window.URL.createObjectURL(new Blob([resp.data]))
                 const link = document.createElement("a")
-                link.href  = url
+                link.href = url
                 link.setAttribute("download", `${result.folio}.pdf`)
                 document.body.appendChild(link)
                 link.click()
@@ -391,8 +405,10 @@ function TabGenerar() {
 
           {/* ID de orden */}
           <div>
-            <label style={{ display: "block", fontSize: "12px",
-              fontWeight: 500, color: "var(--text-2)", marginBottom: "6px" }}>
+            <label style={{
+              display: "block", fontSize: "12px",
+              fontWeight: 500, color: "var(--text-2)", marginBottom: "6px"
+            }}>
               ID de Orden *
             </label>
             <input
@@ -401,21 +417,25 @@ function TabGenerar() {
               style={inputSt}
               placeholder="UUID de la orden pagada"
             />
-            <p style={{ fontSize: "11px", color: "var(--text-3)",
-              marginTop: "4px" }}>
+            <p style={{
+              fontSize: "11px", color: "var(--text-3)",
+              marginTop: "4px"
+            }}>
               Copiá el ID desde la sección Órdenes
             </p>
           </div>
 
           {/* Tipo de documento */}
           <div>
-            <label style={{ display: "block", fontSize: "12px",
-              fontWeight: 500, color: "var(--text-2)", marginBottom: "6px" }}>
+            <label style={{
+              display: "block", fontSize: "12px",
+              fontWeight: 500, color: "var(--text-2)", marginBottom: "6px"
+            }}>
               Tipo de documento
             </label>
             <div style={{ display: "flex", gap: "8px" }}>
               {[
-                { val: "boleta",  label: "🧾 Boleta"  },
+                { val: "boleta", label: "🧾 Boleta" },
                 { val: "factura", label: "📄 Factura" },
               ].map(({ val, label }) => (
                 <button
@@ -438,22 +458,28 @@ function TabGenerar() {
 
           {/* Datos receptor (solo factura) */}
           {form.tipo === "factura" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "12px",
+            <div style={{
+              display: "flex", flexDirection: "column", gap: "12px",
               padding: "16px", borderRadius: "var(--r-md)",
               background: "var(--surface-2)",
-              border: "1px solid var(--border)" }}>
-              <p style={{ fontSize: "12px", fontWeight: 600,
-                color: "var(--text-2)" }}>
+              border: "1px solid var(--border)"
+            }}>
+              <p style={{
+                fontSize: "12px", fontWeight: 600,
+                color: "var(--text-2)"
+              }}>
                 Datos del receptor (empresa)
               </p>
               {[
                 { key: "receptor_nombre", label: "Razón social *" },
-                { key: "receptor_rut",    label: "RUT" },
-                { key: "receptor_giro",   label: "Giro" },
+                { key: "receptor_rut", label: "RUT" },
+                { key: "receptor_giro", label: "Giro" },
               ].map(({ key, label }) => (
                 <div key={key}>
-                  <label style={{ display: "block", fontSize: "11px",
-                    color: "var(--text-3)", marginBottom: "4px" }}>
+                  <label style={{
+                    display: "block", fontSize: "11px",
+                    color: "var(--text-3)", marginBottom: "4px"
+                  }}>
                     {label}
                   </label>
                   <input
@@ -468,8 +494,10 @@ function TabGenerar() {
 
           {/* Notas */}
           <div>
-            <label style={{ display: "block", fontSize: "12px",
-              fontWeight: 500, color: "var(--text-2)", marginBottom: "6px" }}>
+            <label style={{
+              display: "block", fontSize: "12px",
+              fontWeight: 500, color: "var(--text-2)", marginBottom: "6px"
+            }}>
               Notas (opcional)
             </label>
             <textarea
@@ -482,7 +510,16 @@ function TabGenerar() {
           </div>
 
           <button
-            onClick={() => mutation.mutate(form)}
+            onClick={() => {
+              // Validar formato UUID
+              const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+              if (!uuidRegex.test(form.order_id.trim())) {
+                setError("El ID de orden no es válido. Debe ser un UUID completo. Ej: 5a0e424c-bb4a-49d1-b54d-0bb9cc31c3dd")
+                return
+              }
+              setError("")
+              mutation.mutate({ ...form, order_id: form.order_id.trim() })
+            }}
             disabled={mutation.isPending || !form.order_id}
             style={{
               padding: "13px", borderRadius: "var(--r-md)",
@@ -506,7 +543,7 @@ function TabConfig() {
   const queryClient = useQueryClient()
   const { data: config, isLoading } = useQuery({
     queryKey: ["billing-config"],
-    queryFn:  getBillingConfig,
+    queryFn: getBillingConfig,
   })
 
   const [form, setForm] = useState(null)
@@ -534,31 +571,37 @@ function TabConfig() {
 
   const fields = [
     { key: "razon_social", label: "Razón Social / Nombre del negocio" },
-    { key: "rut",          label: "RUT del negocio" },
-    { key: "giro",         label: "Giro comercial" },
-    { key: "direccion",    label: "Dirección" },
-    { key: "ciudad",       label: "Ciudad / País" },
-    { key: "telefono",     label: "Teléfono" },
-    { key: "email",        label: "Email de facturación" },
+    { key: "rut", label: "RUT del negocio" },
+    { key: "giro", label: "Giro comercial" },
+    { key: "direccion", label: "Dirección" },
+    { key: "ciudad", label: "Ciudad / País" },
+    { key: "telefono", label: "Teléfono" },
+    { key: "email", label: "Email de facturación" },
     { key: "iva_porcentaje", label: "IVA %" },
   ]
 
   return (
-    <div style={{ maxWidth: "560px",
-      display: "flex", flexDirection: "column", gap: "16px" }}>
+    <div style={{
+      maxWidth: "560px",
+      display: "flex", flexDirection: "column", gap: "16px"
+    }}>
 
       {/* Preview del encabezado del PDF */}
       <div style={{
         padding: "16px 20px", borderRadius: "var(--r-lg)",
         background: "var(--surface-2)", border: "1px solid var(--border)",
       }}>
-        <p style={{ fontSize: "11px", color: "var(--text-3)",
+        <p style={{
+          fontSize: "11px", color: "var(--text-3)",
           textTransform: "uppercase", letterSpacing: "0.06em",
-          marginBottom: "8px" }}>
+          marginBottom: "8px"
+        }}>
           Vista previa del encabezado del PDF
         </p>
-        <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.4rem",
-          marginBottom: "4px" }}>
+        <p style={{
+          fontFamily: "var(--font-serif)", fontSize: "1.4rem",
+          marginBottom: "4px"
+        }}>
           {current.razon_social || "Tu Negocio"}
         </p>
         <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
@@ -572,8 +615,10 @@ function TabConfig() {
       {/* Campos */}
       {fields.map(({ key, label }) => (
         <div key={key}>
-          <label style={{ display: "block", fontSize: "12px",
-            fontWeight: 500, color: "var(--text-2)", marginBottom: "6px" }}>
+          <label style={{
+            display: "block", fontSize: "12px",
+            fontWeight: 500, color: "var(--text-2)", marginBottom: "6px"
+          }}>
             {label}
           </label>
           <input
@@ -621,8 +666,10 @@ export default function AdminBilling() {
   return (
     <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
       <div style={{ marginBottom: "28px" }}>
-        <h1 style={{ fontFamily: "var(--font-serif)",
-          fontSize: "clamp(1.8rem, 3vw, 2.4rem)", marginBottom: "6px" }}>
+        <h1 style={{
+          fontFamily: "var(--font-serif)",
+          fontSize: "clamp(1.8rem, 3vw, 2.4rem)", marginBottom: "6px"
+        }}>
           Facturación
         </h1>
         <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
@@ -631,8 +678,10 @@ export default function AdminBilling() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: "6px", marginBottom: "24px",
-        borderBottom: "1px solid var(--border)" }}>
+      <div style={{
+        display: "flex", gap: "6px", marginBottom: "24px",
+        borderBottom: "1px solid var(--border)"
+      }}>
         {TABS.map((t, i) => (
           <button key={t} onClick={() => setTab(i)} style={{
             padding: "8px 16px", fontSize: "13px", cursor: "pointer",

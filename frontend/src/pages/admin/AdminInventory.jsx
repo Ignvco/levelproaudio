@@ -17,16 +17,22 @@ function KPICard({ label, value, sub, color = "var(--text)", icon }) {
       background: "var(--surface)", border: "1px solid var(--border)",
       borderRadius: "var(--r-lg)", padding: "20px 24px",
     }}>
-      <div style={{ display: "flex", justifyContent: "space-between",
-        alignItems: "flex-start", marginBottom: "12px" }}>
-        <p style={{ fontSize: "12px", color: "var(--text-3)",
-          textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 500 }}>
+      <div style={{
+        display: "flex", justifyContent: "space-between",
+        alignItems: "flex-start", marginBottom: "12px"
+      }}>
+        <p style={{
+          fontSize: "12px", color: "var(--text-3)",
+          textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 500
+        }}>
           {label}
         </p>
         {icon && <span style={{ fontSize: "20px" }}>{icon}</span>}
       </div>
-      <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem",
-        color, lineHeight: 1, marginBottom: "4px" }}>
+      <p style={{
+        fontFamily: "var(--font-serif)", fontSize: "1.8rem",
+        color, lineHeight: 1, marginBottom: "4px"
+      }}>
         {value}
       </p>
       {sub && <p style={{ fontSize: "12px", color: "var(--text-3)" }}>{sub}</p>}
@@ -39,11 +45,15 @@ function StockBar({ stock, stockMin }) {
   const color = stock === 0 ? "#f87171" : stock <= stockMin ? "#facc15" : "#4ade80"
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-      <div style={{ flex: 1, height: "6px", borderRadius: "3px",
-        background: "var(--surface-3)", overflow: "hidden" }}>
-        <div style={{ width: `${pct}%`, height: "100%",
+      <div style={{
+        flex: 1, height: "6px", borderRadius: "3px",
+        background: "var(--surface-3)", overflow: "hidden"
+      }}>
+        <div style={{
+          width: `${pct}%`, height: "100%",
           background: color, borderRadius: "3px",
-          transition: "width 0.5s ease" }} />
+          transition: "width 0.5s ease"
+        }} />
       </div>
       <span style={{ fontSize: "12px", fontWeight: 600, color, minWidth: "24px" }}>
         {stock}
@@ -56,12 +66,14 @@ function StockBar({ stock, stockMin }) {
 function TabResumen() {
   const { data, isLoading } = useQuery({
     queryKey: ["inventory-summary"],
-    queryFn:  getInventorySummary,
+    queryFn: getInventorySummary,
   })
 
   if (isLoading) return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)",
-      gap: "16px" }}>
+    <div style={{
+      display: "grid", gridTemplateColumns: "repeat(3, 1fr)",
+      gap: "16px"
+    }}>
       {[...Array(6)].map((_, i) => (
         <div key={i} className="skeleton" style={{ height: "100px" }} />
       ))}
@@ -71,8 +83,10 @@ function TabResumen() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
       {/* KPIs financieros */}
-      <div style={{ display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px"
+      }}>
         <KPICard
           label="Valor en inventario"
           value={`$${Math.round(data?.valor_inventario || 0).toLocaleString("es-CL")}`}
@@ -97,8 +111,10 @@ function TabResumen() {
       </div>
 
       {/* KPIs de stock */}
-      <div style={{ display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "16px" }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "16px"
+      }}>
         <KPICard
           label="Total productos"
           value={data?.total_productos || 0}
@@ -136,32 +152,40 @@ function TabResumen() {
           <p style={{ fontSize: "13px", fontWeight: 600, marginBottom: "14px" }}>
             Estado general del inventario
           </p>
-          <div style={{ display: "flex", height: "12px", borderRadius: "6px",
-            overflow: "hidden", gap: "2px" }}>
+          <div style={{
+            display: "flex", height: "12px", borderRadius: "6px",
+            overflow: "hidden", gap: "2px"
+          }}>
             {[
-              { val: data.stock_ok,      color: "#4ade80", label: "OK" },
+              { val: data.stock_ok, color: "#4ade80", label: "OK" },
               { val: data.stock_critico, color: "#facc15", label: "Crítico" },
-              { val: data.sin_stock,     color: "#f87171", label: "Sin stock" },
+              { val: data.sin_stock, color: "#f87171", label: "Sin stock" },
             ].map(({ val, color, label }) => {
               const pct = data.total_productos > 0
                 ? (val / data.total_productos) * 100 : 0
               return pct > 0 ? (
                 <div key={label} title={`${label}: ${val}`}
-                  style={{ width: `${pct}%`, background: color,
-                    borderRadius: "3px", transition: "width 0.5s ease" }} />
+                  style={{
+                    width: `${pct}%`, background: color,
+                    borderRadius: "3px", transition: "width 0.5s ease"
+                  }} />
               ) : null
             })}
           </div>
-          <div style={{ display: "flex", gap: "20px", marginTop: "10px",
-            fontSize: "12px", color: "var(--text-3)" }}>
+          <div style={{
+            display: "flex", gap: "20px", marginTop: "10px",
+            fontSize: "12px", color: "var(--text-3)"
+          }}>
             {[
               { color: "#4ade80", label: `OK (${data.stock_ok})` },
               { color: "#facc15", label: `Crítico (${data.stock_critico})` },
               { color: "#f87171", label: `Sin stock (${data.sin_stock})` },
             ].map(({ color, label }) => (
               <div key={label} style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <div style={{ width: "10px", height: "10px",
-                  borderRadius: "50%", background: color }} />
+                <div style={{
+                  width: "10px", height: "10px",
+                  borderRadius: "50%", background: color
+                }} />
                 {label}
               </div>
             ))}
@@ -176,7 +200,7 @@ function TabResumen() {
 function TabAlertas() {
   const { data = [], isLoading } = useQuery({
     queryKey: ["inventory-alerts"],
-    queryFn:  getInventoryAlerts,
+    queryFn: getInventoryAlerts,
   })
 
   if (isLoading) return (
@@ -214,11 +238,13 @@ function TabAlertas() {
       }}>
         <span>⚠️</span>
         <span>{data.length} producto{data.length !== 1 ? "s" : ""} requieren
-        reposición urgente</span>
+          reposición urgente</span>
       </div>
 
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-lg)", overflow: "hidden" }}>
+      <div style={{
+        background: "var(--surface)", border: "1px solid var(--border)",
+        borderRadius: "var(--r-lg)", overflow: "hidden"
+      }}>
 
         {/* Header */}
         <div style={{
@@ -248,19 +274,25 @@ function TabAlertas() {
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
               {p.image ? (
                 <img src={p.image} alt={p.name}
-                  style={{ width: "36px", height: "36px", objectFit: "cover",
-                    borderRadius: "var(--r-sm)", flexShrink: 0 }} />
+                  style={{
+                    width: "36px", height: "36px", objectFit: "cover",
+                    borderRadius: "var(--r-sm)", flexShrink: 0
+                  }} />
               ) : (
-                <div style={{ width: "36px", height: "36px",
+                <div style={{
+                  width: "36px", height: "36px",
                   background: "var(--surface-2)", borderRadius: "var(--r-sm)",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "16px", flexShrink: 0 }}>
+                  fontSize: "16px", flexShrink: 0
+                }}>
                   📦
                 </div>
               )}
               <div>
-                <p style={{ fontSize: "13px", fontWeight: 500,
-                  marginBottom: "2px" }}>
+                <p style={{
+                  fontSize: "13px", fontWeight: 500,
+                  marginBottom: "2px"
+                }}>
                   {p.name}
                 </p>
                 <p style={{ fontSize: "11px", color: "var(--text-3)" }}>
@@ -306,7 +338,7 @@ function TabAlertas() {
 function TabRotacion() {
   const { data = [], isLoading } = useQuery({
     queryKey: ["inventory-rotation"],
-    queryFn:  getInventoryRotation,
+    queryFn: getInventoryRotation,
   })
 
   if (isLoading) return (
@@ -320,11 +352,15 @@ function TabRotacion() {
   const maxUnidades = Math.max(...data.map(d => d.unidades_vendidas), 1)
 
   return (
-    <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-      borderRadius: "var(--r-lg)", overflow: "hidden" }}>
+    <div style={{
+      background: "var(--surface)", border: "1px solid var(--border)",
+      borderRadius: "var(--r-lg)", overflow: "hidden"
+    }}>
 
-      <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)",
-        display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{
+        padding: "16px 20px", borderBottom: "1px solid var(--border)",
+        display: "flex", justifyContent: "space-between", alignItems: "center"
+      }}>
         <p style={{ fontSize: "13px", fontWeight: 600 }}>
           Rotación últimos 30 días
         </p>
@@ -334,8 +370,10 @@ function TabRotacion() {
       </div>
 
       {data.length === 0 ? (
-        <div style={{ padding: "48px", textAlign: "center",
-          color: "var(--text-3)", fontSize: "14px" }}>
+        <div style={{
+          padding: "48px", textAlign: "center",
+          color: "var(--text-3)", fontSize: "14px"
+        }}>
           Sin ventas en los últimos 30 días.
         </div>
       ) : data.map((p, i) => (
@@ -344,27 +382,37 @@ function TabRotacion() {
           borderTop: i > 0 ? "1px solid var(--border)" : "none",
           display: "flex", alignItems: "center", gap: "16px",
         }}>
-          <span style={{ fontSize: "12px", color: "var(--text-3)",
-            fontFamily: "monospace", minWidth: "20px" }}>
+          <span style={{
+            fontSize: "12px", color: "var(--text-3)",
+            fontFamily: "monospace", minWidth: "20px"
+          }}>
             #{i + 1}
           </span>
 
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: "flex", justifyContent: "space-between",
-              alignItems: "center", marginBottom: "6px" }}>
-              <p style={{ fontSize: "13px", fontWeight: 500,
+            <div style={{
+              display: "flex", justifyContent: "space-between",
+              alignItems: "center", marginBottom: "6px"
+            }}>
+              <p style={{
+                fontSize: "13px", fontWeight: 500,
                 overflow: "hidden", textOverflow: "ellipsis",
-                whiteSpace: "nowrap" }}>
+                whiteSpace: "nowrap"
+              }}>
                 {p.name}
               </p>
-              <span style={{ fontSize: "12px", color: "var(--text-3)",
-                flexShrink: 0, marginLeft: "12px" }}>
+              <span style={{
+                fontSize: "12px", color: "var(--text-3)",
+                flexShrink: 0, marginLeft: "12px"
+              }}>
                 {p.unidades_vendidas} u. vendidas
               </span>
             </div>
             {/* Barra de rotación */}
-            <div style={{ height: "4px", borderRadius: "2px",
-              background: "var(--surface-3)", overflow: "hidden" }}>
+            <div style={{
+              height: "4px", borderRadius: "2px",
+              background: "var(--surface-3)", overflow: "hidden"
+            }}>
               <div style={{
                 width: `${(p.unidades_vendidas / maxUnidades) * 100}%`,
                 height: "100%", borderRadius: "2px",
@@ -393,7 +441,7 @@ function TabRotacion() {
 function TabPorCategoria() {
   const { data = [], isLoading } = useQuery({
     queryKey: ["inventory-by-category"],
-    queryFn:  getInventoryByCategory,
+    queryFn: getInventoryByCategory,
   })
 
   if (isLoading) return (
@@ -413,24 +461,32 @@ function TabPorCategoria() {
           background: "var(--surface)", border: "1px solid var(--border)",
           borderRadius: "var(--r-lg)", padding: "16px 20px",
         }}>
-          <div style={{ display: "flex", justifyContent: "space-between",
-            alignItems: "center", marginBottom: "10px" }}>
+          <div style={{
+            display: "flex", justifyContent: "space-between",
+            alignItems: "center", marginBottom: "10px"
+          }}>
             <div>
-              <p style={{ fontSize: "14px", fontWeight: 500,
-                marginBottom: "2px" }}>
+              <p style={{
+                fontSize: "14px", fontWeight: 500,
+                marginBottom: "2px"
+              }}>
                 {cat.category}
               </p>
               <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
                 {cat.productos} productos · {cat.unidades} unidades en stock
               </p>
             </div>
-            <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.3rem",
-              color: "var(--accent)" }}>
+            <p style={{
+              fontFamily: "var(--font-serif)", fontSize: "1.3rem",
+              color: "var(--accent)"
+            }}>
               ${Math.round(cat.valor_inventario).toLocaleString("es-CL")}
             </p>
           </div>
-          <div style={{ height: "6px", borderRadius: "3px",
-            background: "var(--surface-3)", overflow: "hidden" }}>
+          <div style={{
+            height: "6px", borderRadius: "3px",
+            background: "var(--surface-3)", overflow: "hidden"
+          }}>
             <div style={{
               width: `${(cat.valor_inventario / maxValor) * 100}%`,
               height: "100%", borderRadius: "3px",
@@ -453,8 +509,10 @@ export default function AdminInventory() {
 
       {/* Header */}
       <div style={{ marginBottom: "28px" }}>
-        <h1 style={{ fontFamily: "var(--font-serif)",
-          fontSize: "clamp(1.8rem, 3vw, 2.4rem)", marginBottom: "6px" }}>
+        <h1 style={{
+          fontFamily: "var(--font-serif)",
+          fontSize: "clamp(1.8rem, 3vw, 2.4rem)", marginBottom: "6px"
+        }}>
           Inventario
         </h1>
         <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
@@ -463,18 +521,50 @@ export default function AdminInventory() {
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: "6px", marginBottom: "24px",
-        borderBottom: "1px solid var(--border)", paddingBottom: "0" }}>
+      <div style={{
+        display: "flex", gap: "6px", marginBottom: "24px",
+        borderBottom: "1px solid var(--border)", paddingBottom: "0"
+      }}>
+        // En AdminInventory.jsx, reemplaza el mapeo de tabs:
         {TABS.map((t, i) => (
-          <button key={t} onClick={() => setTab(i)} style={{
-            padding: "8px 16px", fontSize: "13px", cursor: "pointer",
-            background: "none", border: "none",
-            borderBottom: tab === i ? "2px solid var(--accent)" : "2px solid transparent",
-            color: tab === i ? "var(--accent)" : "var(--text-3)",
-            fontWeight: tab === i ? 500 : 400,
-            transition: "all var(--dur) var(--ease)",
-            marginBottom: "-1px",
-          }}>
+          <button
+            key={t}
+            type="button"          // ← agregar esto
+            onClick={(e) => {
+              e.preventDefault()   // ← agregar esto
+              setTab(i)
+            }}
+            style={{
+              padding: "8px 16px", fontSize: "13px", cursor: "pointer",
+              background: "none", border: "none",
+              borderBottom: tab === i ? "2px solid var(--accent)" : "2px solid transparent",
+              color: tab === i ? "var(--accent)" : "var(--text-3)",
+              fontWeight: tab === i ? 500 : 400,
+              transition: "all var(--dur) var(--ease)",
+              marginBottom: "-1px",
+            }}
+          >
+            {t}
+          </button>
+        ))}// En AdminInventory.jsx, reemplaza el mapeo de tabs:
+        {TABS.map((t, i) => (
+          <button
+            key={t}
+            type="button"          // ← agregar esto
+            onClick={(e) => {
+              e.preventDefault()   // ← agregar esto
+              setTab(i)
+            }}
+            style={{
+              padding: "8px 16px", fontSize: "13px", cursor: "pointer",
+              background: "none", border: "none",
+              borderBottom: tab === i ? "2px solid var(--accent)" : "2px solid transparent",
+              color: tab === i ? "var(--accent)" : "var(--text-3)",
+              fontWeight: tab === i ? 500 : 400,
+              transition: "all var(--dur) var(--ease)",
+              marginBottom: "-1px",
+            }}
+          >
             {t}
           </button>
         ))}

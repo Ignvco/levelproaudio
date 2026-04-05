@@ -8,11 +8,11 @@ from core.models import TimeStampedModel
 class BillingConfig(TimeStampedModel):
     """Configuración tributaria del negocio — singleton"""
     razon_social      = models.CharField(max_length=200, default="")
-    rut               = models.CharField(max_length=12, default="")
-    giro              = models.CharField(max_length=200, default="")
-    direccion         = models.CharField(max_length=300, default="")
+    rut               = models.CharField(max_length=20, default="")   # era 12
+    giro              = models.CharField(max_length=300, default="")  # era 200
+    direccion         = models.CharField(max_length=500, default="")  # era 300
+    telefono          = models.CharField(max_length=30, blank=True)   # era 20
     ciudad            = models.CharField(max_length=100, default="Chile")
-    telefono          = models.CharField(max_length=20, blank=True)
     email             = models.EmailField(blank=True)
     logo              = models.ImageField(
         upload_to="billing/", blank=True, null=True
