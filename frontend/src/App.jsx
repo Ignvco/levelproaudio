@@ -67,7 +67,7 @@ import AdminFinance from "./pages/admin/AdminFinance"
 import AdminInventory from "./pages/admin/AdminInventory"
 import ExecutiveDashboard from "./pages/admin/ExecutiveDashboard"
 import AdminLoyalty from "./pages/admin/AdminLoyalty"
-
+import AdminBilling from "./pages/admin/AdminBilling"
 
 // ── Rutas protegidas ────────────────────────────────────────
 function ProtectedRoute({ children }) {
@@ -114,6 +114,7 @@ function App() {
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="/admin/executive" element={<ExecutiveDashboard />} />
           <Route path="/admin/finance" element={<AdminFinance />} />
+          <Route path="/admin/billing" element={<AdminBilling />} />
           <Route path="/admin/loyalty" element={<AdminLoyalty />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="products" element={<AdminProducts />} />
