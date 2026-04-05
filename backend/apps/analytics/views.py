@@ -24,7 +24,7 @@ from apps.payments.models import Payment
 from apps.academy.models import Course, Module, Lesson, Enrollment
 from apps.services.models import Service, Booking, ServiceRequest
 from apps.products.importers import import_from_excel, import_from_csv
-
+from apps.analytics.models import DistributionCategory
 
 # ═══════════════════════════════════════════════════════════
 # SERIALIZERS
@@ -1250,10 +1250,11 @@ def admin_finance_categories(request):
     from apps.analytics.models import DistributionCategory
 
     if request.method == "GET":
-        cats = DistributionCategory.objects.all()
+        cats = DistributionCategory.objects.all().order_by("order")
         return Response([{
             "id":         str(c.id),
             "name":       c.name,
+            "cat_type":   c.cat_type,      
             "percentage": float(c.percentage),
             "color":      c.color,
             "icon":       c.icon,
@@ -1264,9 +1265,11 @@ def admin_finance_categories(request):
     # POST — nueva categoría
     cat = DistributionCategory.objects.create(
         name       = request.data.get("name", "Nueva categoría"),
-        percentage = request.data.get("percentage", 0),
+        cat_type   = request.data.get("cat_type", "percent"),    # ← AGREGA
+        percentage = float(request.data.get("percentage", 0)),   # ← float()
         color      = request.data.get("color", "#888888"),
         icon       = request.data.get("icon", "💰"),
+        is_active  = request.data.get("is_active", True),        # ← AGREGA
         order      = DistributionCategory.objects.count() + 1,
     )
     return Response({"id": str(cat.id), "name": cat.name}, status=201)
@@ -1276,7 +1279,7 @@ def admin_finance_categories(request):
 @permission_classes([IsAdminOrStaff])
 def admin_finance_category_detail(request, cat_id):
     """PATCH/DELETE /api/v1/admin/finance/categories/{id}/"""
-    from apps.analytics.models import DistributionCategory
+    
     try:
         cat = DistributionCategory.objects.get(id=cat_id)
     except DistributionCategory.DoesNotExist:
@@ -1286,12 +1289,32 @@ def admin_finance_category_detail(request, cat_id):
         cat.delete()
         return Response({"deleted": True})
 
-    for field in ["name", "percentage", "color", "icon", "order", "is_active"]:
-        if field in request.data:
-            setattr(cat, field, request.data[field])
-    cat.save()
-    return Response({"id": str(cat.id), "name": cat.name})
+    if request.method == "PATCH":
+        for field in ["name", "cat_type", "color", "icon", "order", "is_active"]:  # ← cat_type
+            if field in request.data:
+                setattr(cat, field, request.data[field])
 
+    if "percentage" in request.data:                    # ← float separado
+        cat.percentage = float(request.data["percentage"])
+
+    cat.save()
+
+    # Recalcula distribuciones si cambiaron los %
+    if "percentage" in request.data or "cat_type" in request.data:
+        from apps.analytics.models import IncomeDistribution, IncomeRecord
+        IncomeDistribution.objects.all().delete()
+        for record in IncomeRecord.objects.all():
+            record.create_distributions()
+
+    return Response({
+        "id":         str(cat.id),
+        "name":       cat.name,
+        "cat_type":   cat.cat_type,
+        "percentage": float(cat.percentage),
+        "color":      cat.color,
+        "icon":       cat.icon,
+        "is_active":  cat.is_active,
+    })
 
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
@@ -1319,6 +1342,7 @@ def admin_finance_summary(request):
         summary.append({
             "id":         str(cat.id),
             "name":       cat.name,
+            "cat_type":   cat.cat_type,
             "percentage": float(cat.percentage),
             "color":      cat.color,
             "icon":       cat.icon,

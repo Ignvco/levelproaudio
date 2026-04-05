@@ -5,6 +5,7 @@ import { useSearchParams, Link, useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { getOrder } from "../../api/orders.api"
 
+
 // ── Confetti simple ──────────────────────────────────────────
 function Confetti() {
   const colors = ["#1aff6e", "#facc15", "#60a5fa", "#f87171", "#c084fc"]
@@ -44,10 +45,10 @@ function Confetti() {
 // ── Badge de estado ──────────────────────────────────────────
 function StatusBadge({ status }) {
   const map = {
-    pending:   { label: "Pendiente de confirmación", color: "#facc15" },
-    paid:      { label: "Pago confirmado",            color: "#4ade80" },
-    completed: { label: "Completado",                 color: "#4ade80" },
-    shipped:   { label: "En camino",                  color: "#60a5fa" },
+    pending: { label: "Pendiente de confirmación", color: "#facc15" },
+    paid: { label: "Pago confirmado", color: "#4ade80" },
+    completed: { label: "Completado", color: "#4ade80" },
+    shipped: { label: "En camino", color: "#60a5fa" },
   }
   const s = map[status] || map.pending
   return (
@@ -68,8 +69,8 @@ function StatusBadge({ status }) {
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams()
-  const navigate       = useNavigate()
-  const orderId        = searchParams.get("order")
+  const navigate = useNavigate()
+  const orderId = searchParams.get("order")
   const [showConfetti, setShowConfetti] = useState(true)
 
   // Oculta confetti después de 4s
@@ -80,8 +81,8 @@ export default function PaymentSuccess() {
 
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ["order", orderId],
-    queryFn:  () => getOrder(orderId),
-    enabled:  !!orderId,
+    queryFn: () => getOrder(orderId),
+    enabled: !!orderId,
     // Reintenta hasta que el pago esté confirmado (webhook puede demorar)
     refetchInterval: (data) =>
       data?.status === "pending" ? 3000 : false,
@@ -160,10 +161,33 @@ export default function PaymentSuccess() {
             lineHeight: 1.6, marginBottom: "16px",
           }}>
             Gracias por tu compra en LevelPro Audio.{" "}
-            {order?.status === "pending"
-              ? "Estamos procesando tu pago — recibirás una confirmación pronto."
-              : "Tu pago fue confirmado exitosamente."}
+
           </p>
+          {/* Dentro del bloque donde se muestra el order y status === "pending" */}
+          {order?.status === "pending" && (
+            <div style={{
+              padding: "14px 18px", borderRadius: "var(--r-md)",
+              background: "rgba(250,204,21,0.06)",
+              border: "1px solid rgba(250,204,21,0.2)",
+              fontSize: "13px", color: "#facc15",
+              display: "flex", alignItems: "center", gap: "10px",
+            }}>
+              <span style={{ fontSize: "18px" }}>⏳</span>
+              <div>
+                <p style={{ fontWeight: 500, marginBottom: "3px" }}>
+                  Pago en proceso de confirmación
+                </p>
+                <p style={{ color: "var(--text-3)", fontSize: "12px" }}>
+                  Si ya pagaste, esta página se actualizará automáticamente.
+                  Si no pudiste pagar,{" "}
+                  <Link to={`/dashboard/orders/${order.id}`}
+                    style={{ color: "var(--accent)", textDecoration: "underline" }}>
+                    volvé a tu orden para reintentar
+                  </Link>.
+                </p>
+              </div>
+            </div>
+          )}
 
           {order && <StatusBadge status={order.status} />}
         </div>
@@ -195,12 +219,16 @@ export default function PaymentSuccess() {
               alignItems: "center",
               background: "var(--surface-2)",
             }}>
-              <p style={{ fontSize: "13px", fontWeight: 600,
-                textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              <p style={{
+                fontSize: "13px", fontWeight: 600,
+                textTransform: "uppercase", letterSpacing: "0.06em"
+              }}>
                 Comprobante de compra
               </p>
-              <p style={{ fontSize: "12px", fontFamily: "monospace",
-                color: "var(--text-3)" }}>
+              <p style={{
+                fontSize: "12px", fontFamily: "monospace",
+                color: "var(--text-3)"
+              }}>
                 #{order.id.slice(0, 8).toUpperCase()}
               </p>
             </div>
@@ -235,8 +263,10 @@ export default function PaymentSuccess() {
                   borderBottom: "1px solid var(--border)",
                   gap: "16px",
                 }}>
-                  <span style={{ fontSize: "13px", color: "var(--text-3)",
-                    flexShrink: 0 }}>
+                  <span style={{
+                    fontSize: "13px", color: "var(--text-3)",
+                    flexShrink: 0
+                  }}>
                     {label}
                   </span>
                   <span style={{
@@ -276,8 +306,10 @@ export default function PaymentSuccess() {
                       ${Number(item.price).toLocaleString("es-CL")} × {item.quantity}
                     </p>
                   </div>
-                  <p style={{ fontSize: "14px", fontWeight: 500,
-                    whiteSpace: "nowrap" }}>
+                  <p style={{
+                    fontSize: "14px", fontWeight: 500,
+                    whiteSpace: "nowrap"
+                  }}>
                     ${Number(item.subtotal).toLocaleString("es-CL")}
                   </p>
                 </div>
@@ -306,8 +338,10 @@ export default function PaymentSuccess() {
                 padding: "16px 24px",
                 borderTop: "1px solid var(--border)",
               }}>
-                <p style={{ fontSize: "12px", color: "var(--text-3)",
-                  marginBottom: "6px" }}>
+                <p style={{
+                  fontSize: "12px", color: "var(--text-3)",
+                  marginBottom: "6px"
+                }}>
                   Dirección de envío
                 </p>
                 <p style={{ fontSize: "14px" }}>{order.shipping_address}</p>
@@ -353,7 +387,7 @@ export default function PaymentSuccess() {
 
         {/* ── WhatsApp ── */}
         <a
-        
+
           href="https://wa.me/5492622635045"
           target="_blank" rel="noreferrer"
           style={{
