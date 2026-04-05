@@ -1254,7 +1254,7 @@ def admin_finance_categories(request):
         return Response([{
             "id":         str(c.id),
             "name":       c.name,
-            "cat_type":   c.cat_type,      
+            "cat_type":   c.cat_type,       # ← AGREGADO
             "percentage": float(c.percentage),
             "color":      c.color,
             "icon":       c.icon,
@@ -1265,11 +1265,11 @@ def admin_finance_categories(request):
     # POST — nueva categoría
     cat = DistributionCategory.objects.create(
         name       = request.data.get("name", "Nueva categoría"),
-        cat_type   = request.data.get("cat_type", "percent"),    # ← AGREGA
-        percentage = float(request.data.get("percentage", 0)),   # ← float()
+        cat_type   = request.data.get("cat_type", "percent"),   # ← AGREGADO
+        percentage = float(request.data.get("percentage", 0)),
         color      = request.data.get("color", "#888888"),
         icon       = request.data.get("icon", "💰"),
-        is_active  = request.data.get("is_active", True),        # ← AGREGA
+        is_active  = request.data.get("is_active", True),
         order      = DistributionCategory.objects.count() + 1,
     )
     return Response({"id": str(cat.id), "name": cat.name}, status=201)
@@ -1290,16 +1290,15 @@ def admin_finance_category_detail(request, cat_id):
         return Response({"deleted": True})
 
     if request.method == "PATCH":
-        for field in ["name", "cat_type", "color", "icon", "order", "is_active"]:  # ← cat_type
-            if field in request.data:
-                setattr(cat, field, request.data[field])
-
-    if "percentage" in request.data:                    # ← float separado
-        cat.percentage = float(request.data["percentage"])
-
+    for field in ["name", "cat_type", "percentage", "color", "icon", "order", "is_active"]:
+        if field in request.data:
+            val = request.data[field]
+            if field == "percentage":
+                val = float(val)
+            setattr(cat, field, val)
     cat.save()
 
-    # Recalcula distribuciones si cambiaron los %
+    # ← Si cambió el porcentaje o el tipo, recalcula TODAS las distribuciones
     if "percentage" in request.data or "cat_type" in request.data:
         from apps.analytics.models import IncomeDistribution, IncomeRecord
         IncomeDistribution.objects.all().delete()

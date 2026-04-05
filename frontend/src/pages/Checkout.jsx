@@ -66,40 +66,44 @@ export default function Checkout() {
     },
   })
 
-  const onSubmit = async (data) => {
-    if (!items.length) return
-    setIsLoading(true)
-    setServerError("")
-    try {
-      const { data: order } = await api.post("/orders/", {
-        email:            data.email,
-        shipping_address: `${data.address_street}, ${data.address_city}, ${data.address_province}`,
-        notes:            data.notes || "",
-        total,
-        items: items.map(i => ({
-          product:      i.product.id,
-          product_name: i.product.name,
-          price:        i.product.price,
-          quantity:     i.quantity,
-        })),
-      })
+ const onSubmit = async (data) => {
+  if (!items.length) return
+  setIsLoading(true)
+  setServerError("")
+  try {
+    const { data: order } = await api.post("/orders/", {
+      email:            data.email,
+      shipping_address: `${data.address_street}, ${data.address_city}, ${data.address_province}`,
+      notes:            data.notes || "",
+      total,
+      items: items.map(i => ({
+        product:      i.product.id,
+        product_name: i.product.name,
+        price:        i.product.price,
+        quantity:     i.quantity,
+      })),
+    })
 
-      const paymentData = await createPayment(order.id, selectedMethod)
+    const paymentData = await createPayment(order.id, selectedMethod)
+
+    // ← clearCart() solo para Global66 (pago manual, no redirige a MP)
+    // Para MP y PayPal el carrito se limpia DESPUÉS de confirmar el pago (webhook)
+    if (selectedMethod === "global66") {
       clearCart()
-
-      if (selectedMethod === "mercadopago_cl" || selectedMethod === "mercadopago_ar") {
-        window.location.href = paymentData.sandbox_url || paymentData.init_point
-      } else if (selectedMethod === "paypal") {
-        window.location.href = paymentData.approve_url
-      } else {
-        navigate(`/payment/transfer/${order.id}`, { state: { transferData: paymentData } })
-      }
-    } catch {
-      setServerError("Error al procesar tu pedido. Intenta de nuevo.")
-    } finally {
-      setIsLoading(false)
+      navigate(`/payment/transfer/${order.id}`, { state: { transferData: paymentData } })
+    } else if (selectedMethod === "mercadopago_cl" || selectedMethod === "mercadopago_ar") {
+      // ← NO limpia el carrito aquí — se limpia cuando el webhook confirme el pago
+      window.location.href = paymentData.sandbox_url || paymentData.init_point
+    } else if (selectedMethod === "paypal") {
+      window.location.href = paymentData.approve_url
     }
+
+  } catch (e) {
+    setServerError(e?.response?.data?.error || "Error al procesar tu pedido. Intenta de nuevo.")
+  } finally {
+    setIsLoading(false)
   }
+}
 
   if (!items.length) return (
     <div style={{ minHeight: "80vh", display: "flex", alignItems: "center",

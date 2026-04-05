@@ -64,20 +64,26 @@ def create_mercadopago_preference(order: Order, provider: str) -> dict:
         })
 
     preference_data = {
-    "items": items,
-    "payer": {
-        "email": order.email,
-    },
-    "back_urls": {
-        "success": f"{settings.FRONTEND_URL}/payment/success?order={order.id}",
-        "failure": f"{settings.FRONTEND_URL}/payment/failure?order={order.id}",
-        "pending": f"{settings.FRONTEND_URL}/payment/pending?order={order.id}",
-    },
-    "external_reference": str(order.id),
-    "notification_url": f"{settings.BACKEND_URL}/api/v1/payments/webhook/mercadopago/{'ar' if provider == PaymentProvider.MERCADOPAGO_AR else 'cl'}/",
-    "statement_descriptor": "LEVELPRO AUDIO",
-    "expires": False,
-}
+        "items": items,
+        "payer": {
+            "email": order.email,
+        },
+        "back_urls": {
+            "success": f"{settings.FRONTEND_URL}/payment/success?order={order.id}",
+            "failure": f"{settings.FRONTEND_URL}/payment/failure?order={order.id}",
+            "pending": f"{settings.FRONTEND_URL}/payment/pending?order={order.id}",
+        },
+        "external_reference": str(order.id),
+        "notification_url": f"{settings.BACKEND_URL}/api/v1/payments/webhook/mercadopago/{'ar' if provider == PaymentProvider.MERCADOPAGO_AR else 'cl'}/",
+        "statement_descriptor": "LEVELPRO AUDIO",
+        "expires": False,
+        "binary_mode": False,
+    }
+    
+    if "localhost" not in settings.FRONTEND_URL:
+        preference_data["auto_return"] = "approved"
+
+
 
     result = sdk.preference().create(preference_data)
 
@@ -100,10 +106,10 @@ def create_mercadopago_preference(order: Order, provider: str) -> dict:
     )
 
     return {
-        "preference_id": preference["id"],
-        "init_point":    preference["init_point"],
-        "sandbox_url":   preference.get("sandbox_init_point", ""),
-    }
+    "preference_id": preference["id"],
+    "init_point":    preference["init_point"],
+    "sandbox_url":   preference.get("sandbox_init_point", preference["init_point"]),
+}
 
 
 def process_mercadopago_webhook(data: dict, provider: str) -> None:

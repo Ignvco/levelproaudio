@@ -83,30 +83,38 @@ function DistributionBar({ categories }) {
 // ── Modal categoría ──────────────────────────────────────────
 function CategoryModal({ category, onClose, onSave }) {
   const [form, setForm] = useState({
-    name: category?.name || "",
-    cat_type: category?.cat_type || "percent",
-    percentage: category?.percentage || 0,
-    color: category?.color || "#1aff6e",
-    icon: category?.icon || "💰",
-    is_active: category?.is_active ?? true,
+    name:       category?.name      || "",
+    cat_type:   category?.cat_type  || "percent",
+    percentage: category?.percentage !== undefined ? Number(category.percentage) : 0,
+    color:      category?.color     || "#1aff6e",
+    icon:       category?.icon      || "💰",
+    is_active:  category?.is_active ?? true,
   })
   const [saving, setSaving] = useState(false)
-  const [error, setError] = useState("")
+  const [error,  setError]  = useState("")
 
   const handleSave = async () => {
     if (!form.name.trim()) { setError("El nombre es requerido."); return }
     setSaving(true)
     setError("")
     try {
+      const payload = {
+        name:       form.name,
+        cat_type:   form.cat_type,
+        percentage: parseFloat(form.percentage) || 0,
+        color:      form.color,
+        icon:       form.icon,
+        is_active:  form.is_active,
+      }
       if (category?.id) {
-        await updateFinanceCategory(category.id, form)
+        await updateFinanceCategory(category.id, payload)
       } else {
-        await createFinanceCategory(form)
+        await createFinanceCategory(payload)
       }
       onSave()
       onClose()
     } catch (e) {
-      setError(e.response?.data?.detail || "Error al guardar.")
+      setError(e.response?.data?.detail || e.response?.data?.error || "Error al guardar.")
     } finally {
       setSaving(false)
     }
@@ -115,130 +123,154 @@ function CategoryModal({ category, onClose, onSave }) {
   const inputSt = {
     width: "100%", padding: "10px 14px",
     background: "var(--surface-2)", border: "1px solid var(--border)",
-    borderRadius: "var(--r-md)", color: "var(--text)", fontSize: "13px", outline: "none",
+    borderRadius: "var(--r-md)", color: "var(--text)",
+    fontSize: "13px", outline: "none",
   }
 
   return (
     <div style={{
       position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
       backdropFilter: "blur(8px)", zIndex: 200,
-      display: "flex", alignItems: "center", justifyContent: "center", padding: "24px"
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "24px",
     }}
       onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{
         background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-xl)", width: "100%", maxWidth: "420px"
+        borderRadius: "var(--r-xl)", width: "100%", maxWidth: "420px",
       }}>
+
+        {/* Header */}
         <div style={{
           padding: "20px 24px", borderBottom: "1px solid var(--border)",
-          display: "flex", justifyContent: "space-between"
+          display: "flex", justifyContent: "space-between",
         }}>
           <p style={{ fontSize: "15px", fontWeight: 500 }}>
             {category?.id ? "Editar categoría" : "Nueva categoría"}
           </p>
           <button onClick={onClose} style={{
             background: "none", border: "none",
-            cursor: "pointer", color: "var(--text-3)", fontSize: "20px"
+            cursor: "pointer", color: "var(--text-3)", fontSize: "20px",
           }}>×</button>
         </div>
+
+        {/* Body — UN SOLO div sin duplicados */}
         <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "14px" }}>
-          <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "14px" }}>
 
-            {/* Tipo */}
-            <div>
-              <label style={{
-                display: "block", fontSize: "12px", fontWeight: 500,
-                color: "var(--text-2)", marginBottom: "6px"
-              }}>Tipo de categoría</label>
-              <select value={form.cat_type}
-                onChange={e => setForm(p => ({ ...p, cat_type: e.target.value }))}
-                style={inputSt}>
-                <option value="fixed">💰 Monto fijo — costo real del producto</option>
-                <option value="percent">% Porcentaje del precio de venta</option>
-                <option value="remainder">💵 Resto — utilidad neta (lo que sobra)</option>
-              </select>
-              <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "4px" }}>
-                {form.cat_type === "fixed" && "Se toma del costo de capital ingresado en cada producto"}
-                {form.cat_type === "percent" && "Se calcula como porcentaje del precio de venta"}
-                {form.cat_type === "remainder" && "Recibe lo que queda después de descontar todos los costos"}
-              </p>
-            </div>
-
-            {/* Nombre + Icono */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 64px", gap: "10px" }}>
-            <div>
-              <label style={{
-                display: "block", fontSize: "12px", fontWeight: 500,
-                color: "var(--text-2)", marginBottom: "6px"
-              }}>Nombre *</label>
-              <input value={form.name}
-                onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
-                style={inputSt} placeholder="Ej: Capital" />
-            </div>
-            <div>
-              <label style={{
-                display: "block", fontSize: "12px", fontWeight: 500,
-                color: "var(--text-2)", marginBottom: "6px"
-              }}>Icono</label>
-              <input value={form.icon}
-                onChange={e => setForm(p => ({ ...p, icon: e.target.value }))}
-                style={{ ...inputSt, textAlign: "center", fontSize: "20px" }} />
-            </div>
-          </div>
-          <div>
-            <label style={{
-              display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "6px"
-            }}>
-              Porcentaje (%)
-            </label>
-            <input type="number" value={form.percentage} min="0" max="100" step="0.5"
-              onChange={e => setForm(p => ({ ...p, percentage: parseFloat(e.target.value) || 0 }))}
-              style={inputSt} />
-          </div>
-          <div>
-            <label style={{
-              display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "6px"
-            }}>Color</label>
-            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-              <input type="color" value={form.color}
-                onChange={e => setForm(p => ({ ...p, color: e.target.value }))}
-                style={{
-                  width: "44px", height: "44px", padding: "2px",
-                  borderRadius: "var(--r-sm)", border: "1px solid var(--border)",
-                  background: "var(--surface-2)", cursor: "pointer"
-                }} />
-              <input value={form.color}
-                onChange={e => setForm(p => ({ ...p, color: e.target.value }))}
-                style={{ ...inputSt, fontFamily: "monospace" }} placeholder="#1aff6e" />
-            </div>
-          </div>
-          <label style={{
-            display: "flex", alignItems: "center", gap: "8px",
-            cursor: "pointer", fontSize: "13px"
-          }}>
-            <input type="checkbox" checked={form.is_active}
-              onChange={e => setForm(p => ({ ...p, is_active: e.target.checked }))}
-              style={{ accentColor: "var(--accent)" }} />
-            Activa
-          </label>
-          </div>
           {error && (
             <p style={{
               fontSize: "12px", color: "var(--danger)", padding: "8px 12px",
               background: "rgba(255,59,59,0.08)", borderRadius: "var(--r-sm)",
-              border: "1px solid rgba(255,59,59,0.2)"
+              border: "1px solid rgba(255,59,59,0.2)",
             }}>{error}</p>
           )}
-          
+
+          {/* Tipo */}
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+              color: "var(--text-2)", marginBottom: "6px" }}>
+              Tipo de categoría
+            </label>
+            <select
+              value={form.cat_type}
+              onChange={e => setForm(p => ({ ...p, cat_type: e.target.value }))}
+              style={inputSt}>
+              <option value="fixed">💰 Monto fijo — costo real del producto</option>
+              <option value="percent">% Porcentaje del precio de venta</option>
+              <option value="remainder">💵 Resto — utilidad neta (lo que sobra)</option>
+            </select>
+            <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "4px" }}>
+              {form.cat_type === "fixed"     && "Se toma del costo de capital de cada producto"}
+              {form.cat_type === "percent"   && "Se calcula como % del precio de venta"}
+              {form.cat_type === "remainder" && "Recibe lo que queda después de todos los costos"}
+            </p>
+          </div>
+
+          {/* Nombre + Icono */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 64px", gap: "10px" }}>
+            <div>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+                color: "var(--text-2)", marginBottom: "6px" }}>
+                Nombre *
+              </label>
+              <input
+                value={form.name}
+                onChange={e => setForm(p => ({ ...p, name: e.target.value }))}
+                style={inputSt} placeholder="Ej: IVA" />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+                color: "var(--text-2)", marginBottom: "6px" }}>
+                Ícono
+              </label>
+              <input
+                value={form.icon}
+                onChange={e => setForm(p => ({ ...p, icon: e.target.value }))}
+                style={{ ...inputSt, textAlign: "center", fontSize: "20px" }} />
+            </div>
+          </div>
+
+          {/* Porcentaje — solo si es "percent" */}
+          {form.cat_type === "percent" && (
+            <div>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+                color: "var(--text-2)", marginBottom: "6px" }}>
+                Porcentaje (%)
+              </label>
+              <input
+                type="number"
+                value={form.percentage}
+                min="0" max="100" step="0.5"
+                onChange={e => setForm(p => ({
+                  ...p, percentage: parseFloat(e.target.value) || 0
+                }))}
+                style={inputSt} />
+            </div>
+          )}
+
+          {/* Color */}
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+              color: "var(--text-2)", marginBottom: "6px" }}>
+              Color
+            </label>
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <input
+                type="color" value={form.color}
+                onChange={e => setForm(p => ({ ...p, color: e.target.value }))}
+                style={{
+                  width: "44px", height: "44px", padding: "2px",
+                  borderRadius: "var(--r-sm)", border: "1px solid var(--border)",
+                  background: "var(--surface-2)", cursor: "pointer",
+                }} />
+              <input
+                value={form.color}
+                onChange={e => setForm(p => ({ ...p, color: e.target.value }))}
+                style={{ ...inputSt, fontFamily: "monospace" }}
+                placeholder="#1aff6e" />
+            </div>
+          </div>
+
+          {/* Activa */}
+          <label style={{ display: "flex", alignItems: "center", gap: "8px",
+            cursor: "pointer", fontSize: "13px" }}>
+            <input
+              type="checkbox" checked={form.is_active}
+              onChange={e => setForm(p => ({ ...p, is_active: e.target.checked }))}
+              style={{ accentColor: "var(--accent)" }} />
+            Categoría activa
+          </label>
+
         </div>
+
+        {/* Footer */}
         <div style={{
           padding: "16px 24px", borderTop: "1px solid var(--border)",
-          display: "flex", gap: "10px", justifyContent: "flex-end"
+          display: "flex", gap: "10px", justifyContent: "flex-end",
         }}>
           <button onClick={onClose} className="btn btn-ghost"
-            style={{ padding: "9px 18px", fontSize: "13px" }}>Cancelar</button>
+            style={{ padding: "9px 18px", fontSize: "13px" }}>
+            Cancelar
+          </button>
           <button onClick={handleSave} disabled={saving}
             className="btn btn-accent"
             style={{ padding: "9px 18px", fontSize: "13px", opacity: saving ? 0.7 : 1 }}>
