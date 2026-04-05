@@ -167,6 +167,7 @@ function ProductForm({ product, onClose }) {
       if (form.brand)         payload.brand         = form.brand
       if (form.compare_price) payload.compare_price = form.compare_price
       if (form.cost_price)    payload.cost_price    = form.cost_price
+      if (form.stock_min !== undefined) payload.stock_min = form.stock_min
 
       let saved
       if (product?.id) {
@@ -566,6 +567,14 @@ function ProductForm({ product, onClose }) {
         onChange={e => setForm(p => ({ ...p, stock: parseInt(e.target.value) || 0 }))}
         style={inputSt} min="0" />
     </div>
+    <Field label="Stock mínimo">
+  <input type="number" value={form.stock_min ?? 5}
+    onChange={e => setForm(p => ({ ...p, stock_min: parseInt(e.target.value) || 0 }))}
+    style={inputSt} min="0" />
+  <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "4px" }}>
+    Alerta cuando el stock baje de este nivel
+  </p>
+</Field>
 
   </div>
 </div>

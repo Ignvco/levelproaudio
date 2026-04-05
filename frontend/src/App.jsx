@@ -64,6 +64,10 @@ import AdminLessons from "./pages/admin/AdminLessons"
 import AdminEnrollments from "./pages/admin/AdminEnrollments"
 import AdminProductImport from "./pages/admin/AdminProductImport"
 import AdminFinance from "./pages/admin/AdminFinance"
+import AdminInventory from "./pages/admin/AdminInventory"
+import ExecutiveDashboard from "./pages/admin/ExecutiveDashboard"
+import AdminLoyalty from "./pages/admin/AdminLoyalty"
+
 
 // ── Rutas protegidas ────────────────────────────────────────
 function ProtectedRoute({ children }) {
@@ -108,10 +112,13 @@ function App() {
         <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
           <Route index element={<AdminDashboard />} />
           <Route path="analytics" element={<AdminAnalytics />} />
+          <Route path="/admin/executive" element={<ExecutiveDashboard />} />
           <Route path="/admin/finance" element={<AdminFinance />} />
+          <Route path="/admin/loyalty" element={<AdminLoyalty />} />
           <Route path="orders" element={<AdminOrders />} />
           <Route path="products" element={<AdminProducts />} />
           <Route path="products/import" element={<AdminProductImport />} />
+          <Route path="/admin/inventory" element={<AdminInventory />} />
           <Route path="users" element={<AdminUsers />} />
           <Route path="payments" element={<AdminPayments />} />
           <Route path="academy" element={<AdminAcademy />} />

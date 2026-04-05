@@ -38,6 +38,15 @@ from .views import (
     product_image_upload,
     product_image_delete,
     product_image_set_primary,
+    inventory_summary,
+    inventory_alerts,
+    inventory_rotation,
+    inventory_value_by_category,
+    executive_dashboard,
+    
+    
+    
+    
 )
 
 router = DefaultRouter()
@@ -56,7 +65,9 @@ urlpatterns = [
 
     # Usuarios
     path("users/",             admin_users,        name="admin-users"),
-
+     
+    path("executive/", executive_dashboard, name="executive-dashboard"),
+     
     # Pagos
     path("payments/",          admin_payments,     name="admin-payments"),
     path("payments/<uuid:payment_id>/status/", admin_update_payment_status, name="admin-payment-status"),
@@ -85,6 +96,11 @@ urlpatterns = [
     # Productos — importación
     path("products/import/",   import_products,    name="admin-products-import"),
     path("products/template/", download_template,  name="admin-products-template"),
+    
+    path("inventory/summary/",    inventory_summary,             name="inventory-summary"),
+    path("inventory/alerts/",     inventory_alerts,              name="inventory-alerts"),
+    path("inventory/rotation/",   inventory_rotation,            name="inventory-rotation"),
+    path("inventory/by-category/",inventory_value_by_category,  name="inventory-by-category"),
 
     # Imágenes de productos — solo las funciones directas (sin duplicados)
     path("products/<uuid:product_id>/images/",

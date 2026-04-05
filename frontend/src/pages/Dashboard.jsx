@@ -6,6 +6,7 @@ import { useAuthStore } from "../store/authStore"
 import { getOrders } from "../api/orders.api"
 import { getEnrollments } from "../api/academy.api"
 import { getServiceRequests } from "../api/services.api"
+import LoyaltyWidget from "./dashboard/LoyaltyWidget"
 
 const statusConfig = {
   pending: { label: "Pendiente", color: "#facc15" },
@@ -168,6 +169,8 @@ export default function Dashboard() {
           </div>
         )}
       </div>
+
+      <LoyaltyWidget />
     </div>
   )
 }

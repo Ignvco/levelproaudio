@@ -53,6 +53,7 @@ function NavGroup({ item }) {
 // ── navItems — solo datos, sin componentes adentro ───────────
 const navItems = [
   { to: "/admin",           label: "Dashboard",  icon: "◈", end: true },
+  { to: "/admin/executive", label: "Vista Ejecutiva", icon: "◈" },
   { to: "/admin/analytics", label: "Analytics",  icon: "◉" },
   { to: "/admin/finance", label: "Finanzas", icon: "⧫" },
   { to: "/admin/orders",    label: "Órdenes",    icon: "⊡" },
@@ -61,10 +62,12 @@ const navItems = [
     children: [
       { to: "/admin/products",        label: "Catálogo" },
       { to: "/admin/products/import", label: "Importar" },  // ← dentro del grupo
+      { to: "/admin/inventory", label: "Inventario", icon: "◫" }
     ]
   },
   { to: "/admin/users",     label: "Usuarios",   icon: "○" },
   { to: "/admin/payments",  label: "Pagos",      icon: "◎" },
+  { to: "/admin/loyalty", label: "Fidelización", icon: "⭐" },
   {
     label: "Academia", icon: "▷",
     children: [
