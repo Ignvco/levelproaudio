@@ -525,28 +525,6 @@ export default function AdminInventory() {
         display: "flex", gap: "6px", marginBottom: "24px",
         borderBottom: "1px solid var(--border)", paddingBottom: "0"
       }}>
-        // En AdminInventory.jsx, reemplaza el mapeo de tabs:
-        {TABS.map((t, i) => (
-          <button
-            key={t}
-            type="button"          // ← agregar esto
-            onClick={(e) => {
-              e.preventDefault()   // ← agregar esto
-              setTab(i)
-            }}
-            style={{
-              padding: "8px 16px", fontSize: "13px", cursor: "pointer",
-              background: "none", border: "none",
-              borderBottom: tab === i ? "2px solid var(--accent)" : "2px solid transparent",
-              color: tab === i ? "var(--accent)" : "var(--text-3)",
-              fontWeight: tab === i ? 500 : 400,
-              transition: "all var(--dur) var(--ease)",
-              marginBottom: "-1px",
-            }}
-          >
-            {t}
-          </button>
-        ))}// En AdminInventory.jsx, reemplaza el mapeo de tabs:
         {TABS.map((t, i) => (
           <button
             key={t}
