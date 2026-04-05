@@ -167,14 +167,19 @@ export const getExecutiveDashboard = () =>
 
 
 // Loyalty — admin
-export const getLoyaltySummary  = () =>
-  api.get(`${BASE}/loyalty/admin/summary/`).then(r => r.data)
+// ← Estaban apuntando a ${BASE}/loyalty/admin/... 
+// donde BASE = /api/v1/admin
+// Eso genera /api/v1/admin/loyalty/admin/summary/ → INCORRECTO
 
-export const getLoyaltyConfig   = () =>
-  api.get(`${BASE}/loyalty/admin/config/`).then(r => r.data)
+// Cambia a rutas directas:
+export const getLoyaltySummary   = () =>
+  api.get("/loyalty/admin/summary/").then(r => r.data)
+
+export const getLoyaltyConfig    = () =>
+  api.get("/loyalty/admin/config/").then(r => r.data)
 
 export const updateLoyaltyConfig = (data) =>
-  api.patch(`${BASE}/loyalty/admin/config/`, data).then(r => r.data)
+  api.patch("/loyalty/admin/config/", data).then(r => r.data)
 
 export const adjustLoyaltyPoints = (data) =>
-  api.post(`${BASE}/loyalty/admin/adjust/`, data).then(r => r.data)
+  api.post("/loyalty/admin/adjust/", data).then(r => r.data)
