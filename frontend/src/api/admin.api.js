@@ -205,3 +205,7 @@ export const sendDocumentEmail     = (docId) =>
 
 export const voidDocument          = (docId) =>
   api.post(`/billing/void/${docId}/`).then(r => r.data)
+
+// admin.api.js
+export const generateDocumentFromOrder = (orderId, tipo = "boleta") =>
+  api.post("/billing/generate/", { order_id: orderId, tipo }).then(r => r.data)
