@@ -39,3 +39,4 @@ uritemplate==4.2.0
 wcwidth==0.6.0
 openpyxl
 drf-nested-routers
+reportlab==4.2.2

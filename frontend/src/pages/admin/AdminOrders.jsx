@@ -243,6 +243,42 @@ function OrderDetailPanel({ order, onClose, onStatusChange }) {
             ))}
           </div>
         )}
+        {/* Dentro del OrderDetailPanel, al final */}
+{order.status !== "pending" && order.status !== "cancelled" && (
+  <div style={{ marginTop: "16px" }}>
+    {order.has_document ? (
+      <button
+        onClick={async () => {
+          const resp = await downloadDocument(order.document_id)
+          const url  = window.URL.createObjectURL(new Blob([resp.data]))
+          const link = document.createElement("a")
+          link.href  = url
+          link.setAttribute("download", `${order.document_folio}.pdf`)
+          document.body.appendChild(link)
+          link.click()
+          link.remove()
+        }}
+        style={{
+          width: "100%", padding: "10px",
+          borderRadius: "var(--r-md)",
+          background: "var(--surface-2)",
+          border: "1px solid var(--border)",
+          color: "var(--text-2)", fontSize: "13px",
+          cursor: "pointer",
+        }}>
+        ⬇️ Descargar {order.document_tipo || "boleta"}
+      </button>
+    ) : (
+      <a href={`/admin/billing`} style={{
+        display: "block", textAlign: "center",
+        fontSize: "12px", color: "var(--text-3)",
+        padding: "8px",
+      }}>
+        🧾 Generar boleta/factura →
+      </a>
+    )}
+  </div>
+)}
       </div>
     </div>
   )

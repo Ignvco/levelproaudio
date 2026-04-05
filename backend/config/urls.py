@@ -40,6 +40,7 @@ urlpatterns = [
         name="redoc",
     ),
     path("api/v1/loyalty/", include("apps.loyalty.urls")),
+    path("api/v1/billing/", include("apps.billing.urls")),
 ]
 # Sirve archivos media en desarrollo
 if settings.DEBUG:

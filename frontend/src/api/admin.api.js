@@ -183,3 +183,25 @@ export const updateLoyaltyConfig = (data) =>
 
 export const adjustLoyaltyPoints = (data) =>
   api.post("/loyalty/admin/adjust/", data).then(r => r.data)
+
+// Billing
+export const getBillingConfig      = () =>
+  api.get("/billing/config/").then(r => r.data)
+
+export const updateBillingConfig   = (data) =>
+  api.patch("/billing/config/", data).then(r => r.data)
+
+export const getBillingDocuments   = () =>
+  api.get("/billing/documents/").then(r => r.data)
+
+export const generateDocument      = (data) =>
+  api.post("/billing/generate/", data).then(r => r.data)
+
+export const downloadDocument      = (docId) =>
+  api.get(`/billing/download/${docId}/`, { responseType: "blob" })
+
+export const sendDocumentEmail     = (docId) =>
+  api.post(`/billing/send/${docId}/`).then(r => r.data)
+
+export const voidDocument          = (docId) =>
+  api.post(`/billing/void/${docId}/`).then(r => r.data)

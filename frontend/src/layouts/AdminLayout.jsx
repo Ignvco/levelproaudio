@@ -67,6 +67,7 @@ const navItems = [
   },
   { to: "/admin/users",     label: "Usuarios",   icon: "○" },
   { to: "/admin/payments",  label: "Pagos",      icon: "◎" },
+  { to: "/admin/billing", label: "Facturación", icon: "🧾" },
   { to: "/admin/loyalty", label: "Fidelización", icon: "⭐" },
   {
     label: "Academia", icon: "▷",
