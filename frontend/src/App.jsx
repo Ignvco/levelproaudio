@@ -1,9 +1,10 @@
 // App.jsx
 // Definición de todas las rutas de la aplicación
 // ProtectedRoute redirige al login si el usuario no está autenticado
-
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
+import PageTransition from "./components/ui/PageTransition"
+import { Routes, Route, Navigate } from "react-router-dom"
 import { useAuthStore } from "./store/authStore"
+
 
 import Orders from "./pages/dashboard/Orders"
 import OrderDetail from "./pages/dashboard/OrderDetail"
@@ -91,8 +92,8 @@ function AdminRoute({ children }) {
 // ── App ─────────────────────────────────────────────────────
 function App() {
   return (
-    <BrowserRouter>
-
+    
+    <PageTransition>
       <Routes>
 
         <Route path="/admin/login" element={<AdminLogin />} />
@@ -228,7 +229,8 @@ function App() {
         <Route path="*" element={<NotFound />} />
 
       </Routes>
-    </BrowserRouter>
+      </PageTransition>
+   
   )
 }
 
