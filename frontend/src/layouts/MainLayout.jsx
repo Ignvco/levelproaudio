@@ -609,13 +609,506 @@ function Footer() {
 }
 
 export default function MainLayout({ children }) {
+  const { isAuthenticated, user, logout } = useAuthStore()
+  const { getCount }    = useCartStore()
+  const cartCount       = getCount()
+  const location        = useLocation()
+  const navigate        = useNavigate()
+  const [scrolled, setScrolled]   = useState(false)
+  const [menuOpen, setMenuOpen]   = useState(false)
+  const [userOpen, setUserOpen]   = useState(false)
+  const userRef = useRef(null)
+
+  // Detectar scroll para el efecto blur del navbar
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20)
+    window.addEventListener("scroll", onScroll, { passive: true })
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+
+  // Cerrar dropdown al hacer click fuera
+  useEffect(() => {
+    const handler = (e) => {
+      if (userRef.current && !userRef.current.contains(e.target)) {
+        setUserOpen(false)
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [])
+
+  // Cerrar menú mobile al navegar
+  useEffect(() => { setMenuOpen(false) }, [location])
+
+  const navLinks = [
+    { to: "/shop",     label: "Tienda"   },
+    { to: "/academy",  label: "Academia" },
+    { to: "/services", label: "Servicios"},
+  ]
+
+  const isActive = (path) => location.pathname.startsWith(path)
+
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg)" }}>
-      <Navbar />
-      <main style={{ flex: 1 }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
+
+      {/* ── Navbar ── */}
+      <header style={{
+        position:   "fixed",
+        top:        0,
+        left:       0,
+        right:      0,
+        zIndex:     100,
+        transition: "all 300ms var(--ease)",
+        background: scrolled
+          ? "rgba(8,8,8,0.85)"
+          : "transparent",
+        backdropFilter:         scrolled ? "blur(20px)" : "none",
+        WebkitBackdropFilter:   scrolled ? "blur(20px)" : "none",
+        borderBottom: scrolled ? "1px solid var(--border)" : "1px solid transparent",
+      }}>
+        <div style={{
+          maxWidth:      "var(--container)",
+          margin:        "0 auto",
+          padding:       "0 clamp(20px, 5vw, 60px)",
+          height:        "68px",
+          display:       "flex",
+          alignItems:    "center",
+          justifyContent:"space-between",
+          gap:           "32px",
+        }}>
+
+          {/* Logo */}
+          <Link to="/" style={{
+            display:    "flex",
+            alignItems: "center",
+            gap:        "10px",
+            flexShrink: 0,
+          }}>
+            <img
+              src="/src/assets/logo.png"
+              alt="LevelPro Audio"
+              style={{ height: "28px", width: "auto" }}
+            />
+          </Link>
+
+          {/* Nav links — desktop */}
+          <nav style={{
+            display:    "flex",
+            alignItems: "center",
+            gap:        "4px",
+          }}
+            className="hidden-mobile"
+          >
+            {navLinks.map(({ to, label }) => (
+              <Link key={to} to={to} style={{
+                padding:        "8px 16px",
+                borderRadius:   "var(--r-full)",
+                fontSize:       "14px",
+                fontWeight:     isActive(to) ? 500 : 400,
+                color:          isActive(to) ? "var(--text)" : "var(--text-2)",
+                background:     isActive(to) ? "var(--surface-2)" : "transparent",
+                border:         isActive(to) ? "1px solid var(--border)" : "1px solid transparent",
+                transition:     "all var(--dur) var(--ease)",
+                letterSpacing:  "-0.01em",
+              }}
+                className="hover-accent"
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
+
+          {/* Acciones — desktop */}
+          <div style={{
+            display:    "flex",
+            alignItems: "center",
+            gap:        "12px",
+            flexShrink: 0,
+          }}
+            className="hidden-mobile"
+          >
+            {/* Carrito */}
+            <Link to="/cart" style={{
+              position:       "relative",
+              width:          "40px",
+              height:         "40px",
+              borderRadius:   "var(--r-full)",
+              background:     "var(--surface-2)",
+              border:         "1px solid var(--border)",
+              display:        "flex",
+              alignItems:     "center",
+              justifyContent: "center",
+              color:          "var(--text-2)",
+              fontSize:       "16px",
+              transition:     "all var(--dur) var(--ease)",
+            }}
+              className="hover-lift"
+            >
+              🛒
+              {cartCount > 0 && (
+                <span style={{
+                  position:        "absolute",
+                  top:             "-4px",
+                  right:           "-4px",
+                  background:      "var(--accent)",
+                  color:           "#000",
+                  fontSize:        "10px",
+                  fontWeight:      700,
+                  width:           "18px",
+                  height:          "18px",
+                  borderRadius:    "50%",
+                  display:         "flex",
+                  alignItems:      "center",
+                  justifyContent:  "center",
+                  border:          "2px solid var(--bg)",
+                }}>
+                  {cartCount > 9 ? "9+" : cartCount}
+                </span>
+              )}
+            </Link>
+
+            {/* Usuario o Login */}
+            {isAuthenticated ? (
+              <div ref={userRef} style={{ position: "relative" }}>
+                <button
+                  onClick={() => setUserOpen(!userOpen)}
+                  style={{
+                    width:           "40px",
+                    height:          "40px",
+                    borderRadius:    "50%",
+                    background:      "var(--accent-dim)",
+                    border:          "1px solid var(--accent-glow)",
+                    color:           "var(--accent)",
+                    fontSize:        "15px",
+                    fontWeight:      600,
+                    display:         "flex",
+                    alignItems:      "center",
+                    justifyContent:  "center",
+                    cursor:          "pointer",
+                    transition:      "all var(--dur) var(--ease)",
+                  }}
+                >
+                  {user?.first_name?.[0]?.toUpperCase() || "U"}
+                </button>
+
+                {userOpen && (
+                  <div style={{
+                    position:     "absolute",
+                    top:          "calc(100% + 10px)",
+                    right:        0,
+                    minWidth:     "200px",
+                    background:   "var(--surface)",
+                    border:       "1px solid var(--border)",
+                    borderRadius: "var(--r-lg)",
+                    padding:      "6px",
+                    boxShadow:    "0 20px 60px rgba(0,0,0,0.5)",
+                    animation:    "scaleIn 150ms var(--ease) both",
+                    transformOrigin: "top right",
+                  }}>
+                    <div style={{
+                      padding:      "10px 12px 8px",
+                      borderBottom: "1px solid var(--border)",
+                      marginBottom: "4px",
+                    }}>
+                      <p style={{ fontSize: "13px", fontWeight: 500 }}>
+                        {user?.first_name || user?.email?.split("@")[0]}
+                      </p>
+                      <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+                        {user?.email}
+                      </p>
+                    </div>
+
+                    {[
+                      { to: "/dashboard",         label: "Mi cuenta",  icon: "◈" },
+                      { to: "/dashboard/orders",  label: "Pedidos",    icon: "◫" },
+                      { to: "/dashboard/courses", label: "Mis cursos", icon: "▷" },
+                      ...(user?.is_staff ? [{ to: "/admin", label: "Admin", icon: "⊕" }] : []),
+                    ].map(({ to, label, icon }) => (
+                      <Link key={to} to={to}
+                        onClick={() => setUserOpen(false)}
+                        style={{
+                          display:       "flex",
+                          alignItems:    "center",
+                          gap:           "10px",
+                          padding:       "9px 12px",
+                          borderRadius:  "var(--r-md)",
+                          fontSize:      "13px",
+                          color:         "var(--text-2)",
+                          transition:    "all var(--dur) var(--ease)",
+                        }}
+                        className="hover-accent"
+                      >
+                        <span style={{ color: "var(--text-3)" }}>{icon}</span>
+                        {label}
+                      </Link>
+                    ))}
+
+                    <div style={{ borderTop: "1px solid var(--border)", margin: "4px 0" }} />
+                    <button
+                      onClick={() => { logout(); navigate("/"); setUserOpen(false) }}
+                      style={{
+                        width:         "100%",
+                        display:       "flex",
+                        alignItems:    "center",
+                        gap:           "10px",
+                        padding:       "9px 12px",
+                        borderRadius:  "var(--r-md)",
+                        fontSize:      "13px",
+                        color:         "var(--text-3)",
+                        background:    "none",
+                        border:        "none",
+                        cursor:        "pointer",
+                        textAlign:     "left",
+                        transition:    "all var(--dur) var(--ease)",
+                      }}
+                      className="hover-accent"
+                    >
+                      <span>↗</span> Cerrar sesión
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <Link to="/login" className="btn btn-ghost"
+                  style={{ padding: "9px 18px", fontSize: "13px" }}>
+                  Iniciar sesión
+                </Link>
+                <Link to="/register" className="btn btn-accent"
+                  style={{ padding: "9px 18px", fontSize: "13px" }}>
+                  Registrarse
+                </Link>
+              </div>
+            )}
+          </div>
+
+          {/* Hamburger — mobile */}
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            style={{
+              display:         "none",
+              width:           "40px",
+              height:          "40px",
+              borderRadius:    "var(--r-md)",
+              background:      "var(--surface-2)",
+              border:          "1px solid var(--border)",
+              color:           "var(--text)",
+              fontSize:        "16px",
+              alignItems:      "center",
+              justifyContent:  "center",
+              cursor:          "pointer",
+            }}
+            id="mobile-menu-btn"
+          >
+            {menuOpen ? "✕" : "☰"}
+          </button>
+        </div>
+
+        {/* Mobile menu */}
+        {menuOpen && (
+          <div style={{
+            background:   "var(--surface)",
+            borderTop:    "1px solid var(--border)",
+            padding:      "16px clamp(20px, 5vw, 60px)",
+            display:      "flex",
+            flexDirection:"column",
+            gap:          "4px",
+            animation:    "fadeIn 200ms var(--ease)",
+          }}>
+            {navLinks.map(({ to, label }) => (
+              <Link key={to} to={to} style={{
+                padding:      "12px 16px",
+                borderRadius: "var(--r-md)",
+                fontSize:     "15px",
+                color:        isActive(to) ? "var(--accent)" : "var(--text-2)",
+                background:   isActive(to) ? "var(--accent-dim)" : "transparent",
+                transition:   "all var(--dur) var(--ease)",
+              }}>
+                {label}
+              </Link>
+            ))}
+            <div style={{
+              height: "1px", background: "var(--border)",
+              margin: "8px 0"
+            }} />
+            <Link to="/cart" style={{
+              padding: "12px 16px", borderRadius: "var(--r-md)",
+              fontSize: "15px", color: "var(--text-2)",
+            }}>
+              🛒 Carrito {cartCount > 0 && `(${cartCount})`}
+            </Link>
+            {isAuthenticated ? (
+              <>
+                <Link to="/dashboard" style={{
+                  padding: "12px 16px", borderRadius: "var(--r-md)",
+                  fontSize: "15px", color: "var(--text-2)",
+                }}>
+                  Mi cuenta
+                </Link>
+                <button onClick={() => { logout(); navigate("/") }} style={{
+                  padding: "12px 16px", borderRadius: "var(--r-md)",
+                  fontSize: "15px", color: "var(--danger)",
+                  background: "none", border: "none", textAlign: "left",
+                }}>
+                  Cerrar sesión
+                </button>
+              </>
+            ) : (
+              <div style={{ display: "flex", gap: "8px", padding: "8px 0" }}>
+                <Link to="/login" className="btn btn-ghost" style={{ flex: 1, justifyContent: "center" }}>
+                  Iniciar sesión
+                </Link>
+                <Link to="/register" className="btn btn-accent" style={{ flex: 1, justifyContent: "center" }}>
+                  Registrarse
+                </Link>
+              </div>
+            )}
+          </div>
+        )}
+      </header>
+
+      {/* Contenido principal */}
+      <main style={{ flex: 1, paddingTop: "68px" }}>
         {children}
       </main>
-      <Footer />
+
+      {/* Footer */}
+      <footer style={{
+        borderTop:  "1px solid var(--border)",
+        padding:    "clamp(40px, 6vw, 80px) clamp(20px, 5vw, 60px)",
+        background: "var(--bg-2)",
+      }}>
+        <div style={{ maxWidth: "var(--container)", margin: "0 auto" }}>
+          <div style={{
+            display:               "grid",
+            gridTemplateColumns:   "2fr repeat(3, 1fr)",
+            gap:                   "60px",
+            marginBottom:          "60px",
+          }}
+            className="footer-grid"
+          >
+            {/* Brand */}
+            <div>
+              <img src="/src/assets/logo.png" alt="LevelPro Audio"
+                style={{ height: "28px", marginBottom: "16px" }} />
+              <p style={{
+                fontSize:    "14px",
+                color:       "var(--text-3)",
+                lineHeight:  1.7,
+                maxWidth:    "280px",
+              }}>
+                Equipamiento de audio profesional para músicos, productores y estudios
+                en Chile y Argentina.
+              </p>
+            </div>
+
+            {/* Links */}
+            {[
+              {
+                title: "Tienda",
+                links: [
+                  { to: "/shop",     label: "Todos los productos" },
+                  { to: "/shop?category=microfonos", label: "Micrófonos" },
+                  { to: "/shop?category=interfaces", label: "Interfaces" },
+                  { to: "/shop?category=auriculares", label: "Auriculares" },
+                ]
+              },
+              {
+                title: "Plataforma",
+                links: [
+                  { to: "/academy",  label: "Academia"   },
+                  { to: "/services", label: "Servicios"  },
+                  { to: "/dashboard",label: "Mi cuenta"  },
+                ]
+              },
+              {
+                title: "Empresa",
+                links: [
+                  { to: "/#about",   label: "Nosotros"   },
+                  { to: "/#contact", label: "Contacto"   },
+                  { href: "https://wa.me/5492622635045", label: "WhatsApp" },
+                ]
+              },
+            ].map(({ title, links }) => (
+              <div key={title}>
+                <p style={{
+                  fontSize:       "12px",
+                  fontWeight:     600,
+                  color:          "var(--text-3)",
+                  textTransform:  "uppercase",
+                  letterSpacing:  "0.08em",
+                  marginBottom:   "16px",
+                }}>
+                  {title}
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                  {links.map(({ to, href, label }) =>
+                    href ? (
+                      <a key={label} href={href} target="_blank" rel="noreferrer"
+                        style={{ fontSize: "14px", color: "var(--text-3)",
+                          transition: "color var(--dur)" }}
+                        className="hover-accent">
+                        {label}
+                      </a>
+                    ) : (
+                      <Link key={to} to={to}
+                        style={{ fontSize: "14px", color: "var(--text-3)",
+                          transition: "color var(--dur)" }}
+                        className="hover-accent">
+                        {label}
+                      </Link>
+                    )
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom */}
+          <div style={{
+            paddingTop:    "32px",
+            borderTop:     "1px solid var(--border)",
+            display:       "flex",
+            justifyContent:"space-between",
+            alignItems:    "center",
+            flexWrap:      "wrap",
+            gap:           "16px",
+          }}>
+            <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
+              © 2026 LevelPro Audio. Todos los derechos reservados.
+            </p>
+            <div style={{ display: "flex", gap: "20px" }}>
+              {["Términos", "Privacidad"].map(item => (
+                <span key={item} style={{
+                  fontSize: "13px", color: "var(--text-3)",
+                  cursor: "pointer", transition: "color var(--dur)",
+                }}
+                  className="hover-accent"
+                >
+                  {item}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </footer>
+
+      {/* CSS responsive */}
+      <style>{`
+        @media (max-width: 768px) {
+          .hidden-mobile { display: none !important; }
+          #mobile-menu-btn { display: flex !important; }
+          .footer-grid {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 32px !important;
+          }
+        }
+        @media (max-width: 480px) {
+          .footer-grid {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
