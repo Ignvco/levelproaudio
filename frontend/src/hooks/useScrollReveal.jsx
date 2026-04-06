@@ -8,6 +8,17 @@ export function useScrollReveal(options = {}) {
     const el = ref.current
     if (!el) return
 
+     // Verificar si ya está en el viewport ANTES de inicializar
+    const rect = el.getBoundingClientRect()
+    const inView = rect.top < window.innerHeight && rect.bottom > 0
+
+    // Si ya está visible, mostrar sin animación
+    if (inView) {
+      el.style.opacity   = "1"
+      el.style.transform = "none"
+      return
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -17,7 +28,7 @@ export function useScrollReveal(options = {}) {
         }
       },
       {
-        threshold: options.threshold || 0.15,
+        threshold: options.threshold || 0.1,
         rootMargin: options.rootMargin || "0px 0px -60px 0px",
       }
     )
@@ -30,8 +41,8 @@ export function useScrollReveal(options = {}) {
       ? "scale(0.95) translateY(20px)"
       : "translateY(24px)"
     el.style.transition = `
-      opacity ${options.duration || 700}ms cubic-bezier(0.16, 1, 0.3, 1) ${options.delay || 0}ms,
-      transform ${options.duration || 700}ms cubic-bezier(0.16, 1, 0.3, 1) ${options.delay || 0}ms
+      opacity ${options.duration || 600}ms cubic-bezier(0.16, 1, 0.3, 1) ${options.delay || 0}ms,
+      transform ${options.duration || 600}ms cubic-bezier(0.16, 1, 0.3, 1) ${options.delay || 0}ms
     `
 
     observer.observe(el)
