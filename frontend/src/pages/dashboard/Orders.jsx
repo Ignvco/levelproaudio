@@ -1,9 +1,7 @@
 // pages/dashboard/Orders.jsx
-
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import { getOrders } from "../../api/orders.api"
-import api from "../../api/client"
 
 const statusConfig = {
   pending:   { label: "Pendiente",  color: "#facc15" },
@@ -13,156 +11,104 @@ const statusConfig = {
   cancelled: { label: "Cancelado",  color: "#f87171" },
 }
 
-function StatusBadge({ status }) {
-  const c = statusConfig[status] || { label: status, color: "var(--text-3)" }
-  return (
-    <span style={{
-      padding: "2px 10px", borderRadius: "100px", fontSize: "11px", fontWeight: 500,
-      color: c.color, background: `${c.color}14`, border: `1px solid ${c.color}30`,
-    }}>
-      {c.label}
-    </span>
-  )
-}
-
 export default function Orders() {
-  const { data, isLoading, isError } = useQuery({ queryKey: ["orders"], queryFn: getOrders })
-  const queryClient = useQueryClient()
+  const { data, isLoading } = useQuery({
+    queryKey: ["orders"], queryFn: getOrders,
+  })
   const orders = data?.results || data || []
 
-  const cancelMutation = useMutation({
-    mutationFn: (id) => api.delete(`/orders/${id}/`),
-    onSuccess: () => queryClient.invalidateQueries(["orders"]),
-  })
-
   return (
-    <div style={{ padding: "clamp(32px, 5vw, 56px)", maxWidth: "720px" }}>
-      <h1 style={{ fontFamily: "var(--font-serif)",
-        fontSize: "clamp(2rem, 4vw, 2.8rem)", marginBottom: "40px" }}>
-        Mis pedidos
-      </h1>
+    <div style={{ padding: "clamp(32px, 5vw, 56px)", maxWidth: "800px" }}>
+      <div style={{ marginBottom: "32px" }}>
+        <p style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600,
+          letterSpacing: "0.08em", textTransform: "uppercase",
+          marginBottom: "8px" }}>
+          Mi cuenta
+        </p>
+        <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2rem, 4vw, 3rem)",
+          fontWeight: 300, letterSpacing: "-0.02em" }}>
+          Mis pedidos
+        </h1>
+      </div>
 
       {isLoading && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: "96px" }} />
+            <div key={i} className="skeleton" style={{ height: "80px" }} />
           ))}
         </div>
       )}
 
-      {isError && (
-        <p style={{ color: "var(--danger)", fontSize: "14px" }}>
-          Error al cargar los pedidos.
-        </p>
-      )}
-
-      {!isLoading && !isError && orders.length === 0 && (
-        <div style={{
-          background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-xl)", padding: "64px", textAlign: "center",
-        }}>
-          <p style={{ fontSize: "40px", marginBottom: "16px" }}>📦</p>
-          <p style={{ fontSize: "16px", fontWeight: 500, marginBottom: "8px" }}>
+      {!isLoading && orders.length === 0 && (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
+          borderRadius: "var(--r-2xl)", padding: "64px 32px", textAlign: "center" }}>
+          <p style={{ fontSize: "48px", marginBottom: "16px" }}>📦</p>
+          <h3 style={{ fontFamily: "var(--font-serif)", fontWeight: 300,
+            fontSize: "1.6rem", marginBottom: "8px" }}>
             Sin pedidos todavía
-          </p>
+          </h3>
           <p style={{ fontSize: "14px", color: "var(--text-3)", marginBottom: "28px" }}>
-            Cuando realices una compra, aparecerá aquí.
+            Explorá la tienda y realizá tu primer pedido.
           </p>
-          <Link to="/shop" className="btn btn-accent">Explorar tienda</Link>
+          <Link to="/shop" className="btn btn-accent">Ir a la tienda →</Link>
         </div>
       )}
 
-      {!isLoading && !isError && orders.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          {orders.map(order => (
-            <div key={order.id} style={{
-              background: "var(--surface)", border: "1px solid var(--border)",
-              borderRadius: "var(--r-lg)", overflow: "hidden",
-              transition: "all var(--dur) var(--ease)",
-            }}>
-              {/* Fila principal — clickeable */}
-              <Link to={`/dashboard/orders/${order.id}`} style={{
-                display: "flex", alignItems: "center", gap: "16px",
-                padding: "18px 20px",
-                transition: "background var(--dur) var(--ease)",
+      {!isLoading && orders.length > 0 && (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
+          borderRadius: "var(--r-2xl)", overflow: "hidden" }}>
+          {orders.map((order, i) => {
+            const s = statusConfig[order.status] || { label: order.status, color: "#888" }
+            return (
+              <Link key={order.id} to={`/dashboard/orders/${order.id}`} style={{
+                display:        "flex",
+                alignItems:     "center",
+                justifyContent: "space-between",
+                padding:        "20px 24px",
+                gap:            "16px",
+                borderTop:      i > 0 ? "1px solid var(--border)" : "none",
+                transition:     "background var(--dur) var(--ease)",
+                textDecoration: "none",
               }}
-                className="hover:bg-[var(--surface-2)] block"
+                className="hover:bg-[var(--surface-2)]"
               >
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: "flex", alignItems: "center",
-                    gap: "10px", marginBottom: "6px", flexWrap: "wrap" }}>
-                    <span style={{ fontSize: "13px", fontWeight: 500,
-                      fontFamily: "monospace" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                  {/* Status indicator */}
+                  <div style={{ width: "8px", height: "8px", borderRadius: "50%",
+                    background: s.color, flexShrink: 0 }} />
+                  <div>
+                    <p style={{ fontSize: "13px", fontWeight: 500,
+                      fontFamily: "monospace", color: "var(--text)",
+                      marginBottom: "4px" }}>
                       #{order.id.slice(0, 8).toUpperCase()}
-                    </span>
-                    <StatusBadge status={order.status} />
-                  </div>
-                  <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                    {new Date(order.created_at).toLocaleDateString("es-CL", {
-                      weekday: "long", day: "numeric",
-                      month: "long", year: "numeric",
-                    })}
-                  </p>
-                  <div style={{ marginTop: "6px" }}>
-                    {order.items?.slice(0, 2).map((item, i) => (
-                      <p key={i} style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                        {item.product_name} ×{item.quantity}
-                      </p>
-                    ))}
-                    {order.items?.length > 2 && (
-                      <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                        +{order.items.length - 2} más
-                      </p>
-                    )}
+                    </p>
+                    <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+                      {new Date(order.created_at).toLocaleDateString("es-CL", {
+                        day: "numeric", month: "short", year: "numeric"
+                      })}
+                      {" · "}{order.items_count} producto{order.items_count !== 1 ? "s" : ""}
+                    </p>
                   </div>
                 </div>
-                <div style={{ display: "flex", flexDirection: "column",
-                  alignItems: "flex-end", gap: "4px", flexShrink: 0 }}>
-                  <span style={{ fontSize: "16px", fontWeight: 500 }}>
-                    ${Number(order.total).toLocaleString("es-CL")}
+
+                <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                  <span style={{
+                    padding: "3px 10px", borderRadius: "var(--r-full)",
+                    fontSize: "11px", fontWeight: 500,
+                    color: s.color, background: `${s.color}14`,
+                    border: `1px solid ${s.color}30`,
+                  }}>
+                    {s.label}
                   </span>
-                  <span style={{ fontSize: "12px", color: "var(--text-3)" }}>›</span>
+                  <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.2rem",
+                    color: "var(--text)", whiteSpace: "nowrap" }}>
+                    ${Number(order.total).toLocaleString("es-CL")}
+                  </p>
+                  <span style={{ color: "var(--text-3)", fontSize: "16px" }}>›</span>
                 </div>
               </Link>
-
-              {/* Acciones — solo si está pendiente */}
-              {order.status === "pending" && (
-                <div style={{
-                  padding: "12px 20px",
-                  borderTop: "1px solid var(--border)",
-                  display: "flex", gap: "10px", alignItems: "center",
-                  background: "var(--surface-2)",
-                }}>
-                  <Link
-                    to={`/dashboard/orders/${order.id}`}
-                    className="btn btn-accent"
-                    style={{ padding: "8px 16px", fontSize: "12px" }}
-                  >
-                    Completar pago →
-                  </Link>
-                  <button
-                    onClick={() => {
-                      if (window.confirm("¿Cancelar este pedido?")) {
-                        cancelMutation.mutate(order.id)
-                      }
-                    }}
-                    disabled={cancelMutation.isPending}
-                    style={{
-                      padding: "8px 16px", borderRadius: "100px",
-                      fontSize: "12px", cursor: "pointer",
-                      background: "rgba(255,59,59,0.08)",
-                      border: "1px solid rgba(255,59,59,0.2)",
-                      color: "var(--danger)",
-                      transition: "all var(--dur) var(--ease)",
-                      opacity: cancelMutation.isPending ? 0.5 : 1,
-                    }}
-                  >
-                    Cancelar pedido
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>
