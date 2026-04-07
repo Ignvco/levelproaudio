@@ -2,20 +2,25 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
+import axios from "axios"
+
+// ← Importación directa de axios para evitar dependencia circular con api/client.js
+const authAxios = axios.create({
+  baseURL: "/api/v1",
+  headers: { "Content-Type": "application/json" },
+})
 
 export const useAuthStore = create(
   persist(
     (set, get) => ({
 
-      // Estado — todo bajo "accessToken" consistentemente
       accessToken:     null,
       refreshToken:    null,
       user:            null,
       isAuthenticated: false,
 
-      // Guarda tokens y marca al usuario como autenticado
       setTokens: (access, refresh) => {
-        localStorage.setItem("accessToken", access)
+        localStorage.setItem("accessToken",  access)
         localStorage.setItem("refreshToken", refresh)
         set({
           accessToken:     access,
@@ -24,10 +29,31 @@ export const useAuthStore = create(
         })
       },
 
-      // Guarda los datos del perfil del usuario
       setUser: (user) => set({ user }),
 
-      // Limpia todo al hacer logout
+      login: async (email, password) => {
+        // ← URL correcta según las rutas del backend
+        const { data } = await authAxios.post("/auth/login/", { email, password })
+
+        // Guarda tokens
+        localStorage.setItem("accessToken",  data.access)
+        localStorage.setItem("refreshToken", data.refresh)
+
+        // Obtiene el perfil — URL correcta es /auth/profile/
+        const { data: user } = await authAxios.get("/auth/profile/", {
+          headers: { Authorization: `Bearer ${data.access}` }
+        })
+
+        set({
+          accessToken:     data.access,
+          refreshToken:    data.refresh,
+          isAuthenticated: true,
+          user,
+        })
+
+        return user
+      },
+
       logout: () => {
         localStorage.removeItem("accessToken")
         localStorage.removeItem("refreshToken")
@@ -39,13 +65,12 @@ export const useAuthStore = create(
         })
       },
 
-      // Helper — retorna el token actual
       getToken: () => get().accessToken,
     }),
     {
       name: "levelproaudio-auth",
       partialize: (state) => ({
-        accessToken:     state.accessToken,   // ← corregido
+        accessToken:     state.accessToken,
         refreshToken:    state.refreshToken,
         user:            state.user,
         isAuthenticated: state.isAuthenticated,

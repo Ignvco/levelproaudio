@@ -1,4 +1,4 @@
-// pages/Login.jsx
+// pages/Login.jsx — versión corregida completa
 import { useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useAuthStore } from "../store/authStore"
@@ -8,20 +8,29 @@ export default function Login() {
   const [password, setPassword] = useState("")
   const [error, setError]       = useState("")
   const [loading, setLoading]   = useState(false)
-  const { login }               = useAuthStore()
-  const navigate                = useNavigate()
-  const [searchParams]          = useSearchParams()
-  const next                    = searchParams.get("next") || "/"
+
+  // ← Desestructura todo lo que necesitas FUERA del handler
+  const { login, user } = useAuthStore()
+  const navigate        = useNavigate()
+  const [searchParams]  = useSearchParams()
+  const next            = searchParams.get("next") || "/"
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
     setError("")
     try {
-      const user = await login(email, password)
-      navigate(user?.is_staff ? "/admin" : next)
-    } catch {
-      setError("Email o contraseña incorrectos.")
+      await login(email, password)
+      // ← Lee el estado actual del store directamente
+      const currentUser = useAuthStore.getState().user
+      navigate(currentUser?.is_staff || currentUser?.is_superuser
+        ? "/admin" : next)
+    } catch (err) {
+      setError(
+        err?.response?.data?.detail ||
+        err?.response?.data?.non_field_errors?.[0] ||
+        "Email o contraseña incorrectos."
+      )
     } finally {
       setLoading(false)
     }
@@ -40,7 +49,6 @@ export default function Login() {
       }}
         className="animate-fade-up"
       >
-        {/* Header */}
         <div style={{ textAlign: "center" }}>
           <Link to="/">
             <img src="/src/assets/logo.png" alt="LevelPro"
@@ -55,9 +63,9 @@ export default function Login() {
           </p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit}
-          style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
           {error && (
             <div style={{
               padding: "12px 16px", borderRadius: "var(--r-md)",
@@ -71,27 +79,40 @@ export default function Login() {
 
           <div>
             <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "8px", letterSpacing: "0.02em" }}>
+              color: "var(--text-2)", marginBottom: "8px" }}>
               Email
             </label>
-            <input type="email" value={email}
+            <input
+              type="email"
+              value={email}
               onChange={e => setEmail(e.target.value)}
-              className="input" placeholder="tu@email.com"
-              required autoComplete="email" />
+              className="input"
+              placeholder="tu@email.com"
+              required
+              autoComplete="email"
+              autoFocus
+            />
           </div>
 
           <div>
             <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "8px", letterSpacing: "0.02em" }}>
+              color: "var(--text-2)", marginBottom: "8px" }}>
               Contraseña
             </label>
-            <input type="password" value={password}
+            <input
+              type="password"
+              value={password}
               onChange={e => setPassword(e.target.value)}
-              className="input" placeholder="••••••••"
-              required autoComplete="current-password" />
+              className="input"
+              placeholder="••••••••"
+              required
+              autoComplete="current-password"
+            />
           </div>
 
-          <button type="submit" disabled={loading}
+          <button
+            type="submit"
+            disabled={loading}
             className="btn btn-accent"
             style={{ justifyContent: "center", fontSize: "15px",
               padding: "14px", marginTop: "4px",
@@ -102,7 +123,8 @@ export default function Login() {
 
         <p style={{ textAlign: "center", fontSize: "14px", color: "var(--text-3)" }}>
           ¿No tenés cuenta?{" "}
-          <Link to="/register" style={{ color: "var(--accent)", fontWeight: 500 }}>
+          <Link to="/register"
+            style={{ color: "var(--accent)", fontWeight: 500 }}>
             Registrate gratis
           </Link>
         </p>

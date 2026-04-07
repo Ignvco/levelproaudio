@@ -390,44 +390,39 @@ export default function AdminOrders() {
   const orders = data?.results || []
 
   return (
-    <div style={{ padding: "clamp(24px, 4vw, 40px)", position: "relative" }}>
+    <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
 
-      {/* Header */}
-      <div style={{ marginBottom: "28px" }}>
-        <h1 style={{
-          fontFamily: "var(--font-serif)",
-          fontSize: "clamp(1.8rem, 3vw, 2.4rem)", marginBottom: "6px"
-        }}>
-          Órdenes
-        </h1>
-        <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
-          {data?.count || 0} pedidos totales
-        </p>
-      </div>
+  {/* Header */}
+  <div style={{ marginBottom: "28px" }}>
+    <h1 style={{ fontFamily: "var(--font-serif)",
+      fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 300,
+      letterSpacing: "-0.02em", marginBottom: "6px" }}>
+      Órdenes
+    </h1>
+    <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
+      {data?.count || 0} pedidos totales
+    </p>
+  </div>
 
-      {/* Filtros */}
-      <div style={{ display: "flex", gap: "10px", marginBottom: "20px", flexWrap: "wrap" }}>
-        <input
-          placeholder="Buscar por email o ID..."
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          className="input"
-          style={{ maxWidth: "280px" }}
-        />
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-          {["", ...allStatuses].map(s => (
-            <button key={s} onClick={() => setStatusFilter(s)} style={{
-              padding: "7px 14px", borderRadius: "100px", fontSize: "12px",
-              cursor: "pointer", transition: "all var(--dur) var(--ease)",
-              background: statusFilter === s ? "var(--text)" : "transparent",
-              color: statusFilter === s ? "var(--bg)" : "var(--text-2)",
-              border: `1px solid ${statusFilter === s ? "var(--text)" : "var(--border)"}`,
-            }}>
-              {s ? statusLabels[s] : "Todos"}
-            </button>
-          ))}
-        </div>
-      </div>
+  {/* Filtros — pills */}
+  <div style={{ display: "flex", gap: "6px", marginBottom: "20px",
+    flexWrap: "wrap" }}>
+    {["", "pending", "paid", "shipped", "completed", "cancelled"].map(s => (
+      <button key={s} onClick={() => setStatusFilter(s)} style={{
+        padding:      "6px 16px",
+        borderRadius: "var(--r-full)",
+        fontSize:     "12px",
+        cursor:       "pointer",
+        background:   statusFilter === s ? "var(--text)" : "transparent",
+        color:        statusFilter === s ? "var(--bg)" : "var(--text-3)",
+        border:       `1px solid ${statusFilter === s ? "var(--text)" : "var(--border)"}`,
+        transition:   "all var(--dur) var(--ease)",
+        fontWeight:   statusFilter === s ? 500 : 400,
+      }}>
+        {s ? s.charAt(0).toUpperCase() + s.slice(1) : "Todos"}
+      </button>
+    ))}
+  </div>
 
       {/* Tabla */}
       {isLoading ? (
