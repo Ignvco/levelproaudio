@@ -1,424 +1,347 @@
 // pages/admin/ExecutiveDashboard.jsx
-
-import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import { getExecutiveDashboard } from "../../api/admin.api"
 
-// ── Mini sparkline SVG ────────────────────────────────────────
-function Sparkline({ data, color = "var(--accent)" }) {
-  if (!data || data.length < 2) return null
-  const values = data.map(d => d.total)
-  const max    = Math.max(...values, 1)
-  const min    = Math.min(...values, 0)
-  const range  = max - min || 1
-  const w = 120, h = 40, pad = 4
+const fmt = n => `$${Number(n||0).toLocaleString("es-CL")}`
 
-  const points = values.map((v, i) => {
-    const x = pad + (i / (values.length - 1)) * (w - pad * 2)
-    const y = h - pad - ((v - min) / range) * (h - pad * 2)
+function Sparkline({ data=[], color="var(--accent)", height=40 }) {
+  if (!data.length) return null
+  const values = data.map(d => d.total || d.count || 0)
+  const max    = Math.max(...values, 1)
+  const points = values.map((v,i) => {
+    const x = (i / Math.max(values.length-1, 1)) * 100
+    const y = height - (v/max)*height
     return `${x},${y}`
   }).join(" ")
-
-  const areaPoints = `${pad},${h - pad} ${points} ${w - pad},${h - pad}`
+  const lastV = values[values.length-1]
+  const lastX = 100
+  const lastY = height - (lastV/max)*height
 
   return (
-    <svg width={w} height={h} style={{ overflow: "visible" }}>
-      <defs>
-        <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
-          <stop offset="100%" stopColor={color} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={areaPoints} fill="url(#sparkGrad)" />
-      <polyline points={points} fill="none"
-        stroke={color} strokeWidth="2"
-        strokeLinecap="round" strokeLinejoin="round" />
-      {/* Último punto resaltado */}
-      <circle
-        cx={pad + ((values.length - 1) / (values.length - 1)) * (w - pad * 2)}
-        cy={h - pad - ((values[values.length - 1] - min) / range) * (h - pad * 2)}
-        r="3" fill={color}
-      />
+    <svg width="100%" height={height} viewBox={`0 0 100 ${height}`}
+      preserveAspectRatio="none" style={{ overflow:"visible" }}>
+      <polyline points={points} fill="none" stroke={color}
+        strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx={lastX} cy={lastY} r="2.5" fill={color} />
     </svg>
   )
 }
 
-// ── Variación % ───────────────────────────────────────────────
-function Variacion({ value }) {
-  if (value === undefined || value === null) return null
-  const positive = value >= 0
+function KPICard({ label, value, sub, sparkData, icon, color="var(--accent)", badge }) {
   return (
-    <span style={{
-      fontSize: "12px", fontWeight: 600, padding: "2px 7px",
-      borderRadius: "100px",
-      color:       positive ? "#4ade80" : "#f87171",
-      background:  positive ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)",
-    }}>
-      {positive ? "↑" : "↓"} {Math.abs(value)}%
-    </span>
+    <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
+      borderRadius:"var(--r-xl)", padding:"20px 24px",
+      display:"flex", flexDirection:"column", gap:"8px" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+        <p style={{ fontSize:"11px", color:"var(--text-3)", fontWeight:500,
+          textTransform:"uppercase", letterSpacing:"0.08em" }}>{label}</p>
+        <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+          {badge !== undefined && (
+            <span style={{ fontSize:"11px", fontWeight:600, padding:"2px 8px",
+              borderRadius:"var(--r-full)",
+              color:      badge>=0 ? "#4ade80" : "#f87171",
+              background: badge>=0 ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)",
+              border:     `1px solid ${badge>=0 ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}` }}>
+              {badge>=0?"↑":"↓"} {Math.abs(badge)}%
+            </span>
+          )}
+          {icon && <span style={{ fontSize:"18px" }}>{icon}</span>}
+        </div>
+      </div>
+      <p style={{ fontFamily:"var(--font-serif)", fontSize:"2.2rem", color, lineHeight:1 }}>
+        {value}
+      </p>
+      {sparkData?.length > 0 && (
+        <div style={{ marginTop:"4px" }}>
+          <Sparkline data={sparkData} color={color} />
+        </div>
+      )}
+      {sub && <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{sub}</p>}
+    </div>
   )
 }
 
-// ── KPI Card principal ────────────────────────────────────────
-function KPIBig({ label, value, sub, variacion: v, sparkData, color = "var(--accent)", icon }) {
-  return (
-    <div style={{
-      background: "var(--surface)", border: "1px solid var(--border)",
-      borderRadius: "var(--r-xl)", padding: "22px 24px",
-      display: "flex", flexDirection: "column", gap: "12px",
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between",
-        alignItems: "flex-start" }}>
-        <div>
-          <p style={{ fontSize: "12px", color: "var(--text-3)",
-            textTransform: "uppercase", letterSpacing: "0.06em",
-            fontWeight: 500, marginBottom: "8px" }}>
-            {icon} {label}
-          </p>
-          <p style={{ fontFamily: "var(--font-serif)", fontSize: "2rem",
-            lineHeight: 1, color, marginBottom: "6px" }}>
-            {value}
-          </p>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            {sub && <p style={{ fontSize: "12px", color: "var(--text-3)" }}>{sub}</p>}
-            {v !== undefined && <Variacion value={v} />}
-          </div>
-        </div>
-        {sparkData && (
-          <div style={{ opacity: 0.8 }}>
-            <Sparkline data={sparkData} color={color} />
-          </div>
-        )}
+export default function ExecutiveDashboard() {
+  const { data, isLoading, refetch } = useQuery({
+    queryKey:["executive-dashboard"], queryFn:getExecutiveDashboard,
+    refetchInterval:120000,
+  })
+
+  const today = new Date().toLocaleDateString("es-CL", {
+    weekday:"long", day:"numeric", month:"long", year:"numeric"
+  })
+  const todayStr = today.charAt(0).toUpperCase() + today.slice(1)
+
+  if (isLoading) return (
+    <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
+      <div style={{ display:"grid",
+        gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))",
+        gap:"12px", marginBottom:"24px" }}>
+        {[...Array(4)].map((_,i) => <div key={i} className="skeleton" style={{ height:"130px" }} />)}
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:"16px", marginBottom:"16px" }}>
+        <div className="skeleton" style={{ height:"240px" }} />
+        <div className="skeleton" style={{ height:"240px" }} />
+      </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px" }}>
+        <div className="skeleton" style={{ height:"200px" }} />
+        <div className="skeleton" style={{ height:"200px" }} />
       </div>
     </div>
   )
-}
-
-// ── Status badge ──────────────────────────────────────────────
-function StatusDot({ status }) {
-  const map = {
-    pending:   "#facc15",
-    paid:      "#4ade80",
-    shipped:   "#60a5fa",
-    completed: "#4ade80",
-    cancelled: "#f87171",
-  }
-  return (
-    <span style={{
-      display: "inline-block", width: "7px", height: "7px",
-      borderRadius: "50%", background: map[status] || "#888",
-      flexShrink: 0,
-    }} />
-  )
-}
-
-// ── Barra de ventas 7 días ────────────────────────────────────
-function BarChart({ data }) {
-  if (!data || data.length === 0) return null
-  const max = Math.max(...data.map(d => d.total), 1)
 
   return (
-    <div style={{ display: "flex", alignItems: "flex-end",
-      gap: "6px", height: "80px", padding: "0 4px" }}>
-      {data.map((d, i) => {
-        const pct  = (d.total / max) * 100
-        const isToday = i === data.length - 1
-        return (
-          <div key={i} style={{ flex: 1, display: "flex",
-            flexDirection: "column", alignItems: "center", gap: "4px",
-            height: "100%", justifyContent: "flex-end" }}>
-            <div
-              title={`${d.fecha}: $${Math.round(d.total).toLocaleString("es-CL")}`}
-              style={{
-                width: "100%", borderRadius: "3px 3px 0 0",
-                height: `${Math.max(pct, 3)}%`,
-                background: isToday ? "var(--accent)"
-                  : d.total > 0 ? "rgba(26,255,110,0.3)"
-                  : "var(--surface-3)",
-                transition: "height 0.5s ease",
-                cursor: "default",
-              }}
-            />
-            <span style={{ fontSize: "10px", color: "var(--text-3)",
-              whiteSpace: "nowrap" }}>
-              {d.dia}
-            </span>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// ── Componente principal ──────────────────────────────────────
-export default function ExecutiveDashboard() {
-  const { data, isLoading, refetch } = useQuery({
-    queryKey:      ["executive-dashboard"],
-    queryFn:       getExecutiveDashboard,
-    refetchInterval: 60000, // refresca cada minuto
-  })
-
-  if (isLoading) return (
-    <div style={{ padding: "clamp(20px, 4vw, 36px)",
-      display: "flex", flexDirection: "column", gap: "16px" }}>
-      {[...Array(5)].map((_, i) => (
-        <div key={i} className="skeleton"
-          style={{ height: i === 0 ? "60px" : "100px" }} />
-      ))}
-    </div>
-  )
-
-  const v = data?.ventas || {}
-
-  return (
-    <div style={{
-      padding: "clamp(20px, 4vw, 36px)",
-      display: "flex", flexDirection: "column", gap: "20px",
-      maxWidth: "800px",
-    }}>
+    <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between",
-        alignItems: "flex-start" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end",
+        marginBottom:"32px", flexWrap:"wrap", gap:"16px" }}>
         <div>
-          <h1 style={{ fontFamily: "var(--font-serif)",
-            fontSize: "clamp(1.6rem, 3vw, 2rem)", marginBottom: "4px" }}>
+          <p style={{ fontSize:"12px", color:"var(--accent)", fontWeight:600,
+            letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"8px" }}>
+            Vista ejecutiva
+          </p>
+          <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"clamp(1.8rem, 3vw, 2.6rem)",
+            fontWeight:300, letterSpacing:"-0.02em", marginBottom:"6px" }}>
             Vista ejecutiva
           </h1>
-          <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
-            {new Date().toLocaleDateString("es-CL", {
-              weekday: "long", day: "numeric",
-              month: "long", year: "numeric",
-            })}
-          </p>
+          <p style={{ fontSize:"13px", color:"var(--text-3)" }}>{todayStr}</p>
         </div>
-        <button onClick={() => refetch()} style={{
-          background: "none", border: "1px solid var(--border)",
-          borderRadius: "var(--r-md)", padding: "8px 14px",
-          fontSize: "12px", color: "var(--text-3)", cursor: "pointer",
-          transition: "all var(--dur) var(--ease)",
-        }}>
+        <button onClick={() => refetch()} className="btn btn-ghost"
+          style={{ padding:"9px 18px", fontSize:"13px" }}>
           ↻ Actualizar
         </button>
       </div>
 
-      {/* ── KPIs principales ── */}
-      <div style={{ display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
-        gap: "14px" }}>
-
-        <KPIBig
-          icon="💰"
-          label="Ventas hoy"
-          value={`$${Math.round(v.hoy || 0).toLocaleString("es-CL")}`}
-          sub={`${v.hoy_count || 0} orden${v.hoy_count !== 1 ? "es" : ""}`}
-          variacion={v.var_dia}
-          color="var(--accent)"
-          sparkData={data?.ventas_7dias}
-        />
-
-        <KPIBig
-          icon="📅"
-          label="Ventas este mes"
-          value={`$${Math.round(v.mes || 0).toLocaleString("es-CL")}`}
+      {/* KPIs */}
+      <div style={{ display:"grid",
+        gridTemplateColumns:"repeat(auto-fill, minmax(210px, 1fr))",
+        gap:"14px", marginBottom:"24px" }}>
+        <KPICard label="Ventas hoy"
+          value={fmt(data?.today_revenue)}
+          sub={`${data?.today_orders||0} órdenes`}
+          sparkData={data?.sales_last_7}
+          badge={data?.today_vs_yesterday}
+          icon="📅" color="var(--accent)" />
+        <KPICard label="Ventas esta semana"
+          value={fmt(data?.week_revenue)}
+          sub={`${data?.week_orders||0} órdenes`}
+          sparkData={data?.sales_last_7}
+          icon="📊" color="#60a5fa" />
+        <KPICard label="Ventas este mes"
+          value={fmt(data?.month_revenue)}
           sub="Últimos 30 días"
-          variacion={v.var_mes}
-          color="#60a5fa"
-        />
-
-        <KPIBig
-          icon="💵"
-          label="Utilidad neta mes"
-          value={`$${Math.round(data?.utilidad_mes || 0).toLocaleString("es-CL")}`}
+          badge={data?.month_vs_prev}
+          icon="🗓" color="var(--text)" />
+        <KPICard label="Utilidad neta mes"
+          value={fmt(data?.net_profit_month)}
           sub="Después de costos"
-          color="#4ade80"
-        />
+          icon="💼"
+          color={data?.net_profit_month > 0 ? "var(--accent)" : "#f87171"} />
       </div>
 
-      {/* ── Gráfico 7 días ── */}
-      <div style={{
-        background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-xl)", padding: "20px 24px",
-      }}>
-        <div style={{ display: "flex", justifyContent: "space-between",
-          alignItems: "center", marginBottom: "16px" }}>
-          <p style={{ fontSize: "13px", fontWeight: 600 }}>
-            Ventas últimos 7 días
-          </p>
-          <p style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 500 }}>
-            ${ Math.round(v.semana || 0).toLocaleString("es-CL")}
-          </p>
-        </div>
-        <BarChart data={data?.ventas_7dias} />
-      </div>
+      {/* Gráfico 7 días + Órdenes de hoy */}
+      <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:"16px",
+        marginBottom:"16px" }}
+        className="exec-grid">
 
-      {/* ── Grid inferior ── */}
-      <div style={{ display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
-        gap: "14px" }}>
-
-        {/* Órdenes del día */}
-        <div style={{
-          background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-xl)", overflow: "hidden",
-        }}>
-          <div style={{ padding: "16px 20px",
-            borderBottom: "1px solid var(--border)",
-            display: "flex", justifyContent: "space-between",
-            alignItems: "center" }}>
-            <p style={{ fontSize: "13px", fontWeight: 600 }}>
-              🛒 Órdenes de hoy
-            </p>
-            <Link to="/admin/orders"
-              style={{ fontSize: "12px", color: "var(--text-3)" }}>
-              Ver todas →
-            </Link>
+        {/* Barras 7 días */}
+        <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
+          borderRadius:"var(--r-xl)", padding:"22px 24px" }}>
+          <div style={{ display:"flex", justifyContent:"space-between",
+            alignItems:"flex-start", marginBottom:"24px" }}>
+            <div>
+              <p style={{ fontSize:"13px", fontWeight:500, marginBottom:"3px" }}>
+                Ventas últimos 7 días
+              </p>
+              <p style={{ fontSize:"12px", color:"var(--accent)", fontWeight:600 }}>
+                {fmt(data?.sales_last_7?.reduce((a,d) => a+(d.total||0), 0))}
+              </p>
+            </div>
           </div>
 
-          {!data?.ordenes_hoy?.length ? (
-            <div style={{ padding: "32px", textAlign: "center",
-              color: "var(--text-3)", fontSize: "13px" }}>
-              Sin órdenes hoy todavía
+          {data?.sales_last_7?.length > 0 ? (
+            <div style={{ display:"flex", alignItems:"flex-end", gap:"8px", height:"120px" }}>
+              {(() => {
+                const vals = data.sales_last_7.map(d => d.total||0)
+                const max  = Math.max(...vals, 1)
+                return data.sales_last_7.map((d,i) => {
+                  const pct     = (d.total||0)/max
+                  const isToday = i===data.sales_last_7.length-1
+                  return (
+                    <div key={i} style={{ flex:1, display:"flex",
+                      flexDirection:"column", alignItems:"center", gap:"8px" }}>
+                      <div style={{ width:"100%", borderRadius:"4px 4px 0 0",
+                        background: isToday ? "var(--accent)" : "rgba(26,255,110,0.2)",
+                        height:`${Math.max(pct*100, 4)}%`, minHeight:"4px",
+                        transition:"height 600ms var(--ease)" }}
+                        title={fmt(d.total)} />
+                      <span style={{ fontSize:"11px", color: isToday ? "var(--text-2)" : "var(--text-3)",
+                        textAlign:"center", lineHeight:1.2 }}>
+                        {d.day_label || d.day || ""}
+                      </span>
+                    </div>
+                  )
+                })
+              })()}
             </div>
-          ) : data.ordenes_hoy.map((o, i) => (
-            <div key={o.id} style={{
-              display: "flex", justifyContent: "space-between",
-              alignItems: "center", padding: "12px 20px",
-              borderTop: i > 0 ? "1px solid var(--border)" : "none",
-              gap: "12px",
-            }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <StatusDot status={o.status} />
+          ) : (
+            <div style={{ height:"120px", display:"flex", alignItems:"center",
+              justifyContent:"center", color:"var(--text-3)", fontSize:"13px" }}>
+              Sin datos de ventas.
+            </div>
+          )}
+        </div>
+
+        {/* Órdenes de hoy */}
+        <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
+          borderRadius:"var(--r-xl)", overflow:"hidden", display:"flex", flexDirection:"column" }}>
+          <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)",
+            display:"flex", justifyContent:"space-between", alignItems:"center",
+            background:"var(--surface-2)", flexShrink:0 }}>
+            <p style={{ fontSize:"13px", fontWeight:500 }}>Órdenes de hoy</p>
+            <Link to="/admin/orders" style={{ fontSize:"12px", color:"var(--accent)",
+              textDecoration:"none" }}>Ver todas →</Link>
+          </div>
+          <div style={{ flex:1, overflowY:"auto" }}>
+            {!data?.today_orders_list?.length ? (
+              <div style={{ padding:"40px", textAlign:"center",
+                color:"var(--text-3)", fontSize:"13px" }}>
+                Sin órdenes hoy todavía.
+              </div>
+            ) : data.today_orders_list.map((o,i) => (
+              <div key={o.id} style={{ display:"flex", justifyContent:"space-between",
+                alignItems:"center", padding:"12px 20px",
+                borderTop: i>0 ? "1px solid var(--border)" : "none",
+                transition:"background var(--dur) var(--ease)" }}
+                onMouseEnter={e => e.currentTarget.style.background="var(--surface-2)"}
+                onMouseLeave={e => e.currentTarget.style.background="transparent"}>
                 <div>
-                  <p style={{ fontSize: "12px", fontFamily: "monospace",
-                    color: "var(--text-2)" }}>
-                    #{o.id.slice(0, 8).toUpperCase()}
+                  <p style={{ fontSize:"12px", fontFamily:"monospace",
+                    fontWeight:600, color:"var(--text)", marginBottom:"2px" }}>
+                    #{o.id.slice(0,8).toUpperCase()}
                   </p>
-                  <p style={{ fontSize: "11px", color: "var(--text-3)" }}>
-                    {o.email.split("@")[0]} · {o.hora}
+                  <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
+                    {o.user_email||o.email}
+                    {o.hour && ` · ${o.hour}`}
+                  </p>
+                </div>
+                <div style={{ textAlign:"right" }}>
+                  <p style={{ fontSize:"13px", fontWeight:600, color:"var(--accent)" }}>
+                    {fmt(o.total)}
+                  </p>
+                  <p style={{ fontSize:"10px", fontWeight:500, marginTop:"2px",
+                    color: o.status==="paid" ? "#4ade80"
+                      : o.status==="pending" ? "#facc15" : "#f87171" }}>
+                    {o.status}
                   </p>
                 </div>
               </div>
-              <span style={{ fontSize: "13px", fontWeight: 500,
-                whiteSpace: "nowrap" }}>
-                ${Math.round(o.total).toLocaleString("es-CL")}
-              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Top productos + Alertas inventario */}
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px" }}
+        className="exec-grid">
+
+        {/* Top productos */}
+        <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
+          borderRadius:"var(--r-xl)", overflow:"hidden" }}>
+          <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)",
+            background:"var(--surface-2)" }}>
+            <p style={{ fontSize:"13px", fontWeight:500 }}>Top productos del mes</p>
+          </div>
+          {!data?.top_products?.length ? (
+            <div style={{ padding:"40px", textAlign:"center",
+              color:"var(--text-3)", fontSize:"13px" }}>
+              Sin ventas este mes todavía.
+            </div>
+          ) : data.top_products.map((p,i) => {
+            const max = data.top_products[0]?.total_revenue || 1
+            return (
+              <div key={i} style={{ padding:"13px 20px",
+                borderTop: i>0 ? "1px solid var(--border)" : "none" }}>
+                <div style={{ display:"flex", justifyContent:"space-between",
+                  alignItems:"center", marginBottom:"7px" }}>
+                  <div style={{ display:"flex", alignItems:"center", gap:"8px",
+                    minWidth:0, flex:1 }}>
+                    <span style={{ fontSize:"13px", fontWeight:700, color:"var(--text-3)",
+                      flexShrink:0, width:"18px" }}>{i+1}</span>
+                    <span style={{ fontSize:"13px", overflow:"hidden",
+                      textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                      {p.product_name}
+                    </span>
+                  </div>
+                  <div style={{ textAlign:"right", flexShrink:0, marginLeft:"12px" }}>
+                    <span style={{ fontSize:"13px", fontWeight:600, color:"var(--accent)" }}>
+                      {fmt(p.total_revenue)}
+                    </span>
+                    <span style={{ fontSize:"11px", color:"var(--text-3)", marginLeft:"6px" }}>
+                      ×{p.units_sold}
+                    </span>
+                  </div>
+                </div>
+                <div style={{ height:"3px", borderRadius:"2px",
+                  background:"var(--surface-3)", overflow:"hidden" }}>
+                  <div style={{ height:"100%", borderRadius:"2px",
+                    width:`${(p.total_revenue/max)*100}%`,
+                    background:"var(--accent)", transition:"width 600ms var(--ease)" }} />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Alertas inventario */}
+        <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
+          borderRadius:"var(--r-xl)", overflow:"hidden" }}>
+          <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border)",
+            display:"flex", justifyContent:"space-between", alignItems:"center",
+            background:"var(--surface-2)" }}>
+            <p style={{ fontSize:"13px", fontWeight:500 }}>Alertas de inventario</p>
+            <Link to="/admin/inventory" style={{ fontSize:"12px", color:"var(--accent)",
+              textDecoration:"none" }}>Ver todo →</Link>
+          </div>
+          {!data?.inventory_alerts?.length ? (
+            <div style={{ padding:"40px", textAlign:"center", color:"var(--accent)",
+              fontSize:"13px" }}>
+              <p style={{ fontSize:"36px", marginBottom:"8px" }}>✅</p>
+              Stock OK en todos los productos.
+            </div>
+          ) : data.inventory_alerts.map((p,i) => (
+            <div key={i} style={{ display:"flex", justifyContent:"space-between",
+              alignItems:"center", padding:"12px 20px",
+              borderTop: i>0 ? "1px solid var(--border)" : "none",
+              borderLeft:`3px solid ${p.stock===0 ? "var(--danger)" : "#facc15"}` }}>
+              <div style={{ minWidth:0, flex:1 }}>
+                <p style={{ fontSize:"13px", overflow:"hidden",
+                  textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</p>
+                <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
+                  {p.category||"Sin categoría"}
+                </p>
+              </div>
+              <div style={{ textAlign:"right", flexShrink:0, marginLeft:"12px" }}>
+                <p style={{ fontFamily:"var(--font-serif)", fontSize:"1.6rem",
+                  color: p.stock===0 ? "var(--danger)" : "#facc15", lineHeight:1 }}>
+                  {p.stock}
+                </p>
+                <p style={{ fontSize:"10px", color:"var(--text-3)" }}>
+                  {p.stock===0 ? "sin stock" : "bajo mínimo"}
+                </p>
+              </div>
             </div>
           ))}
         </div>
-
-        {/* Top productos + Alertas */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-
-          {/* Top 3 productos */}
-          <div style={{
-            background: "var(--surface)", border: "1px solid var(--border)",
-            borderRadius: "var(--r-xl)", overflow: "hidden",
-          }}>
-            <div style={{ padding: "16px 20px",
-              borderBottom: "1px solid var(--border)" }}>
-              <p style={{ fontSize: "13px", fontWeight: 600 }}>
-                🏆 Top productos del mes
-              </p>
-            </div>
-            {!data?.top_productos?.length ? (
-              <div style={{ padding: "24px", textAlign: "center",
-                color: "var(--text-3)", fontSize: "13px" }}>
-                Sin datos este mes
-              </div>
-            ) : data.top_productos.map((p, i) => (
-              <div key={i} style={{
-                display: "flex", justifyContent: "space-between",
-                alignItems: "center", padding: "12px 20px",
-                borderTop: i > 0 ? "1px solid var(--border)" : "none",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <span style={{
-                    fontFamily: "var(--font-serif)", fontSize: "1.2rem",
-                    color: i === 0 ? "var(--accent)" : "var(--text-3)",
-                    minWidth: "20px",
-                  }}>
-                    {i + 1}
-                  </span>
-                  <p style={{ fontSize: "13px", overflow: "hidden",
-                    textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    maxWidth: "140px" }}>
-                    {p.product_name}
-                  </p>
-                </div>
-                <div style={{ textAlign: "right", flexShrink: 0 }}>
-                  <p style={{ fontSize: "12px", fontWeight: 500 }}>
-                    ${Math.round(p.ingresos).toLocaleString("es-CL")}
-                  </p>
-                  <p style={{ fontSize: "11px", color: "var(--text-3)" }}>
-                    {p.unidades} u.
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Alertas de inventario */}
-          {(data?.inventario?.criticos > 0 || data?.inventario?.sin_stock > 0) && (
-            <Link to="/admin/inventory?tab=1" style={{ textDecoration: "none" }}>
-              <div style={{
-                background: "rgba(248,113,113,0.06)",
-                border: "1px solid rgba(248,113,113,0.2)",
-                borderRadius: "var(--r-xl)", padding: "16px 20px",
-                display: "flex", alignItems: "center",
-                justifyContent: "space-between",
-                transition: "all var(--dur) var(--ease)",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <span style={{ fontSize: "22px" }}>⚠️</span>
-                  <div>
-                    <p style={{ fontSize: "13px", fontWeight: 600,
-                      color: "#f87171", marginBottom: "3px" }}>
-                      Alertas de stock
-                    </p>
-                    <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                      {data.inventario.sin_stock > 0 &&
-                        `${data.inventario.sin_stock} sin stock`}
-                      {data.inventario.sin_stock > 0 &&
-                        data.inventario.criticos > 0 && " · "}
-                      {data.inventario.criticos > 0 &&
-                        `${data.inventario.criticos} críticos`}
-                    </p>
-                  </div>
-                </div>
-                <span style={{ color: "#f87171", fontSize: "16px" }}>→</span>
-              </div>
-            </Link>
-          )}
-
-          {/* Accesos rápidos */}
-          <div style={{
-            background: "var(--surface)", border: "1px solid var(--border)",
-            borderRadius: "var(--r-xl)", padding: "16px 20px",
-            display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px",
-          }}>
-            {[
-              { to: "/admin/orders",    icon: "📦", label: "Órdenes" },
-              { to: "/admin/products",  icon: "🎧", label: "Productos" },
-              { to: "/admin/finance",   icon: "◎",  label: "Finanzas" },
-              { to: "/admin/inventory", icon: "◫",  label: "Inventario" },
-            ].map(({ to, icon, label }) => (
-              <Link key={to} to={to} style={{
-                display: "flex", alignItems: "center", gap: "8px",
-                padding: "10px 12px", borderRadius: "var(--r-md)",
-                background: "var(--surface-2)", border: "1px solid var(--border)",
-                fontSize: "13px", color: "var(--text-2)",
-                textDecoration: "none",
-                transition: "all var(--dur) var(--ease)",
-              }}>
-                <span>{icon}</span>
-                <span>{label}</span>
-              </Link>
-            ))}
-          </div>
-        </div>
       </div>
+
+      <style>{`
+        @media (max-width:900px) {
+          .exec-grid { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   )
 }

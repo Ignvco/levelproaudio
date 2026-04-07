@@ -1,7 +1,7 @@
 // pages/admin/AdminDashboard.jsx
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
-import { getDashboardOverview } from "../../api/admin.api"
+import { getAdminDashboard } from "../../api/admin.api"
 
 function KPI({ label, value, sub, color = "var(--accent)", icon, to }) {
   const content = (
@@ -36,7 +36,7 @@ function KPI({ label, value, sub, color = "var(--accent)", icon, to }) {
 export default function AdminDashboard() {
   const { data, isLoading } = useQuery({
     queryKey:        ["admin-dashboard"],
-    queryFn:         getDashboardOverview,
+    queryFn: getAdminDashboard,
     refetchInterval: 60000,
   })
 
