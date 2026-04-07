@@ -1,177 +1,237 @@
 // layouts/AdminLayout.jsx
-
 import { useState } from "react"
-import { NavLink, Link, useNavigate, useLocation, Outlet } from "react-router-dom"
+import { NavLink, Outlet, useNavigate, Link } from "react-router-dom"
 import { useAuthStore } from "../store/authStore"
-import logoImg from "../assets/logo.png"
 
-// ── NavGroup — fuera del array, antes de AdminLayout ────────
-function NavGroup({ item }) {
-  const location = useLocation()
-  const isOpen   = item.children.some(c => location.pathname.startsWith(c.to))
-  const [open, setOpen] = useState(isOpen)
+const NAV_ITEMS = [
+  { to: "/admin", label: "Dashboard", icon: "◈", end: true },
+  { to: "/admin/executive", label: "Vista Ejecutiva", icon: "◉" },
+  { to: "/admin/analytics", label: "Analytics", icon: "○" },
+  { to: "/admin/finance", label: "Finanzas", icon: "⬡" },
+  { to: "/admin/orders", label: "Órdenes", icon: "◫" },
+  {
+    label: "Productos", icon: "⊞", children: [
+      { to: "/admin/products", label: "Catálogo" },
+      { to: "/admin/inventory", label: "Inventario" },
+      { to: "/admin/brands", label: "Marcas" },
+      { to: "/admin/categories", label: "Categorías" },
+    ]
+  },
+  { to: "/admin/users", label: "Usuarios", icon: "○" },
+  { to: "/admin/payments", label: "Pagos", icon: "◎" },
+  { to: "/admin/billing", label: "Facturación", icon: "◧" },
+  { to: "/admin/loyalty", label: "Fidelización", icon: "⭐" },
+  {
+    label: "Academia", icon: "▷", children: [
+      { to: "/admin/academy/courses", label: "Cursos" },
+      { to: "/admin/academy/modules", label: "Módulos" },
+      { to: "/admin/academy/lessons", label: "Lecciones" },
+      { to: "/admin/enrollments", label: "Inscripciones" },
+    ]
+  },
+  {
+    label: "Servicios", icon: "◇", children: [
+      { to: "/admin/services", label: "Servicios" },
+      { to: "/admin/bookings", label: "Reservas" },
+      { to: "/admin/requests", label: "Solicitudes" },
+    ]
+  },
+]
+
+function NavItem({ item }) {
+  const [open, setOpen] = useState(false)
+
+  if (item.children) {
+    return (
+      <div>
+        <button onClick={() => setOpen(!open)} style={{
+          width: "100%",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "9px 12px",
+          borderRadius: "var(--r-md)",
+          background: "none",
+          border: "none",
+          color: "var(--text-3)",
+          fontSize: "13px",
+          cursor: "pointer",
+          transition: "all var(--dur) var(--ease)",
+        }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <span style={{ fontSize: "11px", color: "var(--text-3)" }}>
+              {item.icon}
+            </span>
+            {item.label}
+          </div>
+          <span style={{
+            fontSize: "10px", color: "var(--text-3)",
+            transform: open ? "rotate(180deg)" : "rotate(0)",
+            transition: "transform var(--dur) var(--ease)",
+          }}>
+            ▼
+          </span>
+        </button>
+
+        {open && (
+          <div style={{
+            marginLeft: "22px", marginTop: "2px",
+            display: "flex", flexDirection: "column", gap: "2px",
+            borderLeft: "1px solid var(--border)", paddingLeft: "12px"
+          }}>
+            {item.children.map(child => (
+              <NavLink key={child.to} to={child.to}
+                style={({ isActive }) => ({
+                  display: "block",
+                  padding: "7px 12px",
+                  borderRadius: "var(--r-md)",
+                  fontSize: "13px",
+                  color: isActive ? "var(--accent)" : "var(--text-3)",
+                  background: isActive ? "var(--accent-dim)" : "transparent",
+                  textDecoration: "none",
+                  transition: "all var(--dur) var(--ease)",
+                })}>
+                {child.label}
+              </NavLink>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
 
   return (
-    <div style={{ marginBottom: "2px" }}>
-      <button onClick={() => setOpen(!open)} style={{
-        width: "100%", display: "flex", alignItems: "center", gap: "10px",
-        padding: "9px 10px", borderRadius: "var(--r-md)", fontSize: "13px",
-        background: "none", border: "none", cursor: "pointer",
-        color: isOpen ? "var(--text)" : "var(--text-2)",
+    <NavLink to={item.to} end={item.end}
+      style={({ isActive }) => ({
+        display: "flex",
+        alignItems: "center",
+        gap: "10px",
+        padding: "9px 12px",
+        borderRadius: "var(--r-md)",
+        fontSize: "13px",
+        color: isActive ? "var(--text)" : "var(--text-3)",
+        background: isActive ? "var(--surface-2)" : "transparent",
+        border: isActive ? "1px solid var(--border)" : "1px solid transparent",
+        fontWeight: isActive ? 500 : 400,
+        textDecoration: "none",
         transition: "all var(--dur) var(--ease)",
-        fontWeight: isOpen ? 500 : 400,
-      }}>
-        <span style={{ fontSize: "13px", opacity: 0.5, width: "14px",
-          textAlign: "center" }}>{item.icon}</span>
-        <span style={{ flex: 1, textAlign: "left" }}>{item.label}</span>
-        <span style={{ fontSize: "10px", opacity: 0.4,
-          display: "inline-block",
-          transform: open ? "rotate(90deg)" : "none",
-          transition: "transform var(--dur)" }}>▶</span>
-      </button>
-      {open && (
-        <div style={{ paddingLeft: "24px", marginTop: "2px" }}>
-          {item.children.map(child => (
-            <NavLink key={child.to} to={child.to}
-              style={({ isActive }) => ({
-                display: "block",
-                padding: "7px 10px", borderRadius: "var(--r-md)",
-                fontSize: "12px", marginBottom: "1px",
-                color: isActive ? "var(--accent)" : "var(--text-3)",
-                background: isActive ? "var(--surface-2)" : "transparent",
-                transition: "all var(--dur) var(--ease)",
-              })}>
-              {child.label}
-            </NavLink>
-          ))}
-        </div>
-      )}
-    </div>
+      })}>
+      <span style={{ fontSize: "11px" }}>{item.icon}</span>
+      {item.label}
+    </NavLink>
   )
 }
 
-// ── navItems — solo datos, sin componentes adentro ───────────
-const navItems = [
-  { to: "/admin",           label: "Dashboard",  icon: "◈", end: true },
-  { to: "/admin/executive", label: "Vista Ejecutiva", icon: "◈" },
-  { to: "/admin/analytics", label: "Analytics",  icon: "◉" },
-  { to: "/admin/finance", label: "Finanzas", icon: "⧫" },
-  { to: "/admin/orders",    label: "Órdenes",    icon: "⊡" },
-  {
-    label: "Productos", icon: "⊞",
-    children: [
-      { to: "/admin/products",        label: "Catálogo" },
-      { to: "/admin/products/import", label: "Importar" },  // ← dentro del grupo
-      { to: "/admin/inventory", label: "Inventario", icon: "◫" }
-    ]
-  },
-  { to: "/admin/users",     label: "Usuarios",   icon: "○" },
-  { to: "/admin/payments",  label: "Pagos",      icon: "◎" },
-  { to: "/admin/billing", label: "Facturación", icon: "🧾" },
-  { to: "/admin/loyalty", label: "Fidelización", icon: "⭐" },
-  {
-    label: "Academia", icon: "▷",
-    children: [
-      { to: "/admin/academy",              label: "Cursos" },
-      { to: "/admin/academy/modules",      label: "Módulos" },   // ← agregado
-      { to: "/admin/academy/lessons",      label: "Lecciones" }, // ← agregado
-      { to: "/admin/academy/enrollments",  label: "Inscripciones" },
-    ]
-  },
-  { to: "/admin/services",  label: "Servicios",  icon: "◇" },
-]
-
-// ── AdminLayout ──────────────────────────────────────────────
 export default function AdminLayout() {
   const { user, logout } = useAuthStore()
-  const navigate         = useNavigate()
+  const navigate = useNavigate()
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex",
-      background: "var(--bg)", fontFamily: "var(--font-sans)" }}>
+    <div style={{ display: "flex", minHeight: "100vh", background: "var(--bg)" }}>
 
-      {/* Sidebar */}
+      {/* ── Sidebar ── */}
       <aside style={{
-        width: "220px", flexShrink: 0,
+        width: "220px",
+        flexShrink: 0,
         borderRight: "1px solid var(--border)",
-        background: "var(--surface)",
-        display: "flex", flexDirection: "column",
-        position: "sticky", top: 0, height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        position: "fixed",
+        top: 0,
+        left: 0,
+        bottom: 0,
+        background: "var(--bg-2)",
+        zIndex: 50,
+        overflowY: "auto",
       }}>
-
-        {/* Logo + badge */}
-        <div style={{ padding: "20px 16px", borderBottom: "1px solid var(--border)",
-          display: "flex", alignItems: "center", gap: "10px" }}>
-          <Link to="/" style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <img src={logoImg} alt="LevelPro" style={{ height: "28px", filter: "brightness(0) invert(1)", maxWidth: "100px" }} />
-          </Link>
-          <span style={{
-            marginLeft: "auto", fontSize: "10px", fontWeight: 600,
-            padding: "2px 7px", borderRadius: "100px",
-            background: "var(--accent-glow)", color: "var(--accent)",
-            border: "1px solid rgba(26,255,110,0.2)", letterSpacing: "0.06em",
+        {/* Logo */}
+        <div style={{
+          padding: "20px 16px",
+          borderBottom: "1px solid var(--border)"
+        }}>
+          <Link to="/admin" style={{
+            display: "flex", alignItems: "center",
+            gap: "10px", textDecoration: "none"
           }}>
-            ADMIN
-          </span>
+            <img src="/src/assets/logo.png" alt="LevelPro"
+              style={{ height: "22px", width: "auto" }} />
+            <span style={{
+              fontSize: "10px", fontWeight: 700,
+              padding: "2px 7px", borderRadius: "var(--r-full)",
+              background: "var(--accent)", color: "#000",
+              letterSpacing: "0.06em",
+            }}>
+              ADMIN
+            </span>
+          </Link>
         </div>
 
         {/* Nav */}
-        <nav style={{ flex: 1, padding: "10px 8px", overflowY: "auto" }}>
-          {navItems.map((item) => {
-            if (item.children) {
-              return <NavGroup key={item.label} item={item} />
-            }
-            return (
-              <NavLink key={item.to} to={item.to} end={item.end}
-                style={({ isActive }) => ({
-                  display: "flex", alignItems: "center", gap: "10px",
-                  padding: "9px 10px", borderRadius: "var(--r-md)",
-                  fontSize: "13px", marginBottom: "2px",
-                  fontWeight: isActive ? 500 : 400,
-                  color: isActive ? "var(--text)" : "var(--text-2)",
-                  background: isActive ? "var(--surface-2)" : "transparent",
-                  transition: "all var(--dur) var(--ease)",
-                })}>
-                <span style={{ fontSize: "13px", opacity: 0.5,
-                  width: "14px", textAlign: "center" }}>
-                  {item.icon}
-                </span>
-                {item.label}
-              </NavLink>
-            )
-          })}
+        <nav style={{
+          padding: "12px 8px", flex: 1,
+          display: "flex", flexDirection: "column", gap: "2px"
+        }}>
+          {NAV_ITEMS.map((item, i) => (
+            <NavItem key={i} item={item} />
+          ))}
         </nav>
 
-        {/* Footer */}
-        <div style={{ padding: "10px 8px", borderTop: "1px solid var(--border)" }}>
-          <div style={{ padding: "8px 10px", marginBottom: "4px" }}>
-            <p style={{ fontSize: "12px", fontWeight: 500, overflow: "hidden",
-              textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {/* Footer sidebar */}
+        <div style={{
+          padding: "12px 8px",
+          borderTop: "1px solid var(--border)"
+        }}>
+          <div style={{ padding: "10px 12px", marginBottom: "8px" }}>
+            <p style={{
+              fontSize: "12px", fontWeight: 500,
+              color: "var(--text-2)", marginBottom: "2px",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+            }}>
+              {user?.first_name || user?.email?.split("@")[0]}
+            </p>
+            <p style={{
+              fontSize: "11px", color: "var(--text-3)",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap"
+            }}>
               {user?.email}
             </p>
-            <p style={{ fontSize: "11px", color: "var(--text-3)" }}>
-              {user?.is_superuser ? "Superusuario" : "Staff"}
-            </p>
           </div>
-          <Link to="/" style={{ display: "flex", alignItems: "center", gap: "8px",
-            padding: "8px 10px", borderRadius: "var(--r-md)", fontSize: "12px",
-            color: "var(--text-3)", transition: "color var(--dur)", marginBottom: "2px" }}
-            className="hover:text-[var(--text-2)]">
+          <Link to="/" style={{
+            display: "flex", alignItems: "center", gap: "8px",
+            padding: "8px 12px", borderRadius: "var(--r-md)",
+            fontSize: "12px", color: "var(--text-3)",
+            textDecoration: "none", transition: "color var(--dur)",
+            marginBottom: "4px"
+          }}
+            className="hover-accent">
             ← Ver sitio
           </Link>
-          <button onClick={() => { logout(); navigate("/login") }}
-            style={{ width: "100%", display: "flex", alignItems: "center", gap: "8px",
-              padding: "8px 10px", borderRadius: "var(--r-md)", fontSize: "12px",
-              color: "var(--text-3)", background: "none", border: "none",
-              cursor: "pointer", transition: "color var(--dur)" }}
-            className="hover:text-[var(--danger)]">
+          <button onClick={() => { logout(); navigate("/") }} style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            padding: "8px 12px",
+            borderRadius: "var(--r-md)",
+            fontSize: "12px",
+            color: "var(--text-3)",
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            width: "100%",
+            textAlign: "left",
+            transition: "color var(--dur)",
+          }}
+            className="hover-accent">
             ↗ Cerrar sesión
           </button>
         </div>
       </aside>
 
-      {/* Contenido */}
-      <main style={{ flex: 1, overflow: "auto", minWidth: 0 }}>
+      {/* ── Main content ── */}
+      <main style={{
+        flex: 1, marginLeft: "220px",
+        minWidth: 0, overflowX: "hidden"
+      }}>
         <Outlet />
       </main>
     </div>

@@ -1,294 +1,111 @@
-// pages/dashboard/MyServices.jsx
-
-import { useState } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+// pages/dashboard/DashboardServices.jsx
+import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
-import { getServiceRequests, getBookings, cancelBooking } from "../../api/services.api"
+import { getServiceRequests } from "../../api/services.api"
 
-const requestStatus = {
-  pending: { label: "Pendiente", color: "#facc15" },
-  contacted: { label: "Contactado", color: "#60a5fa" },
-  accepted: { label: "Aceptado", color: "#4ade80" },
-  rejected: { label: "Rechazado", color: "#f87171" },
+const statusColors = {
+  pending:   { color: "#facc15", label: "Pendiente"  },
+  reviewing: { color: "#60a5fa", label: "En revisión" },
+  accepted:  { color: "#4ade80", label: "Aceptado"   },
+  rejected:  { color: "#f87171", label: "Rechazado"  },
+  completed: { color: "#4ade80", label: "Completado" },
 }
 
-const bookingStatus = {
-  pending: { label: "Pendiente", color: "#facc15" },
-  confirmed: { label: "Confirmado", color: "#4ade80" },
-  completed: { label: "Completado", color: "#60a5fa" },
-  cancelled: { label: "Cancelado", color: "#f87171" },
-}
-
-function StatusBadge({ status, config }) {
-  const c = config[status] || { label: status, color: "var(--text-3)" }
-  return (
-    <span style={{
-      padding: "2px 10px", borderRadius: "100px", fontSize: "11px", fontWeight: 500,
-      color: c.color, background: `${c.color}14`, border: `1px solid ${c.color}30`,
-    }}>
-      {c.label}
-    </span>
-  )
-}
-
-function TabButton({ active, onClick, children, count }) {
-  return (
-    <button onClick={onClick} style={{
-      padding: "8px 18px", borderRadius: "100px", fontSize: "13px",
-      fontWeight: 400, cursor: "pointer", transition: "all var(--dur) var(--ease)",
-      display: "flex", alignItems: "center", gap: "8px",
-      background: active ? "var(--text)" : "transparent",
-      color: active ? "var(--bg)" : "var(--text-2)",
-      border: `1px solid ${active ? "var(--text)" : "var(--border)"}`,
-    }}>
-      {children}
-      {count > 0 && (
-        <span style={{
-          fontSize: "11px", fontWeight: 600,
-          padding: "0px 6px", borderRadius: "100px",
-          background: active ? "rgba(0,0,0,0.15)" : "var(--surface-2)",
-          color: active ? "var(--bg)" : "var(--text-3)",
-        }}>
-          {count}
-        </span>
-      )}
-    </button>
-  )
-}
-
-export default function MyServices() {
-  const [tab, setTab] = useState("requests")
-  const [expandedReq, setExpandedReq] = useState(null)
-  const queryClient = useQueryClient()
-
-  const { data: reqData, isLoading: loadingReqs } = useQuery({
-    queryKey: ["service-requests"], queryFn: getServiceRequests,
+export default function DashboardServices() {
+  const { data, isLoading } = useQuery({
+    queryKey: ["service-requests"],
+    queryFn:  getServiceRequests,
   })
-  const { data: bookData, isLoading: loadingBooks } = useQuery({
-    queryKey: ["bookings"], queryFn: getBookings,
-  })
-
-  const cancelMutation = useMutation({
-    mutationFn: cancelBooking,
-    onSuccess: () => queryClient.invalidateQueries(["bookings"]),
-  })
-
-  const requests = reqData?.results || reqData || []
-  const bookings = bookData?.results || bookData || []
+  const requests = data?.results || data || []
 
   return (
-    <div style={{ padding: "clamp(32px, 5vw, 56px)", maxWidth: "720px" }}>
-
-      {/* Header */}
-      <div style={{
-        display: "flex", justifyContent: "space-between",
-        alignItems: "flex-start", marginBottom: "40px", flexWrap: "wrap", gap: "16px"
-      }}>
-        <h1 style={{
-          fontFamily: "var(--font-serif)",
-          fontSize: "clamp(2rem, 4vw, 2.8rem)"
-        }}>
+    <div style={{ padding: "clamp(32px, 5vw, 56px)", maxWidth: "800px" }}>
+      <div style={{ marginBottom: "32px" }}>
+        <p style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600,
+          letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "8px" }}>
+          Mi cuenta
+        </p>
+        <h1 style={{ fontFamily: "var(--font-serif)",
+          fontSize: "clamp(2rem, 4vw, 3rem)", fontWeight: 300,
+          letterSpacing: "-0.02em" }}>
           Mis servicios
         </h1>
-        <Link to="/services" className="btn btn-ghost" style={{ padding: "9px 18px", fontSize: "13px" }}>
-          Ver servicios →
+      </div>
+
+      {isLoading && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="skeleton" style={{ height: "80px" }} />
+          ))}
+        </div>
+      )}
+
+      {!isLoading && requests.length === 0 && (
+        <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
+          borderRadius: "var(--r-2xl)", padding: "64px 32px", textAlign: "center" }}>
+          <p style={{ fontSize: "48px", marginBottom: "16px" }}>🔧</p>
+          <h3 style={{ fontFamily: "var(--font-serif)", fontWeight: 300,
+            fontSize: "1.6rem", marginBottom: "8px" }}>
+            Sin solicitudes todavía
+          </h3>
+          <p style={{ fontSize: "14px", color: "var(--text-3)", marginBottom: "28px" }}>
+            Explorá nuestros servicios y enviá una consulta.
+          </p>
+          <Link to="/services" className="btn btn-accent">Ver servicios →</Link>
+        </div>
+      )}
+
+      {!isLoading && requests.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {requests.map(req => {
+            const s = statusColors[req.status] || { color: "#888", label: req.status }
+            return (
+              <div key={req.id} style={{ background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-xl)", padding: "20px 24px",
+                display: "flex", alignItems: "center",
+                justifyContent: "space-between", gap: "16px",
+                flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                  <div style={{ width: "8px", height: "8px", borderRadius: "50%",
+                    background: s.color, flexShrink: 0 }} />
+                  <div>
+                    <p style={{ fontSize: "14px", fontWeight: 500,
+                      marginBottom: "4px" }}>
+                      {req.service_name}
+                    </p>
+                    <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+                      {new Date(req.created_at).toLocaleDateString("es-CL", {
+                        day: "numeric", month: "long", year: "numeric"
+                      })}
+                    </p>
+                  </div>
+                </div>
+                <span style={{
+                  padding: "4px 12px", borderRadius: "var(--r-full)",
+                  fontSize: "12px", fontWeight: 500,
+                  color: s.color, background: `${s.color}14`,
+                  border: `1px solid ${s.color}30`,
+                }}>
+                  {s.label}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* CTA para más servicios */}
+      <div style={{ marginTop: "32px", padding: "24px",
+        background: "var(--surface)", border: "1px solid var(--border)",
+        borderRadius: "var(--r-2xl)", textAlign: "center" }}>
+        <p style={{ fontSize: "14px", color: "var(--text-2)", marginBottom: "16px" }}>
+          ¿Necesitás otro servicio?
+        </p>
+        <Link to="/services" className="btn btn-ghost">
+          Ver todos los servicios →
         </Link>
       </div>
-
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: "8px", marginBottom: "28px" }}>
-        <TabButton active={tab === "requests"} onClick={() => setTab("requests")} count={requests.length}>
-          Solicitudes
-        </TabButton>
-        <TabButton active={tab === "bookings"} onClick={() => setTab("bookings")} count={bookings.length}>
-          Reservas
-        </TabButton>
-      </div>
-
-      {/* ── Solicitudes ─────────────────────────────────── */}
-      {tab === "requests" && (
-        <>
-          {loadingReqs && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {[...Array(3)].map((_, i) => <div key={i} className="skeleton" style={{ height: "96px" }} />)}
-            </div>
-          )}
-
-          {!loadingReqs && requests.length === 0 && (
-            <div style={{
-              background: "var(--surface)", border: "1px solid var(--border)",
-              borderRadius: "var(--r-xl)", padding: "64px", textAlign: "center"
-            }}>
-              <p style={{ fontSize: "40px", marginBottom: "16px" }}>🎚️</p>
-              <p style={{ fontSize: "16px", fontWeight: 500, marginBottom: "8px" }}>
-                Sin solicitudes todavía
-              </p>
-              <p style={{ fontSize: "14px", color: "var(--text-3)", marginBottom: "28px" }}>
-                Explora nuestros servicios y envía tu primera solicitud.
-              </p>
-              <Link to="/services" className="btn btn-accent">Ver servicios</Link>
-            </div>
-          )}
-
-          {!loadingReqs && requests.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {requests.map(req => (
-                <div key={req.id} style={{
-                  background: "var(--surface)", border: "1px solid var(--border)",
-                  borderRadius: "var(--r-lg)", overflow: "hidden",
-                  transition: "border-color var(--dur) var(--ease)",
-                }}>
-                  {/* Header clickeable */}
-                  <button
-                    onClick={() => setExpandedReq(expandedReq === req.id ? null : req.id)}
-                    style={{
-                      width: "100%", display: "flex", justifyContent: "space-between",
-                      alignItems: "flex-start", gap: "12px", padding: "18px 20px",
-                      background: "none", border: "none", cursor: "pointer", textAlign: "left",
-                    }}
-                  >
-                    <div>
-                      <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "3px" }}>
-                        {req.service_name || "Servicio general"}
-                      </p>
-                      <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                        {new Date(req.created_at).toLocaleDateString("es-CL", {
-                          day: "numeric", month: "long", year: "numeric"
-                        })}
-                      </p>
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                      <StatusBadge status={req.status} config={requestStatus} />
-                      <span style={{
-                        color: "var(--text-3)", fontSize: "14px",
-                        transition: "transform var(--dur)",
-                        transform: expandedReq === req.id ? "rotate(90deg)" : "none"
-                      }}>
-                        ›
-                      </span>
-                    </div>
-                  </button>
-
-                  {/* Detalle expandible */}
-                  {expandedReq === req.id && (
-                    <div style={{ padding: "0 20px 18px", borderTop: "1px solid var(--border)" }}>
-                      <p style={{
-                        fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6,
-                        marginTop: "14px", marginBottom: "12px"
-                      }}>
-                        {req.message}
-                      </p>
-                      <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-                        {req.budget && (
-                          <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                            💰 Presupuesto: ${Number(req.budget).toLocaleString("es-CL")}
-                          </span>
-                        )}
-                        {req.preferred_date && (
-                          <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                            📅 Fecha preferida: {new Date(req.preferred_date).toLocaleDateString("es-CL")}
-                          </span>
-                        )}
-                      </div>
-                      <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
-                        className="btn btn-ghost"
-                        style={{
-                          marginTop: "14px", fontSize: "12px", padding: "8px 16px",
-                          display: "inline-flex"
-                        }}>
-                        💬 Consultar por WhatsApp
-                      </a>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
-
-      {/* ── Reservas ─────────────────────────────────────── */}
-      {tab === "bookings" && (
-        <>
-          {loadingBooks && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {[...Array(3)].map((_, i) => <div key={i} className="skeleton" style={{ height: "96px" }} />)}
-            </div>
-          )}
-
-          {!loadingBooks && bookings.length === 0 && (
-            <div style={{
-              background: "var(--surface)", border: "1px solid var(--border)",
-              borderRadius: "var(--r-xl)", padding: "64px", textAlign: "center"
-            }}>
-              <p style={{ fontSize: "40px", marginBottom: "16px" }}>📅</p>
-              <p style={{ fontSize: "16px", fontWeight: 500, marginBottom: "8px" }}>
-                Sin reservas todavía
-              </p>
-              <p style={{ fontSize: "14px", color: "var(--text-3)" }}>
-                Las reservas que hagas aparecerán aquí.
-              </p>
-            </div>
-          )}
-
-          {!loadingBooks && bookings.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-              {bookings.map(booking => (
-                <div key={booking.id} style={{
-                  background: "var(--surface)", border: "1px solid var(--border)",
-                  borderRadius: "var(--r-lg)", padding: "18px 20px",
-                  transition: "border-color var(--dur) var(--ease)",
-                }}
-                  className="hover:border-[var(--border-hover)]"
-                >
-                  <div style={{
-                    display: "flex", justifyContent: "space-between",
-                    alignItems: "flex-start", gap: "12px", marginBottom: "10px",
-                    flexWrap: "wrap"
-                  }}>
-                    <div>
-                      <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "3px" }}>
-                        {booking.service_name}
-                      </p>
-                      <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                        📅 {new Date(booking.scheduled_date).toLocaleString("es-CL", {
-                          day: "numeric", month: "long", year: "numeric",
-                          hour: "2-digit", minute: "2-digit"
-                        })}
-                      </p>
-                    </div>
-                    <StatusBadge status={booking.status} config={bookingStatus} />
-                  </div>
-
-                  {booking.notes && (
-                    <p style={{
-                      fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6,
-                      marginBottom: "10px"
-                    }}>
-                      {booking.notes}
-                    </p>
-                  )}
-
-                  {["pending", "confirmed"].includes(booking.status) && (
-                    <button
-                      onClick={() => cancelMutation.mutate(booking.id)}
-                      disabled={cancelMutation.isPending}
-                      style={{
-                        fontSize: "12px", color: "var(--text-3)", background: "none",
-                        border: "none", cursor: "pointer", transition: "color var(--dur)",
-                        padding: 0, opacity: cancelMutation.isPending ? 0.5 : 1
-                      }}
-                      className="hover:text-[var(--danger)]"
-                    >
-                      Cancelar reserva
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </>
-      )}
     </div>
   )
 }

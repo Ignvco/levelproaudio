@@ -1,32 +1,25 @@
 // pages/ServiceDetail.jsx
-
-import { useState } from "react"
-import { useParams, Link, useNavigate } from "react-router-dom"
+import { useParams, Link } from "react-router-dom"
 import { useQuery, useMutation } from "@tanstack/react-query"
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { z } from "zod"
-import { getService, createServiceRequest } from "../api/services.api"
+import { useState } from "react"
+import { getService } from "../api/services.api"
 import { useAuthStore } from "../store/authStore"
-
-const schema = z.object({
-  name:           z.string().min(2, "Requerido"),
-  email:          z.string().email("Email inválido"),
-  phone:          z.string().optional(),
-  message:        z.string().min(10, "Mínimo 10 caracteres"),
-  budget:         z.string().optional(),
-  preferred_date: z.string().optional(),
-})
-
-const priceColors = {
-  fixed: "#4ade80", quote: "#facc15", hourly: "#60a5fa", project: "#c084fc",
-}
+import { mediaUrl } from "../utils/mediaUrl"
+import api from "../api/client"
 
 export default function ServiceDetail() {
-  const { slug }    = useParams()
+  const { slug } = useParams()
   const { isAuthenticated, user } = useAuthStore()
-  const navigate    = useNavigate()
-  const [submitted, setSubmitted] = useState(false)
+  const [form, setForm]     = useState({
+    name: user?.first_name ? `${user.first_name} ${user.last_name || ""}`.trim() : "",
+    email: user?.email || "",
+    phone: user?.phone || "",
+    message: "",
+    budget: "",
+    preferred_date: "",
+  })
+  const [sent, setSent] = useState(false)
+  const [error, setError] = useState("")
 
   const { data: service, isLoading, isError } = useQuery({
     queryKey: ["service", slug],
@@ -34,266 +27,297 @@ export default function ServiceDetail() {
   })
 
   const mutation = useMutation({
-    mutationFn: createServiceRequest,
-    onSuccess:  () => setSubmitted(true),
-  })
-
-  const { register, handleSubmit, formState: { errors } } = useForm({
-    resolver: zodResolver(schema),
-    defaultValues: {
-      name:  user ? `${user.first_name || ""} ${user.last_name || ""}`.trim() : "",
-      email: user?.email || "",
-      phone: user?.phone || "",
+    mutationFn: async () => {
+      await api.post("/services/requests/", {
+        service:        service.id,
+        name:           form.name,
+        email:          form.email,
+        phone:          form.phone,
+        message:        form.message,
+        budget:         form.budget || null,
+        preferred_date: form.preferred_date || null,
+      })
     },
+    onSuccess: () => setSent(true),
+    onError:   () => setError("Error al enviar. Intenta de nuevo."),
   })
-
-  const onSubmit = (data) => {
-    if (!isAuthenticated) { navigate(`/login?next=/services/${slug}`); return }
-    mutation.mutate({
-      service:        service.id,
-      name:           data.name,
-      email:          data.email,
-      phone:          data.phone || "",
-      message:        data.message,
-      budget:         data.budget ? parseFloat(data.budget) : null,
-      preferred_date: data.preferred_date || null,
-    })
-  }
 
   if (isLoading) return (
-    <div style={{ maxWidth: "1100px", margin: "0 auto",
-      padding: "60px clamp(20px, 5vw, 60px)" }}>
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-12">
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: "60px" }} />
-          ))}
-        </div>
-        <div className="skeleton" style={{ height: "480px", borderRadius: "var(--r-xl)" }} />
-      </div>
+    <div style={{ maxWidth: "960px", margin: "0 auto",
+      padding: "clamp(48px, 6vw, 80px) clamp(20px, 5vw, 60px)",
+      display: "flex", flexDirection: "column", gap: "16px" }}>
+      {[...Array(4)].map((_, i) => (
+        <div key={i} className="skeleton" style={{ height: i === 0 ? "300px" : "60px" }} />
+      ))}
     </div>
   )
 
   if (isError || !service) return (
-    <div style={{ textAlign: "center", padding: "120px 20px" }}>
-      <p style={{ color: "var(--text-3)", marginBottom: "20px" }}>Servicio no encontrado.</p>
+    <div style={{ textAlign: "center", padding: "80px 24px" }}>
+      <p style={{ fontSize: "48px", marginBottom: "16px" }}>😕</p>
+      <h2 style={{ fontFamily: "var(--font-serif)", fontWeight: 300,
+        marginBottom: "16px" }}>
+        Servicio no encontrado
+      </h2>
       <Link to="/services" className="btn btn-ghost">← Servicios</Link>
     </div>
   )
 
-  const priceColor = priceColors[service.price_type] || "var(--text-2)"
+  const inputSt = {
+    width: "100%", padding: "12px 16px",
+    background: "var(--surface-2)", border: "1px solid var(--border)",
+    borderRadius: "var(--r-md)", color: "var(--text)",
+    fontSize: "14px", outline: "none",
+    transition: "border-color var(--dur)",
+  }
 
   return (
-    <div style={{ background: "var(--bg)", minHeight: "100vh",
-      padding: "clamp(40px, 6vw, 80px) 0" }}>
-      <div style={{ maxWidth: "1100px", margin: "0 auto",
-        padding: "0 clamp(20px, 5vw, 60px)" }}>
+    <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
+
+      {/* Hero del servicio */}
+      {service.thumbnail && (
+        <div style={{ height: "clamp(240px, 40vw, 420px)", overflow: "hidden",
+          position: "relative" }}>
+          <img src={mediaUrl(service.thumbnail)} alt={service.name}
+            style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+          <div style={{ position: "absolute", inset: 0,
+            background: "linear-gradient(to top, rgba(8,8,8,0.9) 0%, rgba(8,8,8,0.3) 60%, transparent 100%)" }} />
+        </div>
+      )}
+
+      <div style={{ maxWidth: "960px", margin: "0 auto",
+        padding: "clamp(40px, 6vw, 80px) clamp(20px, 5vw, 60px)" }}>
 
         {/* Breadcrumb */}
-        <nav style={{ display: "flex", alignItems: "center", gap: "8px",
-          fontSize: "13px", color: "var(--text-3)", marginBottom: "40px" }}>
-          <Link to="/services" className="hover:text-white" style={{ transition: "color var(--dur)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px",
+          fontSize: "13px", color: "var(--text-3)", marginBottom: "32px" }}>
+          <Link to="/services" className="hover-accent"
+            style={{ transition: "color var(--dur)" }}>
             Servicios
           </Link>
           <span>/</span>
           <span style={{ color: "var(--text-2)" }}>{service.name}</span>
-        </nav>
+        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-12"
-          style={{ alignItems: "start" }}>
-
+        <div style={{ display: "grid",
+          gridTemplateColumns: "1fr 380px", gap: "56px", alignItems: "start" }}
+          className="service-grid"
+        >
           {/* Info */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "28px" }}>
-
-            {service.thumbnail && (
-              <div style={{ width: "100%", aspectRatio: "16/9",
-                borderRadius: "var(--r-xl)", overflow: "hidden",
-                background: "var(--surface-2)", border: "1px solid var(--border)" }}>
-                <img src={service.thumbnail} alt={service.name}
-                  style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-              </div>
-            )}
-
+          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
             <div>
               {service.category && (
-                <p style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase",
-                  letterSpacing: "0.1em", fontWeight: 500, marginBottom: "8px" }}>
-                  {service.category.icon} {service.category.name}
+                <p style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600,
+                  letterSpacing: "0.08em", textTransform: "uppercase",
+                  marginBottom: "12px" }}>
+                  {service.category.name}
                 </p>
               )}
               <h1 style={{ fontFamily: "var(--font-serif)",
-                fontSize: "clamp(2rem, 4vw, 3rem)", lineHeight: 1.1, marginBottom: "16px" }}>
+                fontSize: "clamp(2rem, 4vw, 3.5rem)", fontWeight: 300,
+                letterSpacing: "-0.02em", marginBottom: "16px" }}>
                 {service.name}
               </h1>
-              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "12px" }}>
-                <span style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem",
-                  color: priceColor }}>
-                  {service.price_display}
-                </span>
-                <span style={{ fontSize: "12px", padding: "3px 10px", borderRadius: "100px",
-                  color: priceColor, background: `${priceColor}14`,
-                  border: `1px solid ${priceColor}30` }}>
-                  {service.price_type_display}
-                </span>
-                {service.duration_hours && (
-                  <span style={{ fontSize: "13px", color: "var(--text-3)" }}>
-                    ⏱ ~{service.duration_hours}h
-                  </span>
-                )}
-              </div>
+              <p style={{ fontFamily: "var(--font-serif)", fontSize: "2rem",
+                color: "var(--accent)", marginBottom: "20px" }}>
+                {service.price_display}
+              </p>
+              {service.short_description && (
+                <p style={{ fontSize: "16px", color: "var(--text-2)",
+                  lineHeight: 1.8 }}>
+                  {service.short_description}
+                </p>
+              )}
             </div>
 
-            {/* Descripción */}
-            <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-              borderRadius: "var(--r-lg)", padding: "24px" }}>
-              <h2 style={{ fontSize: "15px", fontWeight: 500, marginBottom: "12px" }}>
-                Descripción
-              </h2>
-              <p style={{ fontSize: "14px", color: "var(--text-2)", lineHeight: 1.75 }}>
-                {service.description}
-              </p>
-            </div>
+            {service.description && (
+              <div style={{ paddingTop: "24px", borderTop: "1px solid var(--border)" }}>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-3)",
+                  textTransform: "uppercase", letterSpacing: "0.08em",
+                  marginBottom: "14px" }}>
+                  Descripción
+                </p>
+                <p style={{ fontSize: "15px", color: "var(--text-2)",
+                  lineHeight: 1.8 }}>
+                  {service.description}
+                </p>
+              </div>
+            )}
 
             {/* Entregables */}
             {service.deliverables_list?.length > 0 && (
-              <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-                borderRadius: "var(--r-lg)", padding: "24px" }}>
-                <h2 style={{ fontSize: "15px", fontWeight: 500, marginBottom: "16px" }}>
-                  ¿Qué incluye?
-                </h2>
-                <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div style={{ paddingTop: "24px", borderTop: "1px solid var(--border)" }}>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--text-3)",
+                  textTransform: "uppercase", letterSpacing: "0.08em",
+                  marginBottom: "16px" }}>
+                  Qué incluye
+                </p>
+                <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   {service.deliverables_list.map((item, i) => (
-                    <li key={i} style={{ display: "flex", alignItems: "flex-start",
-                      gap: "10px", fontSize: "14px" }}>
-                      <span style={{ color: "var(--accent)", marginTop: "1px", flexShrink: 0 }}>✓</span>
-                      <span style={{ color: "var(--text-2)" }}>{item}</span>
-                    </li>
+                    <div key={i} style={{ display: "flex", alignItems: "flex-start",
+                      gap: "12px" }}>
+                      <span style={{ color: "var(--accent)", flexShrink: 0,
+                        fontWeight: 600, marginTop: "2px" }}>
+                        ✓
+                      </span>
+                      <p style={{ fontSize: "14px", color: "var(--text-2)",
+                        lineHeight: 1.6 }}>
+                        {item}
+                      </p>
+                    </div>
                   ))}
-                </ul>
+                </div>
+              </div>
+            )}
+
+            {/* Duration */}
+            {service.duration_hours && (
+              <div style={{ display: "flex", alignItems: "center", gap: "10px",
+                padding: "14px 18px", borderRadius: "var(--r-lg)",
+                background: "var(--surface-2)", border: "1px solid var(--border)",
+                fontSize: "14px", color: "var(--text-2)" }}>
+                <span style={{ fontSize: "18px" }}>⏱️</span>
+                Duración estimada: {service.duration_hours} hora{service.duration_hours !== 1 ? "s" : ""}
               </div>
             )}
           </div>
 
-          {/* Formulario */}
+          {/* Formulario de solicitud */}
           <div style={{ position: "sticky", top: "88px" }}>
             <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-              borderRadius: "var(--r-xl)", padding: "28px" }}>
+              borderRadius: "var(--r-2xl)", overflow: "hidden" }}>
 
-              {submitted ? (
-                <div style={{ textAlign: "center", padding: "16px 0" }}>
-                  <div style={{
-                    width: "52px", height: "52px", borderRadius: "50%",
-                    background: "var(--accent-glow)", border: "1px solid rgba(26,255,110,0.2)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "20px", margin: "0 auto 16px", color: "var(--accent)",
-                  }}>✓</div>
-                  <h3 style={{ fontFamily: "var(--font-serif)", fontSize: "1.3rem",
-                    marginBottom: "8px" }}>
-                    ¡Solicitud enviada!
+              <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)",
+                background: "var(--surface-2)" }}>
+                <p style={{ fontSize: "15px", fontWeight: 500 }}>
+                  Solicitar este servicio
+                </p>
+                <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "4px" }}>
+                  Te contactamos en menos de 24hs
+                </p>
+              </div>
+
+              {sent ? (
+                <div style={{ padding: "40px 24px", textAlign: "center" }}>
+                  <span style={{ fontSize: "40px", display: "block", marginBottom: "16px" }}>
+                    ✓
+                  </span>
+                  <h3 style={{ fontFamily: "var(--font-serif)", fontWeight: 300,
+                    fontSize: "1.4rem", marginBottom: "10px", color: "var(--accent)" }}>
+                    Solicitud enviada
                   </h3>
-                  <p style={{ fontSize: "13px", color: "var(--text-2)", marginBottom: "20px",
+                  <p style={{ fontSize: "14px", color: "var(--text-2)",
                     lineHeight: 1.6 }}>
-                    Te contactamos en menos de 24hs para coordinar los detalles.
+                    Te contactamos a la brevedad para coordinar los detalles.
                   </p>
-                  <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
-                    className="btn" style={{ width: "100%", justifyContent: "center",
-                      background: "#22c55e", color: "#fff" }}>
-                    💬 WhatsApp directo
-                  </a>
                 </div>
               ) : (
-                <>
-                  <h3 style={{ fontFamily: "var(--font-serif)", fontSize: "1.3rem",
-                    marginBottom: "6px" }}>
-                    Solicitar servicio
-                  </h3>
-                  <p style={{ fontSize: "13px", color: "var(--text-3)", marginBottom: "20px" }}>
-                    Te contactamos en menos de 24hs.
-                  </p>
+                <div style={{ padding: "24px",
+                  display: "flex", flexDirection: "column", gap: "14px" }}>
+                  {error && (
+                    <div style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
+                      background: "rgba(255,77,77,0.08)",
+                      border: "1px solid rgba(255,77,77,0.2)",
+                      color: "var(--danger)", fontSize: "13px" }}>
+                      {error}
+                    </div>
+                  )}
 
-                  <form onSubmit={handleSubmit(onSubmit)}
-                    style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-                    {[
-                      { name: "name",  label: "Nombre completo", type: "text" },
-                      { name: "email", label: "Email",           type: "email" },
-                      { name: "phone", label: "Teléfono (opcional)", type: "tel" },
-                    ].map(({ name, label, type }) => (
-                      <div key={name}>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-                          color: "var(--text-2)", marginBottom: "6px" }}>
-                          {label}
-                        </label>
-                        <input type={type} {...register(name)}
-                          className={`input ${errors[name] ? "error" : ""}`} />
-                        {errors[name] && (
-                          <p style={{ fontSize: "11px", color: "var(--danger)", marginTop: "3px" }}>
-                            {errors[name].message}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-
-                    <div>
-                      <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-                        color: "var(--text-2)", marginBottom: "6px" }}>
-                        Cuéntanos tu proyecto
+                  {[
+                    { key: "name",    label: "Nombre",  type: "text",  placeholder: "Tu nombre" },
+                    { key: "email",   label: "Email",   type: "email", placeholder: "tu@email.com" },
+                    { key: "phone",   label: "Teléfono",type: "tel",   placeholder: "+56 9 1234 5678" },
+                  ].map(({ key, label, type, placeholder }) => (
+                    <div key={key}>
+                      <label style={{ display: "block", fontSize: "12px",
+                        fontWeight: 500, color: "var(--text-2)", marginBottom: "7px" }}>
+                        {label}
                       </label>
-                      <textarea {...register("message")} rows={4}
-                        placeholder="Describe qué necesitas..."
-                        className={`input ${errors.message ? "error" : ""}`}
-                        style={{ resize: "none" }} />
-                      {errors.message && (
-                        <p style={{ fontSize: "11px", color: "var(--danger)", marginTop: "3px" }}>
-                          {errors.message.message}
-                        </p>
-                      )}
+                      <input type={type} value={form[key]} placeholder={placeholder}
+                        onChange={e => setForm(p => ({ ...p, [key]: e.target.value }))}
+                        style={inputSt}
+                        onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
+                        onBlur={e => e.target.style.borderColor = "var(--border)"} />
                     </div>
+                  ))}
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                      <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-                          color: "var(--text-2)", marginBottom: "6px" }}>
-                          Presupuesto (CLP)
-                        </label>
-                        <input type="number" {...register("budget")}
-                          placeholder="150000" className="input" />
-                      </div>
-                      <div>
-                        <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-                          color: "var(--text-2)", marginBottom: "6px" }}>
-                          Fecha preferida
-                        </label>
-                        <input type="date" {...register("preferred_date")}
-                          className="input" style={{ colorScheme: "dark" }} />
-                      </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px",
+                      fontWeight: 500, color: "var(--text-2)", marginBottom: "7px" }}>
+                      Mensaje
+                    </label>
+                    <textarea value={form.message} rows={3}
+                      placeholder="Contanos sobre tu proyecto..."
+                      onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
+                      style={{ ...inputSt, resize: "vertical" }}
+                      onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
+                      onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                  </div>
+
+                  <div style={{ display: "grid",
+                    gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px",
+                        fontWeight: 500, color: "var(--text-2)", marginBottom: "7px" }}>
+                        Presupuesto (opcional)
+                      </label>
+                      <input type="text" value={form.budget}
+                        placeholder="Ej: $500.000"
+                        onChange={e => setForm(p => ({ ...p, budget: e.target.value }))}
+                        style={inputSt}
+                        onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
+                        onBlur={e => e.target.style.borderColor = "var(--border)"} />
                     </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: "12px",
+                        fontWeight: 500, color: "var(--text-2)", marginBottom: "7px" }}>
+                        Fecha preferida
+                      </label>
+                      <input type="date" value={form.preferred_date}
+                        onChange={e => setForm(p => ({ ...p, preferred_date: e.target.value }))}
+                        style={inputSt}
+                        onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
+                        onBlur={e => e.target.style.borderColor = "var(--border)"} />
+                    </div>
+                  </div>
 
-                    {mutation.isError && (
-                      <p style={{ fontSize: "12px", color: "var(--danger)" }}>
-                        Error al enviar. Intenta de nuevo.
-                      </p>
-                    )}
+                  <button
+                    onClick={() => mutation.mutate()}
+                    disabled={mutation.isPending || !form.name || !form.email}
+                    className="btn btn-accent"
+                    style={{ justifyContent: "center", fontSize: "14px",
+                      padding: "14px", marginTop: "4px",
+                      opacity: mutation.isPending ? 0.7 : 1 }}>
+                    {mutation.isPending ? "Enviando..." : "Enviar solicitud →"}
+                  </button>
 
-                    <button type="submit" disabled={mutation.isPending}
-                      className="btn btn-accent"
-                      style={{ justifyContent: "center",
-                        opacity: mutation.isPending ? 0.7 : 1 }}>
-                      {mutation.isPending ? "Enviando..." : "Enviar solicitud"}
-                    </button>
-
-                    <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
-                      style={{ textAlign: "center", fontSize: "13px", color: "var(--text-3)",
-                        transition: "color var(--dur)", display: "block" }}
-                      className="hover:text-[var(--text-2)]">
-                      O por WhatsApp →
-                    </a>
-                  </form>
-                </>
+                  <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+                    style={{ display: "flex", alignItems: "center",
+                      justifyContent: "center", gap: "8px", padding: "10px",
+                      borderRadius: "var(--r-lg)", fontSize: "13px",
+                      color: "#25d166", textDecoration: "none",
+                      background: "rgba(37,211,102,0.06)",
+                      border: "1px solid rgba(37,211,102,0.15)",
+                      transition: "all var(--dur) var(--ease)" }}>
+                    💬 Consultar por WhatsApp
+                  </a>
+                </div>
               )}
             </div>
           </div>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .service-grid {
+            grid-template-columns: 1fr !important;
+          }
+          .service-grid > div:last-child {
+            position: static !important;
+          }
+        }
+      `}</style>
     </div>
   )
 }
