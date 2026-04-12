@@ -28,6 +28,7 @@ export default function Shop() {
     queryKey: ["categories"],
     queryFn:  getCategories,
   })
+  
 
   const products   = data?.results || []
   const categories = categoriesData?.results || categoriesData || []
