@@ -2,12 +2,16 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
-  getInventorySummary, getInventoryAlerts,
-  getInventoryRotation, getInventoryByCategory,
+  getInventorySummary, getInventoryAlerts, getInventoryRotation,
 } from "../../api/admin.api"
+import { getAdminProducts } from "../../api/admin.api"
 
 const TABS = ["Resumen","Alertas","Rotación","Por categoría"]
 const fmt  = n => `$${Number(n||0).toLocaleString("es-CL")}`
+
+// ── campos reales backend inventory_summary ──
+// valor_inventario, valor_venta, ganancia_potencial
+// total_productos, sin_stock, stock_critico, stock_ok
 
 function KPI({ label, value, sub, icon, color="var(--text)" }) {
   return (
@@ -30,39 +34,59 @@ export default function AdminInventory() {
   const [tab, setTab] = useState(0)
 
   const { data:summary, isLoading } = useQuery({
-    queryKey:["admin-inventory-summary"], queryFn:getInventorySummary,
-    refetchInterval:60000,
+    queryKey:["admin-inventory-summary"],
+    queryFn: getInventorySummary,
+    refetchInterval: 60000,
   })
   const { data:alerts } = useQuery({
-    queryKey:["admin-inventory-alerts"], queryFn:getInventoryAlerts,
+    queryKey:["admin-inventory-alerts"],
+    queryFn: getInventoryAlerts,
     enabled: tab === 1,
   })
   const { data:rotation } = useQuery({
-    queryKey:["admin-inventory-rotation"], queryFn:getInventoryRotation,
+    queryKey:["admin-inventory-rotation"],
+    queryFn: getInventoryRotation,
     enabled: tab === 2,
   })
-  const { data:byCategory } = useQuery({
-    queryKey:["admin-inventory-by-category"], queryFn:getInventoryByCategory,
-    enabled: tab === 3,
+  // Productos reales para Resumen y Por Categoría
+  const { data:productsData } = useQuery({
+    queryKey:["admin-products-inventory"],
+    queryFn: () => getAdminProducts({ page_size: 200 }),
+    enabled: tab === 0 || tab === 3,
   })
 
-  const alertsList    = alerts?.results    || alerts    || []
-  const rotationList  = rotation?.results  || rotation  || []
-  const categoryList  = byCategory?.results|| byCategory|| []
+  const alertsList   = alerts?.results    || alerts    || []
+  const rotationList = rotation?.results  || rotation  || []
+  const products     = productsData?.results || productsData || []
+
+  // Agrupar productos por categoría para el tab 3
+  const byCategory = products.reduce((acc, p) => {
+    const catName = p.category?.name || "Sin categoría"
+    if (!acc[catName]) acc[catName] = { name:catName, products:[], total_stock:0, total_cost:0, total_sale:0 }
+    acc[catName].products.push(p)
+    acc[catName].total_stock += p.stock || 0
+    acc[catName].total_cost  += (p.cost_price || 0) * (p.stock || 0)
+    acc[catName].total_sale  += (p.price || 0) * (p.stock || 0)
+    return acc
+  }, {})
+  const categoryList = Object.values(byCategory)
 
   return (
     <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
 
       <div style={{ marginBottom:"28px" }}>
         <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
-          fontWeight:300, letterSpacing:"-0.02em", marginBottom:"6px" }}>Inventario</h1>
+          fontWeight:300, letterSpacing:"-0.02em", marginBottom:"6px" }}>
+          Inventario
+        </h1>
         <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
           Control de stock, alertas y rotación de productos
         </p>
       </div>
 
       {/* Tabs */}
-      <div style={{ display:"flex", gap:"0", marginBottom:"28px", borderBottom:"1px solid var(--border)" }}>
+      <div style={{ display:"flex", gap:"0", marginBottom:"28px",
+        borderBottom:"1px solid var(--border)" }}>
         {TABS.map((t,i) => (
           <button key={t} type="button" onClick={() => setTab(i)} style={{
             padding:"9px 20px", fontSize:"13px", cursor:"pointer",
@@ -73,8 +97,9 @@ export default function AdminInventory() {
             marginBottom:"-1px", transition:"all var(--dur) var(--ease)" }}>
             {t}
             {i===1 && alertsList.length > 0 && (
-              <span style={{ marginLeft:"6px", padding:"1px 6px", borderRadius:"var(--r-full)",
-                fontSize:"10px", background:"#facc15", color:"#000", fontWeight:700 }}>
+              <span style={{ marginLeft:"6px", padding:"1px 6px",
+                borderRadius:"var(--r-full)", fontSize:"10px",
+                background:"#facc15", color:"#000", fontWeight:700 }}>
                 {alertsList.length}
               </span>
             )}
@@ -85,46 +110,63 @@ export default function AdminInventory() {
       {/* ── RESUMEN ── */}
       {tab===0 && (
         isLoading ? (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:"12px" }}>
-            {[...Array(6)].map((_,i) => <div key={i} className="skeleton" style={{ height:"110px" }} />)}
+          <div style={{ display:"grid",
+            gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:"12px" }}>
+            {[...Array(6)].map((_,i) => (
+              <div key={i} className="skeleton" style={{ height:"110px" }} />
+            ))}
           </div>
-        ) : summary ? (
+        ) : (
           <>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))",
+            <div style={{ display:"grid",
+              gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))",
               gap:"14px", marginBottom:"28px" }}>
               <KPI label="Valor en inventario"
-                value={fmt(summary.total_cost_value)} sub="Capital invertido en stock"
+                value={fmt(summary?.valor_inventario)}
+                sub="Capital invertido en stock"
                 icon="💰" color="var(--accent)" />
               <KPI label="Valor a precio de venta"
-                value={fmt(summary.total_sale_value)} sub="Si se vende todo el stock"
+                value={fmt(summary?.valor_venta)}
+                sub="Si se vende todo el stock"
                 icon="🏷" color="#60a5fa" />
               <KPI label="Ganancia potencial"
-                value={fmt((summary.total_sale_value||0)-(summary.total_cost_value||0))}
-                sub="Venta − costo del stock" icon="📈" color="#4ade80" />
-              <KPI label="Total productos" value={summary.total_products||0} icon="📦" />
-              <KPI label="Sin stock" value={summary.out_of_stock||0}
-                sub={summary.out_of_stock===0 ? "✓ Sin problemas" : "Requiere reposición"}
-                icon="🚫" color={summary.out_of_stock > 0 ? "var(--danger)" : "var(--text)"} />
-              <KPI label="Stock crítico" value={summary.low_stock||0}
-                sub="Bajo el mínimo configurado" icon="⚠️"
-                color={summary.low_stock > 0 ? "#facc15" : "var(--text)"} />
+                value={fmt(summary?.ganancia_potencial)}
+                sub="Venta − costo del stock"
+                icon="📈" color="#4ade80" />
+              <KPI label="Total productos"
+                value={summary?.total_productos||0}
+                icon="📦" />
+              <KPI label="Sin stock"
+                value={summary?.sin_stock||0}
+                sub={summary?.sin_stock===0 ? "✓ Sin problemas" : "Requiere reposición"}
+                icon="🚫"
+                color={(summary?.sin_stock||0)>0 ? "var(--danger)" : "var(--text)"} />
+              <KPI label="Stock crítico"
+                value={summary?.stock_critico||0}
+                sub="Bajo el mínimo configurado"
+                icon="⚠️"
+                color={(summary?.stock_critico||0)>0 ? "#facc15" : "var(--text)"} />
             </div>
 
-            {summary.products?.length > 0 && (
+            {/* Lista de productos */}
+            {products.length > 0 && (
               <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
                 borderRadius:"var(--r-xl)", overflow:"hidden" }}>
                 <div style={{ padding:"14px 20px", borderBottom:"1px solid var(--border)",
                   background:"var(--surface-2)" }}>
-                  <p style={{ fontSize:"13px", fontWeight:500 }}>Detalle de stock</p>
+                  <p style={{ fontSize:"13px", fontWeight:500 }}>
+                    Detalle de stock — {products.length} productos
+                  </p>
                 </div>
-                <div style={{ display:"grid", gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr",
+                <div style={{ display:"grid",
+                  gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr",
                   padding:"10px 20px", borderBottom:"1px solid var(--border)",
                   fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
                   letterSpacing:"0.06em", fontWeight:500 }}>
                   <span>Producto</span><span>Stock</span>
                   <span>Mínimo</span><span>Costo unit.</span><span>Valor stock</span>
                 </div>
-                {summary.products.map((p,i) => (
+                {products.map((p,i) => (
                   <div key={p.id} style={{ display:"grid",
                     gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr",
                     padding:"12px 20px", alignItems:"center",
@@ -134,13 +176,20 @@ export default function AdminInventory() {
                     onMouseLeave={e => e.currentTarget.style.background="transparent"}>
                     <div>
                       <p style={{ fontSize:"13px", fontWeight:500 }}>{p.name}</p>
-                      {p.sku && <p style={{ fontSize:"11px", color:"var(--text-3)", fontFamily:"monospace" }}>{p.sku}</p>}
+                      {p.sku && (
+                        <p style={{ fontSize:"11px", color:"var(--text-3)",
+                          fontFamily:"monospace" }}>{p.sku}</p>
+                      )}
                     </div>
                     <span style={{ fontSize:"14px", fontWeight:600,
-                      color: p.stock===0 ? "var(--danger)" : p.stock<=(p.stock_min||3) ? "#facc15" : "var(--accent)" }}>
+                      color: p.stock===0 ? "var(--danger)"
+                        : p.stock<=(p.stock_min||3) ? "#facc15"
+                        : "var(--accent)" }}>
                       {p.stock}
                     </span>
-                    <span style={{ fontSize:"13px", color:"var(--text-3)" }}>{p.stock_min||3}</span>
+                    <span style={{ fontSize:"13px", color:"var(--text-3)" }}>
+                      {p.stock_min||3}
+                    </span>
                     <span style={{ fontSize:"13px", color:"var(--text-2)" }}>
                       {p.cost_price ? fmt(p.cost_price) : "—"}
                     </span>
@@ -152,18 +201,22 @@ export default function AdminInventory() {
               </div>
             )}
           </>
-        ) : null
+        )
       )}
 
       {/* ── ALERTAS ── */}
       {tab===1 && (
         !alerts ? (
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-            {[...Array(4)].map((_,i) => <div key={i} className="skeleton" style={{ height:"64px" }} />)}
+            {[...Array(4)].map((_,i) => (
+              <div key={i} className="skeleton" style={{ height:"64px" }} />
+            ))}
           </div>
         ) : alertsList.length===0 ? (
-          <div style={{ padding:"60px", textAlign:"center", background:"var(--surface)",
-            border:"1px solid rgba(26,255,110,0.2)", borderRadius:"var(--r-2xl)" }}>
+          <div style={{ padding:"60px", textAlign:"center",
+            background:"var(--surface)",
+            border:"1px solid rgba(26,255,110,0.2)",
+            borderRadius:"var(--r-2xl)" }}>
             <p style={{ fontSize:"48px", marginBottom:"12px" }}>✅</p>
             <h3 style={{ fontFamily:"var(--font-serif)", fontWeight:300,
               fontSize:"1.4rem", marginBottom:"8px", color:"var(--accent)" }}>
@@ -183,7 +236,9 @@ export default function AdminInventory() {
                 borderLeft:`3px solid ${p.stock===0 ? "var(--danger)" : "#facc15"}`,
                 borderRadius:"var(--r-xl)", flexWrap:"wrap", gap:"12px" }}>
                 <div>
-                  <p style={{ fontSize:"14px", fontWeight:500, marginBottom:"3px" }}>{p.name}</p>
+                  <p style={{ fontSize:"14px", fontWeight:500, marginBottom:"3px" }}>
+                    {p.name}
+                  </p>
                   <p style={{ fontSize:"12px", color:"var(--text-3)" }}>
                     {p.sku && <span style={{ fontFamily:"monospace" }}>{p.sku} · </span>}
                     {p.category||"Sin categoría"}
@@ -191,16 +246,18 @@ export default function AdminInventory() {
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:"24px" }}>
                   <div style={{ textAlign:"right" }}>
-                    <p style={{ fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
-                      letterSpacing:"0.06em", marginBottom:"2px" }}>Stock actual</p>
+                    <p style={{ fontSize:"11px", color:"var(--text-3)",
+                      textTransform:"uppercase", letterSpacing:"0.06em",
+                      marginBottom:"2px" }}>Stock actual</p>
                     <p style={{ fontFamily:"var(--font-serif)", fontSize:"2rem",
                       color: p.stock===0 ? "var(--danger)" : "#facc15", lineHeight:1 }}>
                       {p.stock}
                     </p>
                   </div>
                   <div style={{ textAlign:"right" }}>
-                    <p style={{ fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
-                      letterSpacing:"0.06em", marginBottom:"2px" }}>Mínimo</p>
+                    <p style={{ fontSize:"11px", color:"var(--text-3)",
+                      textTransform:"uppercase", letterSpacing:"0.06em",
+                      marginBottom:"2px" }}>Mínimo</p>
                     <p style={{ fontFamily:"var(--font-serif)", fontSize:"2rem",
                       color:"var(--text-3)", lineHeight:1 }}>{p.stock_min}</p>
                   </div>
@@ -222,18 +279,21 @@ export default function AdminInventory() {
       {tab===2 && (
         !rotation ? (
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-            {[...Array(5)].map((_,i) => <div key={i} className="skeleton" style={{ height:"56px" }} />)}
+            {[...Array(5)].map((_,i) => (
+              <div key={i} className="skeleton" style={{ height:"56px" }} />
+            ))}
           </div>
         ) : rotationList.length===0 ? (
-          <div style={{ padding:"60px", textAlign:"center", background:"var(--surface)",
-            border:"1px solid var(--border)", borderRadius:"var(--r-2xl)",
-            color:"var(--text-3)", fontSize:"14px" }}>
+          <div style={{ padding:"60px", textAlign:"center",
+            background:"var(--surface)", border:"1px solid var(--border)",
+            borderRadius:"var(--r-2xl)", color:"var(--text-3)", fontSize:"14px" }}>
             Sin datos de rotación todavía.
           </div>
         ) : (
           <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
             borderRadius:"var(--r-xl)", overflow:"hidden" }}>
-            <div style={{ display:"grid", gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr",
+            <div style={{ display:"grid",
+              gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr",
               padding:"10px 20px", borderBottom:"1px solid var(--border)",
               fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
               letterSpacing:"0.06em", fontWeight:500 }}>
@@ -251,15 +311,21 @@ export default function AdminInventory() {
                 <div>
                   <p style={{ fontSize:"13px", overflow:"hidden",
                     textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</p>
-                  {p.sku && <p style={{ fontSize:"11px", color:"var(--text-3)", fontFamily:"monospace" }}>{p.sku}</p>}
+                  {p.sku && (
+                    <p style={{ fontSize:"11px", color:"var(--text-3)",
+                      fontFamily:"monospace" }}>{p.sku}</p>
+                  )}
                 </div>
                 <span style={{ fontSize:"13px", fontWeight:500 }}>{p.units_sold}</span>
                 <span style={{ fontSize:"13px" }}>{p.stock}</span>
-                <span style={{ fontSize:"13px", color:"var(--accent)" }}>{fmt(p.total_revenue||0)}</span>
+                <span style={{ fontSize:"13px", color:"var(--accent)" }}>
+                  {fmt(p.total_revenue||0)}
+                </span>
                 <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
                   <div style={{ flex:1, height:"4px", borderRadius:"2px",
                     background:"var(--surface-3)", overflow:"hidden", maxWidth:"60px" }}>
-                    <div style={{ height:"100%", borderRadius:"2px", background:"var(--accent)",
+                    <div style={{ height:"100%", borderRadius:"2px",
+                      background:"var(--accent)",
                       width:`${Math.min(100,(p.rotation_index||0)*10)}%`,
                       transition:"width 600ms var(--ease)" }} />
                   </div>
@@ -273,34 +339,41 @@ export default function AdminInventory() {
         )
       )}
 
-      {/* ── POR CATEGORÍA ── */}
+      {/* ── POR CATEGORÍA (agrupado en frontend) ── */}
       {tab===3 && (
-        !byCategory ? (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:"12px" }}>
-            {[...Array(4)].map((_,i) => <div key={i} className="skeleton" style={{ height:"120px" }} />)}
+        !productsData ? (
+          <div style={{ display:"grid",
+            gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:"12px" }}>
+            {[...Array(4)].map((_,i) => (
+              <div key={i} className="skeleton" style={{ height:"120px" }} />
+            ))}
           </div>
         ) : categoryList.length===0 ? (
-          <div style={{ padding:"60px", textAlign:"center", background:"var(--surface)",
-            border:"1px solid var(--border)", borderRadius:"var(--r-2xl)",
-            color:"var(--text-3)", fontSize:"14px" }}>
-            Sin datos por categoría todavía.
+          <div style={{ padding:"60px", textAlign:"center",
+            background:"var(--surface)", border:"1px solid var(--border)",
+            borderRadius:"var(--r-2xl)", color:"var(--text-3)", fontSize:"14px" }}>
+            Sin productos registrados.
           </div>
         ) : (
           <div style={{ display:"grid",
             gridTemplateColumns:"repeat(auto-fill, minmax(240px, 1fr))", gap:"14px" }}>
             {categoryList.map((cat,i) => (
-              <div key={i} style={{ background:"var(--surface)", border:"1px solid var(--border)",
+              <div key={i} style={{ background:"var(--surface)",
+                border:"1px solid var(--border)",
                 borderRadius:"var(--r-xl)", padding:"20px",
                 transition:"all var(--dur-slow) var(--ease)" }}
                 className="card card-glow">
-                <p style={{ fontSize:"14px", fontWeight:500, marginBottom:"16px" }}>{cat.name}</p>
+                <p style={{ fontSize:"14px", fontWeight:500, marginBottom:"16px" }}>
+                  {cat.name}
+                </p>
                 {[
-                  { label:"Productos",   value: cat.product_count         },
-                  { label:"Stock total", value: cat.total_stock           },
-                  { label:"Valor costo", value: fmt(cat.total_cost||0)    },
-                  { label:"Valor venta", value: fmt(cat.total_sale||0)    },
+                  { label:"Productos",   value: cat.products.length },
+                  { label:"Stock total", value: cat.total_stock     },
+                  { label:"Valor costo", value: fmt(cat.total_cost) },
+                  { label:"Valor venta", value: fmt(cat.total_sale) },
                 ].map(({ label, value }) => (
-                  <div key={label} style={{ display:"flex", justifyContent:"space-between",
+                  <div key={label} style={{ display:"flex",
+                    justifyContent:"space-between",
                     fontSize:"13px", marginBottom:"8px" }}>
                     <span style={{ color:"var(--text-3)" }}>{label}</span>
                     <span style={{ fontWeight:500 }}>{value}</span>

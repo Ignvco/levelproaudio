@@ -9,7 +9,14 @@ export function useScrollReveal(options = {}) {
     if (!el) return
 
      // Verificar si ya está en el viewport ANTES de inicializar
-    const rect = el.getBoundingClientRect()
+     const rect = el.getBoundingClientRect()
+    if (rect.top < window.innerHeight) {
+      el.style.opacity = "1"
+      el.style.transform = "none"
+      el.style.transition = "none"
+      return
+    }
+
     const inView = rect.top < window.innerHeight && rect.bottom > 0
 
     // Si ya está visible, mostrar sin animación
@@ -33,17 +40,15 @@ export function useScrollReveal(options = {}) {
       }
     )
 
+    
+
     // Estado inicial
-    el.style.opacity    = "0"
-    el.style.transform  = options.slideUp
-      ? "translateY(40px)"
-      : options.scaleIn
-      ? "scale(0.95) translateY(20px)"
-      : "translateY(24px)"
-    el.style.transition = `
-      opacity ${options.duration || 600}ms cubic-bezier(0.16, 1, 0.3, 1) ${options.delay || 0}ms,
-      transform ${options.duration || 600}ms cubic-bezier(0.16, 1, 0.3, 1) ${options.delay || 0}ms
-    `
+     // Ocultar para animar al entrar
+    el.style.opacity = "0"
+    el.style.transform = scaleIn ? "scale(0.95)" : "translateY(24px)"
+    el.style.transition = `opacity 0.6s ease ${delay}ms, transform 0.6s ease ${delay}ms`
+
+
 
     observer.observe(el)
     return () => observer.disconnect()
@@ -51,3 +56,5 @@ export function useScrollReveal(options = {}) {
 
   return ref
 }
+
+export default useScrollReveal
