@@ -1,58 +1,47 @@
 // hooks/useScrollReveal.js
+// Fix crítico: si el elemento ya está en el viewport al montar,
+// NO lo oculta — lo muestra directamente sin animación.
+// Esto evita el bug de secciones negras en Home y otras páginas.
+
 import { useEffect, useRef } from "react"
 
-export function useScrollReveal(options = {}) {
+export function useScrollReveal({ delay = 0, scaleIn = false } = {}) {
   const ref = useRef(null)
 
   useEffect(() => {
     const el = ref.current
     if (!el) return
 
-     // Verificar si ya está en el viewport ANTES de inicializar
-     const rect = el.getBoundingClientRect()
-    if (rect.top < window.innerHeight) {
-      el.style.opacity = "1"
-      el.style.transform = "none"
+    const rect = el.getBoundingClientRect()
+    const inViewport = rect.top < window.innerHeight && rect.bottom > 0
+
+    // Si ya está visible, no ocultar — mostrar directamente
+    if (inViewport) {
+      el.style.opacity    = "1"
+      el.style.transform  = "none"
       el.style.transition = "none"
       return
     }
 
-    const inView = rect.top < window.innerHeight && rect.bottom > 0
-
-    // Si ya está visible, mostrar sin animación
-    if (inView) {
-      el.style.opacity   = "1"
-      el.style.transform = "none"
-      return
-    }
+    // Fuera del viewport: ocultar para animar al entrar
+    el.style.opacity    = "0"
+    el.style.transform  = scaleIn ? "scale(0.95) translateY(12px)" : "translateY(24px)"
+    el.style.transition = `opacity 0.65s cubic-bezier(0.16,1,0.3,1) ${delay}ms,
+                           transform 0.65s cubic-bezier(0.16,1,0.3,1) ${delay}ms`
 
     const observer = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting) {
-          el.style.opacity    = "1"
-          el.style.transform  = "translateY(0) scale(1)"
-          observer.unobserve(el)
-        }
+        if (!entry.isIntersecting) return
+        el.style.opacity   = "1"
+        el.style.transform = "none"
+        observer.disconnect()
       },
-      {
-        threshold: options.threshold || 0.1,
-        rootMargin: options.rootMargin || "0px 0px -60px 0px",
-      }
+      { threshold: 0.08, rootMargin: "0px 0px -30px 0px" }
     )
-
-    
-
-    // Estado inicial
-     // Ocultar para animar al entrar
-    el.style.opacity = "0"
-    el.style.transform = scaleIn ? "scale(0.95)" : "translateY(24px)"
-    el.style.transition = `opacity 0.6s ease ${delay}ms, transform 0.6s ease ${delay}ms`
-
-
 
     observer.observe(el)
     return () => observer.disconnect()
-  }, [])
+  }, [delay, scaleIn])
 
   return ref
 }
