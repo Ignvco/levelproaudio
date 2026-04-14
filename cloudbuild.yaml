@@ -73,25 +73,40 @@ steps:
       - --update-secrets=GCS_PROJECT_ID=levelproaudio-gcs-project:latest
       - --update-secrets=DJANGO_ALLOWED_HOSTS=DJANGO_ALLOWED_HOSTS:latest
 
-  # ── 5. Deploy Frontend ───────────────────────────────────────
+  # ── 5. Obtener URL del backend para pasarla al frontend ──────
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "get-backend-url"
+    waitFor: ["deploy-backend"]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        BACKEND_URL=$(gcloud run services describe ${_BACKEND_SERVICE} \
+          --region=${_REGION} --format="value(status.url)")
+        echo "$$BACKEND_URL" > /workspace/backend_url.txt
+        echo "Backend URL: $$BACKEND_URL"
+
+  # ── 6. Deploy Frontend con URL del backend ───────────────────
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "deploy-frontend"
-    waitFor: ["push-frontend", "deploy-backend"]
-    entrypoint: gcloud
+    waitFor: ["push-frontend", "get-backend-url"]
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - "${_FRONTEND_SERVICE}"
-      - --image=gcr.io/$PROJECT_ID/levelproaudio-frontend:${_TAG}
-      - --region=${_REGION}
-      - --platform=managed
-      - --allow-unauthenticated
-      - --port=8080
-      - --memory=256Mi
-      - --cpu=1
-      - --min-instances=0
-      - --max-instances=3
-      - --service-account=${_SA_EMAIL}
+      - -c
+      - |
+        BACKEND_URL=$(cat /workspace/backend_url.txt)
+        gcloud run deploy ${_FRONTEND_SERVICE} \
+          --image=gcr.io/$PROJECT_ID/levelproaudio-frontend:${_TAG} \
+          --region=${_REGION} \
+          --platform=managed \
+          --allow-unauthenticated \
+          --port=8080 \
+          --memory=256Mi \
+          --cpu=1 \
+          --min-instances=0 \
+          --max-instances=3 \
+          --service-account=${_SA_EMAIL} \
+          --set-env-vars="BACKEND_URL=$$BACKEND_URL"
 
 images:
   - "gcr.io/$PROJECT_ID/levelproaudio-backend:${_TAG}"
