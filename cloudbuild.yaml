@@ -1,5 +1,4 @@
 # cloudbuild.yaml — raíz del repo
-# Adaptado a los secrets reales del proyecto levelproaudio
 
 substitutions:
   _REGION:           "us-central1"
@@ -7,6 +6,7 @@ substitutions:
   _FRONTEND_SERVICE: "levelproaudio-frontend"
   _SQL_INSTANCE:     "levelproaudio:us-central1:levelproaudio-db"
   _SA_EMAIL:         "levelproaudio-run@levelproaudio.iam.gserviceaccount.com"
+  _TAG:              "latest"
 
 steps:
 
@@ -16,9 +16,7 @@ steps:
     args:
       - build
       - -t
-      - "gcr.io/$PROJECT_ID/levelproaudio-backend:$SHORT_SHA"
-      - -t
-      - "gcr.io/$PROJECT_ID/levelproaudio-backend:latest"
+      - "gcr.io/$PROJECT_ID/levelproaudio-backend:${_TAG}"
       - -f
       - backend/Dockerfile.prod
       - ./backend
@@ -29,9 +27,7 @@ steps:
     args:
       - build
       - -t
-      - "gcr.io/$PROJECT_ID/levelproaudio-frontend:$SHORT_SHA"
-      - -t
-      - "gcr.io/$PROJECT_ID/levelproaudio-frontend:latest"
+      - "gcr.io/$PROJECT_ID/levelproaudio-frontend:${_TAG}"
       - -f
       - frontend/Dockerfile.prod
       - ./frontend
@@ -40,12 +36,12 @@ steps:
   - name: "gcr.io/cloud-builders/docker"
     id: "push-backend"
     waitFor: ["build-backend"]
-    args: ["push", "gcr.io/$PROJECT_ID/levelproaudio-backend:$SHORT_SHA"]
+    args: ["push", "gcr.io/$PROJECT_ID/levelproaudio-backend:${_TAG}"]
 
   - name: "gcr.io/cloud-builders/docker"
     id: "push-frontend"
     waitFor: ["build-frontend"]
-    args: ["push", "gcr.io/$PROJECT_ID/levelproaudio-frontend:$SHORT_SHA"]
+    args: ["push", "gcr.io/$PROJECT_ID/levelproaudio-frontend:${_TAG}"]
 
   # ── 4. Deploy Backend ────────────────────────────────────────
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
@@ -56,7 +52,7 @@ steps:
       - run
       - deploy
       - "${_BACKEND_SERVICE}"
-      - --image=gcr.io/$PROJECT_ID/levelproaudio-backend:$SHORT_SHA
+      - --image=gcr.io/$PROJECT_ID/levelproaudio-backend:${_TAG}
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
@@ -86,7 +82,7 @@ steps:
       - run
       - deploy
       - "${_FRONTEND_SERVICE}"
-      - --image=gcr.io/$PROJECT_ID/levelproaudio-frontend:$SHORT_SHA
+      - --image=gcr.io/$PROJECT_ID/levelproaudio-frontend:${_TAG}
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
@@ -98,10 +94,8 @@ steps:
       - --service-account=${_SA_EMAIL}
 
 images:
-  - "gcr.io/$PROJECT_ID/levelproaudio-backend:$SHORT_SHA"
-  - "gcr.io/$PROJECT_ID/levelproaudio-backend:latest"
-  - "gcr.io/$PROJECT_ID/levelproaudio-frontend:$SHORT_SHA"
-  - "gcr.io/$PROJECT_ID/levelproaudio-frontend:latest"
+  - "gcr.io/$PROJECT_ID/levelproaudio-backend:${_TAG}"
+  - "gcr.io/$PROJECT_ID/levelproaudio-frontend:${_TAG}"
 
 options:
   logging: CLOUD_LOGGING_ONLY
