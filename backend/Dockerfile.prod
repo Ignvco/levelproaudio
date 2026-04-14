@@ -1,6 +1,4 @@
 # backend/Dockerfile.prod
-# Imagen optimizada para Cloud Run — sin devtools, con gunicorn
-
 FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
@@ -9,27 +7,23 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
-# Dependencias del sistema (solo lo necesario)
 RUN apt-get update && apt-get install -y \
     build-essential \
     libpq-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Dependencias Python de producción
 COPY requirements/ requirements/
 RUN pip install --upgrade pip && \
     pip install -r requirements/production.txt
 
-# Código fuente
 COPY . .
 
-# Archivos estáticos de Django
-RUN python manage.py collectstatic --noinput --settings=config.settings.production
+# collectstatic con settings mínimos (sin .env, sin DB real, sin GCS)
+RUN python manage.py collectstatic --noinput \
+    --settings=config.settings.build
 
-# Puerto dinámico que usa Cloud Run
 EXPOSE 8080
 
-# Gunicorn con workers óptimos para Cloud Run
 CMD exec gunicorn config.wsgi:application \
     --bind 0.0.0.0:$PORT \
     --workers 2 \
