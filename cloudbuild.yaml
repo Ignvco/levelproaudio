@@ -1,0 +1,113 @@
+# cloudbuild.yaml — en la raíz del repo
+# Cloud Build: build → push → deploy automático al hacer push a main
+
+substitutions:
+  _PROJECT_ID:       "levelproaudio"          # ← tu project ID de GCloud
+  _REGION:           "us-central1"            # ← región (puedes usar southamerica-east1)
+  _BACKEND_IMAGE:    "gcr.io/${_PROJECT_ID}/levelproaudio-backend"
+  _FRONTEND_IMAGE:   "gcr.io/${_PROJECT_ID}/levelproaudio-frontend"
+  _BACKEND_SERVICE:  "levelproaudio-backend"
+  _FRONTEND_SERVICE: "levelproaudio-frontend"
+  _SQL_INSTANCE:     "levelproaudio:us-central1:levelproaudio-db"
+
+steps:
+
+  # ── 1. Build imagen Backend ──────────────────────────────────
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-backend"
+    args:
+      - build
+      - -t
+      - "${_BACKEND_IMAGE}:${SHORT_SHA}"
+      - -t
+      - "${_BACKEND_IMAGE}:latest"
+      - -f
+      - backend/Dockerfile.prod
+      - ./backend
+
+  # ── 2. Build imagen Frontend ─────────────────────────────────
+  - name: "gcr.io/cloud-builders/docker"
+    id: "build-frontend"
+    args:
+      - build
+      - -t
+      - "${_FRONTEND_IMAGE}:${SHORT_SHA}"
+      - -t
+      - "${_FRONTEND_IMAGE}:latest"
+      - --build-arg
+      - "VITE_API_URL=https://${_BACKEND_SERVICE}-${_PROJECT_ID}.run.app"
+      - -f
+      - frontend/Dockerfile.prod
+      - ./frontend
+
+  # ── 3. Push Backend ──────────────────────────────────────────
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-backend"
+    waitFor: ["build-backend"]
+    args:
+      - push
+      - "${_BACKEND_IMAGE}:${SHORT_SHA}"
+
+  # ── 4. Push Frontend ─────────────────────────────────────────
+  - name: "gcr.io/cloud-builders/docker"
+    id: "push-frontend"
+    waitFor: ["build-frontend"]
+    args:
+      - push
+      - "${_FRONTEND_IMAGE}:${SHORT_SHA}"
+
+  # ── 5. Deploy Backend a Cloud Run ────────────────────────────
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deploy-backend"
+    waitFor: ["push-backend"]
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - "${_BACKEND_SERVICE}"
+      - --image=${_BACKEND_IMAGE}:${SHORT_SHA}
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --memory=512Mi
+      - --cpu=1
+      - --min-instances=0
+      - --max-instances=5
+      - --add-cloudsql-instances=${_SQL_INSTANCE}
+      - --set-env-vars=DJANGO_SETTINGS_MODULE=config.settings.production
+      - --set-env-vars=CLOUD_SQL_CONNECTION_NAME=${_SQL_INSTANCE}
+      - --update-secrets=SECRET_KEY=levelproaudio-secret-key:latest
+      - --update-secrets=DB_NAME=levelproaudio-db-name:latest
+      - --update-secrets=DB_USER=levelproaudio-db-user:latest
+      - --update-secrets=DB_PASSWORD=levelproaudio-db-password:latest
+      - --update-secrets=GCS_BUCKET_NAME=levelproaudio-gcs-bucket:latest
+      - --update-secrets=GCS_PROJECT_ID=levelproaudio-gcs-project:latest
+
+  # ── 6. Deploy Frontend a Cloud Run ───────────────────────────
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "deploy-frontend"
+    waitFor: ["push-frontend", "deploy-backend"]
+    entrypoint: gcloud
+    args:
+      - run
+      - deploy
+      - "${_FRONTEND_SERVICE}"
+      - --image=${_FRONTEND_IMAGE}:${SHORT_SHA}
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --memory=256Mi
+      - --cpu=1
+      - --min-instances=0
+      - --max-instances=3
+
+images:
+  - "${_BACKEND_IMAGE}:${SHORT_SHA}"
+  - "${_BACKEND_IMAGE}:latest"
+  - "${_FRONTEND_IMAGE}:${SHORT_SHA}"
+  - "${_FRONTEND_IMAGE}:latest"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
