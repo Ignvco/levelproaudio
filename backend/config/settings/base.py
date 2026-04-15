@@ -11,7 +11,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 BACKEND_PUBLIC_URL = os.getenv("BACKEND_PUBLIC_URL", "http://localhost:8000")
 # Inicializa environ para leer el .env
 env = environ.Env()
-environ.Env.read_env(BASE_DIR.parent / '.env')  # Lee desde la raíz del repo
+try:
+    environ.Env.read_env(BASE_DIR.parent / '.env')
+except Exception:
+    pass  # En producción no hay .env — las vars vienen del entorno  # Lee desde la raíz del repo
 
 SECRET_KEY = env('DJANGO_SECRET_KEY')
 
