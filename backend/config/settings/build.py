@@ -1,17 +1,17 @@
 # backend/config/settings/build.py
 # Settings mínimos SOLO para collectstatic durante el Docker build.
 # Usa SQLite en memoria, sin .env, sin conexión a DB ni GCS.
-
+ 
 from pathlib import Path
 import os
-
+ 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
-
+ 
 SECRET_KEY = "build-only-dummy-key-not-real"
 DJANGO_SECRET_KEY = SECRET_KEY
 DEBUG = False
 ALLOWED_HOSTS = ["*"]
-
+ 
 INSTALLED_APPS = [
     "django.contrib.contenttypes",
     "django.contrib.staticfiles",
@@ -36,7 +36,7 @@ INSTALLED_APPS = [
     "apps.loyalty",
     "apps.billing",
 ]
-
+ 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -47,10 +47,10 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
-
+ 
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
-
+ 
 TEMPLATES = [{
     "BACKEND": "django.template.backends.django.DjangoTemplates",
     "DIRS": [],
@@ -62,26 +62,26 @@ TEMPLATES = [{
         "django.contrib.messages.context_processors.messages",
     ]},
 }]
-
+ 
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
         "NAME": ":memory:",
     }
 }
-
+ 
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
-
+ 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 AUTH_USER_MODEL = "users.User"
 LANGUAGE_CODE = "es-ar"
 TIME_ZONE = "America/Argentina/Buenos_Aires"
 USE_I18N = True
 USE_TZ = True
-
+ 
 # Pagos — defaults vacíos
 MP_CL_ACCESS_TOKEN = ""
 MP_CL_PUBLIC_KEY = ""
@@ -99,13 +99,13 @@ BACKEND_URL = "http://localhost:8000"
 BACKEND_PUBLIC_URL = "http://localhost:8000"
 DEFAULT_FROM_EMAIL = "ventas@levelproaudio.com"
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-
+ 
 SPECTACULAR_SETTINGS = {
     "TITLE": "LevelPro Audio API",
     "VERSION": "1.0.0",
     "SERVE_INCLUDE_SCHEMA": False,
 }
-
+ 
 from datetime import timedelta
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
@@ -114,7 +114,7 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True,
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
-
+ 
 REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_AUTHENTICATION_CLASSES": (
