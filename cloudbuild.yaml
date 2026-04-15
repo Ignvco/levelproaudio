@@ -1,5 +1,5 @@
 # cloudbuild.yaml — raíz del repo
-# Usa Artifact Registry us-central1-docker.pkg.dev
+# Deploy automático desde GitHub main → Cloud Run
 
 substitutions:
   _REGION:           "us-central1"
@@ -68,6 +68,8 @@ steps:
       - --add-cloudsql-instances=${_SQL_INSTANCE}
       - --set-env-vars=DJANGO_SETTINGS_MODULE=config.settings.production
       - --set-env-vars=CLOUD_SQL_CONNECTION_NAME=${_SQL_INSTANCE}
+      # Mapear el secret con AMBOS nombres que Django necesita
+      - --update-secrets=DJANGO_SECRET_KEY=DJANGO_SECRET_KEY:latest
       - --update-secrets=SECRET_KEY=DJANGO_SECRET_KEY:latest
       - --update-secrets=DB_NAME=DB_NAME:latest
       - --update-secrets=DB_USER=DB_USER:latest
@@ -76,40 +78,25 @@ steps:
       - --update-secrets=GCS_PROJECT_ID=levelproaudio-gcs-project:latest
       - --update-secrets=DJANGO_ALLOWED_HOSTS=DJANGO_ALLOWED_HOSTS:latest
 
-  # ── 6. Obtener URL del backend ────────────────────────────────
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    id: "get-backend-url"
-    waitFor: ["deploy-backend"]
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        BACKEND_URL=$(gcloud run services describe ${_BACKEND_SERVICE} \
-          --region=${_REGION} --format="value(status.url)")
-        echo "$$BACKEND_URL" > /workspace/backend_url.txt
-        echo "Backend URL: $$BACKEND_URL"
-
-  # ── 7. Deploy Frontend ───────────────────────────────────────
+  # ── 6. Deploy Frontend ───────────────────────────────────────
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "deploy-frontend"
-    waitFor: ["push-frontend", "get-backend-url"]
-    entrypoint: bash
+    waitFor: ["push-frontend"]
+    entrypoint: gcloud
     args:
-      - -c
-      - |
-        BACKEND_URL=$(cat /workspace/backend_url.txt)
-        gcloud run deploy ${_FRONTEND_SERVICE} \
-          --image=${_REPO}/frontend:${_TAG} \
-          --region=${_REGION} \
-          --platform=managed \
-          --allow-unauthenticated \
-          --port=8080 \
-          --memory=256Mi \
-          --cpu=1 \
-          --min-instances=0 \
-          --max-instances=3 \
-          --service-account=${_SA_EMAIL} \
-          --set-env-vars="BACKEND_URL=$$BACKEND_URL"
+      - run
+      - deploy
+      - "${_FRONTEND_SERVICE}"
+      - --image=${_REPO}/frontend:${_TAG}
+      - --region=${_REGION}
+      - --platform=managed
+      - --allow-unauthenticated
+      - --port=8080
+      - --memory=256Mi
+      - --cpu=1
+      - --min-instances=0
+      - --max-instances=3
+      - --service-account=${_SA_EMAIL}
 
 images:
   - "${_REPO}/backend:${_TAG}"
