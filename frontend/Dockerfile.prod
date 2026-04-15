@@ -1,25 +1,14 @@
 # frontend/Dockerfile.prod
-# Stage 1: Build React con Vite
 FROM node:20-alpine AS builder
-
 WORKDIR /app
 COPY package*.json ./
-# npm install en vez de npm ci (no hay package-lock.json en el repo)
 RUN npm install
 COPY . .
 RUN npm run build
 
-# Stage 2: Nginx sirve el build
 FROM nginx:alpine
-
-# gettext provee envsubst para reemplazar variables en nginx.conf
-RUN apk add --no-cache gettext
-
-COPY nginx.conf /etc/nginx/conf.d/nginx.conf.template
+# nginx.conf ya tiene la URL del backend hardcodeada — sin envsubst
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /app/dist /usr/share/nginx/html
-
 EXPOSE 8080
-
-# Reemplaza BACKEND_URL_PLACEHOLDER con la URL real y lanza nginx
-CMD ["/bin/sh", "-c", \
-  "sed 's|BACKEND_URL_PLACEHOLDER|'\"$BACKEND_URL\"'|g' /etc/nginx/conf.d/nginx.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"]
+CMD ["nginx", "-g", "daemon off;"]
