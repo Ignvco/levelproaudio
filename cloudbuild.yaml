@@ -1,5 +1,5 @@
 # cloudbuild.yaml — raíz del repo
-# Usa Artifact Registry (us-central1-docker.pkg.dev) en vez de gcr.io
+# Usa Artifact Registry us-central1-docker.pkg.dev
 
 substitutions:
   _REGION:           "us-central1"
@@ -8,7 +8,7 @@ substitutions:
   _SQL_INSTANCE:     "levelproaudio:us-central1:levelproaudio-db"
   _SA_EMAIL:         "levelproaudio-run@levelproaudio.iam.gserviceaccount.com"
   _TAG:              "latest"
-  _REPO:             "us-central1-docker.pkg.dev/$PROJECT_ID/levelproaudio-docker"
+  _REPO:             "us-central1-docker.pkg.dev/levelproaudio/levelproaudio-docker"
 
 steps:
 
@@ -89,7 +89,7 @@ steps:
         echo "$$BACKEND_URL" > /workspace/backend_url.txt
         echo "Backend URL: $$BACKEND_URL"
 
-  # ── 7. Deploy Frontend con URL del backend ───────────────────
+  # ── 7. Deploy Frontend ───────────────────────────────────────
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "deploy-frontend"
     waitFor: ["push-frontend", "get-backend-url"]
