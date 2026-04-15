@@ -1,4 +1,5 @@
 # cloudbuild.yaml — raíz del repo
+# Usa Artifact Registry (us-central1-docker.pkg.dev) en vez de gcr.io
 
 substitutions:
   _REGION:           "us-central1"
@@ -7,6 +8,7 @@ substitutions:
   _SQL_INSTANCE:     "levelproaudio:us-central1:levelproaudio-db"
   _SA_EMAIL:         "levelproaudio-run@levelproaudio.iam.gserviceaccount.com"
   _TAG:              "latest"
+  _REPO:             "us-central1-docker.pkg.dev/$PROJECT_ID/levelproaudio-docker"
 
 steps:
 
@@ -16,7 +18,7 @@ steps:
     args:
       - build
       - -t
-      - "gcr.io/$PROJECT_ID/levelproaudio-backend:${_TAG}"
+      - "${_REPO}/backend:${_TAG}"
       - -f
       - backend/Dockerfile.prod
       - ./backend
@@ -27,23 +29,24 @@ steps:
     args:
       - build
       - -t
-      - "gcr.io/$PROJECT_ID/levelproaudio-frontend:${_TAG}"
+      - "${_REPO}/frontend:${_TAG}"
       - -f
       - frontend/Dockerfile.prod
       - ./frontend
 
-  # ── 3. Push imágenes ─────────────────────────────────────────
+  # ── 3. Push Backend ──────────────────────────────────────────
   - name: "gcr.io/cloud-builders/docker"
     id: "push-backend"
     waitFor: ["build-backend"]
-    args: ["push", "gcr.io/$PROJECT_ID/levelproaudio-backend:${_TAG}"]
+    args: ["push", "${_REPO}/backend:${_TAG}"]
 
+  # ── 4. Push Frontend ─────────────────────────────────────────
   - name: "gcr.io/cloud-builders/docker"
     id: "push-frontend"
     waitFor: ["build-frontend"]
-    args: ["push", "gcr.io/$PROJECT_ID/levelproaudio-frontend:${_TAG}"]
+    args: ["push", "${_REPO}/frontend:${_TAG}"]
 
-  # ── 4. Deploy Backend ────────────────────────────────────────
+  # ── 5. Deploy Backend ────────────────────────────────────────
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "deploy-backend"
     waitFor: ["push-backend"]
@@ -52,7 +55,7 @@ steps:
       - run
       - deploy
       - "${_BACKEND_SERVICE}"
-      - --image=gcr.io/$PROJECT_ID/levelproaudio-backend:${_TAG}
+      - --image=${_REPO}/backend:${_TAG}
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated
@@ -73,7 +76,7 @@ steps:
       - --update-secrets=GCS_PROJECT_ID=levelproaudio-gcs-project:latest
       - --update-secrets=DJANGO_ALLOWED_HOSTS=DJANGO_ALLOWED_HOSTS:latest
 
-  # ── 5. Obtener URL del backend para pasarla al frontend ──────
+  # ── 6. Obtener URL del backend ────────────────────────────────
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "get-backend-url"
     waitFor: ["deploy-backend"]
@@ -86,7 +89,7 @@ steps:
         echo "$$BACKEND_URL" > /workspace/backend_url.txt
         echo "Backend URL: $$BACKEND_URL"
 
-  # ── 6. Deploy Frontend con URL del backend ───────────────────
+  # ── 7. Deploy Frontend con URL del backend ───────────────────
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "deploy-frontend"
     waitFor: ["push-frontend", "get-backend-url"]
@@ -96,7 +99,7 @@ steps:
       - |
         BACKEND_URL=$(cat /workspace/backend_url.txt)
         gcloud run deploy ${_FRONTEND_SERVICE} \
-          --image=gcr.io/$PROJECT_ID/levelproaudio-frontend:${_TAG} \
+          --image=${_REPO}/frontend:${_TAG} \
           --region=${_REGION} \
           --platform=managed \
           --allow-unauthenticated \
@@ -109,8 +112,8 @@ steps:
           --set-env-vars="BACKEND_URL=$$BACKEND_URL"
 
 images:
-  - "gcr.io/$PROJECT_ID/levelproaudio-backend:${_TAG}"
-  - "gcr.io/$PROJECT_ID/levelproaudio-frontend:${_TAG}"
+  - "${_REPO}/backend:${_TAG}"
+  - "${_REPO}/frontend:${_TAG}"
 
 options:
   logging: CLOUD_LOGGING_ONLY
