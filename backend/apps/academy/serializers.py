@@ -3,13 +3,10 @@ from rest_framework import serializers
 from .models import Course, Module, Lesson, Enrollment, LessonProgress
 
 
-def _safe_image_url(image_field):
-    if not image_field:
+def _media_url(image_field):
+    if not image_field or not image_field.name:
         return None
-    try:
-        return image_field.url
-    except Exception:
-        return None
+    return f"/media/{image_field.name}"
 
 
 class LessonSerializer(serializers.ModelSerializer):
@@ -17,18 +14,13 @@ class LessonSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = Lesson
-        fields = [
-            "id", "title", "video_url", "description",
-            "order", "is_free", "duration_minutes", "is_locked",
-        ]
+        fields = ["id", "title", "video_url", "description", "order", "is_free", "duration_minutes", "is_locked"]
 
     def get_is_locked(self, obj):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return not obj.is_free
-        enrolled = Enrollment.objects.filter(
-            user=request.user, course=obj.module.course
-        ).exists()
+        enrolled = Enrollment.objects.filter(user=request.user, course=obj.module.course).exists()
         return not enrolled and not obj.is_free
 
 
@@ -54,15 +46,12 @@ class CourseListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = Course
-        fields = [
-            "id", "title", "slug", "short_description",
-            "thumbnail", "price", "level", "level_display",
-            "is_free", "total_lessons", "total_duration",
-            "enrolled_count", "is_enrolled",
-        ]
+        fields = ["id", "title", "slug", "short_description", "thumbnail", "price",
+                  "level", "level_display", "is_free", "total_lessons", "total_duration",
+                  "enrolled_count", "is_enrolled"]
 
     def get_thumbnail(self, obj):
-        return _safe_image_url(obj.thumbnail)
+        return _media_url(obj.thumbnail)
 
     def get_is_enrolled(self, obj):
         request = self.context.get("request")
@@ -83,15 +72,13 @@ class CourseDetailSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = Course
-        fields = [
-            "id", "title", "slug", "description", "short_description",
-            "thumbnail", "preview_url", "price", "level", "level_display",
-            "is_free", "total_lessons", "total_duration",
-            "enrolled_count", "is_enrolled", "progress", "modules",
-        ]
+        fields = ["id", "title", "slug", "description", "short_description", "thumbnail",
+                  "preview_url", "price", "level", "level_display", "is_free",
+                  "total_lessons", "total_duration", "enrolled_count", "is_enrolled",
+                  "progress", "modules"]
 
     def get_thumbnail(self, obj):
-        return _safe_image_url(obj.thumbnail)
+        return _media_url(obj.thumbnail)
 
     def get_is_enrolled(self, obj):
         request = self.context.get("request")
@@ -104,8 +91,7 @@ class CourseDetailSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return 0
         try:
-            enrollment = Enrollment.objects.get(user=request.user, course=obj)
-            return enrollment.progress_percentage
+            return Enrollment.objects.get(user=request.user, course=obj).progress_percentage
         except Enrollment.DoesNotExist:
             return 0
 
