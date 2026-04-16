@@ -14,29 +14,31 @@ export default function Register() {
   const { register }        = useAuthStore()
   const navigate            = useNavigate()
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    if (form.password !== form.password2) {
-      setError("Las contraseñas no coinciden.")
-      return
-    }
-    setLoading(true)
-    setError("")
-    try {
-      await register(form)
-      navigate("/")
-    } catch (err) {
-      const data = err?.response?.data
-      setError(
-        data?.email?.[0] ||
-        data?.password?.[0] ||
-        data?.detail ||
-        "Error al registrarse."
-      )
-    } finally {
-      setLoading(false)
-    }
+ const handleSubmit = async (e) => {
+  e.preventDefault()
+  if (form.password !== form.password2) {
+    setError("Las contraseñas no coinciden.")
+    return
   }
+  setLoading(true)
+  setError("")
+  try {
+    const username = form.email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "") + Math.floor(Math.random() * 9000 + 1000)
+    await register({ ...form, username })
+    navigate("/")
+  } catch (err) {
+    const data = err?.response?.data
+    setError(
+      data?.email?.[0] ||
+      data?.username?.[0] ||
+      data?.password?.[0] ||
+      data?.detail ||
+      "Error al registrarse."
+    )
+  } finally {
+    setLoading(false)
+  }
+}
 
   const fields = [
     { key: "first_name", label: "Nombre",          type: "text",     placeholder: "Juan"          },
