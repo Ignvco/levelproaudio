@@ -1,7 +1,15 @@
 # apps/academy/serializers.py
-
 from rest_framework import serializers
 from .models import Course, Module, Lesson, Enrollment, LessonProgress
+
+
+def _safe_image_url(image_field):
+    if not image_field:
+        return None
+    try:
+        return image_field.url
+    except Exception:
+        return None
 
 
 class LessonSerializer(serializers.ModelSerializer):
@@ -42,6 +50,7 @@ class CourseListSerializer(serializers.ModelSerializer):
     enrolled_count = serializers.IntegerField(read_only=True)
     level_display  = serializers.CharField(source="get_level_display", read_only=True)
     is_enrolled    = serializers.SerializerMethodField()
+    thumbnail      = serializers.SerializerMethodField()
 
     class Meta:
         model  = Course
@@ -52,13 +61,14 @@ class CourseListSerializer(serializers.ModelSerializer):
             "enrolled_count", "is_enrolled",
         ]
 
+    def get_thumbnail(self, obj):
+        return _safe_image_url(obj.thumbnail)
+
     def get_is_enrolled(self, obj):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return False
-        return Enrollment.objects.filter(
-            user=request.user, course=obj
-        ).exists()
+        return Enrollment.objects.filter(user=request.user, course=obj).exists()
 
 
 class CourseDetailSerializer(serializers.ModelSerializer):
@@ -69,23 +79,25 @@ class CourseDetailSerializer(serializers.ModelSerializer):
     level_display  = serializers.CharField(source="get_level_display", read_only=True)
     is_enrolled    = serializers.SerializerMethodField()
     progress       = serializers.SerializerMethodField()
+    thumbnail      = serializers.SerializerMethodField()
 
     class Meta:
         model  = Course
         fields = [
             "id", "title", "slug", "description", "short_description",
             "thumbnail", "preview_url", "price", "level", "level_display",
-            "is_free", "total_lessons", "total_duration", "enrolled_count",
-            "is_enrolled", "progress", "modules",
+            "is_free", "total_lessons", "total_duration",
+            "enrolled_count", "is_enrolled", "progress", "modules",
         ]
+
+    def get_thumbnail(self, obj):
+        return _safe_image_url(obj.thumbnail)
 
     def get_is_enrolled(self, obj):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return False
-        return Enrollment.objects.filter(
-            user=request.user, course=obj
-        ).exists()
+        return Enrollment.objects.filter(user=request.user, course=obj).exists()
 
     def get_progress(self, obj):
         request = self.context.get("request")
@@ -104,11 +116,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = Enrollment
-        fields = [
-            "id", "course", "progress_percentage",
-            "completed_at",   # ← agregado
-            "created_at",
-        ]
+        fields = ["id", "course", "progress_percentage", "completed_at", "created_at"]
 
 
 class LessonProgressSerializer(serializers.ModelSerializer):
