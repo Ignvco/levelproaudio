@@ -3,19 +3,16 @@ from rest_framework import serializers
 from .models import Category, Brand, Product, ProductImage
 
 
-def _safe_image_url(image_field):
+def _media_url(image_field):
     """
-    Devuelve la URL de un campo de imagen de forma segura.
-    En producción con GCS: devuelve la URL pública del bucket.
-    En desarrollo: devuelve la URL relativa del servidor local.
-    Nunca lanza excepción — devuelve None si no hay imagen.
+    Devuelve la ruta relativa /media/... del archivo.
+    En producción: nginx proxea /media/ al backend Django → MediaProxyView → GCS.
+    En desarrollo: Django sirve /media/ desde MEDIA_ROOT local.
+    Nunca usa .url de GCS directamente (evita 403 en bucket privado).
     """
-    if not image_field:
+    if not image_field or not image_field.name:
         return None
-    try:
-        return image_field.url
-    except Exception:
-        return None
+    return f"/media/{image_field.name}"
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -24,11 +21,15 @@ class CategorySerializer(serializers.ModelSerializer):
         allow_null=True,
         required=False,
     )
+    image = serializers.SerializerMethodField()
 
     class Meta:
         model  = Category
         fields = ["id", "name", "slug", "parent", "description", "image", "order", "is_active"]
         extra_kwargs = {"slug": {"required": False, "allow_blank": True}}
+
+    def get_image(self, obj):
+        return _media_url(obj.image)
 
     def validate(self, data):
         if not data.get("slug"):
@@ -39,7 +40,6 @@ class CategorySerializer(serializers.ModelSerializer):
     def to_representation(self, instance):
         ret = super().to_representation(instance)
         ret["parent"] = str(instance.parent_id) if instance.parent_id else None
-        ret["image"]  = _safe_image_url(instance.image)
         return ret
 
 
@@ -52,7 +52,7 @@ class BrandSerializer(serializers.ModelSerializer):
         extra_kwargs = {"slug": {"required": False, "allow_blank": True}}
 
     def get_logo(self, obj):
-        return _safe_image_url(obj.logo)
+        return _media_url(obj.logo)
 
     def validate(self, data):
         if not data.get("slug"):
@@ -69,7 +69,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ["id", "image", "alt_text", "order", "is_primary"]
 
     def get_image(self, obj):
-        return _safe_image_url(obj.image)
+        return _media_url(obj.image)
 
 
 class ProductListSerializer(serializers.ModelSerializer):
@@ -89,17 +89,17 @@ class ProductListSerializer(serializers.ModelSerializer):
     def get_primary_image(self, obj):
         img = obj.images.filter(is_primary=True).first() or \
               obj.images.order_by("order", "id").first()
-        return _safe_image_url(img.image) if img else None
+        return _media_url(img.image) if img else None
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
-    category           = CategorySerializer(read_only=True)
-    brand              = BrandSerializer(read_only=True)
-    images             = ProductImageSerializer(many=True, read_only=True)
-    primary_image      = serializers.SerializerMethodField()
-    has_discount       = serializers.BooleanField(read_only=True)
+    category            = CategorySerializer(read_only=True)
+    brand               = BrandSerializer(read_only=True)
+    images              = ProductImageSerializer(many=True, read_only=True)
+    primary_image       = serializers.SerializerMethodField()
+    has_discount        = serializers.BooleanField(read_only=True)
     discount_percentage = serializers.IntegerField(read_only=True)
-    in_stock           = serializers.BooleanField(read_only=True)
+    in_stock            = serializers.BooleanField(read_only=True)
 
     class Meta:
         model  = Product
@@ -117,4 +117,4 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     def get_primary_image(self, obj):
         img = obj.images.filter(is_primary=True).first() or \
               obj.images.order_by("order", "id").first()
-        return _safe_image_url(img.image) if img else None
+        return _media_url(img.image) if img else None
