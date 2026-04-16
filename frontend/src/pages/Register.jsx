@@ -2,6 +2,7 @@
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { useAuthStore } from "../store/authStore"
+import logo from "../assets/logo.png"
 
 export default function Register() {
   const [form, setForm]     = useState({
@@ -60,7 +61,7 @@ export default function Register() {
       >
         <div style={{ textAlign: "center" }}>
           <Link to="/">
-            <img src="/src/assets/logo.png" alt="LevelPro"
+            <img src={logo} alt="LevelPro"
               style={{ height: "32px", margin: "0 auto 24px" }} />
           </Link>
           <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "2rem",
