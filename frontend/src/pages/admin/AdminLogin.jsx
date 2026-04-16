@@ -2,6 +2,7 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "../../store/authStore"
+import logo from "../../assets/logo.png"
 
 export default function AdminLogin() {
   const [email, setEmail]       = useState("")
@@ -39,7 +40,7 @@ export default function AdminLogin() {
 
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "40px" }}>
-          <img src="/src/assets/logo.png" alt="LevelPro"
+          <img src={logo} alt="LevelPro"
             style={{ height: "32px", margin: "0 auto 16px" }} />
           <div style={{ display: "inline-flex", alignItems: "center", gap: "8px",
             padding: "4px 12px", borderRadius: "var(--r-full)",
