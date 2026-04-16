@@ -14,17 +14,17 @@ export const useAuthStore = create(
   persist(
     (set, get) => ({
 
-      accessToken:     null,
-      refreshToken:    null,
-      user:            null,
+      accessToken: null,
+      refreshToken: null,
+      user: null,
       isAuthenticated: false,
 
       setTokens: (access, refresh) => {
-        localStorage.setItem("accessToken",  access)
+        localStorage.setItem("accessToken", access)
         localStorage.setItem("refreshToken", refresh)
         set({
-          accessToken:     access,
-          refreshToken:    refresh,
+          accessToken: access,
+          refreshToken: refresh,
           isAuthenticated: true,
         })
       },
@@ -36,7 +36,7 @@ export const useAuthStore = create(
         const { data } = await authAxios.post("/auth/login/", { email, password })
 
         // Guarda tokens
-        localStorage.setItem("accessToken",  data.access)
+        localStorage.setItem("accessToken", data.access)
         localStorage.setItem("refreshToken", data.refresh)
 
         // Obtiene el perfil — URL correcta es /auth/profile/
@@ -45,8 +45,8 @@ export const useAuthStore = create(
         })
 
         set({
-          accessToken:     data.access,
-          refreshToken:    data.refresh,
+          accessToken: data.access,
+          refreshToken: data.refresh,
           isAuthenticated: true,
           user,
         })
@@ -54,13 +54,29 @@ export const useAuthStore = create(
         return user
       },
 
+      register: async (formData) => {
+        await authAxios.post("/auth/register/", formData)
+        // Auto-login después del registro
+        const { data } = await authAxios.post("/auth/login/", {
+          email: formData.email,
+          password: formData.password,
+        })
+        localStorage.setItem("accessToken", data.access)
+        localStorage.setItem("refreshToken", data.refresh)
+        const { data: user } = await authAxios.get("/auth/profile/", {
+          headers: { Authorization: `Bearer ${data.access}` }
+        })
+        set({ accessToken: data.access, refreshToken: data.refresh, isAuthenticated: true, user })
+        return user
+      },
+
       logout: () => {
         localStorage.removeItem("accessToken")
         localStorage.removeItem("refreshToken")
         set({
-          accessToken:     null,
-          refreshToken:    null,
-          user:            null,
+          accessToken: null,
+          refreshToken: null,
+          user: null,
           isAuthenticated: false,
         })
       },
@@ -70,9 +86,9 @@ export const useAuthStore = create(
     {
       name: "levelproaudio-auth",
       partialize: (state) => ({
-        accessToken:     state.accessToken,
-        refreshToken:    state.refreshToken,
-        user:            state.user,
+        accessToken: state.accessToken,
+        refreshToken: state.refreshToken,
+        user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),
     }
