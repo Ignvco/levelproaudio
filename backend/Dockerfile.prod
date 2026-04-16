@@ -18,7 +18,8 @@ RUN pip install --upgrade pip && \
 
 COPY . .
 
-# collectstatic con settings mínimos (sin .env, sin DB real, sin GCS)
+# collectstatic con build.py — sin DB, sin GCS, sin .env
+# WhiteNoise servirá estos archivos en runtime
 RUN python manage.py collectstatic --noinput \
     --settings=config.settings.build
 
