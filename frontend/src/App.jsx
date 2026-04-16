@@ -126,6 +126,8 @@ function App() {
           <Route path="users" element={<AdminUsers />} />
           <Route path="payments" element={<AdminPayments />} />
           <Route path="academy" element={<AdminAcademy />} />
+          <Route path="academy/modules"     element={<AdminModules />} />
+          <Route path="academy/lessons"     element={<AdminLessons />} />
           <Route path="services" element={<AdminServices />} />
           <Route path="academy/enrollments" element={<AdminEnrollments />} />
         </Route>
