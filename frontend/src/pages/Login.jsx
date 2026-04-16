@@ -2,7 +2,7 @@
 import { useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useAuthStore } from "../store/authStore"
-import logo from "../../assets/logo.png"
+import logo from "../assets/logo.png"
 
 export default function Login() {
   const [email, setEmail]       = useState("")
