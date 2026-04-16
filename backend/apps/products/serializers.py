@@ -3,8 +3,22 @@ from rest_framework import serializers
 from .models import Category, Brand, Product, ProductImage
 
 
+def _safe_image_url(image_field):
+    """
+    Devuelve la URL de un campo de imagen de forma segura.
+    En producción con GCS: devuelve la URL pública del bucket.
+    En desarrollo: devuelve la URL relativa del servidor local.
+    Nunca lanza excepción — devuelve None si no hay imagen.
+    """
+    if not image_field:
+        return None
+    try:
+        return image_field.url
+    except Exception:
+        return None
+
+
 class CategorySerializer(serializers.ModelSerializer):
-    # Fuerza parent como UUID puro — nunca como objeto anidado
     parent = serializers.PrimaryKeyRelatedField(
         queryset=Category.objects.all(),
         allow_null=True,
@@ -13,13 +27,8 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = Category
-        fields = [
-            "id", "name", "slug", "parent",
-            "description", "image", "order", "is_active",
-        ]
-        extra_kwargs = {
-            "slug": {"required": False, "allow_blank": True},
-        }
+        fields = ["id", "name", "slug", "parent", "description", "image", "order", "is_active"]
+        extra_kwargs = {"slug": {"required": False, "allow_blank": True}}
 
     def validate(self, data):
         if not data.get("slug"):
@@ -29,18 +38,21 @@ class CategorySerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
-        # parent devuelve solo el UUID string, no el objeto completo
         ret["parent"] = str(instance.parent_id) if instance.parent_id else None
+        ret["image"]  = _safe_image_url(instance.image)
         return ret
 
 
 class BrandSerializer(serializers.ModelSerializer):
+    logo = serializers.SerializerMethodField()
+
     class Meta:
         model  = Brand
         fields = ["id", "name", "slug", "logo", "website", "is_active"]
-        extra_kwargs = {
-            "slug": {"required": False, "allow_blank": True},
-        }
+        extra_kwargs = {"slug": {"required": False, "allow_blank": True}}
+
+    def get_logo(self, obj):
+        return _safe_image_url(obj.logo)
 
     def validate(self, data):
         if not data.get("slug"):
@@ -57,33 +69,13 @@ class ProductImageSerializer(serializers.ModelSerializer):
         fields = ["id", "image", "alt_text", "order", "is_primary"]
 
     def get_image(self, obj):
-        if not obj.image:
-            return None
-        request = self.context.get("request")
-        # Si tiene request, construye URL absoluta
-        if request:
-            return request.build_absolute_uri(obj.image.url)
-        # Fallback — URL relativa con /media/ prefix
-        return obj.image.url
+        return _safe_image_url(obj.image)
 
-def build_image_url(image_field, request=None):
-    """
-    Devuelve la URL de la imagen.
-    En desarrollo: relativa (/media/...) — Vite la proxea a backend:8000
-    En producción: relativa — Nginx la sirve directamente
-    NUNCA usar build_absolute_uri porque devuelve el hostname del contenedor Docker.
-    """
-    if not image_field:
-        return None
-    try:
-        return image_field.url  # ← siempre relativa: /media/products/foto.jpg
-    except Exception:
-        return None
 
 class ProductListSerializer(serializers.ModelSerializer):
     primary_image = serializers.SerializerMethodField()
     in_stock      = serializers.BooleanField(read_only=True)
-    brand_name    = serializers.CharField(source="brand.name", read_only=True)
+    brand_name    = serializers.CharField(source="brand.name", read_only=True, allow_null=True)
 
     class Meta:
         model  = Product
@@ -95,22 +87,19 @@ class ProductListSerializer(serializers.ModelSerializer):
         ]
 
     def get_primary_image(self, obj):
-        img = obj.images.filter(is_primary=True).first()
-        if not img:
-            img = obj.images.order_by("order", "id").first()
-        if img and img.image:
-            return img.image.url
-        return None
+        img = obj.images.filter(is_primary=True).first() or \
+              obj.images.order_by("order", "id").first()
+        return _safe_image_url(img.image) if img else None
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
-    category            = CategorySerializer(read_only=True)
-    brand               = BrandSerializer(read_only=True)
-    images              = ProductImageSerializer(many=True, read_only=True)
-    primary_image       = serializers.SerializerMethodField()
-    has_discount        = serializers.BooleanField(read_only=True)
+    category           = CategorySerializer(read_only=True)
+    brand              = BrandSerializer(read_only=True)
+    images             = ProductImageSerializer(many=True, read_only=True)
+    primary_image      = serializers.SerializerMethodField()
+    has_discount       = serializers.BooleanField(read_only=True)
     discount_percentage = serializers.IntegerField(read_only=True)
-    in_stock            = serializers.BooleanField(read_only=True)
+    in_stock           = serializers.BooleanField(read_only=True)
 
     class Meta:
         model  = Product
@@ -126,9 +115,6 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         ]
 
     def get_primary_image(self, obj):
-        img = obj.images.filter(is_primary=True).first()
-        if not img:
-            img = obj.images.order_by("order", "id").first()
-        if img and img.image:
-            return img.image.url
-        return None
+        img = obj.images.filter(is_primary=True).first() or \
+              obj.images.order_by("order", "id").first()
+        return _safe_image_url(img.image) if img else None
