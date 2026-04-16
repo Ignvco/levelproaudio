@@ -1,5 +1,4 @@
 # cloudbuild.yaml — raíz del repo
-# Deploy automático desde GitHub main → Cloud Run
 
 substitutions:
   _REGION:           "us-central1"
@@ -62,13 +61,12 @@ steps:
       - --port=8080
       - --memory=512Mi
       - --cpu=1
-      - --min-instances=0
+      - --min-instances=1
       - --max-instances=5
       - --service-account=${_SA_EMAIL}
-      - --add-cloudsql-instances=${_SQL_INSTANCE}
+      - --set-cloudsql-instances=${_SQL_INSTANCE}
       - --set-env-vars=DJANGO_SETTINGS_MODULE=config.settings.production
       - --set-env-vars=CLOUD_SQL_CONNECTION_NAME=${_SQL_INSTANCE}
-      # Mapear el secret con AMBOS nombres que Django necesita
       - --update-secrets=DJANGO_SECRET_KEY=DJANGO_SECRET_KEY:latest
       - --update-secrets=SECRET_KEY=DJANGO_SECRET_KEY:latest
       - --update-secrets=DB_NAME=DB_NAME:latest
