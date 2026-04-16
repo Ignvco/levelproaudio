@@ -44,7 +44,7 @@ export default function AdminServices() {
   })
   const { data: requestsData, isLoading: loadingReqs } = useQuery({
     queryKey: ["admin-requests"],
-    queryFn:  () => api.get("/admin/requests/").then(r => r.data),
+    queryFn: () => api.get("/admin/service-requests/").then(r => r.data),
   })
 
   const reqMutation = useMutation({
