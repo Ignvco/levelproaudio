@@ -55,7 +55,8 @@ export const useAuthStore = create(
       },
 
       register: async (formData) => {
-        await authAxios.post("/auth/register/", formData)
+      const username = formData.email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "") + Math.floor(Math.random() * 1000)
+      await authAxios.post("/auth/register/", { ...formData, username })
         // Auto-login después del registro
         const { data } = await authAxios.post("/auth/login/", {
           email: formData.email,
