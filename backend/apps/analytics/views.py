@@ -41,16 +41,13 @@ from apps.services.serializers import ServiceDetailSerializer
 # ═══════════════════════════════════════════════════════════
 
 class AdminCategorySerializer(drf_serializers.ModelSerializer):
-    image_url   = drf_serializers.SerializerMethodField()
-    image       = drf_serializers.ImageField(write_only=True, required=False)
-
+    image = drf_serializers.SerializerMethodField()
     class Meta:
         model  = Category
         fields = ["id", "name", "slug", "description",
-                  "parent", "is_active", "order", "image", "image_url"]
+                  "parent", "is_active", "order", "image"]
         extra_kwargs = {"slug": {"required": False, "allow_blank": True}}
-
-    def get_image_url(self, obj):
+    def get_image(self, obj):
         return f"/media/{obj.image.name}" if obj.image and obj.image.name else None
 
 
@@ -87,9 +84,8 @@ class AdminLessonSerializer(drf_serializers.ModelSerializer):
 class CourseAdminSerializer(drf_serializers.ModelSerializer):
     enrollment_count = drf_serializers.SerializerMethodField()
     total_lessons    = drf_serializers.SerializerMethodField()
-    thumbnail     = drf_serializers.ImageField(write_only=True, required=False)
-    thumbnail_url = drf_serializers.SerializerMethodField()
-    
+    thumbnail_url    = drf_serializers.SerializerMethodField()
+
     class Meta:
         model  = Course
         fields = [

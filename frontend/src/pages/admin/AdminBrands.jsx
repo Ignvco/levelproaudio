@@ -89,7 +89,7 @@ function BrandModal({ brand, onClose, onSave }) {
             </button>
             {brand?.logo && !logo && (
               <div style={{ marginTop: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
-                <img src={mediaUrl(brand.logo_url)} alt={brand.name}
+                <img src={mediaUrl(brand.logo)} alt={brand.name}
                   style={{ height: "28px", objectFit: "contain",
                     filter: "brightness(0) invert(1)", opacity: 0.6 }} />
                 <span style={{ fontSize: "11px", color: "var(--text-3)" }}>Logo actual</span>
@@ -175,7 +175,7 @@ export default function AdminBrands() {
               <div style={{ height: "40px", display: "flex",
                 alignItems: "center", justifyContent: "center" }}>
                 {brand.logo ? (
-                  <img src={mediaUrl(brand.logo_url)} alt={brand.name}
+                  <img src={mediaUrl(brand.logo)} alt={brand.name}
                     style={{ maxHeight: "36px", maxWidth: "140px",
                       objectFit: "contain", filter: "brightness(0) invert(0.7)" }} />
                 ) : (
