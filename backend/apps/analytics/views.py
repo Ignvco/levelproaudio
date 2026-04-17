@@ -41,22 +41,24 @@ from apps.services.serializers import ServiceDetailSerializer
 # ═══════════════════════════════════════════════════════════
 
 class AdminCategorySerializer(drf_serializers.ModelSerializer):
+    image = drf_serializers.SerializerMethodField()
     class Meta:
         model  = Category
         fields = ["id", "name", "slug", "description",
                   "parent", "is_active", "order", "image"]
-        extra_kwargs = {
-            "slug": {"required": False, "allow_blank": True},
-        }
+        extra_kwargs = {"slug": {"required": False, "allow_blank": True}}
+    def get_image(self, obj):
+        return f"/media/{obj.image.name}" if obj.image and obj.image.name else None
 
 
 class AdminBrandSerializer(drf_serializers.ModelSerializer):
+    logo = drf_serializers.SerializerMethodField()
     class Meta:
         model  = Brand
         fields = ["id", "name", "slug", "website", "is_active", "logo"]
-        extra_kwargs = {
-            "slug": {"required": False, "allow_blank": True},
-        }
+        extra_kwargs = {"slug": {"required": False, "allow_blank": True}}
+    def get_logo(self, obj):
+        return f"/media/{obj.logo.name}" if obj.logo and obj.logo.name else None
 
 
 class AdminModuleSerializer(drf_serializers.ModelSerializer):
@@ -94,10 +96,7 @@ class CourseAdminSerializer(drf_serializers.ModelSerializer):
         }
 
     def get_thumbnail_url(self, obj):
-        # Path relativo — proxy Vite lo resuelve en dev
-        if obj.thumbnail:
-            return obj.thumbnail.url
-        return None
+        return f"/media/{obj.thumbnail.name}" if obj.thumbnail and obj.thumbnail.name else None
 
     def get_enrollment_count(self, obj):
         return getattr(obj, "enrollment_count", obj.enrollments.count())
@@ -737,7 +736,7 @@ def admin_academy(request):
             "level":            c.level,
             "enrollment_count": c.enrollment_count,
             "total_lessons":    c.lessons_count,  # ← usa anotación, no property
-            "thumbnail":        c.thumbnail.url if c.thumbnail else None,
+            "thumbnail":        f"/media/{c.thumbnail.name}" if c.thumbnail and c.thumbnail.name else None,
         } for c in courses]
     })
 
@@ -792,7 +791,7 @@ def admin_services_crud(request):
                 "price_type":       s.price_type,
                 "is_active":        s.is_active,
                 "is_featured":      s.is_featured,
-                "thumbnail":        s.thumbnail.url if s.thumbnail else None,
+                "thumbnail":        f"/media/{s.thumbnail.name}" if s.thumbnail and s.thumbnail.name else None,
             } for s in services]
         })
 
