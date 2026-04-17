@@ -58,7 +58,7 @@ class MediaProxyView(View):
         try:
             client = gcs_storage.Client()  # Usa ADC — Compute Engine credentials automáticamente
             bucket = client.bucket(settings.GS_BUCKET_NAME)
-            blob   = bucket.blob(f"media/{path}")
+            blob   = bucket.blob(path)
 
             if not blob.exists():
                 raise Http404(f"File not found in GCS: media/{path}")
