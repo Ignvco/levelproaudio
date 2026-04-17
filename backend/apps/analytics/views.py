@@ -41,23 +41,29 @@ from apps.services.serializers import ServiceDetailSerializer
 # ═══════════════════════════════════════════════════════════
 
 class AdminCategorySerializer(drf_serializers.ModelSerializer):
-    image = drf_serializers.SerializerMethodField()
+    image_url   = drf_serializers.SerializerMethodField()
+    image       = drf_serializers.ImageField(write_only=True, required=False)
+
     class Meta:
         model  = Category
         fields = ["id", "name", "slug", "description",
-                  "parent", "is_active", "order", "image"]
+                  "parent", "is_active", "order", "image", "image_url"]
         extra_kwargs = {"slug": {"required": False, "allow_blank": True}}
-    def get_image(self, obj):
+
+    def get_image_url(self, obj):
         return f"/media/{obj.image.name}" if obj.image and obj.image.name else None
 
 
 class AdminBrandSerializer(drf_serializers.ModelSerializer):
-    logo = drf_serializers.SerializerMethodField()
+    logo_url    = drf_serializers.SerializerMethodField()
+    logo        = drf_serializers.ImageField(write_only=True, required=False)
+
     class Meta:
         model  = Brand
-        fields = ["id", "name", "slug", "website", "is_active", "logo"]
+        fields = ["id", "name", "slug", "website", "is_active", "logo", "logo_url"]
         extra_kwargs = {"slug": {"required": False, "allow_blank": True}}
-    def get_logo(self, obj):
+
+    def get_logo_url(self, obj):
         return f"/media/{obj.logo.name}" if obj.logo and obj.logo.name else None
 
 
@@ -81,8 +87,9 @@ class AdminLessonSerializer(drf_serializers.ModelSerializer):
 class CourseAdminSerializer(drf_serializers.ModelSerializer):
     enrollment_count = drf_serializers.SerializerMethodField()
     total_lessons    = drf_serializers.SerializerMethodField()
-    thumbnail_url    = drf_serializers.SerializerMethodField()
-
+    thumbnail     = drf_serializers.ImageField(write_only=True, required=False)
+    thumbnail_url = drf_serializers.SerializerMethodField()
+    
     class Meta:
         model  = Course
         fields = [
