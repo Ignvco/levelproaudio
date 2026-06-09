@@ -103,7 +103,8 @@ export const createAdminEnrollment   = (data) =>
   api.post(`${BASE}/academy/enrollments/create/`, data).then(r => r.data)
 
 // ── Services ─────────────────────────────────────────────────
-export const getAdminServices      = () => api.get(`${BASE}/services/`).then(r => r.data)
+export const getAdminServices      = () => api.get(`${BASE}/services/list/`).then(r => r.data)
+export const getAdminServiceRequests = () => api.get(`${BASE}/service-requests/`).then(r => r.data)
 export const updateBookingStatus   = (id, status) =>
   api.patch(`${BASE}/bookings/${id}/status/`, { status }).then(r => r.data)
 export const updateRequestStatus   = (id, data) =>

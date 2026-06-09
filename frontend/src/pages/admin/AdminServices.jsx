@@ -2,9 +2,9 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
-  getAdminServices, updateRequestStatus, updateBookingStatus,
+  getAdminServices, getAdminServiceRequests,
+  updateRequestStatus, updateBookingStatus,
 } from "../../api/admin.api"
-import api from "../../api/client"
 
 const inputSt = {
   width: "100%", padding: "10px 14px",
@@ -43,8 +43,7 @@ export default function AdminServices() {
     queryKey: ["admin-services"], queryFn: getAdminServices,
   })
   const { data: requestsData, isLoading: loadingReqs } = useQuery({
-    queryKey: ["admin-requests"],
-    queryFn: () => api.get("/admin/service-requests/").then(r => r.data),
+    queryKey: ["admin-requests"], queryFn: getAdminServiceRequests,
   })
 
   const reqMutation = useMutation({

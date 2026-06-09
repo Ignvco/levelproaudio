@@ -85,6 +85,7 @@ class CourseAdminSerializer(drf_serializers.ModelSerializer):
     enrollment_count = drf_serializers.SerializerMethodField()
     total_lessons    = drf_serializers.SerializerMethodField()
     thumbnail_url    = drf_serializers.SerializerMethodField()
+    thumbnail        = drf_serializers.ImageField(write_only=True, required=False)
 
     class Meta:
         model  = Course
@@ -345,9 +346,6 @@ class AdminBrandViewSet(viewsets.ModelViewSet):
     queryset           = Brand.objects.all().order_by("name")
     filter_backends    = [filters.SearchFilter]
     search_fields      = ["name"]
-    
-    def get_serializer_class(self):
-        return BrandSerializer
 
     def perform_create(self, serializer):
         serializer.save()
@@ -776,6 +774,31 @@ def admin_services(request):
         } for r in requests_qs],
     })
 
+
+@api_view(["GET"])
+@permission_classes([IsAdminOrStaff])
+def admin_service_requests(request):
+    """GET /api/v1/admin/service-requests/ → lista paginada de solicitudes."""
+    qs = ServiceRequest.objects.select_related(
+        "user", "service"
+    ).order_by("-created_at")
+    return Response({
+        "results": [{
+            "id":           str(r.id),
+            "name":         r.name or (r.user.get_full_name() if r.user else ""),
+            "email":        r.email or (r.user.email if r.user else ""),
+            "phone":        r.phone,
+            "service_name": r.service.name if r.service else "General",
+            "service_id":   str(r.service.id) if r.service else None,
+            "message":      r.message,
+            "budget":       float(r.budget) if r.budget else None,
+            "preferred_date": r.preferred_date.isoformat() if r.preferred_date else None,
+            "status":       r.status,
+            "admin_notes":  r.admin_notes,
+            "created_at":   r.created_at.isoformat(),
+        } for r in qs]
+    })
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAdminOrStaff])
 def admin_services_crud(request):
@@ -790,6 +813,7 @@ def admin_services_crud(request):
                 "name":             s.name,
                 "slug":             s.slug,
                 "category_name":    s.category.name if s.category else "—",
+                "short_description": s.short_description,
                 "price_display":    s.price_display,
                 "price_type":       s.price_type,
                 "is_active":        s.is_active,

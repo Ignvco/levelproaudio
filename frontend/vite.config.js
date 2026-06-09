@@ -6,14 +6,17 @@ export default defineConfig({
   plugins: [react()],
   server: {
     host: "0.0.0.0",
-    port: 5173,
+    port: 3000,
+    strictPort: true,
+    allowedHosts: true,
+    hmr: { clientPort: 443 },
     proxy: {
       "/api": {
-        target: "http://backend:8000",
+        target: "http://localhost:8001",
         changeOrigin: true,
       },
-      "/media": {                        // ← esto es lo que faltaba
-        target: "http://backend:8000",
+      "/media": {
+        target: "http://localhost:8001",
         changeOrigin: true,
       },
     },

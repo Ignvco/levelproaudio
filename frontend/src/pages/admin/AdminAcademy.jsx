@@ -125,9 +125,9 @@ function CourseModal({ course, onClose, onSave }) {
             <input type="file" accept="image/*"
               onChange={e => setThumbnail(e.target.files?.[0])}
               style={{ ...inputSt, padding: "8px" }} />
-            {course?.thumbnail && !thumbnail && (
+            {course?.thumbnail_url && !thumbnail && (
               <div style={{ marginTop: "8px" }}>
-                <img src={mediaUrl(course.thumbnail)} alt=""
+                <img src={mediaUrl(course.thumbnail_url)} alt=""
                   style={{ height: "60px", borderRadius: "var(--r-md)", objectFit: "cover" }} />
               </div>
             )}
@@ -252,8 +252,8 @@ export default function AdminAcademy() {
                 {/* Thumbnail */}
                 <div style={{ aspectRatio: "16/9", background: "var(--surface-2)",
                   overflow: "hidden", position: "relative" }}>
-                  {course.thumbnail ? (
-                    <img src={mediaUrl(course.thumbnail)} alt={course.title}
+                  {course.thumbnail_url ? (
+                    <img src={mediaUrl(course.thumbnail_url)} alt={course.title}
                       style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                   ) : (
                     <div style={{ width: "100%", height: "100%",

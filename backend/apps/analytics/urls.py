@@ -19,6 +19,7 @@ from .views import (
     admin_services,
     admin_services_crud,
     admin_service_detail,
+    admin_service_requests,
     admin_create_enrollment,
     admin_enrollments,
     admin_user_detail, 
@@ -90,6 +91,7 @@ urlpatterns = [
     path("services/",          admin_services,     name="admin-services"),
     path("services/list/",            admin_services_crud,   name="admin-services-list"),
     path("services/<uuid:service_id>/", admin_service_detail, name="admin-service-detail"),
+    path("service-requests/",  admin_service_requests, name="admin-service-requests"),
     path("bookings/<uuid:pk>/status/",  update_booking_status,   name="admin-booking-status"),
     path("requests/<uuid:pk>/status/",  update_request_status,   name="admin-request-status"),
 
