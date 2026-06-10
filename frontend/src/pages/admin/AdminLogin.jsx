@@ -30,7 +30,6 @@ export default function AdminLogin() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "var(--bg)",
       display: "flex", alignItems: "center", justifyContent: "center",
       padding: "clamp(24px, 5vw, 60px)",
       background: `radial-gradient(ellipse 50% 50% at 50% 30%,

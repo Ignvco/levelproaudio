@@ -142,7 +142,7 @@ export default function AdminServices() {
                     padding: "12px 14px", background: "var(--surface-2)",
                     borderRadius: "var(--r-md)", marginBottom: "14px",
                     border: "1px solid var(--border)" }}>
-                    "{req.message}"
+                    &quot;{req.message}&quot;
                   </p>
                 )}
 

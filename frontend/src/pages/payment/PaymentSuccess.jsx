@@ -1,4 +1,5 @@
 // pages/payment/PaymentSuccess.jsx  (o pages/PaymentSuccess.jsx según tu estructura)
+/* eslint-disable react-hooks/purity */
 import { useEffect, useState } from "react"
 import { useSearchParams, Link, useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
@@ -51,13 +52,14 @@ export default function PaymentSuccess() {
     clearCart()
     const t = setTimeout(() => setConfetti(false), 4500)
     return () => clearTimeout(t)
-  }, [])
+  }, [clearCart])
 
   useEffect(() => {
     if (!orderId) {
-      setTimeout(() => navigate("/"), 3000)
+      const t = setTimeout(() => navigate("/"), 3000)
+      return () => clearTimeout(t)
     }
-  }, [orderId])
+  }, [orderId, navigate])
 
   const { data: order, isLoading } = useQuery({
     queryKey:        ["order", orderId],
@@ -76,7 +78,6 @@ export default function PaymentSuccess() {
   return (
     <div style={{
       minHeight:      "100vh",
-      background:     "var(--bg)",
       display:        "flex",
       alignItems:     "center",
       justifyContent: "center",

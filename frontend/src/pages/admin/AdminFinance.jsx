@@ -715,7 +715,7 @@ export default function AdminFinance() {
             {categories.length===0 ? (
               <div style={{ padding:"48px", textAlign:"center",
                 color:"var(--text-3)", fontSize:"14px" }}>
-                Sin categorías. Creá la primera con el botón "+ Nueva categoría".
+                Sin categorías. Creá la primera con el botón &quot;+ Nueva categoría&quot;.
               </div>
             ) : categories.map((cat,i) => (
               <div key={cat.id} style={{ display:"grid",

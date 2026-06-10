@@ -42,7 +42,8 @@ def normalize_header(h: str) -> str:
 
 
 def parse_bool(val) -> bool:
-    if isinstance(val, bool): return val
+    if isinstance(val, bool):
+        return val
     return str(val).strip().lower() in ("si", "sí", "true", "1", "yes", "x")
 
 

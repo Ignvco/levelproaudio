@@ -117,7 +117,7 @@ export default function AdminBilling() {
               Sin documentos emitidos
             </h3>
             <p style={{ fontSize:"14px", color:"var(--text-3)", marginBottom:"20px" }}>
-              Ve a "Generar" para emitir boletas o facturas.
+              Ve a &quot;Generar&quot; para emitir boletas o facturas.
             </p>
             <button onClick={() => setTab(1)} className="btn btn-accent">
               Generar primer documento →

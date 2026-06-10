@@ -154,7 +154,7 @@ function OrderPanel({ order, onClose }) {
               Productos ({order.items_count})
             </p>
             {order.items?.map((item, i) => (
-              <div key={i} style={{ display:"flex", justifyContent:"space-between",
+              <div key={item.id || `item-${i}`} style={{ display:"flex", justifyContent:"space-between",
                 alignItems:"center", padding:"11px 16px",
                 borderBottom: i < order.items.length - 1 ? "1px solid var(--border)" : "none" }}>
                 <div style={{ minWidth:0, flex:1 }}>
@@ -191,7 +191,7 @@ function OrderPanel({ order, onClose }) {
                 Pagos
               </p>
               {order.payments.map((p, i) => (
-                <div key={i} style={{ display:"flex", justifyContent:"space-between",
+                <div key={p.id || `pay-${i}`} style={{ display:"flex", justifyContent:"space-between",
                   alignItems:"center", padding:"11px 16px",
                   borderBottom: i < order.payments.length - 1 ? "1px solid var(--border)" : "none" }}>
                   <div>

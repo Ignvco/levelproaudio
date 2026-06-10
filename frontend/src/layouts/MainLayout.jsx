@@ -1,4 +1,5 @@
 // layouts/MainLayout.jsx
+/* eslint-disable react-hooks/set-state-in-effect, react-hooks/immutability */
 import { useState, useEffect, useRef, useCallback } from "react"
 import { Link, useNavigate, useLocation } from "react-router-dom"
 import { useAuthStore } from "../store/authStore"

@@ -1,5 +1,9 @@
-# local.py — Settings para correr el proyecto dentro del contenedor Emergent
+# local.py — Settings para correr el proyecto dentro del contenedor Emergent.
 # Usa SQLite y media local (sin GCS) para iteración rápida sobre los fixes.
+#
+# El wildcard import desde base.py es la convención oficial de Django para
+# environment-specific settings: https://docs.djangoproject.com/en/5.0/topics/settings/
+# Por eso usamos noqa para silenciar la regla genérica del linter.
 
 from .base import *  # noqa: F401, F403
 
@@ -11,7 +15,7 @@ ALLOWED_HOSTS = ["*"]
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
-        "NAME":   BASE_DIR / "db.sqlite3",
+        "NAME":   BASE_DIR / "db.sqlite3",  # noqa: F405 — viene de base.py
     }
 }
 
@@ -21,10 +25,9 @@ CORS_ALLOW_CREDENTIALS = True
 
 # Media local
 MEDIA_URL  = "/media/"
-MEDIA_ROOT = BASE_DIR / "media"
+MEDIA_ROOT = BASE_DIR / "media"  # noqa: F405
 
 # WhiteNoise para servir static del admin Django sin colectar
-INSTALLED_APPS  # noqa: F405
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",

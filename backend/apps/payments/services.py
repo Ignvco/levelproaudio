@@ -215,7 +215,7 @@ def create_paypal_order(order: Order) -> dict:
         raise ValueError(f"Error PayPal: {paypal_payment.error}")
 
     approve_url = next(
-        (l["href"] for l in paypal_payment.links if l["rel"] == "approval_url"),
+        (link["href"] for link in paypal_payment.links if link["rel"] == "approval_url"),
         None
     )
 

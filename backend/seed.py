@@ -1,6 +1,10 @@
 """
 Seed básico para iterar en local: superuser + categorías, marcas, productos,
 cursos, módulos, lecciones, servicios y solicitudes.
+
+Las credenciales se leen de variables de entorno — nunca hardcoded:
+    SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD,
+    SEED_CLIENT_EMAIL, SEED_CLIENT_PASSWORD
 """
 import os
 import django
@@ -16,17 +20,24 @@ from apps.services.models   import ServiceCategory, Service, ServiceRequest
 User = get_user_model()
 
 # ── Superuser ────────────────────────────────────────────────
-admin_email = "ventas@levelproaudio.com"
-admin_pass  = "[REDACTED]"
+# Credenciales SIEMPRE desde env vars — nunca hardcodear.
+admin_email = os.environ.get("SEED_ADMIN_EMAIL")
+admin_pass  = os.environ.get("SEED_ADMIN_PASSWORD")
+if not admin_email or not admin_pass:
+    raise SystemExit(
+        "SEED_ADMIN_EMAIL y SEED_ADMIN_PASSWORD son requeridos. "
+        "Definílos en /app/backend/.env o exportálos antes de correr seed.py."
+    )
+
 if not User.objects.filter(email=admin_email).exists():
     User.objects.create_superuser(
         email=admin_email,
-        username="ventas",
+        username=admin_email.split("@")[0],
         password=admin_pass,
         first_name="LevelPro",
         last_name="Admin",
     )
-    print(f"✓ Superuser creado: {admin_email} / {admin_pass}")
+    print(f"✓ Superuser creado: {admin_email}")
 else:
     u = User.objects.get(email=admin_email)
     u.set_password(admin_pass)
@@ -36,15 +47,17 @@ else:
     print(f"✓ Superuser actualizado: {admin_email}")
 
 # ── Cliente de prueba ────────────────────────────────────────
-if not User.objects.filter(email="cliente@test.com").exists():
+client_email = os.environ.get("SEED_CLIENT_EMAIL")
+client_pass  = os.environ.get("SEED_CLIENT_PASSWORD")
+if client_email and client_pass and not User.objects.filter(email=client_email).exists():
     User.objects.create_user(
-        email="cliente@test.com",
-        username="cliente",
-        password="[REDACTED]",
+        email=client_email,
+        username=client_email.split("@")[0],
+        password=client_pass,
         first_name="Juan",
         last_name="Pérez",
     )
-    print("✓ Cliente de prueba creado")
+    print(f"✓ Cliente de prueba creado: {client_email}")
 
 # ── Categorías ───────────────────────────────────────────────
 cats = [
@@ -146,15 +159,19 @@ for name, slug, cat, price, ptype, desc in services_data:
     )
 
 # ── Solicitudes demo ─────────────────────────────────────────
-cliente = User.objects.get(email="cliente@test.com")
-servicio_mezcla = Service.objects.get(slug="mezcla-pro")
-ServiceRequest.objects.get_or_create(
-    user=cliente, service=servicio_mezcla,
-    defaults={
-        "name": "Juan Pérez", "email": "cliente@test.com", "phone": "+56912345678",
-        "message": "Necesito mezcla para 3 tracks indie. ¿Cuánto demora?",
-        "status": "pending",
-    },
-)
+if client_email:
+    try:
+        cliente = User.objects.get(email=client_email)
+        servicio_mezcla = Service.objects.get(slug="mezcla-pro")
+        ServiceRequest.objects.get_or_create(
+            user=cliente, service=servicio_mezcla,
+            defaults={
+                "name": "Juan Pérez", "email": client_email, "phone": "+56912345678",
+                "message": "Necesito mezcla para 3 tracks indie. ¿Cuánto demora?",
+                "status": "pending",
+            },
+        )
+    except (User.DoesNotExist, Service.DoesNotExist):
+        pass
 
 print("✓ Seed completo")

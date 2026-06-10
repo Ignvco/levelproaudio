@@ -288,7 +288,7 @@ export default function OrderDetail() {
             <p style={{ fontSize: "13px", fontWeight: 500 }}>Productos</p>
           </div>
           {order.items?.map((item, i) => (
-            <div key={i} style={{ display: "flex", justifyContent: "space-between",
+            <div key={item.id || `${item.product_name}-${i}`} style={{ display: "flex", justifyContent: "space-between",
               alignItems: "center", padding: "16px 24px",
               borderBottom: i < order.items.length - 1
                 ? "1px solid var(--border)" : "none" }}>

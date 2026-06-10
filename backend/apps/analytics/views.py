@@ -957,7 +957,6 @@ def admin_enrollments(request):
 def analytics_full(request):
     now      = timezone.now()
     last_12m = now - timedelta(days=365)
-    last_30  = now - timedelta(days=30)
 
     paid_orders = Order.objects.filter(
         status__in=["paid", "shipped", "completed"]

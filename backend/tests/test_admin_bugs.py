@@ -22,8 +22,14 @@ from PIL import Image
 # Vite frontend proxies to in this environment.
 BASE_URL = "http://localhost:8001/api/v1"
 
-ADMIN_EMAIL = "ventas@levelproaudio.com"
-ADMIN_PASSWORD = "[REDACTED]"
+ADMIN_EMAIL = os.environ.get("TEST_ADMIN_EMAIL") or os.environ.get("SEED_ADMIN_EMAIL")
+ADMIN_PASSWORD = os.environ.get("TEST_ADMIN_PASSWORD") or os.environ.get("SEED_ADMIN_PASSWORD")
+
+if not ADMIN_EMAIL or not ADMIN_PASSWORD:
+    pytest.skip(
+        "TEST_ADMIN_EMAIL / TEST_ADMIN_PASSWORD (o SEED_*) requeridos para tests admin.",
+        allow_module_level=True,
+    )
 
 
 # ---------- Fixtures ----------

@@ -247,12 +247,12 @@ function DraggableRow({ cat, isChild, onEdit, onDelete,
 }
 
 // ── Lista draggable de hijos ──────────────────────────────────
-function ChildrenList({ children, parentId, onEdit, onDelete, onChildReorder }) {
-  const [localChildren, setLocalChildren] = useState(children)
+function ChildrenList({ items, parentId, onEdit, onDelete, onChildReorder }) {
+  const [localChildren, setLocalChildren] = useState(items)
   const [draggingIdx, setDraggingIdx]     = useState(null)
 
   // Sync si cambian desde afuera
-  useState(() => { setLocalChildren(children) }, [children])
+  useState(() => { setLocalChildren(items) }, [items])
 
   const { onDragStart, onDragOver, onDrop, onDragEnd } = useDragSort({
     items: localChildren,
@@ -441,7 +441,7 @@ export default function AdminCategories() {
                 />
                 {children.length > 0 && (
                   <ChildrenList
-                    children={children}
+                    items={children}
                     parentId={cat.id}
                     onEdit={() => setModal(cat)}
                     onDelete={handleDelete}

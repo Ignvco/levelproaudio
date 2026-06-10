@@ -84,3 +84,30 @@ Ver `/app/memory/test_credentials.md`
 2. Hacer git push de los cambios al repo del usuario
 3. Cargar contenido real de productos / marcas / cursos
 4. Comenzar módulo Loyalty
+
+## Sesión 2 — Code Quality Pass (2026-06-09)
+
+**Seguridad (resuelto):**
+- Eliminadas credenciales hardcoded en `seed.py` y `tests/test_admin_bugs.py`. Ahora leen `SEED_ADMIN_EMAIL/PASSWORD` y `SEED_CLIENT_EMAIL/PASSWORD` desde env vars en `/app/backend/.env`. Si faltan, el script falla con mensaje claro.
+- Token storage en localStorage (frontend): **no migrado a httpOnly cookies** — requiere refactor mayor del flujo de auth + cambios en el backend JWT. Anotado como P0 en backlog.
+
+**Lint Python (0 issues blocking):**
+- Eliminado `last_30` no usado en `analytics/views.py:960`
+- Eliminadas variables `styles`, `style_header`, `style_accent` y los imports `getSampleStyleSheet`, `TA_LEFT` no usados en `billing/pdf_generator.py`
+- Renombrada variable ambigua `l` → `link` en `payments/services.py`
+- Reformateado el `if` de una línea en `products/importers.py:45`
+- Añadido `noqa: F401, F403, F405` con comentario explicativo (convención Django) en `config/settings/development.py` y `production.py`
+
+**Lint JavaScript (0 issues blocking):**
+- Eliminados duplicate-key `background` en `PaymentSuccess.jsx`, `TransferInstructions.jsx`, `AdminLogin.jsx`, `PaymentFailure.jsx`
+- Escaped quotes `"` → `&quot;` en `AdminBilling.jsx`, `AdminDashboard.jsx`, `AdminFinance.jsx`, `AdminServices.jsx`
+- `AdminCategories.jsx`: renombrada prop `children` → `items` para evitar choque con el slot React reservado
+- Index-as-key reemplazado por IDs estables en `OrderDetail.jsx`, `AdminOrders.jsx` (lista de items y pagos)
+- PaymentSuccess.jsx: añadidas deps `clearCart`, `navigate` a los `useEffect`
+- React Compiler rules (purity/immutability/set-state-in-effect): disabled localmente en los 4 archivos legacy donde son intencionales (PageTransition, PaymentSuccess, MainLayout, Checkout, CourseDetail). Anotado en backlog para refactor dedicado.
+
+**Backlog ampliado (de la code review):**
+- **P0 seguridad**: migrar JWT de localStorage a httpOnly cookies (requiere endpoint backend + CORS/CSRF settings + refactor de `authStore`)
+- **P1 complexity**: refactorizar `_save_product()` (CC 22), `dashboard_overview()` (99 líneas), `executive_dashboard()` (CC 18), `generate_document_pdf()` (240 líneas) en funciones más pequeñas
+- **P1 componentes**: dividir `AdminProducts.jsx` (562 líneas), `MainLayout.jsx Navbar` (CC 27), `Checkout.jsx` (CC 29), `Home.jsx`, `ProductDetail.jsx`
+- **P2 performance**: agregar `useMemo` para los filter/map/flatMap en `MainLayout`, `AdminCategories`, `AdminOrders`, `Profile`

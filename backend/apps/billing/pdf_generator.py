@@ -1,14 +1,14 @@
 # apps/billing/pdf_generator.py
 
 from reportlab.lib.pagesizes import A4
-from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import cm
 from reportlab.lib import colors
 from reportlab.platypus import (
     SimpleDocTemplate, Table, TableStyle, Paragraph,
     Spacer, HRFlowable
 )
-from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from io import BytesIO
 from django.utils import timezone
 
@@ -44,7 +44,6 @@ def generate_document_pdf(document) -> bytes:
     order   = document.order
     items   = order.items.all()
 
-    styles  = getSampleStyleSheet()
     story   = []
 
     # ── Estilo custom ─────────────────────────────────────────
@@ -63,14 +62,6 @@ def generate_document_pdf(document) -> bytes:
     style_title = ParagraphStyle(
         "Title", fontSize=20, leading=24,
         textColor=COLOR_DARK, fontName="Helvetica-Bold"
-    )
-    style_header = ParagraphStyle(
-        "Header", fontSize=11, leading=16,
-        textColor=COLOR_DARK, fontName="Helvetica-Bold"
-    )
-    style_accent = ParagraphStyle(
-        "Accent", fontSize=10, leading=14,
-        textColor=colors.HexColor("#059669"), fontName="Helvetica-Bold"
     )
 
     # ── HEADER ────────────────────────────────────────────────

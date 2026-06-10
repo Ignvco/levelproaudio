@@ -1,8 +1,13 @@
 # backend/config/settings/production.py
-from .base import *
+#
+# El wildcard import desde base.py es la convención oficial de Django para
+# environment-specific settings (https://docs.djangoproject.com/en/5.0/topics/settings/),
+# por eso usamos noqa para silenciar la regla genérica del linter.
+
+from .base import *  # noqa: F401, F403
 import environ
 import os
-from datetime import timedelta
+from datetime import timedelta  # noqa: F401 — usado por otros settings que extiendan este
 
 env = environ.Env()
 
@@ -48,7 +53,7 @@ DATABASES = {
 
 # ── Archivos estáticos — WhiteNoise ───────────────────────────
 STATIC_URL  = "/static/"
-STATIC_ROOT = BASE_DIR / "staticfiles"
+STATIC_ROOT = BASE_DIR / "staticfiles"  # noqa: F405 — definida en base.py
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # ── Google Cloud Storage — media ──────────────────────────────

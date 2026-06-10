@@ -157,7 +157,7 @@ export default function AdminDashboard() {
                 Producto del Hero (Home)
               </p>
               <p style={{ fontSize:"12px", color:"var(--text-3)" }}>
-                El primer producto con "Destacado = Sí" e imagen aparece en el hero del sitio.
+                El primer producto con &quot;Destacado = Sí&quot; e imagen aparece en el hero del sitio.
               </p>
             </div>
             <Link to="/admin/products" className="btn btn-ghost"

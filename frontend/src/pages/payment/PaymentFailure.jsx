@@ -8,7 +8,6 @@ export default function PaymentFailure() {
   return (
     <div style={{
       minHeight:      "100vh",
-      background:     "var(--bg)",
       display:        "flex",
       alignItems:     "center",
       justifyContent: "center",
