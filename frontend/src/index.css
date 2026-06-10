@@ -1,39 +1,42 @@
 /* ═══════════════════════════════════════════════════════════
-   LEVELPRO AUDIO — Design System v2
-   Inspirado en Jitter · Dark Luxury · #1aff6e accent
+   LEVELPRO AUDIO — Design System v3 (Folioblox-inspired)
+   Dark theme · Neon green #1aff6e · Bold display typography
    ═══════════════════════════════════════════════════════════ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,700;1,9..144,300;1,9..144,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700;12..96,800;12..96,900&family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 /* ── Variables ─────────────────────────────────────────────── */
 :root {
   /* Colores base */
-  --bg:           #080808;
+  --bg:           #0a0a0a;
   --bg-2:         #0d0d0d;
   --surface:      #111111;
   --surface-2:    #161616;
   --surface-3:    #1c1c1c;
-  --border:       rgba(255,255,255,0.07);
+  --border:       rgba(255,255,255,0.06);
   --border-hover: rgba(255,255,255,0.14);
 
-  /* Acento — tu verde eléctrico */
+  /* Acento — verde eléctrico LevelPro */
   --accent:       #1aff6e;
+  --accent-hover: #00e653;
   --accent-dim:   rgba(26,255,110,0.12);
   --accent-glow:  rgba(26,255,110,0.25);
 
   /* Texto */
-  --text:         #f0f0f0;
-  --text-2:       #888888;
-  --text-3:       #444444;
+  --text:         #f5f5f5;
+  --text-2:       #a1a1aa;
+  --text-3:       #6b6b6b;
 
   /* Semánticos */
   --danger:       #ff4d4d;
   --warning:      #ffb340;
   --success:      #1aff6e;
 
-  /* Tipografía */
+  /* Tipografía — Folioblox style */
   --font-sans:    'Inter', system-ui, sans-serif;
-  --font-serif:   'Fraunces', Georgia, serif;
+  --font-display: 'Bricolage Grotesque', sans-serif;
+  /* alias legacy: las páginas existentes usan var(--font-serif) — ahora apunta al display bold */
+  --font-serif:   'Bricolage Grotesque', sans-serif;
 
   /* Espaciado */
   --container:    1280px;
@@ -76,48 +79,45 @@ body {
   overflow-x: hidden;
 }
 
-a {
-  color: inherit;
-  text-decoration: none;
-}
+a { color: inherit; text-decoration: none; }
+img, video { display: block; max-width: 100%; }
+button { font-family: inherit; cursor: pointer; }
+input, textarea, select { font-family: inherit; font-size: inherit; }
 
-img, video {
-  display: block;
-  max-width: 100%;
-}
-
-button {
-  font-family: inherit;
-  cursor: pointer;
-}
-
-input, textarea, select {
-  font-family: inherit;
-  font-size: inherit;
-}
-
-/* ── Tipografía ────────────────────────────────────────────── */
+/* ── Tipografía display — bold sans-serif ────────────────── */
 h1, h2, h3, h4, h5, h6 {
-  font-family: var(--font-serif);
-  font-weight: 400;
-  line-height: 1.1;
-  letter-spacing: -0.02em;
+  font-family: var(--font-display);
+  font-weight: 800;          /* bold display, no más weight:300 */
+  line-height: 0.95;
+  letter-spacing: -0.035em;
 }
+
+/* Las páginas existentes usan inline-style con fontWeight:300 — lo
+   sobreescribimos por especificidad sólo para headings con la clase display */
+.display-bold {
+  font-family: var(--font-display) !important;
+  font-weight: 900 !important;
+  letter-spacing: -0.045em !important;
+  line-height: 0.9 !important;
+}
+
+/* Cuando un heading inline usa <em>, lo neutralizamos al estilo display */
+h1 em, h2 em, h3 em {
+  font-style: normal;
+  font-family: inherit;
+  font-weight: inherit;
+}
+
+/* Globalmente neutralizamos italics (el rediseño es 100% sans-serif bold) */
+em, i { font-style: normal !important; }
 
 /* ── Scrollbar ─────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb {
-  background: var(--surface-3);
-  border-radius: 3px;
-}
+::-webkit-scrollbar-thumb { background: var(--surface-3); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-hover); }
 
-/* ── Selección ─────────────────────────────────────────────── */
-::selection {
-  background: var(--accent-dim);
-  color: var(--accent);
-}
+::selection { background: var(--accent-dim); color: var(--accent); }
 
 /* ── Contenedor ────────────────────────────────────────────── */
 .container {
@@ -127,10 +127,10 @@ h1, h2, h3, h4, h5, h6 {
   padding: 0 clamp(20px, 5vw, 60px);
 }
 
-/* ── Input base ────────────────────────────────────────────── */
+/* ── Inputs ────────────────────────────────────────────────── */
 .input {
   width: 100%;
-  padding: 12px 16px;
+  padding: 14px 18px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
@@ -141,29 +141,22 @@ h1, h2, h3, h4, h5, h6 {
   transition: border-color var(--dur) var(--ease),
               box-shadow var(--dur) var(--ease);
 }
-
 .input:focus {
-  border-color: rgba(26,255,110,0.4);
-  box-shadow: 0 0 0 3px rgba(26,255,110,0.08);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(26,255,110,0.12);
 }
-
-.input.error {
-  border-color: rgba(255,77,77,0.5);
-}
-
-.input::placeholder {
-  color: var(--text-3);
-}
+.input.error { border-color: rgba(255,77,77,0.5); }
+.input::placeholder { color: var(--text-3); }
 
 /* ── Botones ────────────────────────────────────────────────── */
 .btn {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 22px;
+  gap: 10px;
+  padding: 13px 22px;
   border-radius: var(--r-full);
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   font-family: var(--font-sans);
   border: none;
   cursor: pointer;
@@ -172,19 +165,44 @@ h1, h2, h3, h4, h5, h6 {
   letter-spacing: -0.01em;
 }
 
+/* Primary white pill + green arrow circle (estilo Folioblox) */
 .btn-accent {
+  background: #ffffff;
+  color: #0a0a0a;
+  padding-right: 6px;
+}
+.btn-accent::after {
+  content: "→";
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #0a0a0a;
+  font-size: 14px;
+  font-weight: 700;
+  margin-left: 4px;
+  transition: transform var(--dur) var(--ease);
+}
+.btn-accent:hover {
+  background: #f5f5f5;
+  transform: translateY(-1px);
+}
+.btn-accent:hover::after {
+  transform: translateX(2px);
+}
+
+/* Solid green pill — para CTAs secundarios */
+.btn-accent-solid {
   background: var(--accent);
   color: #000;
 }
-
-.btn-accent:hover {
-  background: #3dffa0;
+.btn-accent-solid:hover {
+  background: var(--accent-hover);
   transform: translateY(-1px);
   box-shadow: 0 8px 32px rgba(26,255,110,0.3);
-}
-
-.btn-accent:active {
-  transform: translateY(0);
 }
 
 .btn-ghost {
@@ -192,11 +210,10 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-2);
   border: 1px solid var(--border);
 }
-
 .btn-ghost:hover {
   border-color: var(--border-hover);
   color: var(--text);
-  background: var(--surface-2);
+  background: rgba(255,255,255,0.04);
 }
 
 .btn-dark {
@@ -204,7 +221,6 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text);
   border: 1px solid var(--border);
 }
-
 .btn-dark:hover {
   background: var(--surface-3);
   border-color: var(--border-hover);
@@ -228,89 +244,50 @@ h1, h2, h3, h4, h5, h6 {
   100% { background-position: -200% 0; }
 }
 
-/* ── Animaciones de entrada ─────────────────────────────────── */
+/* ── Animaciones ─────────────────────────────────────────────── */
 @keyframes fadeUp {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes fadeIn {
   from { opacity: 0; }
   to   { opacity: 1; }
 }
-
 @keyframes scaleIn {
-  from {
-    opacity: 0;
-    transform: scale(0.96);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
 }
-
 @keyframes slideRight {
-  from {
-    opacity: 0;
-    transform: translateX(-16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
+  from { opacity: 0; transform: translateX(-16px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
-
 @keyframes slideInRight {
   from { transform: translateX(100%); opacity: 0; }
   to   { transform: translateX(0);    opacity: 1; }
 }
-
 @keyframes glowPulse {
   0%, 100% { box-shadow: 0 0 20px rgba(26,255,110,0.2); }
   50%       { box-shadow: 0 0 40px rgba(26,255,110,0.4); }
 }
-
 @keyframes marquee {
   from { transform: translateX(0); }
   to   { transform: translateX(-50%); }
 }
-
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
   50%       { transform: translateY(-8px); }
 }
-
 @keyframes gradientShift {
   0%   { background-position: 0% 50%; }
   50%  { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
 
-/* Clases de animación */
-.animate-fade-up {
-  animation: fadeUp var(--dur-slow) var(--ease) both;
-}
+.animate-fade-up    { animation: fadeUp var(--dur-slow) var(--ease) both; }
+.animate-fade-in    { animation: fadeIn var(--dur-slow) var(--ease) both; }
+.animate-scale-in   { animation: scaleIn var(--dur-slow) var(--ease) both; }
+.animate-float      { animation: float 4s ease-in-out infinite; }
 
-.animate-fade-in {
-  animation: fadeIn var(--dur-slow) var(--ease) both;
-}
-
-.animate-scale-in {
-  animation: scaleIn var(--dur-slow) var(--ease) both;
-}
-
-.animate-float {
-  animation: float 4s ease-in-out infinite;
-}
-
-/* Delays */
 .delay-100 { animation-delay: 100ms; }
 .delay-200 { animation-delay: 200ms; }
 .delay-300 { animation-delay: 300ms; }
@@ -325,7 +302,6 @@ h1, h2, h3, h4, h5, h6 {
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255,255,255,0.07);
 }
-
 .glass-strong {
   background: rgba(255,255,255,0.06);
   backdrop-filter: blur(40px);
@@ -340,21 +316,26 @@ h1, h2, h3, h4, h5, h6 {
   border-radius: var(--r-xl);
   transition: all var(--dur-slow) var(--ease);
 }
-
 .card:hover {
   border-color: var(--border-hover);
   transform: translateY(-4px);
   box-shadow: 0 20px 60px rgba(0,0,0,0.4);
 }
-
 .card-glow:hover {
   box-shadow:
     0 20px 60px rgba(0,0,0,0.4),
-    0 0 0 1px rgba(26,255,110,0.1),
-    0 0 40px rgba(26,255,110,0.08);
+    0 0 0 1px rgba(26,255,110,0.15),
+    0 0 60px rgba(26,255,110,0.12);
 }
 
-/* ── Gradientes de fondo de sección ─────────────────────────── */
+/* ── Hero gradient (verde neón → negro estilo Folioblox) ────── */
+.hero-gradient {
+  background:
+    radial-gradient(ellipse 70% 60% at 75% 35%, rgba(26,255,110,0.45) 0%, rgba(26,255,110,0.1) 30%, transparent 70%),
+    radial-gradient(ellipse 50% 50% at 25% 65%, rgba(26,255,110,0.18) 0%, transparent 60%),
+    linear-gradient(135deg, #0a0a0a 0%, #0d1f12 50%, #0a0a0a 100%);
+}
+
 .section-gradient-green {
   background: radial-gradient(
     ellipse 80% 50% at 50% -20%,
@@ -375,29 +356,32 @@ h1, h2, h3, h4, h5, h6 {
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 12px;
+  gap: 8px;
+  padding: 6px 14px;
   border-radius: var(--r-full);
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: 0.02em;
 }
-
 .badge-accent {
-  background: var(--accent-dim);
+  background: rgba(0,0,0,0.4);
   color: var(--accent);
-  border: 1px solid var(--accent-glow);
+  border: 1px solid rgba(26,255,110,0.4);
+  backdrop-filter: blur(12px);
+}
+.badge-label {
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--accent);
 }
 
-/* ── Divisor con gradiente ──────────────────────────────────── */
+/* ── Divisor ────────────────────────────────────────────────── */
 .divider {
   height: 1px;
-  background: linear-gradient(
-    90deg,
-    transparent,
-    var(--border),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
   border: none;
 }
 
@@ -407,10 +391,7 @@ h1, h2, h3, h4, h5, h6 {
   width: max-content;
   animation: marquee 30s linear infinite;
 }
-
-.marquee-track:hover {
-  animation-play-state: paused;
-}
+.marquee-track:hover { animation-play-state: paused; }
 
 /* ── Noise texture ──────────────────────────────────────────── */
 .noise::after {
@@ -430,4 +411,9 @@ h1, h2, h3, h4, h5, h6 {
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+/* ── Monochrome image filter ─────────────────────────────────── */
+.mono-img {
+  filter: grayscale(100%) contrast(1.05);
 }

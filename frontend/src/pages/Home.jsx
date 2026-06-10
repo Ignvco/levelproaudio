@@ -1,34 +1,36 @@
-// pages/Home.jsx
+// pages/Home.jsx — Folioblox-inspired redesign
 import { useEffect, useRef, useState } from "react"
-import { Link }                        from "react-router-dom"
-import { useQuery }                    from "@tanstack/react-query"
-import { getProducts, getBrands }      from "../api/products.api"
-import ProductCard                     from "../components/product/ProductCard"
-import { mediaUrl }                    from "../utils/mediaUrl"
+import { Link } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
+import { getProducts, getBrands } from "../api/products.api"
+import ProductCard from "../components/product/ProductCard"
+import { mediaUrl } from "../utils/mediaUrl"
+
+// ── Imagen lifestyle del hero (estilo Folioblox: silueta musical) ─
+const HERO_IMG = "https://images.unsplash.com/photo-1484704849700-f032a568e944?auto=format&fit=crop&w=1200&q=80"
+const GRID_IMGS = [
+  "https://images.unsplash.com/photo-1520523839897-bd0b52f945a0?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1598653222000-6b7b7a552625?auto=format&fit=crop&w=900&q=80",
+  "https://images.unsplash.com/photo-1519682337058-a94d519337bc?auto=format&fit=crop&w=900&q=80",
+]
 
 // ── Número animado ────────────────────────────────────────────
 function AnimatedNumber({ value, suffix = "" }) {
   const [display, setDisplay] = useState(0)
   const ref = useRef(null)
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return
-        let start = 0
-        const end      = parseInt(value)
-        const duration = 1500
-        const step     = end / (duration / 16)
-        const timer    = setInterval(() => {
-          start += step
-          if (start >= end) { setDisplay(end); clearInterval(timer) }
-          else              { setDisplay(Math.floor(start)) }
-        }, 16)
-        observer.disconnect()
-      },
-      { threshold: 0.5 }
-    )
-    if (ref.current) observer.observe(ref.current)
-    return () => observer.disconnect()
+    const obs = new IntersectionObserver(([e]) => {
+      if (!e.isIntersecting) return
+      let s = 0, end = parseInt(value), step = end / (1500 / 16)
+      const t = setInterval(() => {
+        s += step
+        if (s >= end) { setDisplay(end); clearInterval(t) }
+        else { setDisplay(Math.floor(s)) }
+      }, 16)
+      obs.disconnect()
+    }, { threshold: 0.5 })
+    if (ref.current) obs.observe(ref.current)
+    return () => obs.disconnect()
   }, [value])
   return <span ref={ref}>{display.toLocaleString("es-CL")}{suffix}</span>
 }
@@ -38,30 +40,30 @@ function BrandsMarquee({ brands }) {
   if (!brands?.length) return null
   const doubled = [...brands, ...brands]
   return (
-    <div style={{ overflow:"hidden", position:"relative" }}>
-      <div style={{ position:"absolute", left:0, top:0, bottom:0, width:"120px",
-        zIndex:1, background:"linear-gradient(to right, var(--bg-2), transparent)",
-        pointerEvents:"none" }} />
-      <div style={{ position:"absolute", right:0, top:0, bottom:0, width:"120px",
-        zIndex:1, background:"linear-gradient(to left, var(--bg-2), transparent)",
-        pointerEvents:"none" }} />
-      <div className="marquee-track" style={{ gap:"60px", padding:"8px 0" }}>
+    <div style={{ overflow: "hidden", position: "relative" }} data-testid="brands-marquee">
+      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: "140px",
+        zIndex: 1, background: "linear-gradient(to right, var(--bg), transparent)",
+        pointerEvents: "none" }} />
+      <div style={{ position: "absolute", right: 0, top: 0, bottom: 0, width: "140px",
+        zIndex: 1, background: "linear-gradient(to left, var(--bg), transparent)",
+        pointerEvents: "none" }} />
+      <div className="marquee-track" style={{ gap: "80px", padding: "8px 0" }}>
         {doubled.map((brand, i) => (
-          <div key={i} style={{ display:"flex", alignItems:"center", gap:"12px",
-            opacity:0.45, transition:"opacity var(--dur) var(--ease)",
-            flexShrink:0, cursor: brand.website ? "pointer" : "default" }}
-            onMouseEnter={e => e.currentTarget.style.opacity = "0.9"}
-            onMouseLeave={e => e.currentTarget.style.opacity = "0.45"}
-            onClick={() => brand.website && window.open(brand.website, "_blank")}
-          >
-            {brand.logo ? (
-              <img src={mediaUrl(brand.logo)} alt={brand.name}
-                style={{ height:"22px", width:"auto",
-                  filter:"brightness(0) invert(1)", objectFit:"contain" }} />
+          <div key={i} style={{ display: "flex", alignItems: "center", gap: "12px",
+            opacity: 0.6, transition: "opacity var(--dur) var(--ease)",
+            flexShrink: 0, cursor: brand.website ? "pointer" : "default" }}
+            onMouseEnter={e => e.currentTarget.style.opacity = "1"}
+            onMouseLeave={e => e.currentTarget.style.opacity = "0.6"}
+            onClick={() => brand.website && window.open(brand.website, "_blank")}>
+            {brand.logo_url || brand.logo ? (
+              <img src={mediaUrl(brand.logo_url || brand.logo)} alt={brand.name}
+                style={{ height: "26px", width: "auto",
+                  filter: "brightness(0) invert(1)", objectFit: "contain" }} />
             ) : (
-              <span style={{ fontSize:"14px", fontWeight:600,
-                letterSpacing:"0.06em", whiteSpace:"nowrap" }}>
-                {brand.name.toUpperCase()}
+              <span style={{ fontFamily: "var(--font-display)", fontSize: "20px",
+                fontWeight: 700, letterSpacing: "-0.02em", whiteSpace: "nowrap",
+                color: "var(--text)" }}>
+                {brand.name}
               </span>
             )}
           </div>
@@ -71,372 +73,448 @@ function BrandsMarquee({ brands }) {
   )
 }
 
-// ── Mini card de producto flotante ────────────────────────────
-// Usa primary_image (campo plano) con fallback a images[]
-function HeroProductCard({ product, style }) {
-  const raw = product?.primary_image
-    || product?.images?.find(i => i.is_primary)?.image
-    || product?.images?.[0]?.image
-    || null
-  const img = raw ? mediaUrl(raw) : null
-
-  return (
-    <Link to={`/shop/${product.slug}`} style={{
-      display:"block", background:"var(--surface)",
-      border:"1px solid var(--border)", borderRadius:"var(--r-xl)",
-      overflow:"hidden", textDecoration:"none",
-      transition:"all var(--dur-slow) var(--ease)", ...style,
-    }}>
-      <div style={{ aspectRatio:"1", background:"var(--surface-2)", overflow:"hidden" }}>
-        {img ? (
-          <img src={img} alt={product.name}
-            style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-        ) : (
-          <div style={{ width:"100%", height:"100%", display:"flex",
-            alignItems:"center", justifyContent:"center", fontSize:"40px" }}>
-            🎧
-          </div>
-        )}
-      </div>
-      <div style={{ padding:"12px 14px" }}>
-        <p style={{ fontSize:"12px", fontWeight:500, marginBottom:"4px",
-          overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-          {product.name}
-        </p>
-        <p style={{ fontSize:"13px", color:"var(--accent)", fontWeight:600 }}>
-          ${Number(product.price).toLocaleString("es-CL")}
-        </p>
-      </div>
-    </Link>
-  )
-}
-
 // ── Home ──────────────────────────────────────────────────────
 export default function Home() {
   const { data: featuredData } = useQuery({
-    queryKey: ["products", { featured:true }],
-    queryFn:  () => getProducts({ is_featured:true, page_size:8 }),
+    queryKey: ["products", { featured: true }],
+    queryFn:  () => getProducts({ is_featured: true, page_size: 8 }),
   })
   const { data: brandsData } = useQuery({
-    queryKey: ["brands"],
-    queryFn:  getBrands,
-  })
-  const { data: newProductsData } = useQuery({
-    queryKey: ["products", { new:true }],
-    queryFn:  () => getProducts({ page_size:4, ordering:"-created_at" }),
+    queryKey: ["brands"], queryFn: getBrands,
   })
 
-  const featured    = featuredData?.results    || featuredData    || []
-  const brands      = brandsData?.results      || brandsData      || []
-  const newProducts = newProductsData?.results || newProductsData || []
-  const heroProduct = featured[0] || newProducts[0]
-
-  // Imagen del hero — usa primary_image con fallback a images[]
-  const heroRaw = heroProduct?.primary_image
-    || heroProduct?.images?.find(i => i.is_primary)?.image
-    || heroProduct?.images?.[0]?.image
-    || null
-  const heroImg = heroRaw ? mediaUrl(heroRaw) : null
+  const featured = featuredData?.results || featuredData || []
+  const brands   = brandsData?.results   || brandsData   || []
 
   const stats = [
-    { value:"500",  suffix:"+", label:"Productos"    },
-    { value:"50",   suffix:"+", label:"Marcas"       },
-    { value:"2000", suffix:"+", label:"Clientes"     },
-    { value:"99",   suffix:"%", label:"Satisfacción" },
+    { value: "500",  suffix: "+", label: "Productos"    },
+    { value: "50",   suffix: "+", label: "Marcas"       },
+    { value: "2000", suffix: "+", label: "Clientes"     },
+    { value: "99",   suffix: "%", label: "Satisfacción" },
+  ]
+
+  const offerings = [
+    { num: "01", title: "Tienda",    desc: "Equipamiento profesional",     to: "/shop"     },
+    { num: "02", title: "Academia",  desc: "Cursos técnicos en video",     to: "/academy"  },
+    { num: "03", title: "Servicios", desc: "Mezcla, masterización & más",  to: "/services" },
+    { num: "04", title: "Soporte",   desc: "Asesoría técnica especializada", to: "/services" },
+  ]
+
+  const gridCards = [
+    { title: "Equipamiento de estudio", desc: "Micrófonos, interfaces, monitores y procesadores de las mejores marcas del mundo.", to: "/shop", img: GRID_IMGS[0] },
+    { title: "Formación profesional",   desc: "Cursos técnicos en video sobre producción, mezcla, masterización y diseño sonoro.", to: "/academy", img: GRID_IMGS[1] },
+    { title: "Servicios a medida",      desc: "Mezcla, masterización, operación en vivo y asesoría de estudios.", to: "/services", img: GRID_IMGS[2] },
   ]
 
   return (
-    <div style={{ background:"var(--bg)" }}>
+    <div style={{ background: "var(--bg)", padding: "16px clamp(16px, 3vw, 24px)" }} data-testid="home-page">
 
-      {/* ══ HERO ══════════════════════════════════════════════ */}
-      <section style={{ position:"relative", minHeight:"100vh",
-        display:"flex", alignItems:"center", overflow:"hidden",
-        paddingTop:"120px", paddingBottom:"80px" }}>
+      {/* ══════════════════════════════════════════════════════════════════
+          HERO — Card grande con gradiente verde fade a negro (estilo Folioblox)
+          ══════════════════════════════════════════════════════════════════ */}
+      <section
+        data-testid="home-hero"
+        className="hero-gradient"
+        style={{
+          position: "relative",
+          borderRadius: "var(--r-2xl)",
+          overflow: "hidden",
+          marginTop: "0",
+          minHeight: "780px",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        {/* Imagen lifestyle a la derecha (silueta musical) */}
+        <div style={{
+          position: "absolute", top: 0, right: 0, bottom: 0,
+          width: "55%", overflow: "hidden", pointerEvents: "none",
+        }} className="hero-image-wrap">
+          <img src={HERO_IMG} alt="Audio professional"
+            style={{
+              width: "100%", height: "100%", objectFit: "cover",
+              objectPosition: "center 30%",
+              filter: "grayscale(60%) contrast(1.1) brightness(0.65)",
+              mixBlendMode: "screen",
+              opacity: 0.55,
+            }} />
+          <div style={{
+            position: "absolute", inset: 0,
+            background: "linear-gradient(to right, rgba(10,40,20,0.7) 0%, transparent 30%, transparent 100%)",
+          }} />
+        </div>
 
-        {/* Fondo gradiente */}
-        <div style={{ position:"absolute", inset:0, pointerEvents:"none",
-          background:`
-            radial-gradient(ellipse 60% 60% at 70% 50%, rgba(26,255,110,0.06) 0%, transparent 70%),
-            radial-gradient(ellipse 40% 40% at 20% 80%, rgba(26,255,110,0.04) 0%, transparent 60%)
-          ` }} />
+        {/* Contenido del hero */}
+        <div style={{
+          position: "relative", zIndex: 2,
+          padding: "clamp(40px, 6vw, 88px) clamp(28px, 5vw, 80px)",
+          display: "flex", flexDirection: "column",
+          flex: 1, gap: "clamp(40px, 6vw, 80px)",
+        }}>
+          {/* Top: badge */}
+          <div style={{ display: "flex", justifyContent: "space-between",
+            alignItems: "center", flexWrap: "wrap", gap: "16px" }}>
+            <span className="badge badge-accent" data-testid="hero-tagline">
+              <span style={{ width: "6px", height: "6px", borderRadius: "50%",
+                background: "var(--accent)", animation: "glowPulse 2s ease-in-out infinite" }} />
+              Audio profesional · Chile & Argentina
+            </span>
+          </div>
 
-        {/* Grid de puntos */}
-        <div style={{ position:"absolute", inset:0, pointerEvents:"none",
-          backgroundImage:"radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px)",
-          backgroundSize:"48px 48px",
-          maskImage:"radial-gradient(ellipse 80% 80% at 50% 50%, black, transparent)",
-          WebkitMaskImage:"radial-gradient(ellipse 80% 80% at 50% 50%, black, transparent)" }} />
-
-        <div style={{ maxWidth:"var(--container)", margin:"0 auto",
-          padding:"0 clamp(20px, 5vw, 60px)", width:"100%",
-          display:"grid", gridTemplateColumns:"1fr 1fr",
-          gap:"80px", alignItems:"center" }}
-          className="hero-grid">
-
-          {/* Columna texto */}
-          <div style={{ display:"flex", flexDirection:"column", gap:"28px" }}>
-
-            <div style={{ display:"inline-flex" }}>
-              <span className="badge badge-accent">
-                <span style={{ width:"6px", height:"6px", borderRadius:"50%",
-                  background:"var(--accent)", animation:"glowPulse 2s ease-in-out infinite" }} />
-                Audio profesional · Chile & Argentina
-              </span>
-            </div>
-
-            <h1 style={{ fontFamily:"var(--font-serif)",
-              fontSize:"clamp(3rem, 7vw, 6rem)", fontWeight:300,
-              lineHeight:1.0, letterSpacing:"-0.03em" }}>
-              El sonido<br />
-              <em style={{ fontStyle:"italic",
-                background:"linear-gradient(135deg, #fff 30%, var(--accent) 100%)",
-                WebkitBackgroundClip:"text", WebkitTextFillColor:"transparent",
-                backgroundClip:"text" }}>
-                que buscabas
-              </em>
+          {/* Headline */}
+          <div style={{ maxWidth: "780px", display: "flex",
+            flexDirection: "column", gap: "28px" }}>
+            <p style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1rem, 1.6vw, 1.3rem)",
+              fontWeight: 500, color: "var(--text)", letterSpacing: "-0.01em" }}>
+              Hola, sos un
+            </p>
+            <h1
+              data-testid="hero-headline"
+              className="display-bold"
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "clamp(3.5rem, 9vw, 8rem)",
+                fontWeight: 900,
+                lineHeight: 0.88,
+                letterSpacing: "-0.05em",
+                color: "var(--text)",
+              }}
+            >
+              Productor<br />
+              <span style={{
+                background: "linear-gradient(135deg, #fff 0%, var(--accent) 100%)",
+                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
+                backgroundClip: "text",
+              }}>Sonidista</span>
             </h1>
 
-            <p style={{ fontSize:"17px", color:"var(--text-2)",
-              lineHeight:1.7, maxWidth:"480px" }}>
-              Micrófonos, interfaces, monitores y más — todo lo que necesitás
-              para producir, grabar y mezclar al nivel profesional.
-            </p>
-
-            <div style={{ display:"flex", gap:"12px", flexWrap:"wrap" }}>
-              <Link to="/shop" className="btn btn-accent"
-                style={{ fontSize:"15px", padding:"14px 28px" }}>
-                Ver tienda →
-              </Link>
-              <Link to="/academy" className="btn btn-ghost"
-                style={{ fontSize:"15px", padding:"14px 28px" }}>
-                Academia
-              </Link>
-            </div>
-
-            {/* Stats */}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)",
-              gap:"24px", paddingTop:"28px", borderTop:"1px solid var(--border)" }}
-              className="stats-grid">
-              {stats.map(({ value, suffix, label }) => (
-                <div key={label}>
-                  <p style={{ fontFamily:"var(--font-serif)",
-                    fontSize:"clamp(1.6rem, 3vw, 2.2rem)", lineHeight:1, marginBottom:"4px" }}>
-                    <AnimatedNumber value={value} suffix={suffix} />
-                  </p>
-                  <p style={{ fontSize:"11px", color:"var(--text-3)",
-                    textTransform:"uppercase", letterSpacing:"0.06em" }}>
-                    {label}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Columna visual */}
-          <div style={{ position:"relative", display:"flex",
-            alignItems:"center", justifyContent:"center" }}>
-            {heroProduct && (
-              <div style={{ position:"relative", zIndex:2 }}>
-                <Link to={`/shop/${heroProduct.slug}`}>
-                  <div className="animate-float" style={{ width:"340px", aspectRatio:"1",
-                    borderRadius:"var(--r-2xl)", overflow:"hidden",
-                    background:"var(--surface)", border:"1px solid var(--border)",
-                    boxShadow:"0 40px 120px rgba(0,0,0,0.6), 0 0 0 1px rgba(26,255,110,0.05)" }}>
-                    {heroImg ? (
-                      <img src={heroImg} alt={heroProduct.name}
-                        style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                    ) : (
-                      <div style={{ width:"100%", height:"100%", display:"flex",
-                        alignItems:"center", justifyContent:"center", fontSize:"80px" }}>
-                        🎧
-                      </div>
-                    )}
-                  </div>
-                  {/* Info card */}
-                  <div className="glass" style={{ position:"absolute",
-                    bottom:"-16px", left:"50%", transform:"translateX(-50%)",
-                    borderRadius:"var(--r-xl)", padding:"14px 20px",
-                    minWidth:"260px", textAlign:"center" }}>
-                    <p style={{ fontSize:"14px", fontWeight:500, marginBottom:"4px" }}>
-                      {heroProduct.name}
-                    </p>
-                    <p style={{ fontSize:"18px", fontWeight:600,
-                      color:"var(--accent)", fontFamily:"var(--font-serif)" }}>
-                      ${Number(heroProduct.price).toLocaleString("es-CL")}
-                    </p>
-                  </div>
-                </Link>
-              </div>
-            )}
-
-            {/* Productos flotantes secundarios */}
-            {featured[1] && (
-              <div style={{ position:"absolute", top:"0", right:"-20px",
-                width:"140px", zIndex:1, opacity:0.9,
-                animation:"float 5s ease-in-out infinite 1s" }}>
-                <HeroProductCard product={featured[1]} />
-              </div>
-            )}
-            {featured[2] && (
-              <div style={{ position:"absolute", bottom:"40px", left:"-30px",
-                width:"130px", zIndex:1, opacity:0.85,
-                animation:"float 6s ease-in-out infinite 0.5s" }}>
-                <HeroProductCard product={featured[2]} />
-              </div>
-            )}
-
-            {/* Glow */}
-            <div style={{ position:"absolute", width:"400px", height:"400px",
-              borderRadius:"50%",
-              background:"radial-gradient(circle, rgba(26,255,110,0.08), transparent 70%)",
-              zIndex:0, pointerEvents:"none" }} />
-          </div>
-        </div>
-      </section>
-
-      {/* ══ MARCAS ════════════════════════════════════════════ */}
-      <section style={{ padding:"60px 0",
-        borderTop:"1px solid var(--border)", borderBottom:"1px solid var(--border)",
-        background:"var(--bg-2)" }}>
-        <div style={{ maxWidth:"var(--container)", margin:"0 auto",
-          padding:"0 clamp(20px, 5vw, 60px)" }}>
-          <p style={{ fontSize:"12px", color:"var(--text-3)", textTransform:"uppercase",
-            letterSpacing:"0.12em", fontWeight:500, textAlign:"center",
-            marginBottom:"28px" }}>
-            Marcas que trabajamos
-          </p>
-          <BrandsMarquee brands={brands} />
-        </div>
-      </section>
-
-      {/* ══ PRODUCTOS DESTACADOS ══════════════════════════════ */}
-      <section style={{ padding:"clamp(80px, 10vw, 140px) 0",
-        position:"relative" }}>
-        <div style={{ maxWidth:"var(--container)", margin:"0 auto",
-          padding:"0 clamp(20px, 5vw, 60px)" }}>
-
-          <div style={{ display:"flex", justifyContent:"space-between",
-            alignItems:"flex-end", marginBottom:"48px",
-            flexWrap:"wrap", gap:"16px" }}>
-            <div>
-              <p style={{ fontSize:"12px", color:"var(--accent)", fontWeight:600,
-                letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"12px" }}>
-                Selección
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto",
+              gap: "32px", alignItems: "end", marginTop: "16px",
+              maxWidth: "640px" }} className="hero-bottom-grid">
+              <p style={{ fontFamily: "var(--font-sans)", fontSize: "16px",
+                color: "var(--text-2)", lineHeight: 1.6, maxWidth: "420px" }}>
+                Equipamiento, formación y servicios profesionales para producir,
+                grabar y mezclar al nivel de los grandes.
               </p>
-              <h2 style={{ fontFamily:"var(--font-serif)",
-                fontSize:"clamp(2rem, 4vw, 3.5rem)", fontWeight:300, lineHeight:1.1 }}>
-                Lo más destacado
-              </h2>
+              <Link to="/shop" className="btn btn-accent"
+                data-testid="hero-cta-shop"
+                style={{ fontSize: "14px", fontWeight: 700 }}>
+                Ver tienda
+              </Link>
             </div>
-            <Link to="/shop" className="btn btn-ghost">Ver todo →</Link>
           </div>
 
-          <div style={{ display:"grid",
-            gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))", gap:"20px" }}>
-            {(featured.length > 0 ? featured.slice(0,4) : [...Array(4)]).map((product, i) =>
-              product ? (
-                <ProductCard key={product.id} product={product} />
-              ) : (
-                <div key={i} className="skeleton" style={{ height:"380px" }} />
-              )
-            )}
-          </div>
-        </div>
-      </section>
+          {/* Spacer */}
+          <div style={{ flex: 1, minHeight: "20px" }} />
 
-      {/* ══ FEATURES — 3 columnas ═════════════════════════════ */}
-      <section style={{ padding:"clamp(80px, 10vw, 140px) 0",
-        borderTop:"1px solid var(--border)", background:"var(--bg-2)" }}>
-        <div style={{ maxWidth:"var(--container)", margin:"0 auto",
-          padding:"0 clamp(20px, 5vw, 60px)" }}>
-          <div style={{ display:"grid",
-            gridTemplateColumns:"repeat(auto-fit, minmax(300px, 1fr))",
-            gap:"2px", border:"1px solid var(--border)",
-            borderRadius:"var(--r-2xl)", overflow:"hidden" }}>
-            {[
-              { icon:"🎙", title:"Academia\nprofesional",
-                desc:"Cursos en video para producción, mezcla, masterización y más.",
-                link:"/academy", cta:"Ver cursos" },
-              { icon:"🔧", title:"Servicios\na medida",
-                desc:"Asesoría técnica, instalación y configuración de estudios.",
-                link:"/services", cta:"Ver servicios" },
-              { icon:"🚀", title:"Envíos\nrápidos",
-                desc:"Despacho a todo Chile y Argentina. Envío gratis sobre $200.000.",
-                link:"/shop", cta:"Ir a la tienda" },
-            ].map(({ icon, title, desc, link, cta }, i) => (
-              <Link key={i} to={link} style={{ display:"flex", flexDirection:"column",
-                padding:"clamp(32px, 4vw, 52px)", background:"var(--surface)",
-                transition:"background var(--dur-slow) var(--ease)",
-                borderRight: i < 2 ? "1px solid var(--border)" : "none",
-                textDecoration:"none", gap:"20px" }}
-                onMouseEnter={e => e.currentTarget.style.background="var(--surface-2)"}
-                onMouseLeave={e => e.currentTarget.style.background="var(--surface)"}>
-                <span style={{ fontSize:"36px" }}>{icon}</span>
-                <div>
-                  <h3 style={{ fontFamily:"var(--font-serif)",
-                    fontSize:"clamp(1.5rem, 2.5vw, 2rem)", fontWeight:300,
-                    lineHeight:1.2, marginBottom:"12px", whiteSpace:"pre-line" }}>
-                    {title}
-                  </h3>
-                  <p style={{ fontSize:"14px", color:"var(--text-3)", lineHeight:1.7 }}>
-                    {desc}
-                  </p>
+          {/* Bottom row: 4 numbered offerings */}
+          <div
+            data-testid="offerings-row"
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: "clamp(12px, 2vw, 32px)",
+              paddingTop: "32px",
+              borderTop: "1px solid rgba(255,255,255,0.1)",
+            }}
+            className="offerings-grid">
+            {offerings.map(o => (
+              <Link key={o.num} to={o.to} style={{ textDecoration: "none" }}
+                data-testid={`offering-${o.title.toLowerCase()}`}>
+                <div style={{ display: "flex", alignItems: "baseline",
+                  gap: "10px", marginBottom: "10px" }}>
+                  <span style={{
+                    fontFamily: "var(--font-sans)", fontSize: "11px",
+                    color: "var(--accent)", fontWeight: 700,
+                    letterSpacing: "0.1em",
+                  }}>#{o.num}</span>
                 </div>
-                <span style={{ fontSize:"13px", color:"var(--accent)", fontWeight:500,
-                  display:"inline-flex", alignItems:"center", gap:"4px", marginTop:"auto" }}>
-                  {cta} →
-                </span>
+                <p style={{ fontFamily: "var(--font-display)",
+                  fontSize: "clamp(1.1rem, 1.6vw, 1.4rem)",
+                  fontWeight: 700, color: "var(--text)",
+                  letterSpacing: "-0.02em", marginBottom: "4px" }}>
+                  {o.title}
+                </p>
+                <p style={{ fontFamily: "var(--font-sans)", fontSize: "12px",
+                  color: "rgba(255,255,255,0.55)" }}>
+                  {o.desc}
+                </p>
               </Link>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ══ CTA FINAL ═════════════════════════════════════════ */}
-      <section style={{ padding:"clamp(100px, 12vw, 160px) clamp(20px, 5vw, 60px)",
-        textAlign:"center", position:"relative", overflow:"hidden" }}>
-        <div style={{ maxWidth:"640px", margin:"0 auto",
-          position:"relative", zIndex:1 }}>
-          <h2 style={{ fontFamily:"var(--font-serif)",
-            fontSize:"clamp(2.5rem, 6vw, 5rem)", fontWeight:300,
-            lineHeight:1.05, marginBottom:"24px", letterSpacing:"-0.02em" }}>
-            Tu próximo nivel{" "}
-            <em style={{ fontStyle:"italic", color:"var(--accent)" }}>
-              empieza acá
-            </em>
+      {/* ══════════════════════════════════════════════════════════════════
+          TRUSTED BY BRANDS — dark band con marquee
+          ══════════════════════════════════════════════════════════════════ */}
+      <section
+        data-testid="trusted-brands"
+        style={{
+          background: "var(--surface)",
+          borderRadius: "var(--r-2xl)",
+          marginTop: "20px",
+          padding: "clamp(28px, 4vw, 48px) clamp(28px, 5vw, 80px)",
+        }}>
+        <div style={{ display: "grid",
+          gridTemplateColumns: "auto 1fr",
+          gap: "60px", alignItems: "center" }}
+          className="trusted-grid">
+          <div style={{ maxWidth: "200px" }}>
+            <p style={{ fontFamily: "var(--font-sans)", fontSize: "13px",
+              color: "var(--text-2)", lineHeight: 1.5 }}>
+              Las marcas que<br />
+              elegimos para vos
+            </p>
+          </div>
+          <BrandsMarquee brands={brands} />
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          BEHIND THE DESIGNS — sección con título display gigante
+          ══════════════════════════════════════════════════════════════════ */}
+      <section
+        data-testid="behind-section"
+        style={{
+          padding: "clamp(80px, 12vw, 160px) clamp(28px, 5vw, 80px)",
+        }}>
+        <div style={{ maxWidth: "var(--container)", margin: "0 auto",
+          display: "grid", gridTemplateColumns: "7fr 5fr",
+          gap: "clamp(40px, 6vw, 80px)", alignItems: "end" }}
+          className="behind-grid">
+          <div>
+            <p className="badge-label" style={{ marginBottom: "32px",
+              display: "inline-block" }}>
+              Detrás del sonido
+            </p>
+            <h2 className="display-bold"
+              data-testid="behind-headline"
+              style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "clamp(2.5rem, 6vw, 5.5rem)",
+                fontWeight: 900, lineHeight: 0.9,
+                letterSpacing: "-0.04em",
+                color: "var(--text)",
+              }}>
+              Equipo que da<br />vida a cada<br />idea sonora.
+            </h2>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column",
+            gap: "32px", alignItems: "flex-start" }}>
+            <p style={{ fontFamily: "var(--font-sans)", fontSize: "17px",
+              color: "var(--text-2)", lineHeight: 1.7 }}>
+              Construimos un ecosistema digital donde encontrás todo lo que
+              necesitás para llevar tu sonido al nivel profesional — desde
+              el primer micrófono hasta el master final.
+            </p>
+            <Link to="/services" className="btn btn-accent"
+              data-testid="behind-cta"
+              style={{ fontSize: "14px", fontWeight: 700 }}>
+              Contratar servicio
+            </Link>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          3-CARD MONOCHROME GRID
+          ══════════════════════════════════════════════════════════════════ */}
+      <section
+        data-testid="services-grid"
+        style={{
+          padding: "0 clamp(28px, 5vw, 80px) clamp(80px, 12vw, 140px)",
+        }}>
+        <div style={{ maxWidth: "var(--container)", margin: "0 auto",
+          display: "grid",
+          gridTemplateColumns: "repeat(3, 1fr)",
+          gap: "clamp(16px, 2vw, 28px)" }}
+          className="three-card-grid">
+          {gridCards.map((card, i) => (
+            <Link key={i} to={card.to}
+              data-testid={`feature-card-${i}`}
+              style={{
+                background: "var(--surface)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--r-2xl)",
+                overflow: "hidden", textDecoration: "none",
+                transition: "all var(--dur-slow) var(--ease)",
+                display: "flex", flexDirection: "column",
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.borderColor = "rgba(26,255,110,0.3)"
+                e.currentTarget.style.boxShadow = "0 0 60px rgba(26,255,110,0.12), 0 20px 50px rgba(0,0,0,0.4)"
+                e.currentTarget.style.transform = "translateY(-6px)"
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.borderColor = "var(--border)"
+                e.currentTarget.style.boxShadow = "none"
+                e.currentTarget.style.transform = "translateY(0)"
+              }}>
+              <div style={{ aspectRatio: "4/5", overflow: "hidden",
+                position: "relative" }}>
+                <img src={card.img} alt={card.title} className="mono-img"
+                  style={{ width: "100%", height: "100%", objectFit: "cover",
+                    transition: "transform 600ms var(--ease)" }} />
+              </div>
+              <div style={{ padding: "28px 28px 32px",
+                display: "flex", flexDirection: "column", gap: "12px" }}>
+                <p style={{ fontFamily: "var(--font-display)", fontSize: "20px",
+                  fontWeight: 700, color: "var(--text)",
+                  letterSpacing: "-0.02em" }}>
+                  {card.title}
+                </p>
+                <p style={{ fontFamily: "var(--font-sans)", fontSize: "14px",
+                  color: "var(--text-2)", lineHeight: 1.6 }}>
+                  {card.desc}
+                </p>
+                <span style={{ fontSize: "13px", color: "var(--accent)",
+                  fontWeight: 600, marginTop: "8px",
+                  display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                  Ver más →
+                </span>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          STATS — números grandes display
+          ══════════════════════════════════════════════════════════════════ */}
+      <section
+        data-testid="stats-section"
+        style={{
+          background: "var(--surface)",
+          borderRadius: "var(--r-2xl)",
+          padding: "clamp(48px, 6vw, 80px) clamp(28px, 5vw, 80px)",
+          margin: "0 clamp(0px, 0vw, 0px)",
+        }}>
+        <div style={{ display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: "clamp(24px, 4vw, 60px)" }} className="stats-grid">
+          {stats.map(({ value, suffix, label }) => (
+            <div key={label} data-testid={`stat-${label.toLowerCase()}`}>
+              <p style={{ fontFamily: "var(--font-display)",
+                fontSize: "clamp(2.5rem, 5vw, 4.5rem)",
+                fontWeight: 900, lineHeight: 0.9, letterSpacing: "-0.04em",
+                color: "var(--text)", marginBottom: "10px" }}>
+                <AnimatedNumber value={value} suffix={suffix} />
+              </p>
+              <p style={{ fontFamily: "var(--font-sans)", fontSize: "12px",
+                color: "var(--text-3)", textTransform: "uppercase",
+                letterSpacing: "0.15em", fontWeight: 600 }}>
+                {label}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          PRODUCTOS DESTACADOS
+          ══════════════════════════════════════════════════════════════════ */}
+      <section
+        data-testid="featured-products"
+        style={{
+          padding: "clamp(80px, 12vw, 140px) clamp(28px, 5vw, 80px)",
+        }}>
+        <div style={{ maxWidth: "var(--container)", margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between",
+            alignItems: "end", marginBottom: "60px", flexWrap: "wrap", gap: "20px" }}>
+            <div>
+              <p className="badge-label" style={{ marginBottom: "20px",
+                display: "inline-block" }}>
+                Selección
+              </p>
+              <h2 className="display-bold" style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "clamp(2.2rem, 5vw, 4rem)",
+                fontWeight: 900, lineHeight: 0.9,
+                letterSpacing: "-0.04em", color: "var(--text)",
+              }}>
+                Lo más destacado.
+              </h2>
+            </div>
+            <Link to="/shop" className="btn btn-ghost"
+              data-testid="view-all-products">
+              Ver toda la tienda →
+            </Link>
+          </div>
+
+          <div style={{ display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+            gap: "20px" }}>
+            {(featured.length > 0 ? featured.slice(0, 4) : [...Array(4)]).map((product, i) =>
+              product ? (
+                <ProductCard key={product.id} product={product} />
+              ) : (
+                <div key={i} className="skeleton" style={{ height: "380px" }} />
+              )
+            )}
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════
+          FINAL CTA
+          ══════════════════════════════════════════════════════════════════ */}
+      <section
+        data-testid="final-cta"
+        className="hero-gradient"
+        style={{
+          position: "relative",
+          borderRadius: "var(--r-2xl)",
+          padding: "clamp(80px, 12vw, 160px) clamp(28px, 5vw, 80px)",
+          textAlign: "center", overflow: "hidden",
+          marginBottom: "20px",
+        }}>
+        <div style={{ maxWidth: "780px", margin: "0 auto",
+          position: "relative", zIndex: 1 }}>
+          <h2 className="display-bold" style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "clamp(3rem, 7vw, 6rem)",
+            fontWeight: 900, lineHeight: 0.9,
+            letterSpacing: "-0.045em", marginBottom: "32px",
+            color: "var(--text)",
+          }}>
+            Subí el<br />nivel.
           </h2>
-          <p style={{ fontSize:"17px", color:"var(--text-2)",
-            lineHeight:1.7, marginBottom:"40px" }}>
-            Explorá toda nuestra tienda y encontrá el equipo que llevará
-            tu sonido al siguiente nivel.
+          <p style={{ fontFamily: "var(--font-sans)", fontSize: "17px",
+            color: "var(--text-2)", lineHeight: 1.7,
+            marginBottom: "48px", maxWidth: "520px", margin: "0 auto 48px" }}>
+            Explorá nuestro catálogo y encontrá el equipamiento que llevará
+            tu sonido al próximo nivel.
           </p>
-          <div style={{ display:"flex", gap:"12px",
-            justifyContent:"center", flexWrap:"wrap" }}>
+          <div style={{ display: "flex", gap: "12px",
+            justifyContent: "center", flexWrap: "wrap" }}>
             <Link to="/shop" className="btn btn-accent"
-              style={{ fontSize:"16px", padding:"16px 36px" }}>
+              data-testid="final-cta-shop"
+              style={{ fontSize: "15px", fontWeight: 700 }}>
               Explorar tienda
             </Link>
             <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
-              className="btn btn-ghost" style={{ fontSize:"16px", padding:"16px 36px" }}>
-              💬 Consultar
+              className="btn btn-ghost"
+              data-testid="final-cta-whatsapp"
+              style={{ fontSize: "15px", fontWeight: 600 }}>
+              Hablar con un experto
             </a>
           </div>
         </div>
-        {/* Glow */}
-        <div style={{ position:"absolute", width:"600px", height:"600px",
-          borderRadius:"50%",
-          background:"radial-gradient(circle, rgba(26,255,110,0.08), transparent 70%)",
-          top:"50%", left:"50%", transform:"translate(-50%, -50%)",
-          pointerEvents:"none" }} />
       </section>
 
       <style>{`
-        .hero-grid  { grid-template-columns: 1fr 1fr; }
-        .stats-grid { grid-template-columns: repeat(4, 1fr); }
-        @media (max-width: 900px) {
-          .hero-grid  { grid-template-columns: 1fr !important; }
-          .hero-grid > div:last-child { display: none !important; }
+        @media (max-width: 980px) {
+          .hero-image-wrap { width: 100% !important; opacity: 0.3 !important; }
+          .offerings-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 24px !important; }
+          .behind-grid { grid-template-columns: 1fr !important; }
+          .trusted-grid { grid-template-columns: 1fr !important; gap: 20px !important; }
+          .three-card-grid { grid-template-columns: 1fr !important; }
           .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+          .hero-bottom-grid { grid-template-columns: 1fr !important; gap: 24px !important; }
+        }
+        @media (max-width: 540px) {
+          .offerings-grid { grid-template-columns: 1fr 1fr !important; }
         }
       `}</style>
     </div>

@@ -676,23 +676,39 @@ function Navbar() {
                   color:`rgba(255,255,255,${linkA})`,
                   background:"transparent", border:"1px solid transparent",
                   textDecoration:"none", transition:"color 150ms, border-color 150ms",
+                  fontFamily:"var(--font-sans)",
                 }}
                   onMouseEnter={e=>{e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor="rgba(255,255,255,0.2)"}}
                   onMouseLeave={e=>{e.currentTarget.style.color=`rgba(255,255,255,${linkA})`;e.currentTarget.style.borderColor="transparent"}}
+                  data-testid="navbar-login"
                 >
                   Iniciar sesión
                 </Link>
-                <Link to="/register" style={{
-                  padding:"8px 18px", borderRadius:"var(--r-full)", fontSize:"14px",
-                  fontWeight:500, color:"#000", background:"#efefef",
+                <Link to="/register" data-testid="navbar-register" style={{
+                  display:"inline-flex", alignItems:"center", gap:"8px",
+                  padding:"6px 6px 6px 18px", borderRadius:"var(--r-full)",
+                  fontSize:"14px", fontWeight:600, color:"#000", background:"#ffffff",
                   textDecoration:"none", letterSpacing:"-0.01em",
                   transition:"background 150ms, transform 150ms",
-                  display:"inline-block",
+                  fontFamily:"var(--font-sans)",
                 }}
-                  onMouseEnter={e=>{e.currentTarget.style.background="#fff";e.currentTarget.style.transform="scale(0.97)"}}
-                  onMouseLeave={e=>{e.currentTarget.style.background="#efefef";e.currentTarget.style.transform="scale(1)"}}
+                  onMouseEnter={e=>{
+                    const arrow = e.currentTarget.querySelector(".btn-arrow")
+                    if (arrow) arrow.style.transform = "translateX(2px)"
+                  }}
+                  onMouseLeave={e=>{
+                    const arrow = e.currentTarget.querySelector(".btn-arrow")
+                    if (arrow) arrow.style.transform = "translateX(0)"
+                  }}
                 >
-                  Registrarse gratis
+                  Registrarse
+                  <span className="btn-arrow" style={{
+                    display:"inline-flex", alignItems:"center", justifyContent:"center",
+                    width:"28px", height:"28px", borderRadius:"50%",
+                    background:"var(--accent)", color:"#000",
+                    fontSize:"13px", fontWeight:700,
+                    transition:"transform 150ms var(--ease)",
+                  }}>→</span>
                 </Link>
               </div>
             )}
