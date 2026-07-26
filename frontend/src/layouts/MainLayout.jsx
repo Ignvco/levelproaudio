@@ -338,11 +338,11 @@ function Navbar() {
 
   // Valores derivados de scrollProgress — todo interpolado suavemente
   const navH         = 72 - scrollProgress * 12        // 72px → 60px
-  const bgOpacity    = scrollProgress * 0.88            // fondo negro
-  const blurOpacity  = scrollProgress                   // capa de blur
-  const borderA      = scrollProgress * 0.07            // border inferior
-  const logoScale    = 1 - scrollProgress * 0.08        // logo shrink
-  const linkA        = 0.65 + scrollProgress * 0.35     // link opacity
+  const bgOpacity    = 0.55 + scrollProgress * 0.35     // fondo glass sutil siempre visible
+  const blurOpacity  = 0.6 + scrollProgress * 0.4       // capa de blur base + refuerzo al scroll
+  const borderA      = 0.05 + scrollProgress * 0.05     // border inferior
+  const logoScale    = 1 - scrollProgress * 0.06        // logo shrink más sutil
+  const linkA        = 0.7 + scrollProgress * 0.3       // link opacity
 
   // ── Mega menu ─────────────────────────────────────────────
   const [activeMenu, setActiveMenu] = useState(null)
@@ -438,11 +438,11 @@ function Navbar() {
           pointerEvents:        "none",
         }} />
 
-        {/* ═══ CAPA 2: Fondo oscuro ═══ */}
+        {/* ═══ CAPA 2: Fondo oscuro glass ═══ */}
         <div style={{
           position:    "absolute",
           inset:       0,
-          background:  `rgba(8,8,8,${bgOpacity})`,
+          background:  `rgba(10,10,10,${bgOpacity})`,
           transition:  "background 80ms linear",
           zIndex:      0,
           pointerEvents:"none",
@@ -673,43 +673,49 @@ function Navbar() {
             ) : (
               <div style={{ display:"flex", gap:"8px", alignItems:"center" }}>
                 <Link to="/login" style={{
-                  padding:"8px 16px", borderRadius:"var(--r-full)", fontSize:"14px",
+                  padding:"9px 16px", borderRadius:"var(--r-full)", fontSize:"13px",
                   color:`rgba(255,255,255,${linkA})`,
                   background:"transparent", border:"1px solid transparent",
-                  textDecoration:"none", transition:"color 150ms, border-color 150ms",
-                  fontFamily:"var(--font-sans)",
+                  textDecoration:"none", transition:"color 150ms, border-color 150ms, background 150ms",
+                  fontFamily:"var(--font-sans)", fontWeight: 500,
                 }}
-                  onMouseEnter={e=>{e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor="rgba(255,255,255,0.2)"}}
-                  onMouseLeave={e=>{e.currentTarget.style.color=`rgba(255,255,255,${linkA})`;e.currentTarget.style.borderColor="transparent"}}
+                  onMouseEnter={e=>{e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor="rgba(255,255,255,0.15)";e.currentTarget.style.background="rgba(255,255,255,0.04)"}}
+                  onMouseLeave={e=>{e.currentTarget.style.color=`rgba(255,255,255,${linkA})`;e.currentTarget.style.borderColor="transparent";e.currentTarget.style.background="transparent"}}
                   data-testid="navbar-login"
                 >
                   Iniciar sesión
                 </Link>
                 <Link to="/register" data-testid="navbar-register" style={{
-                  display:"inline-flex", alignItems:"center", gap:"8px",
-                  padding:"6px 6px 6px 18px", borderRadius:"var(--r-full)",
-                  fontSize:"14px", fontWeight:600, color:"#000", background:"#ffffff",
+                  display:"inline-flex", alignItems:"center", gap:"7px",
+                  padding:"9px 18px", borderRadius:"var(--r-full)",
+                  fontSize:"13px", fontWeight:700, color:"#000",
+                  background:"var(--accent)",
                   textDecoration:"none", letterSpacing:"-0.01em",
-                  transition:"background 150ms, transform 150ms",
                   fontFamily:"var(--font-sans)",
+                  boxShadow:"0 6px 20px rgba(26,255,110,0.28)",
+                  transition:"transform 200ms var(--ease), box-shadow 200ms var(--ease), background 200ms var(--ease)",
                 }}
                   onMouseEnter={e=>{
+                    e.currentTarget.style.transform = "translateY(-1px)"
+                    e.currentTarget.style.boxShadow = "0 10px 28px rgba(26,255,110,0.45)"
+                    e.currentTarget.style.background = "var(--accent-hover)"
                     const arrow = e.currentTarget.querySelector(".btn-arrow")
                     if (arrow) arrow.style.transform = "translateX(2px)"
                   }}
                   onMouseLeave={e=>{
+                    e.currentTarget.style.transform = "translateY(0)"
+                    e.currentTarget.style.boxShadow = "0 6px 20px rgba(26,255,110,0.28)"
+                    e.currentTarget.style.background = "var(--accent)"
                     const arrow = e.currentTarget.querySelector(".btn-arrow")
                     if (arrow) arrow.style.transform = "translateX(0)"
                   }}
                 >
-                  Registrarse
-                  <span className="btn-arrow" style={{
-                    display:"inline-flex", alignItems:"center", justifyContent:"center",
-                    width:"28px", height:"28px", borderRadius:"50%",
-                    background:"var(--accent)", color:"#000",
-                    fontSize:"13px", fontWeight:700,
-                    transition:"transform 150ms var(--ease)",
-                  }}>→</span>
+                  Empezar
+                  <svg className="btn-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                    style={{ transition:"transform 200ms var(--ease)" }}>
+                    <path d="M5 12h14 M12 5l7 7-7 7" />
+                  </svg>
                 </Link>
               </div>
             )}
