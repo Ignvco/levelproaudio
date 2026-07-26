@@ -85,7 +85,19 @@ Ver `/app/memory/test_credentials.md`
 3. Cargar contenido real de productos / marcas / cursos
 4. Comenzar módulo Loyalty
 
-## Sesión 2 — Code Quality Pass (2026-06-09)
+## Sesión 3 — Rediseño WANDER-inspired (2026-01)
+
+**Reemplazado el rediseño Folioblox por uno inspirado en WANDER.ph** (mejor fit con la marca — hero photo-forward + cards mixtas + steps 1-2-3), manteniendo dark theme + verde neón #1aff6e.
+
+**Cambios:**
+- **Removido `CustomCursor`** del `main.jsx` — se quitó el círculo verde flotante que seguía al mouse
+- **`Home.jsx` reescrita completa** con estructura WANDER:
+  - Hero: imagen lifestyle full-cover + texto gigante transparente "LEVELPRO.AUDIO" (mixBlendMode overlay) + tint verde radial + 2 CTAs pill (blanco sólido / glass oscuro con blur)
+  - Sección "Por qué miles de profesionales": split 2 columnas — izquierda heading + descripción + 3 stat cards con iconos en círculo verde; derecha 3 feature cards apiladas con iconos en rounded square verde tenue
+  - "Productos destacados": big rounded container con 4 mini product cards (imagen fullbleed + badge "desde $X" glass + nombre + marca), botones prev/next redondos
+  - "Cursos y servicios": grid 3 columnas — 1 big card con gradiente verde + CTA pill verde sólido, 2 cards con imagen fullbleed y badges "NUEVO"/"POPULAR"
+  - "Comprá y grabá en 3 pasos": círculos punteados verdes con 01/02/03 + descripción
+  - Brands strip: marquee de logos partner con hover-brighten
 
 **Seguridad (resuelto):**
 - Eliminadas credenciales hardcoded en `seed.py` y `tests/test_admin_bugs.py`. Ahora leen `SEED_ADMIN_EMAIL/PASSWORD` y `SEED_CLIENT_EMAIL/PASSWORD` desde env vars en `/app/backend/.env`. Si faltan, el script falla con mensaje claro.
