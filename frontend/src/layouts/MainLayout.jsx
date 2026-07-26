@@ -1,398 +1,59 @@
-// layouts/MainLayout.jsx
-/* eslint-disable react-hooks/set-state-in-effect, react-hooks/immutability */
-import { useState, useEffect, useRef, useCallback } from "react"
+// layouts/MainLayout.jsx — Floating pill navbar (desktop) + Bottom dock (mobile)
+import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import { Link, useNavigate, useLocation } from "react-router-dom"
 import { useAuthStore } from "../store/authStore"
 import { useCartStore } from "../store/cartStore"
 import logoImg from "../assets/logo.png"
 
-// ─────────────────────────────────────────────────────────────
-// Configuración de navegación
-// ─────────────────────────────────────────────────────────────
 const NAV_LINKS = [
-  {
-    label: "Tienda",
-    to: "/shop",
-    mega: {
-      cols: [
-        {
-          type: "links",
-          items: [
-            {label: "Micrófonos",  desc: "Condensadores, dinámicos, de cinta", to: "/shop?category=microfonos"  },
-            {label: "Interfaces",  desc: "Audio USB y Thunderbolt",            to: "/shop?category=interfaces"  },
-            {label: "Auriculares", desc: "Monitor y DJ profesional",           to: "/shop?category=auriculares" },
-            {label: "Monitores",   desc: "Studio monitors y nearfield",        to: "/shop?category=monitores"   },
-          ],
-        },
-        {
-          type: "featured",
-          icon: "🛒",
-          title: "Explorar toda la tienda",
-          desc: "Más de 500 productos para grabación, producción y mezcla profesional.",
-          cta: "Ver catálogo completo →",
-          to: "/shop",
-        },
-      ],
-    },
-  },
-  {
-    label: "Academia",
-    to: "/academy",
-    mega: {
-      cols: [
-        {
-          type: "links",
-          items: [
-            { label: "Producción musical",      desc: "Beats, composición, DAWs",      to: "/academy" },
-            { label: "Mezcla y masterización",  desc: "EQ, compresión, efectos",       to: "/academy" },
-            { label: "Técnicas de grabación",   desc: "Micrófonos, sesión, acústica",  to: "/academy" },
-          ],
-        },
-        {
-          type: "featured",
-          icon: "🎬",
-          title: "Aprendé con los mejores",
-          desc: "Cursos online con instructores profesionales. Avanzá a tu ritmo.",
-          cta: "Ver todos los cursos →",
-          to: "/academy",
-        },
-      ],
-    },
-  },
+  { label: "Tienda",    to: "/shop"     },
+  { label: "Academia",  to: "/academy"  },
   { label: "Servicios", to: "/services" },
 ]
 
 // ─────────────────────────────────────────────────────────────
-// Mega dropdown
+// SVG icons
 // ─────────────────────────────────────────────────────────────
-function MegaPanel({ item, visible }) {
-  if (!item?.mega) return null
+function NavIcon({ name, size = 20, filled = false }) {
+  const paths = {
+    home:   filled
+      ? "M12 2.1L1 12h3v9h6v-6h4v6h6v-9h3z"
+      : "M3 12l9-9 9 9 M5 10v10h5v-6h4v6h5V10",
+    search: "M11 19a8 8 0 100-16 8 8 0 000 16z M21 21l-4.35-4.35",
+    cart:   "M6 6h15l-1.5 9h-13z M6 6L4 2H1 M9 21a1 1 0 100-2 1 1 0 000 2z M18 21a1 1 0 100-2 1 1 0 000 2z",
+    grad:   "M22 10L12 4 2 10l10 6 10-6z M6 12v5c3 3 9 3 12 0v-5",
+    user:   "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2 M12 11a4 4 0 100-8 4 4 0 000 8z",
+    arrow:  "M5 12h14 M12 5l7 7-7 7",
+    tools:  "M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z",
+  }
   return (
-    <div style={{
-      position:      "absolute",
-      top:           "calc(100% + 14px)",
-      left:          "50%",
-      transform:     `translateX(-50%) translateY(${visible ? "0px" : "-8px"})`,
-      opacity:       visible ? 1 : 0,
-      pointerEvents: visible ? "auto" : "none",
-      transition:    "opacity 200ms cubic-bezier(0.16,1,0.3,1), transform 200ms cubic-bezier(0.16,1,0.3,1)",
-      zIndex:        500,
-      minWidth:      "500px",
-    }}>
-      {/* Triángulo */}
-      <div style={{
-        position:    "absolute",
-        top:         "-5px",
-        left:        "50%",
-        transform:   "translateX(-50%) rotate(45deg)",
-        width:       "10px",
-        height:      "10px",
-        background:  "var(--surface)",
-        border:      "1px solid var(--border)",
-        borderRight: "none",
-        borderBottom:"none",
-        zIndex:      1,
-      }} />
-
-      {/* Panel */}
-      <div style={{
-        background:   "var(--surface)",
-        border:       "1px solid var(--border)",
-        borderRadius: "20px",
-        padding:      "16px",
-        boxShadow:    "0 32px 80px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.04)",
-        display:      "grid",
-        gridTemplateColumns: item.mega.cols.map(c => c.type === "featured" ? "1fr" : "1.4fr").join(" "),
-        gap:          "10px",
-        position:     "relative",
-        zIndex:       2,
-      }}>
-        {item.mega.cols.map((col, ci) => (
-          <div key={ci}>
-            {col.type === "links" && (
-              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                {col.items.map(card => (
-                  <Link key={card.to + card.label} to={card.to} style={{
-                    display:        "flex",
-                    alignItems:     "center",
-                    gap:            "12px",
-                    padding:        "10px 12px",
-                    borderRadius:   "12px",
-                    textDecoration: "none",
-                    transition:     "background 140ms",
-                  }}
-                    onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2)"}
-                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-                  >
-                    <div style={{ minWidth: 0 }}>
-                      <p style={{ fontSize:"13px", fontWeight:500, color:"var(--text)", marginBottom:"2px" }}>{card.label}</p>
-                      <p style={{ fontSize:"12px", color:"var(--text-3)", lineHeight:1.4 }}>{card.desc}</p>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            )}
-            {col.type === "featured" && (
-              <Link to={col.to} style={{
-                display:"flex", flexDirection:"column", padding:"18px",
-                borderRadius:"14px",
-                background:"linear-gradient(145deg,rgba(26,255,110,0.07) 0%,rgba(26,255,110,0.02) 100%)",
-                border:"1px solid rgba(26,255,110,0.15)",
-                textDecoration:"none", transition:"border-color 180ms,background 180ms",
-                height:"100%", gap:"10px",
-              }}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(26,255,110,0.35)";e.currentTarget.style.background="linear-gradient(145deg,rgba(26,255,110,0.12) 0%,rgba(26,255,110,0.04) 100%)"}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(26,255,110,0.15)";e.currentTarget.style.background="linear-gradient(145deg,rgba(26,255,110,0.07) 0%,rgba(26,255,110,0.02) 100%)"}}
-              >
-                <span style={{ fontSize:"28px" }}>{col.icon}</span>
-                <div>
-                  <p style={{ fontSize:"14px", fontWeight:600, color:"var(--text)", marginBottom:"6px" }}>{col.title}</p>
-                  <p style={{ fontSize:"12px", color:"var(--text-3)", lineHeight:1.6 }}>{col.desc}</p>
-                </div>
-                <p style={{ fontSize:"13px", fontWeight:500, color:"var(--accent)", marginTop:"auto" }}>{col.cta}</p>
-              </Link>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
+    <svg width={size} height={size} viewBox="0 0 24 24"
+      fill={filled ? "currentColor" : "none"}
+      stroke="currentColor" strokeWidth={filled ? 0 : 2}
+      strokeLinecap="round" strokeLinejoin="round">
+      {paths[name].split(" M").map((p, i) => (
+        <path key={i} d={i === 0 ? p : `M${p}`} />
+      ))}
+    </svg>
   )
 }
 
-// ─────────────────────────────────────────────────────────────
-// Mobile menu — panel desde la derecha + accordion
-// ─────────────────────────────────────────────────────────────
-function MobileMenu({ open, onClose, isAuthenticated, user, logout }) {
-  const [expanded, setExpanded] = useState(null)
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    document.body.style.overflow = open ? "hidden" : ""
-    return () => { document.body.style.overflow = "" }
-  }, [open])
-
-  return (
-    <>
-      {/* Overlay */}
-      <div onClick={onClose} style={{
-        position:"fixed", inset:0, zIndex:199,
-        background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)",
-        opacity: open ? 1 : 0, pointerEvents: open ? "auto" : "none",
-        transition:"opacity 280ms ease",
-      }} />
-
-      {/* Panel deslizante */}
-      <div style={{
-        position:"fixed", top:0, right:0, bottom:0,
-        width:"min(360px, 92vw)", zIndex:200,
-        background:"var(--bg)",
-        borderLeft:"1px solid var(--border)",
-        overflowY:"auto",
-        transform: open ? "translateX(0)" : "translateX(100%)",
-        transition:"transform 320ms cubic-bezier(0.16,1,0.3,1)",
-        boxShadow: open ? "-24px 0 80px rgba(0,0,0,0.6)" : "none",
-        display:"flex", flexDirection:"column",
-      }}>
-        {/* Header */}
-        <div style={{
-          display:"flex", alignItems:"center", justifyContent:"space-between",
-          padding:"0 20px", height:"68px", borderBottom:"1px solid var(--border)", flexShrink:0,
-        }}>
-          <Link to="/" onClick={onClose}>
-            <img src={logoImg} alt="LevelPro" style={{ height:"22px", filter:"brightness(0) invert(1)" }} />
-          </Link>
-          <button onClick={onClose} style={{
-            width:"34px", height:"34px", borderRadius:"50%",
-            background:"var(--surface-2)", border:"1px solid var(--border)",
-            color:"var(--text)", fontSize:"16px", cursor:"pointer",
-            display:"flex", alignItems:"center", justifyContent:"center",
-          }}>✕</button>
-        </div>
-
-        {/* Links */}
-        <div style={{ padding:"12px 16px", flex:1 }}>
-          {NAV_LINKS.map(item => (
-            <div key={item.label}>
-              {item.mega ? (
-                <>
-                  <button onClick={() => setExpanded(expanded===item.label ? null : item.label)} style={{
-                    width:"100%", display:"flex", justifyContent:"space-between", alignItems:"center",
-                    padding:"14px 12px", background:"none", border:"none",
-                    borderBottom:"1px solid var(--border)",
-                    color:"var(--text)", fontSize:"16px", cursor:"pointer", fontFamily:"inherit",
-                  }}>
-                    {item.label}
-                    <span style={{
-                      fontSize:"10px", color:"var(--text-3)",
-                      transform: expanded===item.label ? "rotate(180deg)" : "rotate(0)",
-                      transition:"transform 220ms var(--ease)", display:"inline-block",
-                    }}>▼</span>
-                  </button>
-                  <div style={{
-                    maxHeight: expanded===item.label ? "400px" : "0",
-                    overflow:"hidden",
-                    transition:"max-height 300ms cubic-bezier(0.16,1,0.3,1)",
-                  }}>
-                    <div style={{ padding:"8px 0 12px 12px" }}>
-                      {item.mega.cols.filter(c=>c.type==="links").flatMap(c=>c.items).map(card => (
-                        <Link key={card.to+card.label} to={card.to} onClick={onClose} style={{
-                          display:"flex", alignItems:"center", gap:"12px",
-                          padding:"11px 12px", borderRadius:"10px",
-                          textDecoration:"none", color:"var(--text-2)", fontSize:"15px",
-                          transition:"background 140ms",
-                        }}
-                          onMouseEnter={e=>e.currentTarget.style.background="var(--surface-2)"}
-                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-                        >
-                          <span style={{ fontSize:"20px" }}>{card.icon}</span>
-                          {card.label}
-                        </Link>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <Link to={item.to} onClick={onClose} style={{
-                  display:"block", padding:"14px 12px",
-                  borderBottom:"1px solid var(--border)",
-                  color:"var(--text)", fontSize:"16px", textDecoration:"none",
-                }}>{item.label}</Link>
-              )}
-            </div>
-          ))}
-          <Link to="/cart" onClick={onClose} style={{
-            display:"block", padding:"14px 12px",
-            borderBottom:"1px solid var(--border)",
-            color:"var(--text)", fontSize:"16px", textDecoration:"none",
-          }}>Carrito</Link>
-        </div>
-
-        {/* Auth bottom */}
-        <div style={{ padding:"16px 20px 32px", borderTop:"1px solid var(--border)", flexShrink:0 }}>
-          {isAuthenticated ? (
-            <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
-              <Link to="/dashboard" onClick={onClose} style={{
-                display:"block", padding:"13px", borderRadius:"var(--r-full)",
-                border:"1px solid var(--border)", color:"var(--text)",
-                fontSize:"15px", textAlign:"center", textDecoration:"none",
-              }}>Mi cuenta</Link>
-              <button onClick={()=>{logout();navigate("/");onClose()}} style={{
-                padding:"13px", borderRadius:"var(--r-full)", background:"none",
-                border:"1px solid var(--border)", color:"var(--text-3)",
-                fontSize:"15px", cursor:"pointer", fontFamily:"inherit",
-              }}>Cerrar sesión</button>
-            </div>
-          ) : (
-            <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
-              <Link to="/login" onClick={onClose} style={{
-                display:"block", padding:"13px", borderRadius:"var(--r-full)",
-                border:"1px solid var(--border)", color:"var(--text)",
-                fontSize:"15px", textAlign:"center", textDecoration:"none",
-              }}>Iniciar sesión</Link>
-              <Link to="/register" onClick={onClose} style={{
-                display:"block", padding:"13px", borderRadius:"var(--r-full)",
-                background:"#efefef", color:"#000",
-                fontSize:"15px", fontWeight:500, textAlign:"center", textDecoration:"none",
-              }}>Registrarse gratis</Link>
-            </div>
-          )}
-        </div>
-      </div>
-    </>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────
-// Navbar
-// ─────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════
+// Desktop Navbar — Floating dark pill centered at top
+// ═════════════════════════════════════════════════════════════
 function Navbar() {
   const { isAuthenticated, user, logout } = useAuthStore()
   const cartCount = useCartStore(s => s.getCount())
-  const navigate  = useNavigate()
   const location  = useLocation()
+  const navigate  = useNavigate()
 
-  // ── scrollProgress: 0 (top) → 1 (fully scrolled) ──────────
-  // Usamos rAF para leer window.scrollY sin causar forced reflows
-  const [scrollProgress, setScrollProgress] = useState(0)
-  const rafRef = useRef(null)
+  const [userOpen, setUserOpen] = useState(false)
+  const userRef = useRef(null)
 
   useEffect(() => {
-    const THRESHOLD = 80
-
-    const tick = () => {
-      setScrollProgress(Math.min(window.scrollY / THRESHOLD, 1))
-      rafRef.current = null
-    }
-
-    const onScroll = () => {
-      if (!rafRef.current) rafRef.current = requestAnimationFrame(tick)
-    }
-
-    tick() // calcular al montar
-    window.addEventListener("scroll", onScroll, { passive: true })
-    return () => {
-      window.removeEventListener("scroll", onScroll)
-      if (rafRef.current) cancelAnimationFrame(rafRef.current)
-    }
-  }, [])
-
-  // Valores derivados de scrollProgress — todo interpolado suavemente
-  const navH         = 72 - scrollProgress * 12        // 72px → 60px
-  const bgOpacity    = 0.55 + scrollProgress * 0.35     // fondo glass sutil siempre visible
-  const blurOpacity  = 0.6 + scrollProgress * 0.4       // capa de blur base + refuerzo al scroll
-  const borderA      = 0.05 + scrollProgress * 0.05     // border inferior
-  const logoScale    = 1 - scrollProgress * 0.06        // logo shrink más sutil
-  const linkA        = 0.7 + scrollProgress * 0.3       // link opacity
-
-  // ── Mega menu ─────────────────────────────────────────────
-  const [activeMenu, setActiveMenu] = useState(null)
-  const closeTimer = useRef(null)
-
-  const navBarRef = useRef(null)
-  const navRefs   = useRef({})
-  const [ind, setInd] = useState({ left:0, width:0, opacity:0 })
-
-  const moveInd = useCallback((label) => {
-    const el = navRefs.current[label]
-    const nb = navBarRef.current
-    if (!el || !nb) return
-    const er = el.getBoundingClientRect()
-    const nr = nb.getBoundingClientRect()
-    setInd({ left: er.left - nr.left, width: er.width, opacity: 1 })
-  }, [])
-
-  const hideInd = useCallback(() => {
-    setInd(s => ({ ...s, opacity: 0 }))
-  }, [])
-
-  const openMenu = useCallback((label) => {
-    clearTimeout(closeTimer.current)
-    setActiveMenu(label)
-    moveInd(label)
-  }, [moveInd])
-
-  const scheduleClose = useCallback(() => {
-    closeTimer.current = setTimeout(() => {
-      setActiveMenu(null)
-      hideInd()
-    }, 150)
-  }, [hideInd])
-
-  const cancelClose = useCallback(() => {
-    clearTimeout(closeTimer.current)
-  }, [])
-
-  // ── Cerrar al navegar ─────────────────────────────────────
-  useEffect(() => {
-    setActiveMenu(null)
-    hideInd()
-    setMobileOpen(false)
     setUserOpen(false)
   }, [location.pathname])
-
-  const [mobileOpen, setMobileOpen] = useState(false)
-  const [userOpen,   setUserOpen]   = useState(false)
-  const userRef = useRef(null)
 
   useEffect(() => {
     const fn = (e) => {
@@ -402,356 +63,341 @@ function Navbar() {
     return () => document.removeEventListener("mousedown", fn)
   }, [])
 
-  return (
-    <>
-      <MobileMenu
-        open={mobileOpen}
-        onClose={() => setMobileOpen(false)}
-        isAuthenticated={isAuthenticated}
-        user={user}
-        logout={logout}
-      />
-
-      <header style={{
-        position: "fixed",
-        top:      0,
-        left:     0,
-        right:    0,
-        zIndex:   100,
-        height:   `${navH}px`,
-        // Sin transition CSS para height — lo controla rAF directamente en cada frame
-        // El efecto es instantáneo y suave porque scrollProgress es continuo
+  return createPortal(
+    <header
+      className="lp-navbar-desktop"
+      style={{
+        position:  "fixed",
+        top:       "18px",
+        left:      "50%",
+        transform: "translateX(-50%)",
+        zIndex:    100,
+        width:     "auto",
+      }}>
+      <div style={{
+        display:         "flex",
+        alignItems:      "center",
+        gap:             "6px",
+        padding:         "6px 6px 6px 22px",
+        background:      "rgba(15,15,15,0.85)",
+        backdropFilter:  "blur(20px) saturate(1.6)",
+        WebkitBackdropFilter: "blur(20px) saturate(1.6)",
+        border:          "1px solid rgba(255,255,255,0.08)",
+        borderRadius:    "var(--r-full)",
+        boxShadow: `
+          0 20px 60px rgba(0,0,0,0.55),
+          0 0 0 1px rgba(255,255,255,0.04) inset,
+          0 -1px 0 rgba(0,0,0,0.4) inset
+        `,
       }}>
 
-        {/* ═══ CAPA 1: Blur (siempre presente, opacity animada) ═══
-            Truco crítico de Jitter: si usás backdrop-filter:none → blur,
-            Chrome no transiciona. La solución es tener el blur SIEMPRE
-            y controlar su visibilidad con opacity. */}
-        <div style={{
-          position:             "absolute",
-          inset:                0,
-          backdropFilter:       "blur(20px) saturate(180%)",
-          WebkitBackdropFilter: "blur(20px) saturate(180%)",
-          opacity:              blurOpacity,
-          transition:           "opacity 80ms linear",
-          zIndex:               0,
-          pointerEvents:        "none",
-        }} />
-
-        {/* ═══ CAPA 2: Fondo oscuro glass ═══ */}
-        <div style={{
-          position:    "absolute",
-          inset:       0,
-          background:  `rgba(10,10,10,${bgOpacity})`,
-          transition:  "background 80ms linear",
-          zIndex:      0,
-          pointerEvents:"none",
-        }} />
-
-        {/* ═══ CAPA 3: Border inferior ═══ */}
-        <div style={{
-          position:    "absolute",
-          bottom:      0,
-          left:        0,
-          right:       0,
-          height:      "1px",
-          background:  `rgba(255,255,255,${borderA})`,
-          transition:  "background 80ms linear",
-          zIndex:      0,
-          pointerEvents:"none",
-        }} />
-
-        {/* ═══ CONTENIDO (z-index sobre las capas) ═══ */}
-        <div style={{
-          position:       "relative",
-          zIndex:         1,
-          height:         "100%",
-          maxWidth:       "var(--container, 1200px)",
-          margin:         "0 auto",
-          padding:        "0 clamp(20px, 4vw, 48px)",
-          display:        "flex",
-          alignItems:     "center",
-          justifyContent: "space-between",
-          gap:            "24px",
+        {/* Logo */}
+        <Link to="/" data-testid="navbar-logo" style={{
+          display: "flex", alignItems: "center",
+          marginRight: "18px",
+          flexShrink: 0,
         }}>
+          <img src={logoImg} alt="LevelPro Audio" style={{
+            height: "22px", objectFit: "contain",
+            filter: "brightness(0) invert(1)",
+            maxWidth: "110px",
+          }} />
+        </Link>
 
-          {/* Logo */}
-          <Link to="/" style={{
-            display:         "flex",
-            alignItems:      "center",
-            flexShrink:      0,
-            transform:       `scale(${logoScale})`,
-            transformOrigin: "left center",
-            // Sin transition CSS — suavidad viene de scrollProgress continuo via rAF
-          }}>
-            <img src={logoImg} alt="LevelPro Audio" style={{
-              height:"28px", objectFit:"contain",
-              filter:"brightness(0) invert(1)", maxWidth:"140px", display:"block",
-            }} />
+        {/* Nav links */}
+        <nav style={{ display: "flex", alignItems: "center", gap: "2px" }}>
+          {NAV_LINKS.map(item => {
+            const isActive = location.pathname.startsWith(item.to)
+            return (
+              <Link key={item.to}
+                to={item.to}
+                data-testid={`nav-${item.label.toLowerCase()}`}
+                style={{
+                  padding: "9px 16px", borderRadius: "var(--r-full)",
+                  background: isActive ? "rgba(255,255,255,0.08)" : "transparent",
+                  color: isActive ? "#fff" : "rgba(255,255,255,0.75)",
+                  fontSize: "13.5px", fontWeight: 500,
+                  textDecoration: "none",
+                  fontFamily: "var(--font-sans)",
+                  transition: "background 180ms var(--ease), color 180ms var(--ease)",
+                  whiteSpace: "nowrap",
+                }}
+                onMouseEnter={e => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = "rgba(255,255,255,0.04)"
+                    e.currentTarget.style.color = "#fff"
+                  }
+                }}
+                onMouseLeave={e => {
+                  if (!isActive) {
+                    e.currentTarget.style.background = "transparent"
+                    e.currentTarget.style.color = "rgba(255,255,255,0.75)"
+                  }
+                }}>
+                {item.label}
+              </Link>
+            )
+          })}
+        </nav>
+
+        {/* Right side — cart + auth pill */}
+        <div style={{ display: "flex", alignItems: "center",
+          gap: "6px", marginLeft: "14px" }}>
+
+          {/* Cart icon inside pill */}
+          <Link to="/cart" data-testid="navbar-cart" style={{
+            position: "relative",
+            width: "36px", height: "36px", borderRadius: "50%",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            color: "rgba(255,255,255,0.75)",
+            transition: "background 180ms var(--ease), color 180ms var(--ease)",
+          }}
+            onMouseEnter={e => {
+              e.currentTarget.style.background = "rgba(255,255,255,0.08)"
+              e.currentTarget.style.color = "#fff"
+            }}
+            onMouseLeave={e => {
+              e.currentTarget.style.background = "transparent"
+              e.currentTarget.style.color = "rgba(255,255,255,0.75)"
+            }}>
+            <NavIcon name="cart" size={17} />
+            {cartCount > 0 && (
+              <span style={{
+                position: "absolute", top: "3px", right: "3px",
+                background: "var(--accent)", color: "#000",
+                fontSize: "9px", fontWeight: 800,
+                minWidth: "14px", height: "14px", borderRadius: "7px",
+                padding: "0 3px",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                border: "2px solid rgba(15,15,15,0.85)",
+              }}>
+                {cartCount > 9 ? "9+" : cartCount}
+              </span>
+            )}
           </Link>
 
-          {/* ── Nav central — desktop ── */}
-          <nav
-            ref={navBarRef}
-            onMouseLeave={scheduleClose}
-            style={{ display:"flex", alignItems:"center", position:"relative", gap:"2px" }}
-            className="lp-nav-desktop"
-          >
-            {/* Sliding indicator */}
-            <div style={{
-              position:    "absolute",
-              bottom:      "-1px",
-              height:      "2px",
-              borderRadius:"1px",
-              background:  "var(--accent)",
-              left:        `${ind.left}px`,
-              width:       `${ind.width}px`,
-              opacity:     ind.opacity,
-              pointerEvents:"none",
-              transition:  "left 200ms cubic-bezier(0.16,1,0.3,1), width 200ms cubic-bezier(0.16,1,0.3,1), opacity 150ms ease",
-            }} />
-
-            {NAV_LINKS.map(item => {
-              const hasMega  = !!item.mega
-              const isActive = location.pathname.startsWith(item.to)
-              const textCol  = (isActive || activeMenu===item.label)
-                ? "rgba(255,255,255,1)"
-                : `rgba(255,255,255,${linkA})`
-
-              return (
-                <div key={item.label} style={{ position:"relative" }}>
-                  {hasMega ? (
-                    <button
-                      ref={el => navRefs.current[item.label] = el}
-                      onMouseEnter={() => openMenu(item.label)}
-                      style={{
-                        display:"flex", alignItems:"center", gap:"5px",
-                        padding:"8px 14px", borderRadius:"var(--r-full)",
-                        background: (isActive||activeMenu===item.label) ? "rgba(255,255,255,0.08)" : "transparent",
-                        border:"none", color: textCol,
-                        fontSize:"14px", cursor:"pointer", transition:"background 150ms, color 150ms",
-                        whiteSpace:"nowrap", fontFamily:"inherit",
-                      }}
-                    >
-                      {item.label}
-                      <svg width="10" height="6" viewBox="0 0 10 6" fill="none"
-                        style={{
-                          transform:  activeMenu===item.label ? "rotate(180deg)" : "rotate(0deg)",
-                          transition: "transform 220ms cubic-bezier(0.16,1,0.3,1)",
-                          opacity:    0.5, flexShrink:0,
-                        }}>
-                        <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5"
-                          strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
-                  ) : (
-                    <Link
-                      to={item.to}
-                      ref={el => navRefs.current[item.label] = el}
-                      onMouseEnter={() => { cancelClose(); setActiveMenu(null); hideInd(); moveInd(item.label) }}
-                      onMouseLeave={scheduleClose}
-                      style={{
-                        display:"block", padding:"8px 14px", borderRadius:"var(--r-full)",
-                        background: isActive ? "rgba(255,255,255,0.08)" : "transparent",
-                        color: textCol,
-                        fontSize:"14px", transition:"background 150ms, color 150ms",
-                        whiteSpace:"nowrap", textDecoration:"none",
-                      }}
-                    >{item.label}</Link>
-                  )}
-
-                  {hasMega && (
-                    <div onMouseEnter={cancelClose} onMouseLeave={scheduleClose}>
-                      <MegaPanel item={item} visible={activeMenu===item.label} />
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </nav>
-
-          {/* ── Acciones derecha — desktop ── */}
-          <div style={{ display:"flex", alignItems:"center", gap:"10px", flexShrink:0 }}
-            className="lp-nav-desktop">
-
-            {/* Carrito */}
-            <Link to="/cart" style={{
-              position:"relative", width:"38px", height:"38px", borderRadius:"50%",
-              border:"1px solid rgba(255,255,255,0.12)",
-              display:"flex", alignItems:"center", justifyContent:"center",
-              color:`rgba(255,255,255,${linkA})`,
-              transition:"border-color 150ms, color 150ms, background 150ms",
-            }}
-              onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.3)";e.currentTarget.style.background="rgba(255,255,255,0.08)";e.currentTarget.style.color="#fff"}}
-              onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.12)";e.currentTarget.style.background="transparent";e.currentTarget.style.color=`rgba(255,255,255,${linkA})`}}
-            >
-              <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6}
-                  d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
-              </svg>
-              {cartCount > 0 && (
-                <span style={{
-                  position:"absolute", top:"-3px", right:"-3px",
-                  background:"var(--accent)", color:"#000",
-                  fontSize:"9px", fontWeight:800,
-                  width:"16px", height:"16px", borderRadius:"50%",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  border:"2px solid var(--bg)",
+          {/* Auth CTA — white pill (matching reference) */}
+          {isAuthenticated ? (
+            <div ref={userRef} style={{ position: "relative" }}>
+              <button
+                data-testid="navbar-avatar"
+                onClick={() => setUserOpen(!userOpen)}
+                style={{
+                  padding: "8px 16px", borderRadius: "var(--r-full)",
+                  background: userOpen ? "var(--accent)" : "#ffffff",
+                  color: "#000",
+                  border: "none", cursor: "pointer",
+                  fontSize: "13px", fontWeight: 600,
+                  fontFamily: "var(--font-sans)",
+                  display: "inline-flex", alignItems: "center", gap: "8px",
+                  transition: "background 180ms var(--ease)",
                 }}>
-                  {cartCount > 9 ? "9+" : cartCount}
-                </span>
-              )}
-            </Link>
-
-            {/* Auth */}
-            {isAuthenticated ? (
-              <div ref={userRef} style={{ position:"relative" }}>
-                <button onClick={() => setUserOpen(!userOpen)} style={{
-                  width:"38px", height:"38px", borderRadius:"50%",
-                  background: userOpen ? "var(--accent)"         : "rgba(26,255,110,0.15)",
-                  border:     "1px solid rgba(26,255,110,0.3)",
-                  color:      userOpen ? "#000"                  : "var(--accent)",
-                  fontSize:"13px", fontWeight:700,
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  cursor:"pointer", transition:"all 150ms", fontFamily:"inherit",
+                <span style={{
+                  width: "20px", height: "20px", borderRadius: "50%",
+                  background: userOpen ? "#000" : "var(--accent)",
+                  color: userOpen ? "var(--accent)" : "#000",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "10px", fontWeight: 800,
+                  fontFamily: "var(--font-sans)",
                 }}>
                   {user?.first_name?.[0]?.toUpperCase() || "U"}
-                </button>
-
-                {userOpen && (
-                  <div style={{
-                    position:"absolute", top:"calc(100% + 12px)", right:0,
-                    minWidth:"220px",
-                    background:"var(--surface)", border:"1px solid var(--border)",
-                    borderRadius:"16px", padding:"8px",
-                    boxShadow:"0 24px 60px rgba(0,0,0,0.6)",
-                    animation:"scaleIn 150ms cubic-bezier(0.16,1,0.3,1)",
-                    transformOrigin:"top right",
-                  }}>
-                    <div style={{ padding:"10px 12px 12px", borderBottom:"1px solid var(--border)", marginBottom:"6px" }}>
-                      <p style={{ fontSize:"13px", fontWeight:500, color:"var(--text)" }}>
-                        {user?.first_name ? `${user.first_name} ${user.last_name||""}`.trim() : "Mi cuenta"}
-                      </p>
-                      <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"2px" }}>{user?.email}</p>
-                    </div>
-                    {[
-                      { to:"/dashboard",         label:"Mi cuenta",   icon:"◈" },
-                      { to:"/dashboard/orders",  label:"Pedidos",     icon:"◫" },
-                      { to:"/dashboard/courses", label:"Mis cursos",  icon:"▷" },
-                      ...(user?.is_staff ? [{ to:"/admin", label:"Panel admin", icon:"⊕" }] : []),
-                    ].map(({to,label,icon}) => (
-                      <Link key={to} to={to} onClick={()=>setUserOpen(false)} style={{
-                        display:"flex", alignItems:"center", gap:"10px",
-                        padding:"9px 12px", borderRadius:"10px",
-                        fontSize:"13px", color:"var(--text-2)",
-                        textDecoration:"none", transition:"background 120ms",
-                      }}
-                        onMouseEnter={e=>e.currentTarget.style.background="var(--surface-2)"}
-                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-                      >
-                        <span style={{ fontSize:"11px", color:"var(--text-3)", width:"14px" }}>{icon}</span>
-                        {label}
-                      </Link>
-                    ))}
-                    <div style={{ borderTop:"1px solid var(--border)", margin:"6px 0 2px" }} />
-                    <button onClick={()=>{logout();navigate("/");setUserOpen(false)}} style={{
-                      width:"100%", display:"flex", alignItems:"center", gap:"10px",
-                      padding:"9px 12px", borderRadius:"10px",
-                      fontSize:"13px", color:"var(--text-3)",
-                      background:"none", border:"none", cursor:"pointer",
-                      textAlign:"left", transition:"background 120ms", fontFamily:"inherit",
-                    }}
-                      onMouseEnter={e=>e.currentTarget.style.background="var(--surface-2)"}
-                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-                    >
-                      <span style={{ fontSize:"11px", width:"14px" }}>↗</span>
-                      Cerrar sesión
-                    </button>
+                </span>
+                {user?.first_name || "Cuenta"}
+              </button>
+              {userOpen && (
+                <div style={{
+                  position: "absolute", top: "calc(100% + 8px)", right: 0,
+                  minWidth: "220px",
+                  background: "rgba(15,15,15,0.95)",
+                  backdropFilter: "blur(20px)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  borderRadius: "var(--r-lg)",
+                  padding: "8px",
+                  boxShadow: "0 24px 60px rgba(0,0,0,0.6)",
+                  animation: "scaleIn 180ms var(--ease)",
+                  transformOrigin: "top right",
+                }}>
+                  <div style={{ padding: "10px 12px 12px",
+                    borderBottom: "1px solid rgba(255,255,255,0.06)",
+                    marginBottom: "6px" }}>
+                    <p style={{ fontSize: "13px", fontWeight: 600, color: "#fff" }}>
+                      {user?.first_name ? `${user.first_name} ${user.last_name||""}`.trim() : "Mi cuenta"}
+                    </p>
+                    <p style={{ fontSize: "11px",
+                      color: "rgba(255,255,255,0.5)", marginTop: "2px" }}>
+                      {user?.email}
+                    </p>
                   </div>
-                )}
-              </div>
-            ) : (
-              <div style={{ display:"flex", gap:"8px", alignItems:"center" }}>
-                <Link to="/login" style={{
-                  padding:"9px 16px", borderRadius:"var(--r-full)", fontSize:"13px",
-                  color:`rgba(255,255,255,${linkA})`,
-                  background:"transparent", border:"1px solid transparent",
-                  textDecoration:"none", transition:"color 150ms, border-color 150ms, background 150ms",
-                  fontFamily:"var(--font-sans)", fontWeight: 500,
-                }}
-                  onMouseEnter={e=>{e.currentTarget.style.color="#fff";e.currentTarget.style.borderColor="rgba(255,255,255,0.15)";e.currentTarget.style.background="rgba(255,255,255,0.04)"}}
-                  onMouseLeave={e=>{e.currentTarget.style.color=`rgba(255,255,255,${linkA})`;e.currentTarget.style.borderColor="transparent";e.currentTarget.style.background="transparent"}}
-                  data-testid="navbar-login"
-                >
-                  Iniciar sesión
-                </Link>
-                <Link to="/register" data-testid="navbar-register" style={{
-                  display:"inline-flex", alignItems:"center", gap:"7px",
-                  padding:"9px 18px", borderRadius:"var(--r-full)",
-                  fontSize:"13px", fontWeight:700, color:"#000",
-                  background:"var(--accent)",
-                  textDecoration:"none", letterSpacing:"-0.01em",
-                  fontFamily:"var(--font-sans)",
-                  boxShadow:"0 6px 20px rgba(26,255,110,0.28)",
-                  transition:"transform 200ms var(--ease), box-shadow 200ms var(--ease), background 200ms var(--ease)",
-                }}
-                  onMouseEnter={e=>{
-                    e.currentTarget.style.transform = "translateY(-1px)"
-                    e.currentTarget.style.boxShadow = "0 10px 28px rgba(26,255,110,0.45)"
-                    e.currentTarget.style.background = "var(--accent-hover)"
-                    const arrow = e.currentTarget.querySelector(".btn-arrow")
-                    if (arrow) arrow.style.transform = "translateX(2px)"
-                  }}
-                  onMouseLeave={e=>{
-                    e.currentTarget.style.transform = "translateY(0)"
-                    e.currentTarget.style.boxShadow = "0 6px 20px rgba(26,255,110,0.28)"
-                    e.currentTarget.style.background = "var(--accent)"
-                    const arrow = e.currentTarget.querySelector(".btn-arrow")
-                    if (arrow) arrow.style.transform = "translateX(0)"
-                  }}
-                >
-                  Empezar
-                  <svg className="btn-arrow" width="13" height="13" viewBox="0 0 24 24" fill="none"
-                    stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
-                    style={{ transition:"transform 200ms var(--ease)" }}>
-                    <path d="M5 12h14 M12 5l7 7-7 7" />
-                  </svg>
-                </Link>
-              </div>
-            )}
-          </div>
-
-          {/* Hamburger — solo mobile */}
-          <button id="lp-hamburger" onClick={() => setMobileOpen(true)} aria-label="Abrir menú"
-            style={{
-              display:"none", width:"38px", height:"38px", borderRadius:"10px",
-              background:"rgba(255,255,255,0.08)", border:"1px solid rgba(255,255,255,0.15)",
-              color:"#fff", alignItems:"center", justifyContent:"center",
-              cursor:"pointer", flexShrink:0,
-            }}>
-            <svg width="18" height="14" viewBox="0 0 18 14" fill="none">
-              <path d="M1 1H17M1 7H17M1 13H17" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>
-            </svg>
-          </button>
+                  {[
+                    { to: "/dashboard",         label: "Mi cuenta" },
+                    { to: "/dashboard/orders",  label: "Pedidos"   },
+                    { to: "/dashboard/courses", label: "Mis cursos"},
+                    ...(user?.is_staff ? [{ to: "/admin", label: "Panel Admin" }] : []),
+                  ].map(l => (
+                    <Link key={l.to} to={l.to} onClick={() => setUserOpen(false)}
+                      style={{
+                        display: "block", padding: "9px 12px",
+                        borderRadius: "var(--r-md)",
+                        color: "rgba(255,255,255,0.85)", fontSize: "13px",
+                        textDecoration: "none",
+                        transition: "background 150ms",
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.06)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                      {l.label}
+                    </Link>
+                  ))}
+                  <button onClick={() => { logout(); navigate("/") }}
+                    style={{
+                      width: "100%", textAlign: "left", padding: "9px 12px",
+                      borderRadius: "var(--r-md)",
+                      color: "#ff6b6b", fontSize: "13px",
+                      background: "transparent", border: "none",
+                      cursor: "pointer", marginTop: "4px",
+                      transition: "background 150ms",
+                      fontFamily: "inherit",
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = "rgba(255,77,77,0.08)"}
+                    onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                    Cerrar sesión
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Link to="/register"
+              data-testid="navbar-cta"
+              style={{
+                display: "inline-flex", alignItems: "center", gap: "8px",
+                padding: "9px 18px", borderRadius: "var(--r-full)",
+                background: "#ffffff", color: "#000",
+                fontSize: "13px", fontWeight: 600,
+                textDecoration: "none", letterSpacing: "-0.01em",
+                fontFamily: "var(--font-sans)",
+                transition: "transform 200ms var(--ease), background 200ms var(--ease)",
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.background = "var(--accent)"
+                e.currentTarget.style.transform = "translateY(-1px)"
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.background = "#ffffff"
+                e.currentTarget.style.transform = "translateY(0)"
+              }}>
+              Empezar
+            </Link>
+          )}
         </div>
-      </header>
-
-      <style>{`
-        @media (max-width: 860px) {
-          .lp-nav-desktop { display: none !important; }
-          #lp-hamburger   { display: flex !important; }
-        }
-      `}</style>
-    </>
+      </div>
+    </header>,
+    document.body
   )
 }
 
-// ─────────────────────────────────────────────────────────────
-// Footer
-// ─────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════
+// Mobile Bottom Dock — floating pill w/ icons
+// ═════════════════════════════════════════════════════════════
+function MobileDock() {
+  const location = useLocation()
+  const { isAuthenticated, user } = useAuthStore()
+  const cartCount = useCartStore(s => s.getCount())
+
+  const items = [
+    { to: "/",         icon: "home",   label: "Home"    },
+    { to: "/shop",     icon: "search", label: "Tienda"  },
+    { to: "/cart",     icon: "cart",   label: "Carrito", badge: cartCount },
+    { to: "/academy",  icon: "grad",   label: "Cursos"  },
+    {
+      to: isAuthenticated ? "/dashboard" : "/login",
+      icon: "user", label: "Cuenta",
+      avatar: isAuthenticated ? (user?.first_name?.[0]?.toUpperCase() || "U") : null,
+    },
+  ]
+
+  return createPortal(
+    <div
+      className="lp-mobile-dock"
+      style={{
+        position: "fixed",
+        left: "50%",
+        bottom: "16px",
+        transform: "translateX(-50%)",
+        zIndex: 100,
+      }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: "4px",
+        padding: "8px 12px",
+        background: "rgba(15,15,15,0.9)",
+        backdropFilter: "blur(20px) saturate(1.6)",
+        WebkitBackdropFilter: "blur(20px) saturate(1.6)",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "var(--r-full)",
+        boxShadow: `
+          0 24px 60px rgba(0,0,0,0.6),
+          0 0 0 1px rgba(255,255,255,0.04) inset
+        `,
+      }}>
+        {items.map(item => {
+          const isActive = item.to === "/"
+            ? location.pathname === "/"
+            : location.pathname.startsWith(item.to)
+          return (
+            <Link
+              key={item.to}
+              to={item.to}
+              data-testid={`dock-${item.icon}`}
+              style={{
+                position: "relative",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                width: "46px", height: "46px", borderRadius: "50%",
+                color: isActive ? "#fff" : "rgba(255,255,255,0.55)",
+                background: isActive ? "rgba(255,255,255,0.1)" : "transparent",
+                transition: "all 200ms var(--ease)",
+                textDecoration: "none",
+              }}>
+              {item.avatar ? (
+                <span style={{
+                  width: "24px", height: "24px", borderRadius: "50%",
+                  background: isActive ? "var(--accent)" : "rgba(255,255,255,0.15)",
+                  color: isActive ? "#000" : "#fff",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontSize: "11px", fontWeight: 800,
+                  fontFamily: "var(--font-sans)",
+                }}>
+                  {item.avatar}
+                </span>
+              ) : (
+                <NavIcon name={item.icon} size={20} filled={isActive && item.icon === "home"} />
+              )}
+              {item.badge > 0 && (
+                <span style={{
+                  position: "absolute", top: "4px", right: "4px",
+                  minWidth: "18px", height: "18px", borderRadius: "9px",
+                  padding: "0 4px",
+                  background: "var(--accent)", color: "#000",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  fontFamily: "var(--font-sans)",
+                  fontSize: "10px", fontWeight: 800,
+                  border: "2px solid rgba(15,15,15,0.9)",
+                }}>
+                  {item.badge > 9 ? "9+" : item.badge}
+                </span>
+              )}
+            </Link>
+          )
+        })}
+      </div>
+    </div>,
+    document.body
+  )
+}
+
+// ═════════════════════════════════════════════════════════════
+// Footer (preservado del layout anterior)
+// ═════════════════════════════════════════════════════════════
 function Footer() {
   return (
-    <footer style={{ borderTop:"1px solid var(--border)", background:"var(--bg)", marginTop:"auto" }}>
+    <footer style={{ background:"var(--bg)", marginTop:"auto" }}>
       <div style={{
         maxWidth:"var(--container, 1200px)", margin:"0 auto",
         padding:"clamp(56px,8vw,88px) clamp(20px,5vw,60px) clamp(36px,5vw,56px)",
@@ -782,8 +428,7 @@ function Footer() {
                   color:"var(--text-3)", transition:"all 150ms",
                 }}
                   onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--text-3)";e.currentTarget.style.color="var(--text)"}}
-                  onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.color="var(--text-3)"}}
-                >
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.color="var(--text-3)"}}>
                   <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24">
                     <path d={path}/>
                   </svg>
@@ -868,14 +513,24 @@ function Footer() {
   )
 }
 
-// ─────────────────────────────────────────────────────────────
-// MainLayout
-// ─────────────────────────────────────────────────────────────
+// ═════════════════════════════════════════════════════════════
+// MainLayout — responsive con detección de viewport via JS
+// ═════════════════════════════════════════════════════════════
 export default function MainLayout({ children }) {
+  const [isMobile, setIsMobile] = useState(
+    typeof window !== "undefined" && window.innerWidth <= 900
+  )
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth <= 900)
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [])
+
   return (
     <div style={{ minHeight:"100vh", display:"flex", flexDirection:"column", background:"var(--bg)" }}>
-      <Navbar />
-      <main style={{ flex:1, paddingTop:"72px" }}>
+      {isMobile ? <MobileDock /> : <Navbar />}
+      <main style={{ flex:1, paddingTop:"0", paddingBottom: isMobile ? "100px" : "0" }}>
         {children}
       </main>
       <Footer />
