@@ -366,8 +366,14 @@ export default function Home() {
                 letterSpacing: "0.15em", fontWeight: 700 }}>
                 {m.label}
               </p>
-              <DigitalReadout value={<AnimatedNumber value={m.value} />}
-                unit={m.unit} size="lg" tone="green" />
+              <p style={{
+                fontFamily: "var(--font-display)",
+                fontSize: "clamp(1.9rem, 3vw, 2.5rem)",
+                fontWeight: 800, color: "var(--text)",
+                letterSpacing: "-0.03em", lineHeight: 1,
+              }}>
+                <AnimatedNumber value={m.value} />{m.unit}
+              </p>
             </div>
           ))}
         </div>
@@ -512,8 +518,13 @@ export default function Home() {
                       letterSpacing: "0.15em", fontWeight: 700, marginBottom: "4px" }}>
                       {p.stat.label}
                     </p>
-                    <DigitalReadout value={p.stat.value} size="sm" tone="green" />
+                    <p style={{
+                      fontFamily: "var(--font-display)", fontSize: "20px",
+                      fontWeight: 800, color: "var(--text)",
+                      letterSpacing: "-0.02em", lineHeight: 1,
+                    }}>{p.stat.value}</p>
                   </div>
+                  {/* arrow cta */}
                   <span style={{
                     display: "inline-flex", alignItems: "center", gap: "6px",
                     color: "var(--accent)", fontSize: "12px", fontWeight: 700,
@@ -978,13 +989,18 @@ function ProductStudioCard({ product }) {
       {/* VU meter rating */}
       <VUMeter value={rating} segments={14} showLabel label="RATING" />
 
-      {/* Digital price + arrow */}
+      {/* Price + arrow */}
       <div style={{
         display: "flex", justifyContent: "space-between",
         alignItems: "center", marginTop: "4px",
       }}>
-        <DigitalReadout value={clp(Number(product.price)).replace("$", "$")}
-          size="sm" tone="green" />
+        <span style={{
+          fontFamily: "var(--font-display)", fontSize: "16px",
+          fontWeight: 800, color: "var(--text)",
+          letterSpacing: "-0.01em", lineHeight: 1,
+        }}>
+          {clp(Number(product.price))}
+        </span>
         <span style={{
           width: "26px", height: "26px", borderRadius: "50%",
           background: "var(--accent-dim)",
@@ -1110,11 +1126,18 @@ function CourseCard({ course }) {
           paddingTop: "16px", borderTop: "1px solid var(--border)" }}>
           {course.is_free ? (
             <p style={{ fontFamily: "var(--font-display)",
-              fontSize: "14px", fontWeight: 800, color: "var(--accent)" }}>
+              fontSize: "16px", fontWeight: 800, color: "var(--text)",
+              letterSpacing: "-0.01em" }}>
               Gratis
             </p>
           ) : (
-            <DigitalReadout value={clp(course.price)} size="sm" tone="green" />
+            <span style={{
+              fontFamily: "var(--font-display)", fontSize: "16px",
+              fontWeight: 800, color: "var(--text)",
+              letterSpacing: "-0.01em", lineHeight: 1,
+            }}>
+              {clp(course.price)}
+            </span>
           )}
           <span style={{
             width: "26px", height: "26px", borderRadius: "50%",
@@ -1200,8 +1223,13 @@ function ServiceCard({ service }) {
             letterSpacing: "0.1em", fontWeight: 700, marginBottom: "4px" }}>
             {service.price ? "Desde" : "Precio"}
           </p>
-          <DigitalReadout value={service.price_display || "A cotizar"}
-            size="sm" tone="green" />
+          <p style={{
+            fontFamily: "var(--font-display)", fontSize: "18px",
+            fontWeight: 800, color: "var(--text)",
+            letterSpacing: "-0.02em", lineHeight: 1,
+          }}>
+            {service.price_display || "A cotizar"}
+          </p>
         </div>
         <span style={{
           padding: "8px 14px", borderRadius: "var(--r-full)",
