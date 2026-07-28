@@ -102,10 +102,34 @@ class OrderViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST
                 )
 
-        total = sum(
+        subtotal = sum(
             float(item["price"]) * int(item["quantity"])
             for item in items_data
         )
+
+        # ── Canje de puntos de fidelización (opcional) ──
+        loyalty_points_redeemed = int(data.get("loyalty_points_redeemed", 0) or 0)
+        loyalty_discount        = 0
+        if loyalty_points_redeemed > 0:
+            from apps.loyalty.models import LoyaltyAccount, LoyaltyConfig
+            config     = LoyaltyConfig.get()
+            account, _ = LoyaltyAccount.objects.get_or_create(user=request.user)
+            if loyalty_points_redeemed < config.minimo_canje:
+                return Response(
+                    {"error": f"Mínimo de canje: {config.minimo_canje} puntos."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            if loyalty_points_redeemed > account.puntos_disponibles:
+                return Response(
+                    {"error": "No tenés suficientes puntos disponibles."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            loyalty_discount = min(
+                subtotal,
+                loyalty_points_redeemed * float(config.peso_por_punto),
+            )
+
+        total = max(0, subtotal - float(loyalty_discount))
 
         order = Order.objects.create(
             user=request.user,
@@ -113,7 +137,22 @@ class OrderViewSet(viewsets.ModelViewSet):
             shipping_address=data.get("shipping_address", ""),
             notes=data.get("notes", ""),
             total=total,
+            loyalty_points_redeemed=loyalty_points_redeemed,
+            loyalty_discount=loyalty_discount,
         )
+
+        # Descontar puntos + registrar transacción, atado a esta orden
+        if loyalty_points_redeemed > 0:
+            from apps.loyalty.models import LoyaltyTransaction
+            account.puntos_canjeados += loyalty_points_redeemed
+            account.save(update_fields=["puntos_canjeados"])
+            LoyaltyTransaction.objects.create(
+                account     = account,
+                tipo        = "redeem",
+                puntos      = -loyalty_points_redeemed,
+                descripcion = f"Canje en Orden #{str(order.id)[:8].upper()}",
+                orden       = order,
+            )
 
         for item_data in items_data:
             product = Product.objects.get(id=item_data["product"])

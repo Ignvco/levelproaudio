@@ -327,17 +327,15 @@ export default function AdminLoyalty() {
                   </div>
                 )}
                 {[
-                  { key:"puntos_por_peso",      label:"Puntos por cada $1 gastado",           hint:"Ej: 0.01 = 1 punto por $100" },
-                  { key:"valor_punto",          label:"Valor de cada punto en $",              hint:"Ej: 1 = $1 de descuento" },
-                  { key:"umbral_silver",        label:"Puntos para nivel Plata" },
-                  { key:"umbral_gold",          label:"Puntos para nivel Oro" },
-                  { key:"umbral_platinum",      label:"Puntos para nivel Platino" },
-                  { key:"puntos_expiran_dias",  label:"Días para vencimiento (0 = no vencen)" },
-                ].map(({ key, label, hint }) => (
+                  { key:"puntos_por_peso",  label:"Puntos por cada $1 gastado",           hint:"Ej: 0.01 = 1 punto por cada $100", step:"0.001" },
+                  { key:"peso_por_punto",   label:"Valor de cada punto en $",              hint:"Ej: 1 = cada punto vale $1 de descuento", step:"0.01" },
+                  { key:"minimo_canje",     label:"Mínimo de puntos para canjear",         hint:"Ej: 500 = no se puede canjear menos" },
+                  { key:"expiracion_dias",  label:"Días para vencimiento (0 = no vencen)" },
+                ].map(({ key, label, hint, step }) => (
                   <div key={key}>
                     <label style={{ display:"block", fontSize:"12px", fontWeight:500,
                       color:"var(--text-2)", marginBottom:"7px" }}>{label}</label>
-                    <input type="number" defaultValue={config[key]}
+                    <input type="number" step={step || "1"} defaultValue={config[key]}
                       onChange={e => setCfgForm(p => ({
                         ...(p||config), [key]: parseFloat(e.target.value)
                       }))}

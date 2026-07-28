@@ -122,6 +122,16 @@ class Order(TimeStampedModel):
         decimal_places=2
     )
 
+    # ── Loyalty: canje de puntos aplicado a esta orden ──
+    loyalty_points_redeemed = models.PositiveIntegerField(
+        default=0,
+        help_text="Puntos canjeados en el momento del checkout."
+    )
+    loyalty_discount = models.DecimalField(
+        max_digits=12, decimal_places=2, default=0,
+        help_text="Descuento en $ aplicado por canje de puntos."
+    )
+
     email = models.EmailField()
 
     shipping_address = models.TextField()

@@ -5,6 +5,7 @@ import { useCartStore } from "../store/cartStore"
 import { useAuthStore } from "../store/authStore"
 import { getOrders } from "../api/orders.api"
 import { previewCartEntries } from "../api/rewards.api"
+import { getMyLoyalty } from "../api/loyalty.api"
 import { mediaUrl } from "../utils/mediaUrl"
 
 function CartItem({ item }) {
@@ -137,6 +138,27 @@ export default function Cart() {
     staleTime: 30_000,
   })
   const totalEntries = rewardsPreview?.total_entries || 0
+
+  // ── Loyalty: cuenta del usuario ────────────────────────
+  const { data: loyalty } = useQuery({
+    queryKey: ["my-loyalty"],
+    queryFn:  getMyLoyalty,
+    enabled:  isAuthenticated && items.length > 0,
+    staleTime: 60_000,
+  })
+  const { pointsToRedeem, setPointsToRedeem } = useCartStore()
+
+  const canRedeem      = loyalty && loyalty.puntos_disponibles >= (loyalty.minimo_canje || 0)
+  const pesoPorPunto   = loyalty ? (loyalty.valor_disponible / Math.max(1, loyalty.puntos_disponibles)) : 0
+  const maxPointsForCart = loyalty
+    ? Math.min(loyalty.puntos_disponibles,
+               Math.floor((total || 0) / Math.max(0.01, pesoPorPunto)))
+    : 0
+  const loyaltyDiscount = Math.min(
+    total || 0,
+    Math.floor(pointsToRedeem * pesoPorPunto)
+  )
+  const finalTotal = Math.max(0, (total || 0) - loyaltyDiscount)
 
   const pendingOrder = (ordersData?.results || ordersData || [])
     .find(o => o.status === "pending")
@@ -288,12 +310,97 @@ export default function Cart() {
 
             <div style={{ borderTop: "1px solid var(--border)",
               paddingTop: "16px", marginBottom: "24px",
-              display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
-              <span style={{ fontSize: "14px", fontWeight: 500 }}>Total</span>
-              <span style={{ fontFamily: "var(--font-serif)", fontSize: "2rem" }}>
-                ${Number(total || 0).toLocaleString("es-CL")}
-              </span>
+              display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between",
+                fontSize: "13px", color: "var(--text-3)" }}>
+                <span>Subtotal</span>
+                <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                  ${Number(total || 0).toLocaleString("es-CL")}
+                </span>
+              </div>
+              {loyaltyDiscount > 0 && (
+                <div style={{ display: "flex", justifyContent: "space-between",
+                  fontSize: "13px", color: "var(--accent)" }}>
+                  <span>Descuento por puntos ({pointsToRedeem} pts)</span>
+                  <span style={{ fontVariantNumeric: "tabular-nums" }}>
+                    − ${loyaltyDiscount.toLocaleString("es-CL")}
+                  </span>
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between",
+                alignItems: "baseline", paddingTop: "8px",
+                borderTop: "1px solid var(--border)" }}>
+                <span style={{ fontSize: "14px", fontWeight: 500 }}>Total</span>
+                <span style={{ fontFamily: "var(--font-serif)", fontSize: "2rem",
+                  fontVariantNumeric: "tabular-nums" }}>
+                  ${finalTotal.toLocaleString("es-CL")}
+                </span>
+              </div>
             </div>
+
+            {/* Loyalty — canjear puntos */}
+            {isAuthenticated && canRedeem && maxPointsForCart > 0 && (
+              <div data-testid="cart-loyalty-redeem" style={{
+                marginBottom:"20px", padding:"14px 16px",
+                background:"linear-gradient(135deg, rgba(96,165,250,0.06) 0%, rgba(96,165,250,0.02) 100%)",
+                border:"1px solid rgba(96,165,250,0.25)",
+                borderRadius:"var(--r-lg)",
+              }}>
+                <div style={{ display:"flex", justifyContent:"space-between",
+                  alignItems:"center", marginBottom:"10px" }}>
+                  <div>
+                    <p style={{ fontSize:"10px", fontWeight:700,
+                      color:"#60a5fa", letterSpacing:"0.1em",
+                      textTransform:"uppercase", marginBottom:"4px" }}>
+                      ⭐ Tus puntos
+                    </p>
+                    <p style={{ fontSize:"13px", color:"var(--text)" }}>
+                      Disponibles:{" "}
+                      <strong>{loyalty.puntos_disponibles.toLocaleString("es-CL")} pts</strong>
+                      {" "}(${loyalty.valor_disponible.toLocaleString("es-CL")})
+                    </p>
+                  </div>
+                  {pointsToRedeem > 0 && (
+                    <button data-testid="btn-remove-points"
+                      onClick={() => setPointsToRedeem(0)}
+                      style={{ background:"none", border:"none",
+                        color:"var(--text-3)", fontSize:"12px",
+                        cursor:"pointer", textDecoration:"underline",
+                      }}>
+                      Quitar
+                    </button>
+                  )}
+                </div>
+                <div style={{ display:"flex", gap:"8px", alignItems:"center" }}>
+                  <input type="range" min="0" max={maxPointsForCart}
+                    step={Math.max(1, Math.floor(loyalty.minimo_canje / 10))}
+                    value={pointsToRedeem}
+                    onChange={e => {
+                      const n = Number(e.target.value)
+                      // Ajustar al mínimo si no es 0
+                      if (n > 0 && n < loyalty.minimo_canje) {
+                        setPointsToRedeem(loyalty.minimo_canje)
+                      } else {
+                        setPointsToRedeem(n)
+                      }
+                    }}
+                    data-testid="input-points-slider"
+                    style={{ flex:1, accentColor:"var(--accent)" }} />
+                  <div style={{ textAlign:"right", minWidth:"110px" }}>
+                    <p style={{ fontSize:"14px", fontWeight:600,
+                      color:"var(--accent)", fontVariantNumeric:"tabular-nums" }}>
+                      {pointsToRedeem.toLocaleString("es-CL")} pts
+                    </p>
+                    <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
+                      = ${loyaltyDiscount.toLocaleString("es-CL")}
+                    </p>
+                  </div>
+                </div>
+                <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"6px" }}>
+                  Mínimo: {loyalty.minimo_canje} pts. Máximo usable en este pedido: {maxPointsForCart.toLocaleString("es-CL")}.
+                </p>
+              </div>
+            )}
 
             {/* Rewards preview */}
             {totalEntries > 0 && (

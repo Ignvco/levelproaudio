@@ -7,6 +7,7 @@ const NAV = [
   { to: "/dashboard/orders",   label: "Pedidos",          icon: "◫"              },
   { to: "/dashboard/courses",  label: "Mis cursos",       icon: "▷"              },
   { to: "/dashboard/services", label: "Servicios",        icon: "◇"              },
+  { to: "/dashboard/loyalty",  label: "Mis puntos",       icon: "⭐"              },
   { to: "/dashboard/rewards",  label: "Mis participaciones", icon: "🎁"          },
   { to: "/dashboard/profile",  label: "Perfil",           icon: "○"              },
 ]

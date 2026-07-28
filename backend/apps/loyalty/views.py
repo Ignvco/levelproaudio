@@ -72,39 +72,71 @@ def redeem_points(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def admin_loyalty_summary(request):
-    """GET /api/v1/admin/loyalty/summary/"""
-    from django.db.models import Sum, Count, Avg
+    """
+    GET /api/v1/loyalty/admin/summary/
+    Devuelve KPIs + lista completa de cuentas con métricas agregadas.
+    """
+    from django.db.models import Sum, Count, Q
 
     if not request.user.is_staff:
         return Response(status=403)
 
-    accounts = LoyaltyAccount.objects.all()
+    config = LoyaltyConfig.get()
 
-    niveles = {
-        "bronze":   accounts.filter(nivel="bronze").count(),
-        "silver":   accounts.filter(nivel="silver").count(),
-        "gold":     accounts.filter(nivel="gold").count(),
-        "platinum": accounts.filter(nivel="platinum").count(),
+    accounts_qs = (
+        LoyaltyAccount.objects
+        .select_related("user")
+        .annotate(
+            total_ganados=Sum(
+                "transactions__puntos",
+                filter=Q(transactions__tipo="earn"),
+            ),
+            total_canjeados=Sum(
+                "transactions__puntos",
+                filter=Q(transactions__tipo="redeem"),
+            ),
+        )
+        .order_by("-puntos_totales")
+    )
+
+    accounts = [{
+        "id":                 a.id,
+        "user_id":            str(a.user.id),
+        "user_email":         a.user.email,
+        "user_name":          f"{a.user.first_name} {a.user.last_name}".strip() or a.user.email,
+        "nivel":              a.nivel,
+        "puntos_disponibles": a.puntos_disponibles,
+        "puntos_totales":     a.puntos_totales,
+        "puntos_canjeados":   a.puntos_canjeados,
+        "total_ganados":      a.total_ganados or 0,
+        "total_canjeados":    abs(a.total_canjeados or 0),
+        "valor_disponible":   int(a.puntos_disponibles * float(config.peso_por_punto)),
+    } for a in accounts_qs]
+
+    total_issued = LoyaltyTransaction.objects.filter(
+        tipo="earn"
+    ).aggregate(t=Sum("puntos"))["t"] or 0
+    total_redeemed = abs(LoyaltyTransaction.objects.filter(
+        tipo="redeem"
+    ).aggregate(t=Sum("puntos"))["t"] or 0)
+    total_available = sum(a["puntos_disponibles"] for a in accounts)
+
+    by_nivel = {
+        "bronze":   accounts_qs.filter(nivel="bronze").count(),
+        "silver":   accounts_qs.filter(nivel="silver").count(),
+        "gold":     accounts_qs.filter(nivel="gold").count(),
+        "platinum": accounts_qs.filter(nivel="platinum").count(),
     }
 
-    total_puntos = accounts.aggregate(
-        t=Sum("puntos_totales")
-    )["t"] or 0
-
-    top_clientes = LoyaltyAccount.objects.select_related("user").order_by(
-        "-puntos_totales"
-    )[:10]
-
     return Response({
-        "total_cuentas":   accounts.count(),
-        "total_puntos":    total_puntos,
-        "niveles":         niveles,
-        "top_clientes": [{
-            "email":     a.user.email,
-            "nivel":     a.nivel,
-            "puntos":    a.puntos_disponibles,
-            "total":     a.puntos_totales,
-        } for a in top_clientes],
+        "kpis": {
+            "total_accounts":         len(accounts),
+            "total_points_issued":    total_issued,
+            "total_points_available": total_available,
+            "total_points_redeemed":  total_redeemed,
+            "by_nivel":               by_nivel,
+        },
+        "accounts": accounts,
     })
 
 
@@ -137,17 +169,27 @@ def admin_loyalty_config(request):
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def admin_adjust_points(request):
-    """POST /api/v1/admin/loyalty/adjust/ — ajuste manual de puntos"""
+    """
+    POST /api/v1/loyalty/admin/adjust/ — ajuste manual de puntos.
+    Acepta `puntos`+`descripcion` o `points`+`reason` (compatibilidad frontend).
+    """
     if not request.user.is_staff:
         return Response(status=403)
 
     user_id     = request.data.get("user_id")
-    puntos      = int(request.data.get("puntos", 0))
-    descripcion = request.data.get("descripcion", "Ajuste manual")
+    puntos      = int(request.data.get("puntos") or request.data.get("points") or 0)
+    descripcion = (
+        request.data.get("descripcion")
+        or request.data.get("reason")
+        or "Ajuste manual"
+    )
+
+    if puntos == 0:
+        return Response({"error": "Puntos no pueden ser 0"}, status=400)
 
     try:
         from apps.users.models import User
-        user    = User.objects.get(id=user_id)
+        user       = User.objects.get(id=user_id)
         account, _ = LoyaltyAccount.objects.get_or_create(user=user)
         if puntos > 0:
             account.agregar_puntos(puntos, descripcion)
@@ -161,5 +203,7 @@ def admin_adjust_points(request):
                 descripcion = descripcion,
             )
         return Response({"puntos_disponibles": account.puntos_disponibles})
+    except User.DoesNotExist:
+        return Response({"error": "Usuario no encontrado"}, status=404)
     except Exception as e:
         return Response({"error": str(e)}, status=400)

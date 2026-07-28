@@ -8,6 +8,10 @@ export const useCartStore = create(
     (set, get) => ({
       items: [],
 
+      // ── Loyalty ─────────────────────────────────────────
+      pointsToRedeem: 0,   // puntos que el usuario decidió canjear en el checkout
+      setPointsToRedeem: (n) => set({ pointsToRedeem: Math.max(0, Number(n) || 0) }),
+
       addItem: (product, quantity = 1) => {
         const { items } = get()
         const existing = items.find(i => i.product?.id === product.id)
@@ -37,7 +41,7 @@ export const useCartStore = create(
         set({ items: get().items.filter(i => i.product?.id !== productId) })
       },
 
-      clearCart: () => set({ items: [] }),
+      clearCart: () => set({ items: [], pointsToRedeem: 0 }),
 
       // ── Getters seguros ────────────────────────────────
       getTotal: () => {

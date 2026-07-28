@@ -48,7 +48,7 @@ export default function Checkout() {
   const [selectedMethod, setSelectedMethod] = useState("mercadopago_cl")
   const [isLoading, setIsLoading]           = useState(false)
   const [serverError, setServerError]       = useState("")
-  const { items, clearCart, getTotal }      = useCartStore()
+  const { items, clearCart, getTotal, pointsToRedeem, setPointsToRedeem } = useCartStore()
   const { user }                            = useAuthStore()
   const navigate                            = useNavigate()
   const total                               = getTotal()
@@ -76,6 +76,7 @@ export default function Checkout() {
         shipping_address: `${data.address_street}, ${data.address_city}, ${data.address_province}`,
         notes:            data.notes || "",
         total,
+        loyalty_points_redeemed: pointsToRedeem || 0,
         items: items.map(i => ({
           product:      i.product.id,
           product_name: i.product.name,
