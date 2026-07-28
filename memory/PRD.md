@@ -239,3 +239,59 @@ Ver `/app/memory/test_credentials.md`
 - Live preview iframe en AdminSettings
 - Integración SII (Chile) + AFIP (Argentina) cuando el usuario tenga certificados
 
+
+---
+
+## Sesión 6 — Audit Admin + Rediseño Dashboard (2026-07-28)
+
+### ✅ Reorganización Sidebar
+- **Iconos unificados con `lucide-react`** (versión 0.469.0 fija): eliminadas todas las mezclas de emojis/simbolos raros (◈◉◎⊡◫◇⭐⊞)
+- Sección **"Programas de fidelización"**: agrupa Rewards + Puntos y niveles (antes dispersos entre categorías distintas)
+- **Servicios** movido a Ventas (donde corresponde naturalmente al flujo comercial)
+- **Personalización** ahora tiene sección propia "Sitio web" al final
+- Rewards con submenú colapsable: Dashboard / Campañas / Participaciones / Ganadores
+
+### ✅ Dashboard rediseñado con acciones reales
+Reemplazado el `AdminDashboard.jsx` completo. Antes: 8 KPIs + banner Hero + 8 accesos rápidos (duplicaban el sidebar). Ahora:
+- Header cálido: "Bienvenido de vuelta · Todo lo que necesitás resolver, en un solo lugar"
+- Banner amarillo condicional "Necesitan tu atención" con recuento de tareas críticas
+- 6 KPIs con iconos lucide + colores semánticos
+- **Sparkbar de ventas 30d** con gradiente por intensidad
+- **3 Action Cards accionables** (nuevas):
+  - **Órdenes por confirmar** (últimas 5 pendientes con nombre, items y monto — link directo)
+  - **Stock bajo o agotado** (top 6 productos <=5 unidades)
+  - **Solicitudes de servicios** (cotizaciones esperando respuesta)
+
+### ✅ Backend: endpoint enriquecido
+- `dashboard_overview` ahora incluye `actions:{pending_orders[], low_stock[], unread_service_requests}`
+- Manejo defensivo: si `apps.services` no está o falla, `unread_service_requests=0`
+
+### ✅ Audit CRUDs
+Testeados 20 endpoints admin críticos con curl. **100% funcionando**:
+- products/, brands/, categories/, orders/, users/, services/
+- academy/courses/, academy/enrollments/
+- site-settings/, rewards/campaigns/, rewards/entries/, rewards/winners/
+- loyalty/admin/summary/, billing/documents/, billing/config/
+- dashboard/, executive/, inventory/summary/
+
+### 🚨 Producción — Personalización y Rewards no funcionan
+**Motivo**: Los módulos `apps.site_settings` y `apps.rewards` fueron creados en esta sesión y **no están desplegados** en el Cloud Run productivo.
+
+**Solución**:
+1. Usuario ejecuta "Save to GitHub" desde el chat de Emergent
+2. Deploy de la app (Cloud Run auto-deploy si está configurado, o manual)
+3. Backend correrá `migrate` con las nuevas migraciones:
+   - `site_settings.0001_initial`
+   - `rewards.0001_initial`
+   - `orders.0003_order_loyalty_*`
+   - `billing.0003_billingconfig_auto_generar_al_pagar_*`
+   - `products` migrations (si Course tiene cambios)
+4. Frontend nueva build incluirá `/admin/settings`, `/admin/rewards/*`, `/dashboard/loyalty`, `/dashboard/documents`, `/rewards`
+
+### Backlog restante
+- Refactor `analytics/views.py` (1825 líneas)
+- Refactor `AdminProducts.jsx` (562 líneas)
+- Migración a httpOnly cookies (evaluar cross-domain con MP/PayPal)
+- SHOP: filtro por marca + rango de precio + productos relacionados + wishlist
+- SPARKS Rewards: botón "Compartir en redes" con imagen auto-generada + Sistema de referidos
+

@@ -513,6 +513,24 @@ def dashboard_overview(request):
 
     recent_orders = Order.objects.select_related("user").order_by("-created_at")[:8]
 
+    # ── Datos accionables para el dashboard ──
+    pending_orders_list = Order.objects.filter(
+        status="pending"
+    ).select_related("user").order_by("-created_at")[:5]
+
+    low_stock_products = Product.objects.filter(
+        is_active=True, stock__lte=5
+    ).order_by("stock")[:6]
+
+    unread_service_requests = 0
+    try:
+        from apps.services.models import ServiceRequest
+        unread_service_requests = ServiceRequest.objects.filter(
+            status="pending"
+        ).count()
+    except Exception:
+        pass
+
     return Response({
         "revenue": {
             "total":        float(total_revenue),
@@ -558,6 +576,32 @@ def dashboard_overview(request):
             }
             for o in recent_orders
         ],
+        "actions": {
+            "pending_orders": [
+                {
+                    "id":         str(o.id),
+                    "short_id":   str(o.id)[:8].upper(),
+                    "email":      o.email,
+                    "user_name":  f"{o.user.first_name} {o.user.last_name}".strip()
+                                  if o.user else "Invitado",
+                    "total":      float(o.total),
+                    "created":    o.created_at.strftime("%d/%m %H:%M"),
+                    "items_count": o.items.count(),
+                }
+                for o in pending_orders_list
+            ],
+            "low_stock": [
+                {
+                    "id":    str(p.id),
+                    "slug":  p.slug,
+                    "name":  p.name,
+                    "stock": p.stock,
+                    "price": float(p.price),
+                }
+                for p in low_stock_products
+            ],
+            "unread_service_requests": unread_service_requests,
+        },
     })
 
 

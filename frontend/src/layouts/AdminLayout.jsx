@@ -3,12 +3,18 @@ import { useState }                                          from "react"
 import { NavLink, Link, useNavigate, useLocation, Outlet }  from "react-router-dom"
 import { useAuthStore }                                      from "../store/authStore"
 import logoImg                                               from "../assets/logo.png"
+import {
+  LayoutDashboard, LineChart, BarChart3, ChevronRight,
+  ShoppingBag, CreditCard, Users, Package, Boxes, GraduationCap,
+  Wrench, Gift, Wallet, Receipt, Star, Palette,
+} from "lucide-react"
 
 // ── NavGroup colapsable ───────────────────────────────────────
 function NavGroup({ item }) {
   const location = useLocation()
   const isOpen   = item.children.some(c => location.pathname.startsWith(c.to))
   const [open, setOpen] = useState(isOpen)
+  const Icon = item.icon
 
   return (
     <div style={{ marginBottom:"2px" }}>
@@ -20,15 +26,16 @@ function NavGroup({ item }) {
         transition:"all var(--dur) var(--ease)",
         fontWeight: isOpen ? 500 : 400,
       }}>
-        <span style={{ fontSize:"13px", opacity:0.5, width:"14px",
-          textAlign:"center" }}>{item.icon}</span>
+        {Icon && <Icon size={15} strokeWidth={1.7}
+          style={{ opacity: isOpen ? 0.9 : 0.55, flexShrink:0 }} />}
         <span style={{ flex:1, textAlign:"left" }}>{item.label}</span>
-        <span style={{ fontSize:"10px", opacity:0.4, display:"inline-block",
-          transform: open ? "rotate(90deg)" : "none",
-          transition:"transform var(--dur)" }}>▶</span>
+        <ChevronRight size={13} strokeWidth={1.7}
+          style={{ opacity:0.4,
+            transform: open ? "rotate(90deg)" : "none",
+            transition:"transform var(--dur)" }} />
       </button>
       {open && (
-        <div style={{ paddingLeft:"24px", marginTop:"2px" }}>
+        <div style={{ paddingLeft:"28px", marginTop:"2px" }}>
           {item.children.map(child => (
             <NavLink key={child.to} to={child.to}
               style={({ isActive }) => ({
@@ -58,40 +65,38 @@ function NavSep({ label }) {
   )
 }
 
-// ── NavItems ──────────────────────────────────────────────────
-// Estructura: { to, label, icon, end? }  → link simple
-//             { label, icon, children[] } → grupo colapsable
-//             { sep: "Título" }           → separador visual
+// ── NavItems (reorganizados y con iconos lucide) ──────────────
 const navItems = [
-  // ── General ──
-  { sep: "General" },
-  { to:"/admin",           label:"Dashboard",      icon:"◈", end:true },
-  { to:"/admin/executive", label:"Vista Ejecutiva", icon:"◉" },
-  { to:"/admin/analytics", label:"Analytics",       icon:"◎" },
+  // ── Panel ──
+  { sep: "Panel" },
+  { to:"/admin",           label:"Dashboard",       icon:LayoutDashboard, end:true },
+  { to:"/admin/executive", label:"Vista Ejecutiva", icon:LineChart },
+  { to:"/admin/analytics", label:"Analytics",       icon:BarChart3 },
 
   // ── Ventas ──
   { sep: "Ventas" },
-  { to:"/admin/orders",   label:"Órdenes",  icon:"⊡" },
-  { to:"/admin/payments", label:"Pagos",    icon:"◌" },
-  { to:"/admin/users",    label:"Usuarios", icon:"○" },
+  { to:"/admin/orders",   label:"Órdenes",   icon:ShoppingBag },
+  { to:"/admin/payments", label:"Pagos",     icon:CreditCard },
+  { to:"/admin/services", label:"Servicios", icon:Wrench },
+  { to:"/admin/users",    label:"Usuarios",  icon:Users },
 
   // ── Catálogo ──
   { sep: "Catálogo" },
   {
-    label:"Productos", icon:"⊞",
+    label:"Productos", icon:Package,
     children:[
-      { to:"/admin/products",        label:"Catálogo"  },
-      { to:"/admin/brands",          label:"Marcas"    },
-      { to:"/admin/categories",      label:"Categorías"},
-      { to:"/admin/products/import", label:"Importar"  },
+      { to:"/admin/products",        label:"Catálogo"   },
+      { to:"/admin/brands",          label:"Marcas"     },
+      { to:"/admin/categories",      label:"Categorías" },
+      { to:"/admin/products/import", label:"Importar"   },
     ],
   },
-  { to:"/admin/inventory", label:"Inventario", icon:"◧" },
+  { to:"/admin/inventory", label:"Inventario", icon:Boxes },
 
   // ── Academia ──
   { sep: "Academia" },
   {
-    label:"Academia", icon:"▷",
+    label:"Academia", icon:GraduationCap,
     children:[
       { to:"/admin/academy",              label:"Cursos"         },
       { to:"/admin/academy/modules",      label:"Módulos"        },
@@ -100,30 +105,27 @@ const navItems = [
     ],
   },
 
-  // ── Servicios ──
-  { to:"/admin/services", label:"Servicios", icon:"◇" },
-
-  // ── Rewards ──
-  { sep: "Rewards" },
+  // ── Programas (Rewards + Fidelización unificados) ──
+  { sep: "Programas de fidelización" },
   {
-    label:"Rewards", icon:"🎁",
+    label:"Rewards", icon:Gift,
     children:[
-      { to:"/admin/rewards",           label:"Dashboard"      },
-      { to:"/admin/rewards/campaigns", label:"Campañas"       },
-      { to:"/admin/rewards/entries",   label:"Participaciones"},
-      { to:"/admin/rewards/winners",   label:"Ganadores"      },
+      { to:"/admin/rewards",           label:"Dashboard"       },
+      { to:"/admin/rewards/campaigns", label:"Campañas"        },
+      { to:"/admin/rewards/entries",   label:"Participaciones" },
+      { to:"/admin/rewards/winners",   label:"Ganadores"       },
     ],
   },
+  { to:"/admin/loyalty", label:"Puntos y niveles", icon:Star },
 
   // ── Finanzas ──
   { sep: "Finanzas" },
-  { to:"/admin/finance",    label:"Finanzas",     icon:"⬡" },
-  { to:"/admin/billing",    label:"Facturación",  icon:"◧" },
-  { to:"/admin/loyalty",    label:"Fidelización", icon:"⭐" },
+  { to:"/admin/finance", label:"Finanzas",    icon:Wallet },
+  { to:"/admin/billing", label:"Facturación", icon:Receipt },
 
-  // ── Personalización ──
+  // ── Sitio web ──
   { sep: "Sitio web" },
-  { to:"/admin/settings",   label:"Personalización", icon:"✧" },
+  { to:"/admin/settings", label:"Personalización", icon:Palette },
 ]
 
 // ── AdminLayout ───────────────────────────────────────────────
@@ -170,6 +172,7 @@ export default function AdminLayout() {
             if (item.children) return <NavGroup key={item.label} item={item} />
 
             // Link simple
+            const Icon = item.icon
             return (
               <NavLink key={item.to} to={item.to} end={item.end}
                 style={({ isActive }) => ({
@@ -181,10 +184,8 @@ export default function AdminLayout() {
                   background:   isActive ? "var(--surface-2)" : "transparent",
                   transition:"all var(--dur) var(--ease)",
                 })}>
-                <span style={{ fontSize:"13px", opacity:0.5,
-                  width:"14px", textAlign:"center" }}>
-                  {item.icon}
-                </span>
+                {Icon && <Icon size={15} strokeWidth={1.7}
+                  style={{ opacity:0.6, flexShrink:0 }} />}
                 {item.label}
               </NavLink>
             )
