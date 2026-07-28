@@ -37,6 +37,9 @@ urlpatterns = [
     path("api/v1/loyalty/", include("apps.loyalty.urls")),
     path("api/v1/billing/", include("apps.billing.urls")),
 
+    # Configuración del sitio (Personalización)
+    path("api/v1/", include("apps.site_settings.urls")),
+
     # API docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

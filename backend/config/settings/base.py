@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'apps.analytics',
     'apps.loyalty',
     'apps.billing',
+    'apps.site_settings',
 ]
 
 # DRF — ahora con JWT como autenticación por defecto

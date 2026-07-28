@@ -60,6 +60,7 @@ import AdminServices from "./pages/admin/AdminServices"
 import AdminAnalytics from "./pages/admin/AdminAnalytics"
 import AdminCategories from "./pages/admin/AdminCategories"
 import AdminBrands from "./pages/admin/AdminBrands"
+import AdminSettings from "./pages/admin/AdminSettings"
 import AdminModules from "./pages/admin/AdminModules"
 import AdminLessons from "./pages/admin/AdminLessons"
 import AdminEnrollments from "./pages/admin/AdminEnrollments"
@@ -130,6 +131,7 @@ function App() {
           <Route path="academy/lessons"     element={<AdminLessons />} />
           <Route path="services" element={<AdminServices />} />
           <Route path="academy/enrollments" element={<AdminEnrollments />} />
+          <Route path="settings" element={<AdminSettings />} />
         </Route>
 
         {/* ── Auth ── */}

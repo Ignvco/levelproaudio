@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query"
 import { getProducts, getBrands } from "../api/products.api"
 import { getCourses } from "../api/academy.api"
 import { getServices } from "../api/services.api"
+import { getSiteSettings } from "../api/siteSettings.api"
 import { mediaUrl } from "../utils/mediaUrl"
 import {
   LED, VUMeter, DigitalReadout, Knob, Fader, AnimatedWaveform,
@@ -85,11 +86,15 @@ export default function Home() {
   const { data: brandsData } = useQuery({
     queryKey: ["brands"], queryFn: getBrands,
   })
+  const { data: settings } = useQuery({
+    queryKey: ["site-settings"], queryFn: getSiteSettings,
+  })
 
   const featured  = featuredData?.results  || featuredData  || []
   const courses   = coursesData?.results   || coursesData   || []
   const services  = servicesData?.results  || servicesData  || []
   const brands    = brandsData?.results    || brandsData    || []
+  const s         = settings || {}
 
   return (
     <div style={{
@@ -131,7 +136,7 @@ export default function Home() {
 
           {/* LEFT — copy */}
           <div>
-            <LED color="green" label="Chile & Argentina" />
+            <LED color="green" label={s.tagline || "Chile & Argentina"} />
 
             <h1 className="display-bold" data-testid="hero-headline" style={{
               fontFamily: "var(--font-display)",
@@ -140,12 +145,16 @@ export default function Home() {
               letterSpacing: "-0.045em", color: "var(--text)",
               marginTop: "32px", marginBottom: "28px",
             }}>
-              Llevá tu sonido<br />
-              al nivel <span style={{
-                color: "var(--accent)",
-                fontStyle: "italic",
-                fontWeight: 500,
-              }}>profesional.</span>
+              {(s.hero_title || "Llevá tu sonido al nivel profesional.").split(" ").map((w, i, arr) => {
+                const isLast = i === arr.length - 1
+                return isLast ? (
+                  <span key={i} style={{
+                    color: "var(--accent)", fontStyle: "italic", fontWeight: 500,
+                  }}>{w}</span>
+                ) : (
+                  <span key={i}>{w} </span>
+                )
+              })}
             </h1>
 
             <p style={{
@@ -154,12 +163,11 @@ export default function Home() {
               maxWidth: "460px", marginBottom: "36px",
               fontWeight: 400,
             }}>
-              El ecosistema completo para músicos, productores e ingenieros.
-              Equipamiento, formación y servicios en un solo lugar.
+              {s.hero_subtitle || "El ecosistema completo para músicos, productores e ingenieros. Equipamiento, formación y servicios en un solo lugar."}
             </p>
 
             <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <Link to="/shop" data-testid="hero-cta-primary" style={{
+              <Link to={s.hero_cta1_link || "/shop"} data-testid="hero-cta-primary" style={{
                 display: "inline-flex", alignItems: "center", gap: "8px",
                 padding: "13px 24px", borderRadius: "var(--r-full)",
                 background: "var(--accent)", color: "#000",
@@ -176,9 +184,9 @@ export default function Home() {
                   e.currentTarget.style.transform = "translateY(0)"
                   e.currentTarget.style.boxShadow = "0 8px 30px rgba(26,255,110,0.25)"
                 }}>
-                Explorar tienda <Icon name="arrow" size={16} />
+                {s.hero_cta1_text || "Explorar tienda"} <Icon name="arrow" size={16} />
               </Link>
-              <Link to="/academy" data-testid="hero-cta-secondary" style={{
+              <Link to={s.hero_cta2_link || "/academy"} data-testid="hero-cta-secondary" style={{
                 display: "inline-flex", alignItems: "center", gap: "8px",
                 padding: "13px 24px", borderRadius: "var(--r-full)",
                 background: "transparent", color: "var(--text)",
@@ -195,7 +203,7 @@ export default function Home() {
                   e.currentTarget.style.borderColor = "var(--border)"
                   e.currentTarget.style.color = "var(--text)"
                 }}>
-                <Icon name="play" size={14} /> Ver academia
+                <Icon name="play" size={14} /> {s.hero_cta2_text || "Ver academia"}
               </Link>
             </div>
 
@@ -341,6 +349,7 @@ export default function Home() {
       {/* ═════════════════════════════════════════════════════════════
           TRUST STRIP — 4 métricas reales con digital readout
           ═════════════════════════════════════════════════════════════ */}
+      {s.show_trust_strip !== false && (
       <section data-testid="trust-strip" style={{ padding: 0 }}>
         <div style={{
           background: "var(--surface)",
@@ -378,11 +387,13 @@ export default function Home() {
           ))}
         </div>
       </section>
+      )}
 
       {/* ═════════════════════════════════════════════════════════════
           3 PILARES DE LEVELPRO — Tienda · Academia · Servicios
           Reemplaza el bloque "planes" ficticio con los verticales reales
           ═════════════════════════════════════════════════════════════ */}
+      {s.show_pillars !== false && (
       <section data-testid="pillars-section" style={{ padding: "clamp(24px, 3vw, 40px) 0" }}>
         <div style={{
           display: "flex", flexDirection: "column",
@@ -538,11 +549,12 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
 
       {/* ═════════════════════════════════════════════════════════════
           PRODUCTOS DESTACADOS — con LED stock + VU meter rating
           ═════════════════════════════════════════════════════════════ */}
-      {featured.length > 0 && (
+      {s.show_products !== false && featured.length > 0 && (
         <section data-testid="featured-products" style={{ padding: 0 }}>
           <div style={{
             background: "var(--surface)",
@@ -595,10 +607,8 @@ export default function Home() {
         </section>
       )}
 
-      {/* ═════════════════════════════════════════════════════════════
-          ACADEMIA — cursos destacados
-          ═════════════════════════════════════════════════════════════ */}
-      {courses.length > 0 && (
+      {/* Academia */}
+      {s.show_courses !== false && courses.length > 0 && (
         <section data-testid="featured-courses" style={{ padding: 0 }}>
           <div style={{
             background: "var(--surface)",
@@ -651,10 +661,8 @@ export default function Home() {
         </section>
       )}
 
-      {/* ═════════════════════════════════════════════════════════════
-          SERVICIOS PROFESIONALES
-          ═════════════════════════════════════════════════════════════ */}
-      {services.length > 0 && (
+      {/* Servicios */}
+      {s.show_services !== false && services.length > 0 && (
         <section data-testid="featured-services" style={{ padding: 0 }}>
           <div style={{
             background: "var(--surface)",
@@ -707,9 +715,8 @@ export default function Home() {
         </section>
       )}
 
-      {/* ═════════════════════════════════════════════════════════════
-          TESTIMONIAL
-          ═════════════════════════════════════════════════════════════ */}
+      {/* Testimonial */}
+      {s.show_testimonial !== false && (
       <section data-testid="testimonial" style={{ padding: 0 }}>
         <div style={{
           background: "linear-gradient(135deg, var(--surface) 0%, rgba(26,255,110,0.03) 100%)",
@@ -726,7 +733,7 @@ export default function Home() {
             borderRadius: "var(--r-xl)", overflow: "hidden",
             flexShrink: 0,
           }}>
-            <img src={AVATARS.male} alt=""
+            <img src={s.testimonial_photo_url ? mediaUrl(s.testimonial_photo_url) : AVATARS.male} alt=""
               style={{ width: "100%", height: "100%", objectFit: "cover",
                 filter: "grayscale(15%) contrast(1.05)" }} />
           </div>
@@ -737,20 +744,18 @@ export default function Home() {
               fontWeight: 700, color: "var(--text)",
               lineHeight: 1.3, letterSpacing: "-0.02em",
               marginTop: "20px", marginBottom: "20px" }}>
-              &ldquo;La asesoría técnica marcó la diferencia. Compré exactamente
-              lo que necesitaba para mi estudio y encima aprendí a mezclarlo
-              con los cursos.&rdquo;
+              &ldquo;{s.testimonial_quote || "La asesoría técnica marcó la diferencia. Compré exactamente lo que necesitaba para mi estudio y encima aprendí a mezclarlo con los cursos."}&rdquo;
             </p>
             <div style={{ display: "flex", alignItems: "center", gap: "12px",
               flexWrap: "wrap" }}>
               <div>
                 <p style={{ fontFamily: "var(--font-display)", fontSize: "14px",
                   fontWeight: 700, color: "var(--text)" }}>
-                  Diego Ramírez
+                  {s.testimonial_name || "Diego Ramírez"}
                 </p>
                 <p style={{ fontFamily: "var(--font-sans)", fontSize: "12px",
                   color: "var(--text-3)" }}>
-                  Productor · Santiago de Chile
+                  {s.testimonial_role || "Productor · Santiago de Chile"}
                 </p>
               </div>
               <div style={{ height: "24px", width: "1px",
@@ -769,11 +774,10 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
 
-      {/* ═════════════════════════════════════════════════════════════
-          BRANDS STRIP
-          ═════════════════════════════════════════════════════════════ */}
-      {brands.length > 0 && (
+      {/* Brands strip */}
+      {s.show_brands !== false && brands.length > 0 && (
         <section data-testid="brands-strip" style={{ padding: 0 }}>
           <div style={{
             background: "var(--surface)",
@@ -803,9 +807,8 @@ export default function Home() {
                     onMouseLeave={e => e.currentTarget.style.opacity = "0.4"}>
                     {b.logo_url || b.logo ? (
                       <img src={mediaUrl(b.logo_url || b.logo)} alt={b.name}
-                        style={{ height: "22px", maxWidth: "120px",
-                          objectFit: "contain",
-                          filter: "brightness(0) invert(1)" }} />
+                        style={{ height: "26px", maxWidth: "140px",
+                          objectFit: "contain" }} />
                     ) : (
                       <span style={{ fontFamily: "var(--font-display)",
                         fontSize: "18px", fontWeight: 700,
@@ -822,9 +825,8 @@ export default function Home() {
         </section>
       )}
 
-      {/* ═════════════════════════════════════════════════════════════
-          FINAL CTA
-          ═════════════════════════════════════════════════════════════ */}
+      {/* Final CTA */}
+      {s.show_final_cta !== false && (
       <section data-testid="final-cta" style={{ padding: 0 }}>
         <div style={{
           position: "relative",
@@ -887,6 +889,7 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
 
       <style>{`
         @media (max-width: 1024px) {

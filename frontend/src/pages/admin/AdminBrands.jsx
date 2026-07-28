@@ -90,8 +90,7 @@ function BrandModal({ brand, onClose, onSave }) {
             {brand?.logo_url && !logo && (
               <div style={{ marginTop: "8px", display: "flex", alignItems: "center", gap: "8px" }}>
                 <img src={mediaUrl(brand.logo_url)} alt={brand.name}
-                  style={{ height: "28px", objectFit: "contain",
-                    filter: "brightness(0) invert(1)", opacity: 0.6 }} />
+                  style={{ height: "32px", objectFit: "contain" }} />
                 <span style={{ fontSize: "11px", color: "var(--text-3)" }}>Logo actual</span>
               </div>
             )}
@@ -172,12 +171,12 @@ export default function AdminBrands() {
               className="card card-glow"
             >
               {/* Logo */}
-              <div style={{ height: "40px", display: "flex",
+              <div style={{ height: "48px", display: "flex",
                 alignItems: "center", justifyContent: "center" }}>
                 {brand.logo_url ? (
                   <img src={mediaUrl(brand.logo_url)} alt={brand.name}
-                    style={{ maxHeight: "36px", maxWidth: "140px",
-                      objectFit: "contain", filter: "brightness(0) invert(0.7)" }} />
+                    style={{ maxHeight: "44px", maxWidth: "160px",
+                      objectFit: "contain" }} />
                 ) : (
                   <div style={{
                     width: "40px", height: "40px", borderRadius: "var(--r-md)",

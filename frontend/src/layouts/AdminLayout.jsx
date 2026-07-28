@@ -108,6 +108,10 @@ const navItems = [
   { to:"/admin/finance",    label:"Finanzas",     icon:"⬡" },
   { to:"/admin/billing",    label:"Facturación",  icon:"◧" },
   { to:"/admin/loyalty",    label:"Fidelización", icon:"⭐" },
+
+  // ── Personalización ──
+  { sep: "Sitio web" },
+  { to:"/admin/settings",   label:"Personalización", icon:"✧" },
 ]
 
 // ── AdminLayout ───────────────────────────────────────────────
