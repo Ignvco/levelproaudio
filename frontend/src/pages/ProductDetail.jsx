@@ -156,7 +156,7 @@ export default function ProductDetail() {
               {product.brand.logo && (
                 <img src={mediaUrl(product.brand.logo)} alt={product.brand.name}
                   style={{ height: "20px", width: "auto",
-                    filter: "brightness(0) invert(0.7)" }} />
+                    objectFit: "contain" }} />
               )}
               <span style={{ fontSize: "12px", color: "var(--text-3)",
                 textTransform: "uppercase", letterSpacing: "0.08em" }}>

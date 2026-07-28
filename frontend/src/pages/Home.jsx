@@ -88,6 +88,7 @@ export default function Home() {
   })
   const { data: settings } = useQuery({
     queryKey: ["site-settings"], queryFn: getSiteSettings,
+    staleTime: 30 * 1000,  // 30s — para que cambios en admin se reflejen rápido
   })
 
   const featured  = featuredData?.results  || featuredData  || []

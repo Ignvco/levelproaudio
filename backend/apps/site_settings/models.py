@@ -60,9 +60,5 @@ class SiteSettings(TimeStampedModel):
     @classmethod
     def get(cls):
         """Devuelve la instancia singleton (crea si no existe)."""
-        obj, _ = cls.objects.get_or_create(pk=cls.objects.values_list("pk", flat=True).first() or None,
-                                            defaults={})
-        # Fallback si el get_or_create dio inconsistencia (por primera ejecución)
-        if not cls.objects.exists():
-            obj = cls.objects.create()
-        return cls.objects.first()
+        obj = cls.objects.first()
+        return obj or cls.objects.create()
