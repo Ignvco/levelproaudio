@@ -327,3 +327,27 @@ El usuario hizo "Save to Push on Git" pero los módulos siguen sin funcionar en 
 - Verificar en Cloud Run consola que el último deploy es reciente y sin errores
 - Confirmar que el step de `python manage.py migrate` corre en el startup
 - Chequear que `INSTALLED_APPS` incluye `apps.site_settings` y `apps.rewards`
+
+
+---
+
+## Sesión 8 — Auto-migraciones en Cloud Run (2026-07-29)
+
+### ✅ Fix aplicado
+**`backend/Dockerfile.prod`** — El `CMD` final ahora ejecuta migraciones antes de arrancar gunicorn:
+
+```dockerfile
+CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120 --access-logfile - --error-logfile -"]
+```
+
+**Por qué funciona**: Cloud Run inyecta el socket de Cloud SQL en runtime vía la config `--add-cloudsql-instances` del servicio, así que `manage.py migrate` sí puede conectarse (a diferencia del job manual que fallaba por socket ausente).
+
+### 🚀 Acción del usuario
+Click en **"Save to Github"** desde el chat → Cloud Build despliega → migra automáticamente → producción arreglada. Cada deploy futuro con cambios de DB se auto-migra.
+
+### 📌 Backlog vigente
+- **P1 Shop UX**: filtros por marca, rango precio, breadcrumbs, wishlist, productos relacionados
+- **P2 Rewards Social**: botón "Compartir en Redes" con imagen IG Stories + sistema de referidos
+- **P3 JWT → HTTPOnly cookies** (evaluar impacto MP/PayPal)
+- **P3 Video processing** ffmpeg (thumbnails automáticos + 360p/720p/1080p)
+- **P3 Refactor**: `analytics/views.py` (1825 líneas), `AdminProducts.jsx` (562 líneas)
