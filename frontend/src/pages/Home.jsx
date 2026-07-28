@@ -120,6 +120,32 @@ export default function Home() {
           padding: "clamp(40px, 5vw, 72px)",
         }}
       >
+        {/* Imagen de fondo custom (si el admin subió una en Personalización) */}
+        {s.hero_image_url && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute", inset: 0, pointerEvents: "none",
+              backgroundImage: `url(${mediaUrl(s.hero_image_url)})`,
+              backgroundSize: "cover",
+              backgroundPosition: "center",
+              backgroundRepeat: "no-repeat",
+              opacity: 0.35,
+              zIndex: 0,
+            }}
+          />
+        )}
+        {/* Overlay oscuro para asegurar legibilidad del texto sobre la imagen */}
+        {s.hero_image_url && (
+          <div
+            aria-hidden
+            style={{
+              position: "absolute", inset: 0, pointerEvents: "none",
+              background: "linear-gradient(90deg, rgba(10,10,10,0.75) 0%, rgba(10,10,10,0.45) 55%, rgba(10,10,10,0.15) 100%)",
+              zIndex: 1,
+            }}
+          />
+        )}
         <div style={{
           position: "absolute", inset: 0, pointerEvents: "none",
           background: `

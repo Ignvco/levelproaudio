@@ -20,8 +20,11 @@ export const updateSiteSettings = (data, files = {}) => {
     Object.entries(files).forEach(([k, f]) => {
       if (f instanceof File) fd.append(k, f)
     })
+    // IMPORTANTE: NO seteamos Content-Type manualmente.
+    // El default del client es "application/json" — hay que borrarlo para que
+    // axios/el browser inyecten el boundary correcto del multipart.
     return api.patch("/admin/site-settings/", fd, {
-      headers: { "Content-Type": "multipart/form-data" },
+      headers: { "Content-Type": undefined },
     }).then(r => r.data)
   }
   return api.patch("/admin/site-settings/", data).then(r => r.data)

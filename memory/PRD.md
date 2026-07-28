@@ -351,3 +351,15 @@ Click en **"Save to Github"** desde el chat → Cloud Build despliega → migra 
 - **P3 JWT → HTTPOnly cookies** (evaluar impacto MP/PayPal)
 - **P3 Video processing** ffmpeg (thumbnails automáticos + 360p/720p/1080p)
 - **P3 Refactor**: `analytics/views.py` (1825 líneas), `AdminProducts.jsx` (562 líneas)
+
+---
+
+## Sesión 9 — Fixes Personalización + Home (2026-07-29)
+
+### ✅ Bugs corregidos
+1. **Imagen de fondo del Hero no se veía**: `Home.jsx` nunca renderizaba `hero_image_url`. Se agregó div de fondo `backgroundImage: url(hero_image_url)` con overlay oscuro (gradiente 75% → 15%) para asegurar legibilidad del texto. Verificado: al subir imagen desde `/admin/settings`, aparece en la home.
+
+2. **Personalización no guardaba la imagen**: `siteSettings.api.js` seteaba `Content-Type: multipart/form-data` explícitamente, y como el client axios tiene default `application/json`, el boundary del multipart no se inyectaba correctamente → Django parseaba el archivo como null. **Fix**: setear `Content-Type: undefined` para el request de FormData, así axios/browser genera el header con el boundary correcto. Verificado con Playwright: upload de imagen desde el panel guarda correctamente.
+
+3. **Marcas no visibles en home**: NO es bug de código. El endpoint público `/api/v1/brands/` filtra por `is_active=True` y el marquee del home muestra brands cuando `s.show_brands === true && brands.length > 0`. En producción devuelve `count: 0` — o las marcas están inactivas, o no existen en la DB de prod (sólo en preview seed).
+
