@@ -3,6 +3,7 @@ import { useState, useRef } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminBrands, createAdminBrand, updateAdminBrand, deleteAdminBrand } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
+import BulkImportPanel from "../../components/admin/BulkImportPanel"
 
 const inputSt = {
   width: "100%", padding: "10px 14px",
@@ -147,8 +148,18 @@ export default function AdminBrands() {
         </div>
         <button onClick={() => setModal("new")} className="btn btn-accent"
           style={{ padding: "10px 20px", fontSize: "13px" }}>
-          + Nueva marca
-        </button>
+          + Nueva marca        </button>
+      </div>
+
+      {/* Bulk import */}
+      <div style={{ marginBottom: "22px" }}>
+        <BulkImportPanel
+          endpoint="/admin/brands/import/"
+          entityLabel="marcas"
+          templateColumns={["nombre", "sitio_web", "activo"]}
+          templateExample={["Neumann", "https://www.neumann.com", "si"]}
+          invalidateKey="admin-brands"
+          testId="bulk-import-brands" />
       </div>
 
       {isLoading ? (

@@ -263,19 +263,25 @@ export default function AdminBilling() {
                     color:"var(--text-2)", marginBottom:"10px" }}>
                     Tipo de documento
                   </label>
-                  <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"10px" }}>
+                  <div style={{ display:"grid",
+                    gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))",
+                    gap:"10px" }}>
                     {[
-                      { id:"boleta",  label:"🧾 Boleta",  desc:"Para clientes particulares" },
-                      { id:"factura", label:"📄 Factura", desc:"Para empresas con RUT" },
+                      { id:"boleta",     label:"🇨🇱 Boleta",      desc:"Consumidor final (CL)" },
+                      { id:"factura",    label:"🇨🇱 Factura",     desc:"Empresa con RUT (CL)" },
+                      { id:"factura_a",  label:"🇦🇷 Factura A",   desc:"Resp. Inscripto (AR)" },
+                      { id:"factura_b",  label:"🇦🇷 Factura B",   desc:"Consumidor final (AR)" },
+                      { id:"factura_c",  label:"🇦🇷 Factura C",   desc:"Monotributista (AR)" },
                     ].map(({ id, label, desc }) => (
                       <button key={id} type="button"
+                        data-testid={`tipo-${id}`}
                         onClick={() => setGenForm(p => ({ ...p, tipo:id }))}
                         style={{ padding:"14px", borderRadius:"var(--r-xl)", textAlign:"left",
                           cursor:"pointer",
                           background: genForm.tipo===id ? "rgba(26,255,110,0.05)" : "var(--surface-2)",
                           border:     `1px solid ${genForm.tipo===id ? "rgba(26,255,110,0.3)" : "var(--border)"}`,
                           transition:"all var(--dur) var(--ease)" }}>
-                        <p style={{ fontSize:"14px", fontWeight:500, marginBottom:"4px" }}>{label}</p>
+                        <p style={{ fontSize:"13px", fontWeight:500, marginBottom:"4px" }}>{label}</p>
                         <p style={{ fontSize:"11px", color:"var(--text-3)" }}>{desc}</p>
                       </button>
                     ))}
@@ -332,14 +338,69 @@ export default function AdminBilling() {
                   </div>
                 )}
 
+                {/* País */}
+                <div>
+                  <label style={{ display:"block", fontSize:"12px", fontWeight:500,
+                    color:"var(--text-2)", marginBottom:"7px" }}>País emisor *</label>
+                  <select data-testid="input-pais"
+                    defaultValue={config.pais || "CL"}
+                    onChange={e => setCfgForm(p => ({ ...(p||config), pais:e.target.value }))}
+                    style={inputSt}>
+                    <option value="CL">🇨🇱 Chile — Boletas / Facturas</option>
+                    <option value="AR">🇦🇷 Argentina — Facturas A / B / C</option>
+                  </select>
+                </div>
+
+                {/* Tipo default + IVA */}
+                <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
+                  <div>
+                    <label style={{ display:"block", fontSize:"12px", fontWeight:500,
+                      color:"var(--text-2)", marginBottom:"7px" }}>Documento por defecto</label>
+                    <select data-testid="input-tipo-default"
+                      defaultValue={config.tipo_default || "boleta"}
+                      onChange={e => setCfgForm(p => ({ ...(p||config), tipo_default:e.target.value }))}
+                      style={inputSt}>
+                      <option value="boleta">Boleta (CL)</option>
+                      <option value="factura">Factura (CL)</option>
+                      <option value="factura_a">Factura A (AR)</option>
+                      <option value="factura_b">Factura B (AR)</option>
+                      <option value="factura_c">Factura C (AR)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display:"block", fontSize:"12px", fontWeight:500,
+                      color:"var(--text-2)", marginBottom:"7px" }}>IVA %</label>
+                    <input type="number" step="0.01" defaultValue={config.iva_porcentaje}
+                      onChange={e => setCfgForm(p => ({ ...(p||config), iva_porcentaje:parseFloat(e.target.value) }))}
+                      style={inputSt} />
+                  </div>
+                </div>
+
+                {/* Auto-generar */}
+                <label style={{ display:"flex", alignItems:"center", gap:"10px",
+                  padding:"12px 14px", background:"var(--surface-2)",
+                  border:"1px solid var(--border)", borderRadius:"var(--r-md)",
+                  cursor:"pointer" }}>
+                  <input type="checkbox" data-testid="input-auto-generar"
+                    defaultChecked={config.auto_generar_al_pagar}
+                    onChange={e => setCfgForm(p => ({ ...(p||config), auto_generar_al_pagar:e.target.checked }))} />
+                  <div>
+                    <p style={{ fontSize:"13px", fontWeight:500 }}>
+                      Emitir documento automáticamente al confirmar el pago
+                    </p>
+                    <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"2px" }}>
+                      Se crea la boleta/factura elegida arriba en cuanto la orden pasa a Pagada.
+                    </p>
+                  </div>
+                </label>
+
                 {[
                   { key:"razon_social", label:"Razón social *",   placeholder:"LevelPro Audio SpA" },
-                  { key:"rut",          label:"RUT *",             placeholder:"12.345.678-9" },
-                  { key:"giro",         label:"Giro comercial",    placeholder:"Venta de equipos de audio" },
-                  { key:"direccion",    label:"Dirección",         placeholder:"Av. Providencia 1234, Santiago" },
-                  { key:"telefono",     label:"Teléfono",          placeholder:"+56 9 1234 5678" },
-                  { key:"email",        label:"Email de contacto", placeholder:"ventas@levelproaudio.com" },
-                  { key:"website",      label:"Sitio web",         placeholder:"https://levelproaudio.com" },
+                  { key:"rut",          label:"RUT / CUIT *",     placeholder:"12.345.678-9  ó  30-71234567-9" },
+                  { key:"giro",         label:"Giro comercial",   placeholder:"Venta de equipos de audio" },
+                  { key:"direccion",    label:"Dirección",        placeholder:"Av. Providencia 1234, Santiago" },
+                  { key:"telefono",     label:"Teléfono",         placeholder:"+56 9 1234 5678" },
+                  { key:"email",        label:"Email de contacto",placeholder:"ventas@levelproaudio.com" },
                 ].map(({ key, label, placeholder }) => (
                   <div key={key}>
                     <label style={{ display:"block", fontSize:"12px", fontWeight:500,

@@ -10,8 +10,9 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     const storeToken = useAuthStore.getState().accessToken
-    const lsToken = localStorage.getItem("accessToken")
-    const token = storeToken || lsToken
+    const ssToken = sessionStorage.getItem("accessToken")
+      || localStorage.getItem("accessToken")   // fallback legacy
+    const token = storeToken || ssToken
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
@@ -28,6 +29,7 @@ api.interceptors.response.use(
       original._retry = true
       try {
         const refreshToken = useAuthStore.getState().refreshToken
+          || sessionStorage.getItem("refreshToken")
           || localStorage.getItem("refreshToken")
 
         if (!refreshToken) {
@@ -42,7 +44,7 @@ api.interceptors.response.use(
 
         const newAccess = data.access
         useAuthStore.getState().setTokens(newAccess, refreshToken)
-        localStorage.setItem("accessToken", newAccess)
+        sessionStorage.setItem("accessToken", newAccess)
         original.headers.Authorization = `Bearer ${newAccess}`
         return api(original)
       } catch {

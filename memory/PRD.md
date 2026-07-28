@@ -172,3 +172,70 @@ Ver `/app/memory/test_credentials.md`
 - 🟡 **Fase 3** — Billing electrónico (numeración manual + PDF; SII/AFIP para después)
 - 🔵 **Fase 4** — Seguridad (JWT → httpOnly cookies) + Refactor
 - 🟢 **Fase 5** — Bulk upload masivo (marcas + cursos)
+
+---
+
+## Sesión 5 — Loyalty · Billing · Seguridad · Bulk Upload (2026-07-28)
+
+### ✅ Fase 2 — Loyalty completo
+**Backend** (`apps/loyalty/`)
+- `admin_loyalty_summary` reescrito con estructura kpis + accounts que consume el frontend
+- `admin_adjust_points` con compatibilidad `puntos/descripcion` ↔ `points/reason`
+- `OrderViewSet.create()` con canje atómico: `loyalty_points_redeemed` + validación mínima + límite disponibles + registro de LoyaltyTransaction
+- Campos nuevos en Order: `loyalty_points_redeemed`, `loyalty_discount`
+- Tests 6/6 pasan
+- `OrderSerializer` expone los campos de descuento para mostrar en confirmaciones
+
+**Frontend**
+- `Cart.jsx`: bloque azul con slider de canje, subtotal + descuento + total final
+- `cartStore`: `pointsToRedeem` persistido
+- `Checkout.jsx`: envía `loyalty_points_redeemed`
+- `MyLoyalty.jsx` (nueva): nivel + progreso + KPIs + historial + FAQ
+- `AdminLoyalty.jsx`: config alineado a backend real
+- Nav dashboard: "Mis puntos" en `/dashboard/loyalty`
+
+### ✅ Fase 3 — Billing multi-país (CL/AR) + PDF
+**Backend** (`apps/billing/`)
+- `BillingConfig`: campo `pais` (CL/AR), `tipo_default`, `auto_generar_al_pagar`, contadores separados para Boleta / Factura / Factura A/B/C
+- `siguiente_numero(tipo)` unificado con prefijos B/F/FA/FB/FC
+- `TributaryDocument.TipoDocumento` extendido con FACTURA_A / B / C para Argentina
+- Signal `auto_generate_document_on_paid`: emite doc automáticamente al pagar si config lo permite
+- Endpoint `GET /api/v1/billing/my-documents/` para clientes
+
+**Frontend**
+- `MyDocuments.jsx` (nueva): descarga PDF por cliente
+- `AdminBilling.jsx`: selector país (🇨🇱/🇦🇷), tipo default, IVA, checkbox auto-generar, 5 tipos de documento en modal generar
+- Nav dashboard: "Documentos" en `/dashboard/documents`
+
+### ✅ Fase 4 — Seguridad JWT (conservador)
+- Migración `localStorage → sessionStorage` con migración transparente one-shot
+- `zustand` persist storage custom con fallback legacy
+- `client.js` interceptor lee `sessionStorage` primero, `localStorage` como fallback compatibility
+- Logout limpia ambos storages
+- **NO migrado a httpOnly cookies**: requiere cambios cross-domain que podrían romper redirects de MercadoPago/PayPal en producción. Documentado en backlog P2.
+
+### ✅ Fase 5 — Bulk upload (marcas + cursos)
+**Backend** (`apps/products/importers_extended.py`)
+- `import_brands_from_excel/csv`: columnas nombre (req), sitio_web, activo
+- `import_courses_from_excel/csv`: columnas titulo (req), precio (req), descripcion, nivel, duracion_horas, publicado, destacado
+- Idempotente: `update_or_create` por nombre/título
+- Endpoints: `/api/v1/admin/brands/import/` y `/api/v1/admin/courses/import/`
+
+**Frontend**
+- `BulkImportPanel.jsx` (componente reutilizable): descarga plantilla CSV + upload + reporte de creados/actualizados/errores
+- Panel integrado en `AdminBrands` y `AdminAcademy`
+
+### Verificación curl
+- Brands import: 2 marcas creadas OK
+- Courses import: 1 curso creado OK
+- Loyalty admin summary: kpis + accounts estructura correcta
+- Billing config: expone pais + tipo_default + auto_generar_al_pagar
+- Billing my-documents: endpoint responde 200
+
+### Backlog restante (P2)
+- Refactor de `analytics/views.py` (1755 líneas) → dividir por dominio
+- Refactor de `AdminProducts.jsx` (562 líneas) → separar modal + form
+- JWT httpOnly cookies (requiere validar cross-domain con MercadoPago/PayPal)
+- Live preview iframe en AdminSettings
+- Integración SII (Chile) + AFIP (Argentina) cuando el usuario tenga certificados
+

@@ -7,6 +7,7 @@ import {
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { Link } from "react-router-dom"
+import BulkImportPanel from "../../components/admin/BulkImportPanel"
 
 const inputSt = {
   width: "100%", padding: "10px 14px",
@@ -213,6 +214,17 @@ export default function AdminAcademy() {
             + Nuevo curso
           </button>
         </div>
+      </div>
+
+      {/* Bulk import */}
+      <div style={{ marginBottom: "22px" }}>
+        <BulkImportPanel
+          endpoint="/admin/courses/import/"
+          entityLabel="cursos"
+          templateColumns={["titulo", "precio", "descripcion_corta", "nivel", "duracion_horas", "publicado"]}
+          templateExample={["Mezcla y Master Pro", "89990", "Curso avanzado de mezcla", "avanzado", "12", "si"]}
+          invalidateKey="admin-courses"
+          testId="bulk-import-courses" />
       </div>
 
       {isLoading ? (

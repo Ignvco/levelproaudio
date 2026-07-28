@@ -46,13 +46,8 @@ def generate_document(request):
     iva   = round(total - total / (1 + iva_pct), 0)
     neto  = total - iva
 
-    # Número de folio
-    if tipo == "factura":
-        numero = config.siguiente_numero_factura()
-        folio  = f"F-{numero:06d}"
-    else:
-        numero = config.siguiente_numero_boleta()
-        folio  = f"B-{numero:06d}"
+    # Número de folio (soporta tipos CL y AR)
+    numero, folio = config.siguiente_numero(tipo)
 
     # Crear el documento
     doc = TributaryDocument.objects.create(
@@ -218,6 +213,35 @@ def void_document(request, doc_id):
     return Response({"detail": "Documento anulado."})
 
 
+# ── Documentos del cliente logueado ───────────────────────────
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def my_documents(request):
+    """GET /api/v1/billing/my-documents/ — documentos del usuario logueado."""
+    docs = TributaryDocument.objects.filter(
+        order__user=request.user
+    ).select_related("order").order_by("-created_at")
+
+    return Response({
+        "results": [{
+            "id":           str(d.id),
+            "folio":        d.folio,
+            "tipo":         d.tipo,
+            "tipo_label":   d.get_tipo_display(),
+            "orden_id":     str(d.order.id),
+            "orden_short":  str(d.order.id)[:8].upper(),
+            "total":        float(d.total),
+            "neto":         float(d.neto),
+            "iva":          float(d.iva),
+            "estado":       d.estado,
+            "estado_label": d.get_estado_display(),
+            "tiene_pdf":    bool(d.pdf_file),
+            "fecha":        d.created_at.strftime("%d/%m/%Y"),
+        } for d in docs],
+    })
+
+
 # ── Config de facturación ─────────────────────────────────────
 
 @api_view(["GET", "PATCH"])
@@ -231,8 +255,9 @@ def billing_config(request):
 
     if request.method == "PATCH":
         fields = [
-            "razon_social", "rut", "giro", "direccion",
+            "pais", "razon_social", "rut", "giro", "direccion",
             "ciudad", "telefono", "email", "iva_porcentaje",
+            "auto_generar_al_pagar", "tipo_default",
         ]
         for f in fields:
             if f in request.data:
@@ -240,6 +265,7 @@ def billing_config(request):
         config.save()
 
     return Response({
+        "pais":                   config.pais,
         "razon_social":           config.razon_social,
         "rut":                    config.rut,
         "giro":                   config.giro,
@@ -248,6 +274,11 @@ def billing_config(request):
         "telefono":               config.telefono,
         "email":                  config.email,
         "iva_porcentaje":         float(config.iva_porcentaje),
+        "auto_generar_al_pagar":  config.auto_generar_al_pagar,
+        "tipo_default":           config.tipo_default,
         "ultimo_numero_boleta":   config.ultimo_numero_boleta,
         "ultimo_numero_factura":  config.ultimo_numero_factura,
+        "ultimo_numero_factura_a":config.ultimo_numero_factura_a,
+        "ultimo_numero_factura_b":config.ultimo_numero_factura_b,
+        "ultimo_numero_factura_c":config.ultimo_numero_factura_c,
     })

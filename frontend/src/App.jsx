@@ -75,6 +75,7 @@ import AdminBilling from "./pages/admin/AdminBilling"
 import Rewards from "./pages/Rewards"
 import MyEntries from "./pages/dashboard/MyEntries"
 import MyLoyalty from "./pages/dashboard/MyLoyalty"
+import MyDocuments from "./pages/dashboard/MyDocuments"
 import AdminRewards from "./pages/admin/AdminRewards"
 import AdminRewardsCampaigns from "./pages/admin/AdminRewardsCampaigns"
 import AdminRewardsCampaignDetail from "./pages/admin/AdminRewardsCampaignDetail"
@@ -231,6 +232,16 @@ function App() {
             <ProtectedRoute>
               <DashboardLayout>
                 <MyLoyalty />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/documents"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <MyDocuments />
               </DashboardLayout>
             </ProtectedRoute>
           }

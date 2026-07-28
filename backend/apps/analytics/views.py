@@ -33,6 +33,10 @@ from apps.payments.models import Payment
 from apps.academy.models import Course, Module, Lesson, Enrollment
 from apps.services.models import Service, Booking, ServiceRequest, ServiceCategory
 from apps.products.importers import import_from_excel, import_from_csv
+from apps.products.importers_extended import (
+    import_brands_from_excel, import_brands_from_csv,
+    import_courses_from_excel, import_courses_from_csv,
+)
 from apps.analytics.models import DistributionCategory, IncomeRecord, IncomeDistribution, Withdrawal
 from apps.services.serializers import ServiceDetailSerializer
 
@@ -1091,6 +1095,54 @@ def import_products(request):
     if "error" in result:
         return Response(result, status=400)
 
+    return Response(result, status=200)
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminOrStaff])
+def import_brands(request):
+    """
+    POST /api/v1/admin/brands/import/
+    Acepta .xlsx o .csv para crear/actualizar marcas masivamente.
+    Columnas: nombre (req), sitio_web, activo.
+    """
+    file = request.FILES.get("file")
+    if not file:
+        return Response({"error": "No se envió ningún archivo."}, status=400)
+    name = file.name.lower()
+    if name.endswith((".xlsx", ".xls")):
+        result = import_brands_from_excel(file)
+    elif name.endswith(".csv"):
+        result = import_brands_from_csv(file)
+    else:
+        return Response({"error": "Formato no soportado. Usa .xlsx o .csv."}, status=400)
+    if "error" in result:
+        return Response(result, status=400)
+    return Response(result, status=200)
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminOrStaff])
+def import_courses(request):
+    """
+    POST /api/v1/admin/courses/import/
+    Acepta .xlsx o .csv para crear/actualizar cursos masivamente.
+    Columnas: titulo (req), precio (req), descripcion, descripcion_corta,
+    nivel (principiante/intermedio/avanzado), duracion_horas, video_preview,
+    destacado, publicado.
+    """
+    file = request.FILES.get("file")
+    if not file:
+        return Response({"error": "No se envió ningún archivo."}, status=400)
+    name = file.name.lower()
+    if name.endswith((".xlsx", ".xls")):
+        result = import_courses_from_excel(file)
+    elif name.endswith(".csv"):
+        result = import_courses_from_csv(file)
+    else:
+        return Response({"error": "Formato no soportado. Usa .xlsx o .csv."}, status=400)
+    if "error" in result:
+        return Response(result, status=400)
     return Response(result, status=200)
 
 

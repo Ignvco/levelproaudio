@@ -33,6 +33,8 @@ from .views import (
     update_booking_status,
     update_request_status,
     import_products,
+    import_brands,
+    import_courses,
     download_template,
     analytics_full,
     product_images,
@@ -97,6 +99,8 @@ urlpatterns = [
 
     # Productos — importación
     path("products/import/",   import_products,    name="admin-products-import"),
+    path("brands/import/",     import_brands,      name="admin-brands-import"),
+    path("courses/import/",    import_courses,     name="admin-courses-import"),
     path("products/template/", download_template,  name="admin-products-template"),
     
     path("inventory/summary/",    inventory_summary,             name="inventory-summary"),

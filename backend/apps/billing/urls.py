@@ -8,11 +8,13 @@ from .views import (
     list_documents,
     void_document,
     billing_config,
+    my_documents,
 )
 
 urlpatterns = [
     path("generate/",              generate_document,    name="billing-generate"),
     path("documents/",             list_documents,       name="billing-list"),
+    path("my-documents/",          my_documents,         name="billing-my"),
     path("download/<uuid:doc_id>/",download_pdf,         name="billing-download"),
     path("send/<uuid:doc_id>/",    send_document_email,  name="billing-send"),
     path("void/<uuid:doc_id>/",    void_document,        name="billing-void"),

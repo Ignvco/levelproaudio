@@ -1,14 +1,47 @@
 // store/authStore.js
 
 import { create } from "zustand"
-import { persist } from "zustand/middleware"
+import { persist, createJSONStorage } from "zustand/middleware"
 import axios from "axios"
+
+// ── Storage seguro: sessionStorage evita persistir tokens entre pestañas
+// cerradas y mitiga vectores de XSS persistente vs localStorage.
+// Se migra transparentemente cualquier valor previo de localStorage.
+const secureStorage = {
+  getItem: (name) => {
+    const v = sessionStorage.getItem(name)
+    if (v) return v
+    // Migración transparente desde localStorage → sessionStorage
+    const legacy = localStorage.getItem(name)
+    if (legacy) {
+      sessionStorage.setItem(name, legacy)
+      localStorage.removeItem(name)
+    }
+    return legacy
+  },
+  setItem: (name, value) => sessionStorage.setItem(name, value),
+  removeItem: (name) => {
+    sessionStorage.removeItem(name)
+    localStorage.removeItem(name)  // limpia migrar residual
+  },
+}
 
 // ← Importación directa de axios para evitar dependencia circular con api/client.js
 const authAxios = axios.create({
   baseURL: "/api/v1",
   headers: { "Content-Type": "application/json" },
 })
+
+// Migración one-shot de tokens legacy en localStorage a sessionStorage
+;(function migrateLegacyTokens() {
+  for (const key of ["accessToken", "refreshToken"]) {
+    const legacy = localStorage.getItem(key)
+    if (legacy && !sessionStorage.getItem(key)) {
+      sessionStorage.setItem(key, legacy)
+    }
+    localStorage.removeItem(key)
+  }
+})()
 
 export const useAuthStore = create(
   persist(
@@ -20,8 +53,8 @@ export const useAuthStore = create(
       isAuthenticated: false,
 
       setTokens: (access, refresh) => {
-        localStorage.setItem("accessToken", access)
-        localStorage.setItem("refreshToken", refresh)
+        sessionStorage.setItem("accessToken", access)
+        sessionStorage.setItem("refreshToken", refresh)
         set({
           accessToken: access,
           refreshToken: refresh,
@@ -35,9 +68,9 @@ export const useAuthStore = create(
         // ← URL correcta según las rutas del backend
         const { data } = await authAxios.post("/auth/login/", { email, password })
 
-        // Guarda tokens
-        localStorage.setItem("accessToken", data.access)
-        localStorage.setItem("refreshToken", data.refresh)
+        // Guarda tokens en sessionStorage
+        sessionStorage.setItem("accessToken", data.access)
+        sessionStorage.setItem("refreshToken", data.refresh)
 
         // Obtiene el perfil — URL correcta es /auth/profile/
         const { data: user } = await authAxios.get("/auth/profile/", {
@@ -62,8 +95,8 @@ export const useAuthStore = create(
           email: formData.email,
           password: formData.password,
         })
-        localStorage.setItem("accessToken", data.access)
-        localStorage.setItem("refreshToken", data.refresh)
+        sessionStorage.setItem("accessToken", data.access)
+        sessionStorage.setItem("refreshToken", data.refresh)
         const { data: user } = await authAxios.get("/auth/profile/", {
           headers: { Authorization: `Bearer ${data.access}` }
         })
@@ -72,7 +105,9 @@ export const useAuthStore = create(
       },
 
       logout: () => {
-        localStorage.removeItem("accessToken")
+        sessionStorage.removeItem("accessToken")
+        sessionStorage.removeItem("refreshToken")
+        localStorage.removeItem("accessToken")   // limpia residuales
         localStorage.removeItem("refreshToken")
         set({
           accessToken: null,
@@ -86,6 +121,7 @@ export const useAuthStore = create(
     }),
     {
       name: "levelproaudio-auth",
+      storage: createJSONStorage(() => secureStorage),
       partialize: (state) => ({
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,

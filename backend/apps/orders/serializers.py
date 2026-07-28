@@ -61,6 +61,7 @@ class OrderSerializer(serializers.ModelSerializer):
         fields = [
             "id", "status", "status_display",
             "total", "items_count",
+            "loyalty_points_redeemed", "loyalty_discount",
             "email", "shipping_address", "notes",
             "items", "payments",   # ← payments incluido
             "created_at",
