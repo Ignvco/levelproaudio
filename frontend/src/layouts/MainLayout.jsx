@@ -10,6 +10,7 @@ const NAV_LINKS = [
   { label: "Tienda",    to: "/shop"     },
   { label: "Academia",  to: "/academy"  },
   { label: "Servicios", to: "/services" },
+  { label: "Rewards",   to: "/rewards"  },
 ]
 
 // ─────────────────────────────────────────────────────────────
@@ -327,8 +328,8 @@ function MobileDock() {
   const items = [
     { to: "/",         icon: "home",   label: "Home"    },
     { to: "/shop",     icon: "search", label: "Tienda"  },
+    { to: "/rewards",  icon: "grad",   label: "Rewards" },
     { to: "/cart",     icon: "cart",   label: "Carrito", badge: cartCount },
-    { to: "/academy",  icon: "grad",   label: "Cursos"  },
     {
       to: isAuthenticated ? "/dashboard" : "/login",
       icon: "user", label: "Cuenta",
@@ -470,6 +471,7 @@ function Footer() {
             { title:"Plataforma", links:[
               {label:"Academia",  to:"/academy"},
               {label:"Servicios", to:"/services"},
+              {label:"Rewards",   to:"/rewards"},
               {label:"Mi cuenta", to:"/dashboard"},
             ]},
             { title:"Contacto",  links:[

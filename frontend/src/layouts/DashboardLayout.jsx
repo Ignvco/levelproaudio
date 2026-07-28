@@ -3,11 +3,12 @@ import { NavLink, Outlet, useNavigate } from "react-router-dom"
 import { useAuthStore } from "../store/authStore"
 
 const NAV = [
-  { to: "/dashboard",          label: "Inicio",    icon: "◈", end: true  },
-  { to: "/dashboard/orders",   label: "Pedidos",   icon: "◫"              },
-  { to: "/dashboard/courses",  label: "Mis cursos",icon: "▷"              },
-  { to: "/dashboard/services", label: "Servicios", icon: "◇"              },
-  { to: "/dashboard/profile",  label: "Perfil",    icon: "○"              },
+  { to: "/dashboard",          label: "Inicio",           icon: "◈", end: true  },
+  { to: "/dashboard/orders",   label: "Pedidos",          icon: "◫"              },
+  { to: "/dashboard/courses",  label: "Mis cursos",       icon: "▷"              },
+  { to: "/dashboard/services", label: "Servicios",        icon: "◇"              },
+  { to: "/dashboard/rewards",  label: "Mis participaciones", icon: "🎁"          },
+  { to: "/dashboard/profile",  label: "Perfil",           icon: "○"              },
 ]
 
 export default function DashboardLayout({ children }) {

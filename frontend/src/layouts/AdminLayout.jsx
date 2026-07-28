@@ -103,6 +103,18 @@ const navItems = [
   // ── Servicios ──
   { to:"/admin/services", label:"Servicios", icon:"◇" },
 
+  // ── Rewards ──
+  { sep: "Rewards" },
+  {
+    label:"Rewards", icon:"🎁",
+    children:[
+      { to:"/admin/rewards",           label:"Dashboard"      },
+      { to:"/admin/rewards/campaigns", label:"Campañas"       },
+      { to:"/admin/rewards/entries",   label:"Participaciones"},
+      { to:"/admin/rewards/winners",   label:"Ganadores"      },
+    ],
+  },
+
   // ── Finanzas ──
   { sep: "Finanzas" },
   { to:"/admin/finance",    label:"Finanzas",     icon:"⬡" },

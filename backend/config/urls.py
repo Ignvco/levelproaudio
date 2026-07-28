@@ -40,6 +40,10 @@ urlpatterns = [
     # Configuración del sitio (Personalización)
     path("api/v1/", include("apps.site_settings.urls")),
 
+    # LevelPro Rewards — módulo de sorteos/campañas
+    path("api/v1/rewards/",       include("apps.rewards.urls_public")),
+    path("api/v1/admin/rewards/", include("apps.rewards.urls_admin")),
+
     # API docs
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),

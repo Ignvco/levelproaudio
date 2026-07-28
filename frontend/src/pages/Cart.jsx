@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useCartStore } from "../store/cartStore"
 import { useAuthStore } from "../store/authStore"
 import { getOrders } from "../api/orders.api"
+import { previewCartEntries } from "../api/rewards.api"
 import { mediaUrl } from "../utils/mediaUrl"
 
 function CartItem({ item }) {
@@ -123,6 +124,19 @@ export default function Cart() {
     enabled:  isAuthenticated,
     staleTime: 0,
   })
+
+  // ── Preview de participaciones para el carrito actual
+  const cartPreviewItems = items.map(it => ({
+    product_id: it.product.id,
+    quantity:   it.quantity,
+  }))
+  const { data: rewardsPreview } = useQuery({
+    queryKey: ["rewards-preview", cartPreviewItems],
+    queryFn:  () => previewCartEntries(cartPreviewItems),
+    enabled:  items.length > 0,
+    staleTime: 30_000,
+  })
+  const totalEntries = rewardsPreview?.total_entries || 0
 
   const pendingOrder = (ordersData?.results || ordersData || [])
     .find(o => o.status === "pending")
@@ -280,6 +294,43 @@ export default function Cart() {
                 ${Number(total || 0).toLocaleString("es-CL")}
               </span>
             </div>
+
+            {/* Rewards preview */}
+            {totalEntries > 0 && (
+              <div data-testid="cart-rewards-preview" style={{
+                marginBottom:"20px", padding:"14px 16px",
+                background:"linear-gradient(135deg, rgba(26,255,110,0.08) 0%, rgba(26,255,110,0.02) 100%)",
+                border:"1px solid rgba(26,255,110,0.25)",
+                borderRadius:"var(--r-lg)",
+              }}>
+                <div style={{ display:"flex", alignItems:"center",
+                  gap:"10px", marginBottom:"8px" }}>
+                  <span style={{ fontSize:"16px" }}>🎁</span>
+                  <p style={{ fontSize:"10px", fontWeight:700,
+                    color:"var(--accent)", letterSpacing:"0.1em",
+                    textTransform:"uppercase" }}>
+                    LevelPro Rewards
+                  </p>
+                </div>
+                <p style={{ fontSize:"13px", color:"var(--text)",
+                  lineHeight:1.5 }}>
+                  Con esta compra obtendrás{" "}
+                  <span style={{ color:"var(--accent)", fontWeight:700 }}>
+                    {totalEntries} participaciones
+                  </span>
+                  {" "}en {rewardsPreview.campaigns.length > 1
+                    ? `${rewardsPreview.campaigns.length} sorteos`
+                    : "el sorteo activo"}.
+                </p>
+                <Link to="/rewards" style={{
+                  display:"inline-block", marginTop:"8px",
+                  fontSize:"12px", color:"var(--accent)",
+                  textDecoration:"none",
+                }}>
+                  Ver detalles del sorteo →
+                </Link>
+              </div>
+            )}
 
             <button
               onClick={() => isAuthenticated

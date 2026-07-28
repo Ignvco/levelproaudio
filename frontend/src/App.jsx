@@ -71,6 +71,15 @@ import ExecutiveDashboard from "./pages/admin/ExecutiveDashboard"
 import AdminLoyalty from "./pages/admin/AdminLoyalty"
 import AdminBilling from "./pages/admin/AdminBilling"
 
+// Rewards
+import Rewards from "./pages/Rewards"
+import MyEntries from "./pages/dashboard/MyEntries"
+import AdminRewards from "./pages/admin/AdminRewards"
+import AdminRewardsCampaigns from "./pages/admin/AdminRewardsCampaigns"
+import AdminRewardsCampaignDetail from "./pages/admin/AdminRewardsCampaignDetail"
+import AdminRewardsEntries from "./pages/admin/AdminRewardsEntries"
+import AdminRewardsWinners from "./pages/admin/AdminRewardsWinners"
+
 // ── Rutas protegidas ────────────────────────────────────────
 function ProtectedRoute({ children }) {
   const { isAuthenticated, user } = useAuthStore()
@@ -111,6 +120,9 @@ function App() {
         <Route path="/services" element={<MainLayout><Services /></MainLayout>} />
         <Route path="/services/:slug" element={<MainLayout><ServiceDetail /></MainLayout>} />
 
+        {/* Rewards público */}
+        <Route path="/rewards" element={<MainLayout><Rewards /></MainLayout>} />
+
         <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
           <Route index element={<AdminDashboard />} />
           <Route path="analytics" element={<AdminAnalytics />} />
@@ -132,6 +144,13 @@ function App() {
           <Route path="services" element={<AdminServices />} />
           <Route path="academy/enrollments" element={<AdminEnrollments />} />
           <Route path="settings" element={<AdminSettings />} />
+
+          {/* Rewards */}
+          <Route path="rewards"                       element={<AdminRewards />} />
+          <Route path="rewards/campaigns"             element={<AdminRewardsCampaigns />} />
+          <Route path="rewards/campaigns/:id"         element={<AdminRewardsCampaignDetail />} />
+          <Route path="rewards/entries"               element={<AdminRewardsEntries />} />
+          <Route path="rewards/winners"               element={<AdminRewardsWinners />} />
         </Route>
 
         {/* ── Auth ── */}
@@ -191,6 +210,16 @@ function App() {
             <ProtectedRoute>
               <DashboardLayout>
                 <MyServices />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/rewards"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <MyEntries />
               </DashboardLayout>
             </ProtectedRoute>
           }

@@ -3,6 +3,7 @@ import { useState } from "react"
 import { useParams, Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { getProduct } from "../api/products.api"
+import { getProductParticipation } from "../api/rewards.api"
 import { useCartStore } from "../store/cartStore"
 import { useScrollReveal } from "../hooks/useScrollReveal"
 import { mediaUrl } from "../utils/mediaUrl"
@@ -17,6 +18,12 @@ export default function ProductDetail() {
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ["product", slug],
     queryFn:  () => getProduct(slug),
+  })
+
+  const { data: rewardCampaigns = [] } = useQuery({
+    queryKey: ["reward-participation", slug],
+    queryFn:  () => getProductParticipation(slug),
+    enabled:  !!slug,
   })
 
   const infoRef = useScrollReveal({ delay: 100 })
@@ -306,6 +313,56 @@ export default function ProductDetail() {
                 lineHeight: 1.8 }}>
                 {product.description}
               </p>
+            </div>
+          )}
+
+          {/* Rewards — este producto participa en campañas */}
+          {rewardCampaigns.length > 0 && (
+            <div data-testid="reward-participation-block" style={{
+              padding:"18px 20px",
+              background:"linear-gradient(135deg, rgba(26,255,110,0.06) 0%, rgba(26,255,110,0.02) 100%)",
+              border:"1px solid rgba(26,255,110,0.25)",
+              borderRadius:"var(--r-xl)",
+              display:"flex", flexDirection:"column", gap:"12px",
+            }}>
+              <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
+                <span style={{ fontSize:"20px" }}>🎁</span>
+                <p style={{ fontSize:"11px", fontWeight:700,
+                  color:"var(--accent)", letterSpacing:"0.1em",
+                  textTransform:"uppercase" }}>
+                  LevelPro Rewards
+                </p>
+              </div>
+              {rewardCampaigns.map(c => (
+                <div key={c.campaign_id} style={{
+                  display:"flex", justifyContent:"space-between",
+                  alignItems:"center", gap:"12px",
+                  paddingTop:"12px", borderTop:"1px solid rgba(26,255,110,0.12)",
+                }}>
+                  <div style={{ minWidth:0, flex:1 }}>
+                    <p style={{ fontSize:"14px", fontWeight:500,
+                      color:"var(--text)", marginBottom:"3px",
+                      overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                      Obtienes <span style={{ color:"var(--accent)", fontWeight:700 }}>
+                        {c.entries_per_purchase} participaciones
+                      </span>
+                    </p>
+                    <p style={{ fontSize:"12px", color:"var(--text-3)" }}>
+                      Sorteo del {new Date(c.draw_date).toLocaleDateString("es-CL",
+                        { day:"numeric", month:"long", year:"numeric" })}
+                    </p>
+                  </div>
+                  <Link to={`/rewards`}
+                    style={{ fontSize:"12px", color:"var(--accent)",
+                      whiteSpace:"nowrap", textDecoration:"none",
+                      padding:"6px 10px", borderRadius:"var(--r-full)",
+                      background:"rgba(26,255,110,0.1)",
+                      border:"1px solid rgba(26,255,110,0.2)",
+                    }}>
+                    Ver campaña →
+                  </Link>
+                </div>
+              ))}
             </div>
           )}
 
