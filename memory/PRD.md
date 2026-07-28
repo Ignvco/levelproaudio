@@ -123,3 +123,52 @@ Ver `/app/memory/test_credentials.md`
 - **P1 complexity**: refactorizar `_save_product()` (CC 22), `dashboard_overview()` (99 líneas), `executive_dashboard()` (CC 18), `generate_document_pdf()` (240 líneas) en funciones más pequeñas
 - **P1 componentes**: dividir `AdminProducts.jsx` (562 líneas), `MainLayout.jsx Navbar` (CC 27), `Checkout.jsx` (CC 29), `Home.jsx`, `ProductDetail.jsx`
 - **P2 performance**: agregar `useMemo` para los filter/map/flatMap en `MainLayout`, `AdminCategories`, `AdminOrders`, `Profile`
+
+
+---
+
+## Sesión 4 — LevelPro Rewards (2026-07-28)
+
+**Módulo Rewards implementado 100%**: sistema de campañas promocionales integrado al ecommerce donde ciertos productos entregan participaciones automáticas para sorteos.
+
+**Backend nuevo**: `apps/rewards/`
+- `models.py` — Campaign, RewardProduct, Entry, Winner
+- `services.py` — `generate_entries_for_order()` idempotente + `run_draw()` con `secrets.choice()` (criptográficamente seguro)
+- `signals.py` — hook a `orders.Order.post_save` cuando `status ∈ {paid, shipped, completed}` (no modifica orders)
+- `views.py` — endpoints públicos: campaigns/{slug}, preview, my-entries, winners, product/{slug}
+- `views_admin.py` — CRUD campañas, productos, entries (+CSV export), winners, dashboard KPIs, draw, duplicate, finish
+- `tests.py` — 7 tests unitarios pasan (idempotencia, sorteo, códigos únicos)
+
+**Rutas**: `/api/v1/rewards/*` (público) y `/api/v1/admin/rewards/*` (staff)
+
+**Frontend nuevo**:
+- `/rewards` — página pública con hero, countdown, productos participantes, ganadores
+- `/dashboard/rewards` — "Mis participaciones" con estado ganado/suplente/no-ganó
+- `/admin/rewards` (Dashboard + Campañas + Participaciones + Ganadores) con:
+  - KPIs en tiempo real (auto-refresh cada 15s)
+  - Modal "Nueva campaña" con 9 campos
+  - CRUD de productos participantes con `entries_per_purchase` editable inline
+  - Botón "🎲 Ejecutar sorteo" con confirmación (no repetible)
+  - Duplicar / Finalizar / Publicar campaña
+  - Filtros de participaciones + exportación CSV
+  - Ganadores con notes editables + upload de evidencia
+- Bloque "Este producto participa" en `ProductDetail` (data-testid: `reward-participation-block`)
+- Bloque "Con esta compra obtendrás X tickets" en `Cart` (data-testid: `cart-rewards-preview`)
+- Link "Rewards" en navbar desktop, mobile dock y footer
+
+**Configuración**:
+- `secrets.choice()` para sorteo (criptográficamente seguro)
+- 1 ganador principal + N suplentes configurables (default 0)
+- Suplentes son usuarios distintos al principal (fallback si no alcanza)
+- Sorteo auditado (drawn_at + drawn_by)
+- Sin envío automático de emails (admin lo hace manual)
+- Diseño con tokens actuales: Geist + verde neón `#1aff6e`
+
+**Testing (iteration_3.json)**: 100% backend (19/19 pytest) + 100% frontend (rutas y componentes verificados). 0 issues críticos. Solo 2 mejoras cosméticas menores: reemplazar `input[type=date]` nativos por DatePicker shadcn.
+
+### Próximos pasos aprobados por el usuario
+
+- 🟡 **Fase 2** — Loyalty completo (UI usuario + admin, canje en checkout)
+- 🟡 **Fase 3** — Billing electrónico (numeración manual + PDF; SII/AFIP para después)
+- 🔵 **Fase 4** — Seguridad (JWT → httpOnly cookies) + Refactor
+- 🟢 **Fase 5** — Bulk upload masivo (marcas + cursos)
