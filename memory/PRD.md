@@ -295,3 +295,35 @@ Testeados 20 endpoints admin críticos con curl. **100% funcionando**:
 - SHOP: filtro por marca + rango de precio + productos relacionados + wishlist
 - SPARKS Rewards: botón "Compartir en redes" con imagen auto-generada + Sistema de referidos
 
+
+
+---
+
+## Sesión 7 — Fix bugs admin + Video upload local (2026-07-28)
+
+### ✅ Bugs corregidos
+1. **Inscripciones 404**: Sidebar apuntaba a `/admin/enrollments` pero la ruta es `/admin/academy/enrollments`. Corregido.
+2. **AdminServices sin CRUD**: solo mostraba read-only. Agregado modal completo con crear/editar/eliminar, form con nombre, descripción corta/completa, tipo de precio (a cotizar / fijo / por hora), precio, activo, destacado. Rutas backend ya existían y se conectan a `POST/PATCH/DELETE /api/v1/admin/services/{id}/`.
+3. **Productos activos/inactivos**: Agregado filtro toggle "Activos / Inactivos / Todos" (default: Activos). Backend `AdminProductViewSet` acepta ahora `?is_active=true|false` y `?category__slug=`.
+4. **Facturación Configuración**: Endpoint confirmado funcionando (200). En preview carga OK. Producción sigue sin el código nuevo (deploy pendiente).
+
+### ✅ Nueva feature: Videos locales para Academia
+- Nuevo campo `video_file` en `Lesson` (FileField, sube a `academy/videos/`)
+- Propiedad `video_source`: prioriza `video_file` sobre `video_url`
+- Serializer y admin serializer expone `video_source` para el player
+- `AdminLessonViewSet` con `MultiPartParser` para aceptar archivos
+- Frontend `AdminLessons` con toggle **"📁 Subir archivo / 🔗 URL externa"**
+- Drag & drop de video, barra de progreso durante upload, muestra tamaño en MB
+- `DATA_UPLOAD_MAX_MEMORY_SIZE = 500 MB` en settings/base.py
+
+### 🚨 Producción — Personalización y Rewards siguen fallando
+El usuario hizo "Save to Push on Git" pero los módulos siguen sin funcionar en producción.
+**Causas posibles**:
+1. El deploy no corrió las migraciones (`site_settings.0001_initial`, `rewards.0001_initial`, `orders.0003_*`, `billing.0003_*`, `academy.0003_*`)
+2. El build del frontend no incluyó las nuevas rutas
+3. El servicio Cloud Run del backend no se reinició tras el push
+
+**Solución**:
+- Verificar en Cloud Run consola que el último deploy es reciente y sin errores
+- Confirmar que el step de `python manage.py migrate` corre en el startup
+- Chequear que `INSTALLED_APPS` incluye `apps.site_settings` y `apps.rewards`

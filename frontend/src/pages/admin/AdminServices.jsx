@@ -2,9 +2,12 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
-  getAdminServices, getAdminServiceRequests,
+  getAdminServiceRequests,
   updateRequestStatus, updateBookingStatus,
+  listAdminServicesCrud, createAdminService,
+  updateAdminService, deleteAdminService,
 } from "../../api/admin.api"
+import { showToast } from "../../components/ui/ToastNotification"
 
 const inputSt = {
   width: "100%", padding: "10px 14px",
@@ -36,11 +39,12 @@ function StatusBadge({ status, map }) {
 
 export default function AdminServices() {
   const [tab, setTab]         = useState(0)
+  const [modal, setModal]     = useState(null)  // null | "new" | {service}
   const queryClient           = useQueryClient()
   const TABS                  = ["Solicitudes", "Servicios"]
 
   const { data: servicesData, isLoading: loadingServices } = useQuery({
-    queryKey: ["admin-services"], queryFn: getAdminServices,
+    queryKey: ["admin-services-crud"], queryFn: listAdminServicesCrud,
   })
   const { data: requestsData, isLoading: loadingReqs } = useQuery({
     queryKey: ["admin-requests"], queryFn: getAdminServiceRequests,
@@ -49,6 +53,14 @@ export default function AdminServices() {
   const reqMutation = useMutation({
     mutationFn: ({ id, data }) => updateRequestStatus(id, data),
     onSuccess:  () => queryClient.invalidateQueries(["admin-requests"]),
+  })
+
+  const delMutation = useMutation({
+    mutationFn: deleteAdminService,
+    onSuccess:  () => {
+      queryClient.invalidateQueries({ queryKey:["admin-services-crud"] })
+      showToast("Servicio eliminado")
+    },
   })
 
   const services = servicesData?.results || servicesData || []
@@ -172,52 +184,247 @@ export default function AdminServices() {
 
       {/* TAB SERVICIOS */}
       {tab === 1 && (
-        loadingServices ? (
-          <div style={{ display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "12px" }}>
-            {[...Array(4)].map((_, i) => (
-              <div key={i} className="skeleton" style={{ height: "120px" }} />
-            ))}
+        <>
+          <div style={{ display:"flex", justifyContent:"space-between",
+            alignItems:"center", marginBottom:"18px" }}>
+            <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
+              {services.length} servicios registrados
+            </p>
+            <button onClick={() => setModal("new")}
+              data-testid="btn-new-service"
+              className="btn btn-accent"
+              style={{ padding:"9px 18px", fontSize:"13px" }}>
+              + Nuevo servicio
+            </button>
           </div>
-        ) : (
-          <div style={{ display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "12px" }}>
-            {services.map(s => (
-              <div key={s.id} style={{
-                background: "var(--surface)", border: "1px solid var(--border)",
-                borderRadius: "var(--r-xl)", padding: "20px",
-                display: "flex", flexDirection: "column", gap: "10px",
-                transition: "all var(--dur-slow) var(--ease)",
-              }}
-                className="card card-glow"
-              >
-                <div style={{ display: "flex", justifyContent: "space-between",
-                  alignItems: "flex-start" }}>
-                  <p style={{ fontSize: "14px", fontWeight: 500 }}>{s.name}</p>
-                  <span style={{
-                    padding: "2px 8px", borderRadius: "var(--r-full)", fontSize: "11px",
-                    fontWeight: 500,
-                    color:      s.is_active ? "var(--accent)" : "var(--text-3)",
-                    background: s.is_active ? "var(--accent-dim)" : "var(--surface-2)",
-                    border:     `1px solid ${s.is_active ? "var(--accent-glow)" : "var(--border)"}`,
-                  }}>
-                    {s.is_active ? "Activo" : "Inactivo"}
-                  </span>
-                </div>
-                {s.short_description && (
-                  <p style={{ fontSize: "12px", color: "var(--text-3)", lineHeight: 1.6 }}>
-                    {s.short_description}
+
+          {loadingServices ? (
+            <div style={{ display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "12px" }}>
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="skeleton" style={{ height: "120px" }} />
+              ))}
+            </div>
+          ) : (
+            <div style={{ display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
+              {services.map(s => (
+                <div key={s.id} style={{
+                  background: "var(--surface)", border: "1px solid var(--border)",
+                  borderRadius: "var(--r-xl)", padding: "20px",
+                  display: "flex", flexDirection: "column", gap: "10px",
+                }} className="card card-glow">
+                  <div style={{ display: "flex", justifyContent: "space-between",
+                    alignItems: "flex-start" }}>
+                    <p style={{ fontSize: "14px", fontWeight: 500 }}>{s.name}</p>
+                    <span style={{
+                      padding: "2px 8px", borderRadius: "var(--r-full)", fontSize: "11px",
+                      fontWeight: 500,
+                      color:      s.is_active ? "var(--accent)" : "var(--text-3)",
+                      background: s.is_active ? "rgba(26,255,110,0.1)" : "var(--surface-2)",
+                      border:     `1px solid ${s.is_active ? "rgba(26,255,110,0.2)" : "var(--border)"}`,
+                    }}>
+                      {s.is_active ? "Activo" : "Inactivo"}
+                    </span>
+                  </div>
+                  {s.short_description && (
+                    <p style={{ fontSize: "12px", color: "var(--text-3)", lineHeight: 1.6 }}>
+                      {s.short_description}
+                    </p>
+                  )}
+                  <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.2rem",
+                    color: "var(--accent)" }}>
+                    {s.price_display}
                   </p>
-                )}
-                <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.2rem",
-                  color: "var(--accent)", marginTop: "auto" }}>
-                  {s.price_display}
-                </p>
-              </div>
-            ))}
-          </div>
-        )
+                  <div style={{ display:"flex", gap:"8px", marginTop:"auto",
+                    paddingTop:"10px", borderTop:"1px solid var(--border)" }}>
+                    <button onClick={() => setModal(s)}
+                      data-testid={`btn-edit-service-${s.id}`}
+                      style={{
+                        flex:1, padding:"7px 12px", fontSize:"12px",
+                        background:"var(--surface-2)", border:"1px solid var(--border)",
+                        color:"var(--text)", borderRadius:"var(--r-full)",
+                        cursor:"pointer",
+                      }}>
+                      Editar
+                    </button>
+                    <button onClick={() => {
+                        if (confirm(`¿Eliminar "${s.name}"?`)) delMutation.mutate(s.id)
+                      }}
+                      data-testid={`btn-delete-service-${s.id}`}
+                      style={{
+                        padding:"7px 12px", fontSize:"12px",
+                        background:"transparent",
+                        border:"1px solid rgba(239,68,68,0.3)",
+                        color:"#ef4444", borderRadius:"var(--r-full)",
+                        cursor:"pointer",
+                      }}>
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              ))}
+              {services.length === 0 && (
+                <div style={{ gridColumn:"1/-1", padding:"48px 24px",
+                  textAlign:"center", color:"var(--text-3)",
+                  background:"var(--surface)", border:"1px solid var(--border)",
+                  borderRadius:"var(--r-xl)" }}>
+                  <p style={{ fontSize:"14px", marginBottom:"12px" }}>
+                    No hay servicios creados aún.
+                  </p>
+                  <button onClick={() => setModal("new")} className="btn btn-accent"
+                    style={{ padding:"10px 22px", fontSize:"13px" }}>
+                    Crear el primer servicio
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </>
       )}
+
+      {/* Modal Nuevo/Editar */}
+      {modal && (
+        <ServiceModal
+          service={modal === "new" ? null : modal}
+          onClose={() => setModal(null)}
+          onSaved={() => queryClient.invalidateQueries({ queryKey:["admin-services-crud"] })} />
+      )}
+    </div>
+  )
+}
+
+// ═══════════════════════════════════════════════════════════════
+// Modal CRUD
+// ═══════════════════════════════════════════════════════════════
+function ServiceModal({ service, onClose, onSaved }) {
+  const isEdit = !!service
+  const [form, setForm] = useState({
+    name:              service?.name || "",
+    short_description: service?.short_description || "",
+    description:       "",
+    price_type:        service?.price_type || "quote",
+    price:             service?.price || "",
+    is_active:         service?.is_active ?? true,
+    is_featured:       service?.is_featured ?? false,
+    order:             service?.order || 0,
+  })
+
+  const save = useMutation({
+    mutationFn: () => isEdit
+      ? updateAdminService(service.id, form)
+      : createAdminService(form),
+    onSuccess: () => {
+      showToast(isEdit ? "Servicio actualizado" : "Servicio creado")
+      onSaved(); onClose()
+    },
+    onError: (err) => showToast(err?.response?.data?.error || "Error"),
+  })
+
+  return (
+    <div style={{ position:"fixed", inset:0, zIndex:200,
+      background:"rgba(0,0,0,0.75)", backdropFilter:"blur(8px)",
+      display:"flex", alignItems:"center", justifyContent:"center",
+      padding:"20px" }} onClick={onClose}>
+      <div data-testid="service-modal"
+        onClick={e => e.stopPropagation()} style={{
+        background:"var(--surface)", border:"1px solid var(--border)",
+        borderRadius:"var(--r-2xl)", padding:"28px",
+        width:"100%", maxWidth:"520px", maxHeight:"85vh", overflowY:"auto",
+      }}>
+        <h2 style={{ fontSize:"20px", fontWeight:500, marginBottom:"22px" }}>
+          {isEdit ? "Editar servicio" : "Nuevo servicio"}
+        </h2>
+
+        <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
+          <div>
+            <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
+              letterSpacing:"0.08em", textTransform:"uppercase" }}>Nombre *</label>
+            <input data-testid="input-service-name"
+              value={form.name}
+              onChange={e => setForm(p => ({ ...p, name:e.target.value }))}
+              placeholder="Mezcla y masterización"
+              style={{ ...inputSt, marginTop:"6px" }} />
+          </div>
+
+          <div>
+            <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
+              letterSpacing:"0.08em", textTransform:"uppercase" }}>
+              Descripción corta
+            </label>
+            <input value={form.short_description}
+              onChange={e => setForm(p => ({ ...p, short_description:e.target.value }))}
+              placeholder="Servicio profesional de mezcla y master"
+              style={{ ...inputSt, marginTop:"6px" }} />
+          </div>
+
+          <div>
+            <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
+              letterSpacing:"0.08em", textTransform:"uppercase" }}>
+              Descripción completa
+            </label>
+            <textarea value={form.description}
+              onChange={e => setForm(p => ({ ...p, description:e.target.value }))}
+              rows={4} placeholder="Detalles del servicio..."
+              style={{ ...inputSt, marginTop:"6px", resize:"vertical" }} />
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
+            <div>
+              <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
+                letterSpacing:"0.08em", textTransform:"uppercase" }}>Tipo de precio</label>
+              <select value={form.price_type}
+                onChange={e => setForm(p => ({ ...p, price_type:e.target.value }))}
+                style={{ ...inputSt, marginTop:"6px" }}>
+                <option value="quote">A cotizar</option>
+                <option value="fixed">Precio fijo</option>
+                <option value="hourly">Por hora</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
+                letterSpacing:"0.08em", textTransform:"uppercase" }}>Precio</label>
+              <input type="number" value={form.price || ""}
+                disabled={form.price_type === "quote"}
+                onChange={e => setForm(p => ({ ...p, price:e.target.value }))}
+                style={{ ...inputSt, marginTop:"6px",
+                  opacity: form.price_type === "quote" ? 0.4 : 1 }} />
+            </div>
+          </div>
+
+          <div style={{ display:"flex", gap:"18px", marginTop:"4px" }}>
+            <label style={{ display:"flex", gap:"8px", alignItems:"center",
+              fontSize:"13px", color:"var(--text-2)", cursor:"pointer" }}>
+              <input type="checkbox" checked={form.is_active}
+                onChange={e => setForm(p => ({ ...p, is_active:e.target.checked }))} />
+              Activo
+            </label>
+            <label style={{ display:"flex", gap:"8px", alignItems:"center",
+              fontSize:"13px", color:"var(--text-2)", cursor:"pointer" }}>
+              <input type="checkbox" checked={form.is_featured}
+                onChange={e => setForm(p => ({ ...p, is_featured:e.target.checked }))} />
+              Destacado
+            </label>
+          </div>
+        </div>
+
+        <div style={{ display:"flex", gap:"10px", justifyContent:"flex-end",
+          marginTop:"24px" }}>
+          <button onClick={onClose} style={{
+            padding:"10px 22px", fontSize:"13px",
+            background:"transparent", border:"1px solid var(--border)",
+            color:"var(--text-2)", borderRadius:"var(--r-full)", cursor:"pointer",
+          }}>Cancelar</button>
+          <button onClick={() => save.mutate()}
+            disabled={!form.name || save.isPending}
+            data-testid="btn-save-service"
+            className="btn btn-accent"
+            style={{ padding:"10px 22px", fontSize:"13px",
+              opacity: (!form.name || save.isPending) ? 0.5 : 1 }}>
+            {save.isPending ? "Guardando…" : (isEdit ? "Guardar cambios" : "Crear servicio")}
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

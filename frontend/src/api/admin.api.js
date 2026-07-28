@@ -210,3 +210,15 @@ export const voidDocument          = (docId) =>
 // admin.api.js
 export const generateDocumentFromOrder = (orderId, tipo = "boleta") =>
   api.post("/billing/generate/", { order_id: orderId, tipo }).then(r => r.data)
+// ── Services CRUD ────────────────────────────────────────
+export const listAdminServicesCrud = () =>
+  api.get(`${BASE}/services/list/`).then(r => r.data.results || [])
+
+export const createAdminService = (data) =>
+  api.post(`${BASE}/services/list/`, data).then(r => r.data)
+
+export const updateAdminService = (id, data) =>
+  api.patch(`${BASE}/services/${id}/`, data).then(r => r.data)
+
+export const deleteAdminService = (id) =>
+  api.delete(`${BASE}/services/${id}/`).then(r => r.data)

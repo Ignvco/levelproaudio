@@ -78,11 +78,17 @@ class AdminModuleSerializer(drf_serializers.ModelSerializer):
 
 class AdminLessonSerializer(drf_serializers.ModelSerializer):
     module_title = drf_serializers.CharField(source="module.title", read_only=True)
+    video_source = drf_serializers.CharField(read_only=True)
 
     class Meta:
         model  = Lesson
-        fields = ["id", "title", "video_url", "description",
-                  "order", "is_free", "duration_minutes", "module", "module_title"]
+        fields = ["id", "title", "video_url", "video_file", "video_source",
+                  "description", "order", "is_free", "duration_minutes",
+                  "module", "module_title"]
+        extra_kwargs = {
+            "video_file": {"required": False, "allow_null": True},
+            "video_url":  {"required": False, "allow_blank": True},
+        }
 
 
 class CourseAdminSerializer(drf_serializers.ModelSerializer):
@@ -213,9 +219,20 @@ class AdminProductViewSet(viewsets.ModelViewSet):
     lookup_field       = "id"
 
     def get_queryset(self):
-        return Product.objects.select_related(
+        qs = Product.objects.select_related(
             "category", "brand"
         ).prefetch_related("images").all()
+
+        # Filtros por querystring
+        is_active_param = self.request.query_params.get("is_active")
+        if is_active_param is not None:
+            qs = qs.filter(is_active=is_active_param.lower() in ("true", "1", "yes"))
+
+        cat_slug = self.request.query_params.get("category__slug")
+        if cat_slug:
+            qs = qs.filter(category__slug=cat_slug)
+
+        return qs
 
     def get_serializer_class(self):
         # Lectura → serializer completo con relaciones
@@ -443,7 +460,7 @@ class AdminModuleViewSet(viewsets.ModelViewSet):
 class AdminLessonViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
     serializer_class   = AdminLessonSerializer
-    parser_classes     = [JSONParser]
+    parser_classes     = [MultiPartParser, FormParser, JSONParser]
 
     def get_queryset(self):
         qs = Lesson.objects.all().order_by("order")

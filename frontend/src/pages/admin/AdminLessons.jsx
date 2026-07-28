@@ -24,20 +24,53 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
     is_active:          lesson?.is_active          ?? true,
     is_free:            lesson?.is_free            ?? false,
   })
+  const [videoFile, setVideoFile]     = useState(null)
+  const [uploadProgress, setProgress] = useState(0)
+  const [videoMode, setVideoMode]     = useState(
+    lesson?.video_file ? "local" : (lesson?.video_url ? "url" : "local")
+  )
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState("")
   const queryClient         = useQueryClient()
 
-  const mutation = useMutation({
-    mutationFn: () => lesson?.id
-      ? updateAdminLesson(lesson.id, form)
-      : createAdminLesson(form),
-    onSuccess: () => {
-      queryClient.invalidateQueries(["admin-lessons"])
+  const submit = async () => {
+    setSaving(true); setError(""); setProgress(0)
+    try {
+      const fd = new FormData()
+      fd.append("title",            form.title)
+      fd.append("module",           form.module)
+      fd.append("description",      form.description || "")
+      fd.append("order",            form.order || 1)
+      fd.append("duration_minutes", form.duration_minutes || 0)
+      fd.append("is_free",          form.is_free ? "true" : "false")
+      if (videoMode === "url") {
+        fd.append("video_url", form.video_url || "")
+      } else if (videoFile) {
+        fd.append("video_file", videoFile)
+      }
+
+      const { default: api } = await import("../../api/client")
+      const endpoint = lesson?.id
+        ? `/admin/lessons/${lesson.id}/`
+        : `/admin/lessons/`
+      const method = lesson?.id ? "patch" : "post"
+
+      await api[method](endpoint, fd, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (e) => {
+          if (e.total) setProgress(Math.round((e.loaded / e.total) * 100))
+        },
+      })
+      queryClient.invalidateQueries({ queryKey:["admin-lessons"] })
       onSave?.(); onClose()
-    },
-    onError: (e) => setError(e?.response?.data?.detail || "Error al guardar."),
-  })
+    } catch (e) {
+      setError(e?.response?.data?.detail
+        || e?.response?.data?.video_file?.[0]
+        || "Error al guardar.")
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
@@ -68,9 +101,7 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
             <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
               color: "var(--text-2)", marginBottom: "7px" }}>Título *</label>
             <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-              style={inputSt} placeholder="Nombre de la lección"
-              onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
-              onBlur={e => e.target.style.borderColor = "var(--border)"} />
+              style={inputSt} placeholder="Nombre de la lección" />
           </div>
           <div>
             <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
@@ -84,18 +115,118 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
               ))}
             </select>
           </div>
+
+          {/* Fuente de video: toggle local / URL */}
           <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "7px" }}>URL del video</label>
-            <input value={form.video_url}
-              onChange={e => setForm(p => ({ ...p, video_url: e.target.value }))}
-              style={inputSt} placeholder="https://youtube.com/watch?v=..."
-              onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
-              onBlur={e => e.target.style.borderColor = "var(--border)"} />
-            {form.video_url && form.video_url.includes("youtube") && (
-              <p style={{ fontSize: "11px", color: "var(--accent)", marginTop: "4px" }}>
-                ✓ URL de YouTube detectada
-              </p>
+            <label style={{ display:"block", fontSize:"12px", fontWeight:500,
+              color:"var(--text-2)", marginBottom:"7px" }}>Video *</label>
+            <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr",
+              gap:"6px", marginBottom:"10px",
+              padding:"3px", background:"var(--surface-2)",
+              border:"1px solid var(--border)", borderRadius:"var(--r-md)" }}>
+              <button type="button" onClick={() => setVideoMode("local")}
+                data-testid="video-mode-local"
+                style={{
+                  padding:"7px", fontSize:"12px", cursor:"pointer",
+                  borderRadius:"var(--r-sm)", border:"none",
+                  background: videoMode==="local" ? "var(--accent)" : "transparent",
+                  color: videoMode==="local" ? "#000" : "var(--text-2)",
+                  fontWeight: videoMode==="local" ? 600 : 400,
+                }}>
+                📁 Subir archivo
+              </button>
+              <button type="button" onClick={() => setVideoMode("url")}
+                data-testid="video-mode-url"
+                style={{
+                  padding:"7px", fontSize:"12px", cursor:"pointer",
+                  borderRadius:"var(--r-sm)", border:"none",
+                  background: videoMode==="url" ? "var(--accent)" : "transparent",
+                  color: videoMode==="url" ? "#000" : "var(--text-2)",
+                  fontWeight: videoMode==="url" ? 600 : 400,
+                }}>
+                🔗 URL externa
+              </button>
+            </div>
+
+            {videoMode === "url" ? (
+              <>
+                <input value={form.video_url}
+                  data-testid="input-video-url"
+                  onChange={e => setForm(p => ({ ...p, video_url: e.target.value }))}
+                  style={inputSt} placeholder="https://youtube.com/watch?v=..." />
+                {form.video_url && form.video_url.includes("youtube") && (
+                  <p style={{ fontSize: "11px", color: "var(--accent)", marginTop: "4px" }}>
+                    ✓ URL de YouTube detectada
+                  </p>
+                )}
+              </>
+            ) : (
+              <>
+                <label style={{
+                  display:"flex", flexDirection:"column", alignItems:"center",
+                  gap:"6px", padding:"22px",
+                  background:"var(--surface-2)",
+                  border:"1px dashed var(--border)",
+                  borderRadius:"var(--r-md)", cursor:"pointer",
+                  transition:"border-color var(--dur)",
+                }}
+                  onDragOver={e => { e.preventDefault(); e.currentTarget.style.borderColor="var(--accent)" }}
+                  onDragLeave={e => e.currentTarget.style.borderColor="var(--border)"}
+                  onDrop={e => {
+                    e.preventDefault()
+                    e.currentTarget.style.borderColor="var(--border)"
+                    const f = e.dataTransfer.files?.[0]
+                    if (f) setVideoFile(f)
+                  }}>
+                  <input type="file" accept="video/*"
+                    data-testid="input-video-file"
+                    onChange={e => setVideoFile(e.target.files?.[0] || null)}
+                    style={{ display:"none" }} />
+                  {videoFile ? (
+                    <>
+                      <p style={{ fontSize:"13px", color:"var(--accent)", fontWeight:500 }}>
+                        📁 {videoFile.name}
+                      </p>
+                      <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
+                        {(videoFile.size / 1024 / 1024).toFixed(1)} MB · Clic para cambiar
+                      </p>
+                    </>
+                  ) : lesson?.video_source ? (
+                    <>
+                      <p style={{ fontSize:"13px", color:"var(--text-2)" }}>
+                        ✓ Video actual cargado
+                      </p>
+                      <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
+                        Clic o arrastrá para reemplazar
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p style={{ fontSize:"13px", color:"var(--text-2)" }}>
+                        📁 Clic o arrastrá tu video acá
+                      </p>
+                      <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
+                        MP4 recomendado · hasta 500 MB
+                      </p>
+                    </>
+                  )}
+                </label>
+                {uploadProgress > 0 && uploadProgress < 100 && (
+                  <div style={{ marginTop:"10px", background:"var(--surface-2)",
+                    borderRadius:"var(--r-full)", overflow:"hidden", height:"6px" }}>
+                    <div style={{
+                      width:`${uploadProgress}%`, height:"100%",
+                      background:"var(--accent)", transition:"width 200ms",
+                    }} />
+                  </div>
+                )}
+                {uploadProgress > 0 && (
+                  <p style={{ fontSize:"11px", color:"var(--text-3)",
+                    marginTop:"6px", textAlign:"center" }}>
+                    {uploadProgress === 100 ? "Procesando…" : `Subiendo ${uploadProgress}%`}
+                  </p>
+                )}
+              </>
             )}
           </div>
           <div>
@@ -146,10 +277,11 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
           display: "flex", gap: "10px", justifyContent: "flex-end", flexShrink: 0 }}>
           <button onClick={onClose} className="btn btn-ghost"
             style={{ padding: "9px 18px", fontSize: "13px" }}>Cancelar</button>
-          <button onClick={() => mutation.mutate()} disabled={mutation.isPending}
+          <button onClick={submit} disabled={saving}
             className="btn btn-accent"
-            style={{ padding: "9px 18px", fontSize: "13px", opacity: mutation.isPending ? 0.7 : 1 }}>
-            {mutation.isPending ? "Guardando..." : "Guardar"}
+            style={{ padding: "10px 22px", fontSize: "13px",
+              opacity: saving ? 0.6 : 1 }}>
+            {saving ? "Guardando..." : "Guardar"}
           </button>
         </div>
       </div>

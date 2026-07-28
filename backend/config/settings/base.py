@@ -190,3 +190,7 @@ BACKEND_URL  = env("BACKEND_URL",  default="http://localhost:8000")
 # ── Email ────────────────────────────────────────────────────
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ventas@levelproaudio.com")
 EMAIL_BACKEND      = "django.core.mail.backends.console.EmailBackend"
+
+# ── Upload limits (video de Academia hasta 500 MB) ───────────
+DATA_UPLOAD_MAX_MEMORY_SIZE = 524_288_000       # 500 MB
+FILE_UPLOAD_MAX_MEMORY_SIZE = 10_485_760        # 10 MB en memoria, resto a disco

@@ -10,11 +10,13 @@ def _media_url(image_field):
 
 
 class LessonSerializer(serializers.ModelSerializer):
-    is_locked = serializers.SerializerMethodField()
+    is_locked    = serializers.SerializerMethodField()
+    video_source = serializers.CharField(read_only=True)
 
     class Meta:
         model  = Lesson
-        fields = ["id", "title", "video_url", "description", "order", "is_free", "duration_minutes", "is_locked"]
+        fields = ["id", "title", "video_url", "video_file", "video_source",
+                  "description", "order", "is_free", "duration_minutes", "is_locked"]
 
     def get_is_locked(self, obj):
         request = self.context.get("request")

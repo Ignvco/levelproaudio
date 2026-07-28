@@ -101,7 +101,7 @@ const navItems = [
       { to:"/admin/academy",              label:"Cursos"         },
       { to:"/admin/academy/modules",      label:"Módulos"        },
       { to:"/admin/academy/lessons",      label:"Lecciones"      },
-      { to:"/admin/enrollments",          label:"Inscripciones"  },
+      { to:"/admin/academy/enrollments",  label:"Inscripciones"  },
     ],
   },
 

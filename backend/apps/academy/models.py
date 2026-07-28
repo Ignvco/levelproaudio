@@ -83,7 +83,15 @@ class Lesson(TimeStampedModel):
         Module, on_delete=models.CASCADE, related_name="lessons"
     )
     title            = models.CharField(max_length=300)
-    video_url        = models.URLField()
+    # Fuente del video: uno u otro (o ambos, priorizando el archivo)
+    video_file       = models.FileField(
+        upload_to="academy/videos/", blank=True, null=True,
+        help_text="Video subido al servidor (mp4 recomendado, hasta 500MB)."
+    )
+    video_url        = models.URLField(
+        blank=True,
+        help_text="Alternativa: URL externa (YouTube, Vimeo, etc.)."
+    )
     description      = models.TextField(blank=True)
     order            = models.PositiveIntegerField(default=0)
     is_free          = models.BooleanField(default=False)
@@ -96,6 +104,13 @@ class Lesson(TimeStampedModel):
 
     def __str__(self):
         return f"{self.module.title} — {self.title}"
+
+    @property
+    def video_source(self):
+        """URL efectiva: prioriza archivo local sobre URL externa."""
+        if self.video_file:
+            return f"/media/{self.video_file.name}"
+        return self.video_url or ""
 
 
 class Enrollment(TimeStampedModel):

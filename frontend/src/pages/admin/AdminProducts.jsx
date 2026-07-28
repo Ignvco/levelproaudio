@@ -582,16 +582,19 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
 
 // ── AdminProducts ─────────────────────────────────────────────
 export default function AdminProducts() {
-  const [search, setSearch]     = useState("")
-  const [catFilter, setCatFilter] = useState("")
-  const [modal, setModal]       = useState(null) // null | "new" | product
-  const queryClient             = useQueryClient()
+  const [search, setSearch]         = useState("")
+  const [catFilter, setCatFilter]   = useState("")
+  const [statusFilter, setStatusFilter] = useState("active")  // active | inactive | all
+  const [modal, setModal]           = useState(null) // null | "new" | product
+  const queryClient                 = useQueryClient()
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-products", search, catFilter],
+    queryKey: ["admin-products", search, catFilter, statusFilter],
     queryFn:  () => getAdminProducts({
       ...(search    && { search }),
       ...(catFilter && { category__slug: catFilter }),
+      ...(statusFilter === "active"   && { is_active: "true"  }),
+      ...(statusFilter === "inactive" && { is_active: "false" }),
     }),
   })
   const { data: categoriesData } = useQuery({
@@ -661,6 +664,32 @@ export default function AdminProducts() {
             <option key={c.id} value={c.slug}>{c.name}</option>
           ))}
         </select>
+      </div>
+
+      {/* Toggle Activos / Inactivos / Todos */}
+      <div style={{ display:"flex", gap:"6px", marginBottom:"18px",
+        padding:"3px", background:"var(--surface)",
+        border:"1px solid var(--border)", borderRadius:"var(--r-full)",
+        width:"fit-content" }}>
+        {[
+          ["active",   "Activos"  ],
+          ["inactive", "Inactivos"],
+          ["all",      "Todos"    ],
+        ].map(([val, label]) => (
+          <button key={val} onClick={() => setStatusFilter(val)}
+            data-testid={`filter-status-${val}`}
+            style={{
+              padding:"6px 14px", fontSize:"12px",
+              borderRadius:"var(--r-full)", cursor:"pointer",
+              border:"none",
+              background: statusFilter === val ? "var(--accent)" : "transparent",
+              color: statusFilter === val ? "#000" : "var(--text-2)",
+              fontWeight: statusFilter === val ? 600 : 400,
+              transition: "all var(--dur) var(--ease)",
+            }}>
+            {label}
+          </button>
+        ))}
       </div>
 
       {/* Tabla */}
