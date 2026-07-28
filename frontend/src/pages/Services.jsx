@@ -73,31 +73,35 @@ export default function Services() {
 
       {/* Hero */}
       <div ref={headerRef} style={{
-        padding: "clamp(80px, 10vw, 140px) clamp(20px, 5vw, 60px)",
-        borderBottom: "1px solid var(--border)",
-        background: `radial-gradient(ellipse 70% 50% at 50% 0%,
-          rgba(26,255,110,0.05) 0%, transparent 70%)`,
-        textAlign: "center",
+        padding: "clamp(60px, 9vw, 100px) clamp(20px, 5vw, 60px)",
       }}>
-        <p style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600,
-          letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "16px" }}>
-          Servicios
-        </p>
-        <h1 style={{
-          fontFamily:    "var(--font-serif)",
-          fontSize:      "clamp(2.5rem, 7vw, 6rem)",
-          fontWeight:    300,
-          lineHeight:    1.05,
-          letterSpacing: "-0.03em",
-          marginBottom:  "20px",
-        }}>
-          Soluciones a{" "}
-          <em style={{ fontStyle: "italic", color: "var(--accent)" }}>medida</em>
-        </h1>
-        <p style={{ fontSize: "17px", color: "var(--text-2)",
-          maxWidth: "500px", margin: "0 auto", lineHeight: 1.7 }}>
-          Asesoría técnica, instalación de estudios y producción profesional.
-        </p>
+        <div style={{ maxWidth: "var(--container)", margin: "0 auto" }}>
+          <p style={{ fontSize: "11px", color: "var(--accent)", fontWeight: 600,
+            letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "16px",
+            display: "inline-flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%",
+              background: "var(--accent)",
+              boxShadow: "0 0 12px var(--accent)" }} />
+            Servicios
+          </p>
+          <h1 className="display-bold" style={{
+            fontFamily:    "var(--font-display)",
+            fontSize:      "clamp(2.6rem, 5.8vw, 4.5rem)",
+            fontWeight:    700,
+            lineHeight:    1,
+            letterSpacing: "-0.045em",
+            marginBottom:  "24px",
+            color: "var(--text)",
+          }}>
+            Soluciones a{" "}
+            <span style={{ fontStyle: "italic", fontWeight: 500,
+              color: "var(--accent)" }}>medida.</span>
+          </h1>
+          <p style={{ fontSize: "17px", color: "var(--text-2)",
+            maxWidth: "540px", lineHeight: 1.55, fontWeight: 400 }}>
+            Asesoría técnica, instalación de estudios y producción profesional.
+          </p>
+        </div>
       </div>
 
       {/* Grid */}

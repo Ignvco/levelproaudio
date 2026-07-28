@@ -131,31 +131,31 @@ export default function Home() {
 
           {/* LEFT — copy */}
           <div>
-            <LED color="green" label="Sesión activa · Chile & Argentina" />
+            <LED color="green" label="Chile & Argentina" />
 
             <h1 className="display-bold" data-testid="hero-headline" style={{
               fontFamily: "var(--font-display)",
-              fontSize: "clamp(2.4rem, 5.5vw, 4.5rem)",
-              fontWeight: 800, lineHeight: 0.95,
-              letterSpacing: "-0.04em", color: "var(--text)",
-              marginTop: "28px", marginBottom: "24px",
+              fontSize: "clamp(2.6rem, 5.8vw, 4.8rem)",
+              fontWeight: 700, lineHeight: 1,
+              letterSpacing: "-0.045em", color: "var(--text)",
+              marginTop: "32px", marginBottom: "28px",
             }}>
-              Llevá tu sonido <br />
+              Llevá tu sonido<br />
               al nivel <span style={{
-                background: "linear-gradient(135deg, var(--accent) 0%, #7dff9b 100%)",
-                WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
+                color: "var(--accent)",
+                fontStyle: "italic",
+                fontWeight: 500,
               }}>profesional.</span>
             </h1>
 
             <p style={{
-              fontFamily: "var(--font-sans)", fontSize: "16px",
-              color: "var(--text-2)", lineHeight: 1.65,
-              maxWidth: "480px", marginBottom: "36px",
+              fontFamily: "var(--font-sans)", fontSize: "17px",
+              color: "var(--text-2)", lineHeight: 1.55,
+              maxWidth: "460px", marginBottom: "36px",
+              fontWeight: 400,
             }}>
-              El ecosistema completo para músicos, productores e ingenieros —
-              tienda de equipamiento, academia con instructores del oficio
-              y servicios profesionales, en un solo lugar.
+              El ecosistema completo para músicos, productores e ingenieros.
+              Equipamiento, formación y servicios en un solo lugar.
             </p>
 
             <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>

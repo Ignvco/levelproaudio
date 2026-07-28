@@ -265,27 +265,49 @@ function Navbar() {
               )}
             </div>
           ) : (
-            <Link to="/register"
-              data-testid="navbar-cta"
-              style={{
-                display: "inline-flex", alignItems: "center", gap: "8px",
-                padding: "9px 18px", borderRadius: "var(--r-full)",
-                background: "#ffffff", color: "#000",
-                fontSize: "13px", fontWeight: 600,
-                textDecoration: "none", letterSpacing: "-0.01em",
+            <>
+              <Link to="/login" data-testid="navbar-login" style={{
+                display: "inline-flex", alignItems: "center",
+                padding: "9px 14px", borderRadius: "var(--r-full)",
+                background: "transparent",
+                color: "rgba(255,255,255,0.75)",
+                fontSize: "13px", fontWeight: 500,
+                textDecoration: "none",
                 fontFamily: "var(--font-sans)",
-                transition: "transform 200ms var(--ease), background 200ms var(--ease)",
+                transition: "color 180ms var(--ease), background 180ms var(--ease)",
               }}
-              onMouseEnter={e => {
-                e.currentTarget.style.background = "var(--accent)"
-                e.currentTarget.style.transform = "translateY(-1px)"
-              }}
-              onMouseLeave={e => {
-                e.currentTarget.style.background = "#ffffff"
-                e.currentTarget.style.transform = "translateY(0)"
-              }}>
-              Empezar
-            </Link>
+                onMouseEnter={e => {
+                  e.currentTarget.style.color = "#fff"
+                  e.currentTarget.style.background = "rgba(255,255,255,0.05)"
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.color = "rgba(255,255,255,0.75)"
+                  e.currentTarget.style.background = "transparent"
+                }}>
+                Ingresar
+              </Link>
+              <Link to="/register"
+                data-testid="navbar-cta"
+                style={{
+                  display: "inline-flex", alignItems: "center", gap: "8px",
+                  padding: "9px 18px", borderRadius: "var(--r-full)",
+                  background: "#ffffff", color: "#000",
+                  fontSize: "13px", fontWeight: 500,
+                  textDecoration: "none", letterSpacing: "-0.01em",
+                  fontFamily: "var(--font-sans)",
+                  transition: "transform 200ms var(--ease), background 200ms var(--ease)",
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.background = "var(--accent)"
+                  e.currentTarget.style.transform = "translateY(-1px)"
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.background = "#ffffff"
+                  e.currentTarget.style.transform = "translateY(0)"
+                }}>
+                Empezar
+              </Link>
+            </>
           )}
         </div>
       </div>
@@ -489,7 +511,7 @@ function Footer() {
           <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
             © 2026 LevelPro Audio. Todos los derechos reservados.
           </p>
-          <div style={{ display:"flex", gap:"20px" }}>
+          <div style={{ display:"flex", gap:"20px", alignItems:"center" }}>
             {["Términos","Privacidad"].map(item => (
               <span key={item} style={{ fontSize:"13px", color:"var(--text-3)", cursor:"default", transition:"color 150ms" }}
                 onMouseEnter={e=>e.currentTarget.style.color="var(--text)"}
@@ -497,6 +519,26 @@ function Footer() {
                 {item}
               </span>
             ))}
+            <Link to="/admin/login" data-testid="footer-admin-link" style={{
+              fontSize:"12px", color:"var(--text-3)",
+              textDecoration:"none",
+              display:"inline-flex", alignItems:"center", gap:"6px",
+              padding:"5px 12px", borderRadius:"var(--r-full)",
+              border:"1px solid var(--border)",
+              transition:"all 150ms",
+            }}
+              onMouseEnter={e=>{
+                e.currentTarget.style.color = "var(--accent)"
+                e.currentTarget.style.borderColor = "rgba(26,255,110,0.3)"
+              }}
+              onMouseLeave={e=>{
+                e.currentTarget.style.color = "var(--text-3)"
+                e.currentTarget.style.borderColor = "var(--border)"
+              }}>
+              <span style={{ width:"6px", height:"6px", borderRadius:"50%",
+                background:"var(--accent)" }} />
+              Panel Admin
+            </Link>
           </div>
         </div>
       </div>

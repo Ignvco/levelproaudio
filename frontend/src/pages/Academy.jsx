@@ -127,61 +127,65 @@ export default function Academy() {
 
       {/* Header */}
       <div ref={headerRef} style={{
-        padding: "clamp(80px, 10vw, 140px) clamp(20px, 5vw, 60px) clamp(60px, 8vw, 100px)",
-        textAlign: "center",
-        borderBottom: "1px solid var(--border)",
-        background: `radial-gradient(ellipse 70% 50% at 50% 0%,
-          rgba(26,255,110,0.06) 0%, transparent 70%)`,
+        padding: "clamp(60px, 9vw, 100px) clamp(20px, 5vw, 60px) clamp(40px, 6vw, 64px)",
         position: "relative",
       }}>
-        <p style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600,
-          letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: "16px" }}>
-          Academia
-        </p>
-        <h1 style={{
-          fontFamily:    "var(--font-serif)",
-          fontSize:      "clamp(2.5rem, 7vw, 6rem)",
-          fontWeight:    300,
-          lineHeight:    1.05,
-          letterSpacing: "-0.03em",
-          marginBottom:  "20px",
-        }}>
-          Aprendé a{" "}
-          <em style={{ fontStyle: "italic", color: "var(--accent)" }}>
-            producir
-          </em>
-        </h1>
-        <p style={{ fontSize: "17px", color: "var(--text-2)", maxWidth: "520px",
-          margin: "0 auto 36px", lineHeight: 1.7 }}>
-          Cursos online de producción musical, mezcla, masterización y más.
-          Para todos los niveles.
-        </p>
+        <div style={{ maxWidth: "var(--container)", margin: "0 auto" }}>
+          <p style={{ fontSize: "11px", color: "var(--accent)", fontWeight: 600,
+            letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "16px",
+            display: "inline-flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%",
+              background: "var(--accent)",
+              boxShadow: "0 0 12px var(--accent)" }} />
+            Academia
+          </p>
+          <h1 className="display-bold" style={{
+            fontFamily:    "var(--font-display)",
+            fontSize:      "clamp(2.6rem, 5.8vw, 4.5rem)",
+            fontWeight:    700,
+            lineHeight:    1,
+            letterSpacing: "-0.045em",
+            marginBottom:  "24px",
+            color: "var(--text)",
+          }}>
+            Aprendé a{" "}
+            <span style={{ fontStyle: "italic", fontWeight: 500,
+              color: "var(--accent)" }}>
+              producir.
+            </span>
+          </h1>
+          <p style={{ fontSize: "17px", color: "var(--text-2)", maxWidth: "540px",
+            marginBottom: "36px", lineHeight: 1.55, fontWeight: 400 }}>
+            Cursos online de producción musical, mezcla, masterización y más.
+            Para todos los niveles.
+          </p>
 
-        {/* Filtros */}
-        <div style={{ display: "flex", gap: "8px",
-          justifyContent: "center", flexWrap: "wrap" }}>
-          {LEVELS.map(({ value, label }) => (
-            <button key={value}
-              onClick={() => setLevel(value)}
-              style={{
-                padding:      "8px 20px",
-                borderRadius: "var(--r-full)",
-                fontSize:     "13px",
-                cursor:       "pointer",
-                background:   level === value ? "var(--text)" : "transparent",
-                color:        level === value ? "var(--bg)" : "var(--text-3)",
-                border:       level === value ? "1px solid var(--text)" : "1px solid var(--border)",
-                transition:   "all var(--dur) var(--ease)",
-              }}>
-              {label}
-            </button>
-          ))}
+          {/* Filtros */}
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+            {LEVELS.map(({ value, label }) => (
+              <button key={value}
+                onClick={() => setLevel(value)}
+                style={{
+                  padding:      "8px 18px",
+                  borderRadius: "var(--r-full)",
+                  fontSize:     "13px", fontWeight: 500,
+                  cursor:       "pointer",
+                  background:   level === value ? "var(--text)" : "transparent",
+                  color:        level === value ? "var(--bg)" : "var(--text-2)",
+                  border:       level === value ? "1px solid var(--text)" : "1px solid var(--border)",
+                  transition:   "all var(--dur) var(--ease)",
+                  fontFamily:   "var(--font-sans)",
+                }}>
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Grid */}
       <div style={{ maxWidth: "var(--container)", margin: "0 auto",
-        padding: "clamp(48px, 6vw, 80px) clamp(20px, 5vw, 60px)" }}>
+        padding: "clamp(32px, 4vw, 48px) clamp(20px, 5vw, 60px)" }}>
 
         {isLoading ? (
           <div style={{ display: "grid",

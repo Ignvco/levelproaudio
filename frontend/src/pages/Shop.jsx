@@ -77,31 +77,34 @@ export default function Shop() {
 
       {/* ── Header ── */}
       <div ref={headerRef} style={{
-        borderBottom: "1px solid var(--border)",
-        padding: "clamp(48px, 8vw, 80px) clamp(20px, 5vw, 60px) 0",
-        background: `radial-gradient(ellipse 60% 40% at 50% 0%,
-          rgba(26,255,110,0.05) 0%, transparent 70%)`,
+        padding: "clamp(60px, 9vw, 100px) clamp(20px, 5vw, 60px) 0",
       }}>
         <div style={{ maxWidth: "var(--container)", margin: "0 auto" }}>
           <p style={{
-            fontSize: "12px", color: "var(--accent)", fontWeight: 600,
-            letterSpacing: "0.1em", textTransform: "uppercase",
-            marginBottom: "12px",
+            fontSize: "11px", color: "var(--accent)", fontWeight: 600,
+            letterSpacing: "0.15em", textTransform: "uppercase",
+            marginBottom: "16px",
+            display: "inline-flex", alignItems: "center", gap: "8px",
           }}>
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%",
+              background: "var(--accent)",
+              boxShadow: "0 0 12px var(--accent)" }} />
             Tienda
           </p>
-          <h1 style={{
-            fontFamily:   "var(--font-serif)",
-            fontSize:     "clamp(2.5rem, 6vw, 5rem)",
-            fontWeight:   300,
-            lineHeight:   1.05,
-            letterSpacing:"-0.02em",
-            marginBottom: "32px",
+          <h1 className="display-bold" style={{
+            fontFamily:   "var(--font-display)",
+            fontSize:     "clamp(2.6rem, 5.8vw, 4.5rem)",
+            fontWeight:   700,
+            lineHeight:   1,
+            letterSpacing:"-0.045em",
+            marginBottom: "36px",
+            color: "var(--text)",
           }}>
             Todo el equipamiento<br />
-            <em style={{ fontStyle: "italic", color: "var(--text-2)" }}>
-              que necesitás
-            </em>
+            <span style={{ fontStyle: "italic", fontWeight: 500,
+              color: "var(--accent)" }}>
+              que necesitás.
+            </span>
           </h1>
 
           {/* Buscador */}
