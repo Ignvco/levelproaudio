@@ -89,11 +89,22 @@ function CampaignRow({ c, onDuplicate, onDelete }) {
 function NewCampaignModal({ open, onClose }) {
   const qc = useQueryClient()
   const nav = useNavigate()
+
+  // Helper: formatea Date como valor local válido para <input type="datetime-local">
+  const toLocalInput = (date) => {
+    const pad = n => String(n).padStart(2, "0")
+    return `${date.getFullYear()}-${pad(date.getMonth()+1)}-${pad(date.getDate())}` +
+           `T${pad(date.getHours())}:${pad(date.getMinutes())}`
+  }
+  const now = new Date()
+  const in30 = new Date(Date.now() + 30 * 86400_000)
+  const in31 = new Date(Date.now() + 31 * 86400_000)
+
   const [form, setForm] = useState({
     name:"", main_prize:"",
-    start_date: new Date().toISOString().slice(0,16),
-    end_date:   new Date(Date.now() + 30*24*3600*1000).toISOString().slice(0,16),
-    draw_date:  new Date(Date.now() + 31*24*3600*1000).toISOString().slice(0,16),
+    start_date: toLocalInput(now),
+    end_date:   toLocalInput(in30),
+    draw_date:  toLocalInput(in31),
     description:"", legal_terms:"",
     backup_winners_count: 2,
     status:"draft",

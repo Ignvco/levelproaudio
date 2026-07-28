@@ -90,6 +90,22 @@ export default function AdminRewardsCampaignDetail() {
 
   const alreadyAdded = new Set(c.reward_products.map(rp => rp.product))
 
+  // ── Estado de visibilidad pública (fecha vigente + status active)
+  const now       = new Date()
+  const start     = new Date(c.start_date)
+  const end       = new Date(c.end_date)
+  const notStarted = c.status === "active" && start > now
+  const expired    = c.status === "active" && end < now
+  const livePublic = c.status === "active" && start <= now && end >= now
+
+  // Helper: formato compatible con datetime-local (hora local, sin timezone)
+  const toLocalInput = (iso) => {
+    const d = new Date(iso)
+    const pad = n => String(n).padStart(2, "0")
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}` +
+           `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  }
+
   return (
     <div style={{ padding:"clamp(28px, 4vw, 40px)", maxWidth:"1080px" }}>
       {/* Header */}
@@ -161,6 +177,109 @@ export default function AdminRewardsCampaignDetail() {
             </button>
           )}
         </div>
+      </div>
+
+      {/* Aviso de visibilidad pública */}
+      {(notStarted || expired) && (
+        <div data-testid="visibility-warning" style={{
+          padding:"14px 20px", marginBottom:"20px",
+          background:"rgba(250,204,21,0.06)",
+          border:"1px solid rgba(250,204,21,0.3)",
+          borderRadius:"var(--r-lg)",
+          fontSize:"13px", color:"#facc15", display:"flex",
+          alignItems:"center", gap:"10px",
+        }}>
+          <span style={{ fontSize:"18px" }}>⚠️</span>
+          <div>
+            {notStarted && (
+              <>
+                <strong>La campaña todavía no arrancó.</strong>{" "}
+                No aparece en /rewards hasta el{" "}
+                <strong>{start.toLocaleString("es-CL", {
+                  day:"numeric", month:"long", year:"numeric",
+                  hour:"2-digit", minute:"2-digit",
+                })}</strong>. Editá la fecha de inicio abajo si querés que se vea ya.
+              </>
+            )}
+            {expired && (
+              <>
+                <strong>La ventana de compra terminó.</strong>{" "}
+                No aparece en /rewards porque expiró el{" "}
+                <strong>{end.toLocaleString("es-CL")}</strong>.
+                Extendé la fecha de cierre o cerrala manualmente.
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {livePublic && (
+        <div style={{
+          padding:"10px 16px", marginBottom:"20px",
+          background:"rgba(26,255,110,0.06)",
+          border:"1px solid rgba(26,255,110,0.25)",
+          borderRadius:"var(--r-lg)",
+          fontSize:"12px", color:"var(--accent)",
+          display:"inline-flex", alignItems:"center", gap:"8px",
+        }}>
+          <span style={{ width:"7px", height:"7px", borderRadius:"50%",
+            background:"var(--accent)",
+            animation:"lp-pulse 2s ease-in-out infinite" }} />
+          Visible en <strong style={{ marginLeft:"3px" }}>/rewards</strong>
+        </div>
+      )}
+
+      {/* Panel de fechas editable */}
+      <div style={{
+        padding:"18px 22px", marginBottom:"28px",
+        background:"var(--surface)", border:"1px solid var(--border)",
+        borderRadius:"var(--r-xl)",
+      }}>
+        <h3 style={{ fontSize:"13px", fontWeight:600, color:"var(--text-2)",
+          letterSpacing:"0.08em", textTransform:"uppercase",
+          marginBottom:"14px" }}>
+          Fechas
+        </h3>
+        <div style={{
+          display:"grid",
+          gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))",
+          gap:"12px",
+        }}>
+          {[
+            ["Inicio",         "start_date"],
+            ["Cierre compra",  "end_date"],
+            ["Fecha del sorteo","draw_date"],
+          ].map(([label, field]) => (
+            <div key={field}>
+              <label style={{ fontSize:"11px", fontWeight:600,
+                color:"var(--text-3)", letterSpacing:"0.06em",
+                textTransform:"uppercase", marginBottom:"6px",
+                display:"block" }}>
+                {label}
+              </label>
+              <input type="datetime-local"
+                data-testid={`edit-${field}`}
+                defaultValue={toLocalInput(c[field])}
+                onBlur={e => {
+                  if (e.target.value && e.target.value !== toLocalInput(c[field])) {
+                    update.mutate({ [field]: e.target.value })
+                  }
+                }}
+                style={{
+                  width:"100%", padding:"9px 12px",
+                  background:"var(--surface-2)",
+                  border:"1px solid var(--border)",
+                  borderRadius:"var(--r-md)", color:"var(--text)",
+                  fontSize:"13px", outline:"none",
+                  fontFamily:"var(--font-sans)",
+                  colorScheme:"dark",
+                }} />
+            </div>
+          ))}
+        </div>
+        <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"10px" }}>
+          Los cambios se guardan al hacer clic fuera del campo (blur).
+        </p>
       </div>
 
       {/* KPIs */}
