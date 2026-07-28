@@ -363,3 +363,30 @@ Click en **"Save to Github"** desde el chat → Cloud Build despliega → migra 
 
 3. **Marcas no visibles en home**: NO es bug de código. El endpoint público `/api/v1/brands/` filtra por `is_active=True` y el marquee del home muestra brands cuando `s.show_brands === true && brands.length > 0`. En producción devuelve `count: 0` — o las marcas están inactivas, o no existen en la DB de prod (sólo en preview seed).
 
+
+---
+
+## Sesión 9.1 — Fix definitivo Personalización + Toggle activo en Marcas (2026-07-29)
+
+### ⚠️ Problema post-deploy
+El fix anterior (`Content-Type: undefined` explícito en `siteSettings.api.js`) funcionó en dev pero NO en producción (Safari + axios). El header no se stripeaba correctamente y Django recibía `application/json` sin poder parsear el multipart.
+
+### ✅ Fix definitivo
+**`frontend/src/api/client.js`**: Interceptor global que detecta cuando `config.data` es `FormData` y borra `Content-Type` (tanto minúscula como mayúscula). Ahora TODAS las subidas de archivos en la app funcionan sin necesidad de hacks per-endpoint.
+
+```js
+if (config.data instanceof FormData) {
+  delete config.headers["Content-Type"]
+  delete config.headers["content-type"]
+}
+```
+
+### ✅ Nuevo: Toggle "Marca activa" en modal de Marcas
+**`frontend/src/pages/admin/AdminBrands.jsx`**: El modal de editar/crear marca ahora incluye un switch "Marca activa" (default ON al crear). Explicación al usuario: "Si está apagada, no aparece en el home ni en la tienda pública".
+
+**Por qué era necesario**: La marca "Shure" en prod estaba con `is_active=False` (probablemente vino de un bulk import con `activo=no`), y el usuario no tenía manera de activarla desde el UI.
+
+### Verificación E2E (Playwright)
+- TEST 1: Upload de hero image desde `/admin/settings` → `hero_image_url` actualizado en API ✅
+- TEST 2: Modal de marca muestra toggle `[data-testid="brand-active-toggle"]` con estado correcto ✅
+

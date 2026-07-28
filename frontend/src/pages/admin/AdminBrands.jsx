@@ -13,7 +13,11 @@ const inputSt = {
 }
 
 function BrandModal({ brand, onClose, onSave }) {
-  const [form, setForm]   = useState({ name: brand?.name || "", website: brand?.website || "" })
+  const [form, setForm]   = useState({
+    name: brand?.name || "",
+    website: brand?.website || "",
+    is_active: brand?.id ? !!brand.is_active : true,
+  })
   const [logo, setLogo]   = useState(null)
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState("")
@@ -26,6 +30,7 @@ function BrandModal({ brand, onClose, onSave }) {
       const fd = new FormData()
       fd.append("name", form.name)
       if (form.website) fd.append("website", form.website)
+      fd.append("is_active", form.is_active ? "true" : "false")
       if (logo) fd.append("logo", logo)
       if (brand?.id) await updateAdminBrand(brand.id, fd)
       else await createAdminBrand(fd)
@@ -95,6 +100,42 @@ function BrandModal({ brand, onClose, onSave }) {
                 <span style={{ fontSize: "11px", color: "var(--text-3)" }}>Logo actual</span>
               </div>
             )}
+          </div>
+          <div>
+            <label style={{
+              display: "flex", alignItems: "center", justifyContent: "space-between",
+              padding: "12px 14px", borderRadius: "var(--r-md)",
+              background: "var(--surface-2)", border: "1px solid var(--border)",
+              cursor: "pointer",
+            }}>
+              <div>
+                <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--text)" }}>
+                  Marca activa
+                </p>
+                <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "2px" }}>
+                  Si está apagada, no aparece en el home ni en la tienda pública.
+                </p>
+              </div>
+              <span style={{
+                position: "relative", width: "38px", height: "22px",
+                borderRadius: "11px", flexShrink: 0,
+                background: form.is_active ? "var(--accent)" : "var(--surface-3)",
+                transition: "background 200ms",
+              }}>
+                <input
+                  data-testid="brand-active-toggle"
+                  type="checkbox" checked={form.is_active}
+                  onChange={e => setForm(p => ({ ...p, is_active: e.target.checked }))}
+                  style={{ position: "absolute", opacity: 0, width: "100%",
+                    height: "100%", cursor: "pointer" }} />
+                <span style={{
+                  position: "absolute", top: "2px",
+                  left: form.is_active ? "18px" : "2px",
+                  width: "18px", height: "18px", borderRadius: "50%",
+                  background: "#fff", transition: "left 200ms var(--ease)",
+                }} />
+              </span>
+            </label>
           </div>
         </div>
         <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)",

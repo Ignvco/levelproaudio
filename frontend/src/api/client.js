@@ -16,6 +16,16 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    // Si el body es FormData, borrar Content-Type para que el browser
+    // inyecte el boundary del multipart automáticamente.
+    // El default del client es "application/json" — si no lo sacamos,
+    // se pisa el multipart y Django no recibe el archivo.
+    if (config.data instanceof FormData) {
+      if (config.headers) {
+        delete config.headers["Content-Type"]
+        delete config.headers["content-type"]
+      }
+    }
     return config
   },
   (error) => Promise.reject(error)
