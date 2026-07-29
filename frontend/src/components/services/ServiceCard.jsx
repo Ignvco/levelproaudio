@@ -2,11 +2,12 @@
 // Card de servicio estilo "profile card" (referencia cliente).
 import { Link } from "react-router-dom"
 import { BadgeCheck, Clock, Tag, Plus } from "lucide-react"
-import { mediaUrl } from "../../utils/mediaUrl"
+import { serviceCover } from "../../utils/serviceCover"
 import { useScrollReveal } from "../../hooks/useScrollReveal"
 
 export default function ServiceCard({ service, index = 0 }) {
   const ref = useScrollReveal({ delay: index * 80 })
+  const cover = serviceCover(service)
 
   return (
     <Link ref={ref} to={`/services/${service.slug}`}
@@ -15,11 +16,13 @@ export default function ServiceCard({ service, index = 0 }) {
 
       {/* Imagen */}
       <div className="profile-card__img">
-        {service.thumbnail ? (
-          <img src={mediaUrl(service.thumbnail)} alt={service.name} />
-        ) : (
-          <div className="profile-card__img-fallback" aria-hidden="true" />
-        )}
+        <img src={cover} alt={service.name}
+          onError={(e) => {
+            e.currentTarget.style.display = "none"
+            const fb = e.currentTarget.nextElementSibling
+            if (fb) fb.style.display = "flex"
+          }} />
+        <div className="profile-card__img-fallback" aria-hidden="true" style={{ display: "none" }} />
       </div>
 
       {/* Cuerpo */}

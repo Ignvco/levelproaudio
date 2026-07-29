@@ -1,18 +1,26 @@
 // pages/Services.jsx
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { getServices } from "../api/services.api"
+import { getServices, getServiceCategories } from "../api/services.api"
 import { useScrollReveal } from "../hooks/useScrollReveal"
 import ServiceCard from "../components/services/ServiceCard"
 
 export default function Services() {
   const headerRef = useScrollReveal()
   const ctaRef    = useScrollReveal({ delay: 0, scaleIn: true })
+  const [category, setCategory] = useState("")
 
   const { data, isLoading } = useQuery({
-    queryKey: ["services"],
-    queryFn:  getServices,
+    queryKey: ["services", { category }],
+    queryFn:  () => getServices({ category__slug: category || undefined }),
   })
   const services = data?.results || data || []
+
+  const { data: catData } = useQuery({
+    queryKey: ["service-categories"],
+    queryFn:  getServiceCategories,
+  })
+  const categories = catData?.results || catData || []
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
@@ -47,6 +55,43 @@ export default function Services() {
             maxWidth: "540px", lineHeight: 1.55, fontWeight: 400 }}>
             Asesoría técnica, instalación de estudios y producción profesional.
           </p>
+
+          {/* Filtros por categoría */}
+          {categories.length > 0 && (
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "32px" }}
+              data-testid="service-category-filters">
+              <button
+                onClick={() => setCategory("")}
+                data-testid="service-filter-all"
+                style={{
+                  padding: "8px 18px", borderRadius: "var(--r-full)",
+                  fontSize: "13px", fontWeight: 500, cursor: "pointer",
+                  background: category === "" ? "var(--text)" : "transparent",
+                  color:      category === "" ? "var(--bg)" : "var(--text-2)",
+                  border:     category === "" ? "1px solid var(--text)" : "1px solid var(--border)",
+                  transition: "all var(--dur) var(--ease)",
+                  fontFamily: "var(--font-sans)",
+                }}>
+                Todos
+              </button>
+              {categories.map((cat) => (
+                <button key={cat.id}
+                  onClick={() => setCategory(cat.slug)}
+                  data-testid={`service-filter-${cat.slug}`}
+                  style={{
+                    padding: "8px 18px", borderRadius: "var(--r-full)",
+                    fontSize: "13px", fontWeight: 500, cursor: "pointer",
+                    background: category === cat.slug ? "var(--text)" : "transparent",
+                    color:      category === cat.slug ? "var(--bg)" : "var(--text-2)",
+                    border:     category === cat.slug ? "1px solid var(--text)" : "1px solid var(--border)",
+                    transition: "all var(--dur) var(--ease)",
+                    fontFamily: "var(--font-sans)",
+                  }}>
+                  {cat.name}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -59,6 +104,11 @@ export default function Services() {
             {[...Array(4)].map((_, i) => (
               <div key={i} className="skeleton" style={{ height: "440px", borderRadius: "26px" }} />
             ))}
+          </div>
+        ) : services.length === 0 ? (
+          <div data-testid="services-empty" style={{ textAlign: "center", padding: "80px 0",
+            color: "var(--text-3)", fontSize: "15px" }}>
+            No hay servicios en esta categoría.
           </div>
         ) : (
           <div style={{ display: "grid",
