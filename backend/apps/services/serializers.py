@@ -5,6 +5,13 @@ from rest_framework import serializers
 from .models import ServiceCategory, Service, Booking, ServiceRequest
 
 
+def _media_url(image_field):
+    """Ruta relativa /media/... (proxeada por Vite/nginx). Evita URLs absolutas al host interno."""
+    if not image_field or not image_field.name:
+        return None
+    return f"/media/{image_field.name}"
+
+
 class ServiceCategorySerializer(serializers.ModelSerializer):
     services_count = serializers.SerializerMethodField()
 
@@ -18,6 +25,7 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
 
 class ServiceListSerializer(serializers.ModelSerializer):
     category_name      = serializers.CharField(source="category.name", read_only=True)
+    thumbnail          = serializers.SerializerMethodField()
     price_display      = serializers.CharField(read_only=True)
     price_type_display = serializers.CharField(
         source="get_price_type_display", read_only=True
@@ -33,9 +41,13 @@ class ServiceListSerializer(serializers.ModelSerializer):
             "duration_hours", "is_featured",
         ]
 
+    def get_thumbnail(self, obj):
+        return _media_url(obj.thumbnail)
+
 
 class ServiceDetailSerializer(serializers.ModelSerializer):
     category           = ServiceCategorySerializer(read_only=True)
+    thumbnail          = serializers.SerializerMethodField()
     price_display      = serializers.CharField(read_only=True)
     deliverables_list  = serializers.ListField(read_only=True)
     price_type_display = serializers.CharField(
@@ -51,6 +63,9 @@ class ServiceDetailSerializer(serializers.ModelSerializer):
             "duration_hours", "deliverables", "deliverables_list",
             "is_featured",
         ]
+
+    def get_thumbnail(self, obj):
+        return _media_url(obj.thumbnail)
 
 
 class BookingSerializer(serializers.ModelSerializer):

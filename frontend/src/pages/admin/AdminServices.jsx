@@ -301,6 +301,7 @@ export default function AdminServices() {
 // ═══════════════════════════════════════════════════════════════
 function ServiceModal({ service, onClose, onSaved }) {
   const isEdit = !!service
+  const modalQueryClient = useQueryClient()
   const [form, setForm] = useState({
     name:              service?.name || "",
     short_description: service?.short_description || "",
@@ -362,6 +363,7 @@ function ServiceModal({ service, onClose, onSaved }) {
       : createAdminService(buildPayload()),
     onSuccess: () => {
       showToast(isEdit ? "Servicio actualizado" : "Servicio creado")
+      modalQueryClient.invalidateQueries({ queryKey: ["service-categories"] })
       onSaved(); onClose()
     },
     onError: (err) => showToast(err?.response?.data?.error || "Error al guardar"),
