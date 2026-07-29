@@ -452,3 +452,8 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
 - Servicios: portadas por defecto (serviceCover) + filtro por categoría.
 - NOTA: se dejó una imagen de hero demo en el preview (site/hero_preview2.jpg); el usuario puede reemplazarla desde Personalización.
 - Verificado por testing agent: iteration_5.json (hero) PASÓ. Fix de imágenes de servicios verificado por curl (relativo /media, HTTP 200).
+
+## 2026-06 — Hero: rotación de imágenes + fuente Poppins
+- Rotación de hasta 3 imágenes de hero con fundido cruzado (6s) + dots indicadores. Campos hero_image_2/3 en SiteSettings + serializer (urls relativas /media) + 3 slots de subida en Personalización.
+- Titular del hero ahora en fuente **Poppins** (var(--font-hero)), estilo geométrico redondeado tipo referencia del cliente. Poppins cargada vía Google Fonts en index.css.
+- Verificado por screenshot (fuente Poppins aplicada, dots del carrusel visibles, imagen full-bleed).

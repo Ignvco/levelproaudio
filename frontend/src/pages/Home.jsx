@@ -199,11 +199,11 @@ export default function Home() {
           <div style={{ alignSelf: "center" }}>
             <LED color="green" label={s.tagline || "Chile & Argentina"} />
 
-            <h1 className="display-bold" data-testid="hero-headline" style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "clamp(2.6rem, 5.8vw, 4.8rem)",
+            <h1 data-testid="hero-headline" style={{
+              fontFamily: "var(--font-hero)",
+              fontSize: "clamp(2.8rem, 6.2vw, 5.4rem)",
               fontWeight: 700, lineHeight: 1,
-              letterSpacing: "-0.045em", color: "var(--text)",
+              letterSpacing: "-0.03em", color: "var(--text)",
               marginTop: "32px", marginBottom: "28px",
               textShadow: s.hero_image_url ? "0 6px 40px rgba(0,0,0,0.5)" : "none",
             }}>
