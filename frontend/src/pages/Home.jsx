@@ -544,10 +544,10 @@ export default function Home() {
       {s.show_products !== false && featured.length > 0 && (
         <section data-testid="featured-products" style={{ padding: 0 }}>
           <div style={{
-            background: "transparent",
+            background: "var(--bg)",
             border: "none",
-            borderRadius: 0,
-            padding: 0,
+            borderRadius: "var(--r-2xl)",
+            padding: "clamp(28px, 3vw, 40px)",
           }}>
             <div style={{
               display: "flex", justifyContent: "space-between",
@@ -598,10 +598,10 @@ export default function Home() {
       {s.show_courses !== false && courses.length > 0 && (
         <section data-testid="featured-courses" style={{ padding: 0 }}>
           <div style={{
-            background: "transparent",
+            background: "var(--bg)",
             border: "none",
-            borderRadius: 0,
-            padding: 0,
+            borderRadius: "var(--r-2xl)",
+            padding: "clamp(28px, 3vw, 40px)",
           }}>
             <div style={{
               display: "flex", justifyContent: "space-between",
@@ -652,10 +652,10 @@ export default function Home() {
       {s.show_services !== false && services.length > 0 && (
         <section data-testid="featured-services" style={{ padding: 0 }}>
           <div style={{
-            background: "transparent",
+            background: "var(--bg)",
             border: "none",
-            borderRadius: 0,
-            padding: 0,
+            borderRadius: "var(--r-2xl)",
+            padding: "clamp(28px, 3vw, 40px)",
           }}>
             <div style={{
               display: "flex", justifyContent: "space-between",
