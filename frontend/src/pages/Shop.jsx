@@ -203,7 +203,7 @@ export default function Shop() {
           </p>
 
           {/* Ordenar */}
-          <div style={{ display: "flex", gap: "6px" }}>
+          <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
             {ORDERINGS.map(({ value, label }) => (
               <button key={value}
                 onClick={() => setOrdering(value)}
@@ -306,7 +306,7 @@ export default function Shop() {
 
       <style>{`
         @media (max-width: 768px) {
-          .shop-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+          .shop-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
         }
       `}</style>
     </div>

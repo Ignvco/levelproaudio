@@ -11,6 +11,7 @@ import { mediaUrl } from "../utils/mediaUrl"
 import ProductCard from "../components/product/ProductCard"
 import CourseCard from "../components/academy/CourseCard"
 import ServiceCard from "../components/services/ServiceCard"
+import logoImg from "../assets/logo.png"
 import {
   LED, VUMeter, DigitalReadout, Knob, Fader, AnimatedWaveform,
 } from "../components/ui/StudioUI"
@@ -197,6 +198,7 @@ export default function Home() {
 
           {/* LEFT — headline + tags */}
           <div className="hero-left" style={{ alignSelf: "center" }}>
+            <img src={logoImg} alt="LevelPro Audio" className="hero-logo-mobile" />
             <LED color="green" label={s.tagline || "Chile & Argentina"} />
 
             <h1 data-testid="hero-headline" style={{
@@ -834,6 +836,7 @@ export default function Home() {
       {/* /home-body */}
 
       <style>{`
+        .hero-logo-mobile { display: none; }
         @media (max-width: 1024px) {
           .hero-grid       { grid-template-columns: 1fr !important; }
           .hero-right      { justify-self: start !important; max-width: 100% !important; }
@@ -847,6 +850,13 @@ export default function Home() {
           .brands-strip-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
         }
         @media (max-width: 768px) {
+          .hero-logo-mobile {
+            display: block !important;
+            height: 26px;
+            width: auto;
+            margin: 0 auto 22px;
+            filter: brightness(0) invert(1);
+          }
           .hero-left {
             text-align: center !important;
             display: flex !important;
@@ -861,9 +871,12 @@ export default function Home() {
             text-align: center !important;
           }
           .hero-cta-row { justify-content: center !important; }
-          .products-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
-          .courses-grid  { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
-          .services-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+          .products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+          .courses-grid  { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+          .services-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
+          [data-testid="featured-products"] > div,
+          [data-testid="featured-courses"] > div,
+          [data-testid="featured-services"] > div { padding: 18px 14px !important; }
         }
       `}</style>
     </div>

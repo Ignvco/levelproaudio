@@ -453,6 +453,17 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
 - NOTA: se dejó una imagen de hero demo en el preview (site/hero_preview2.jpg); el usuario puede reemplazarla desde Personalización.
 - Verificado por testing agent: iteration_5.json (hero) PASÓ. Fix de imágenes de servicios verificado por curl (relativo /media, HTTP 200).
 
+## 2026-06 — Mobile responsive fix (Pixel 7) + logo hero + cards compactas
+- **Fix overflow horizontal** en mobile: los grids ahora usan `repeat(2, minmax(0,1fr))` (el `1fr` colapsaba por el min-content de las cards y desbordaba). Verificado: scrollWidth == clientWidth a 412px (Pixel 7) y 360px.
+- **Logo en el hero solo en mobile**: `Home.jsx` renderiza `<img class="hero-logo-mobile">` (importa `logo.png`). CSS `display:none` en desktop, `display:block` centrado a ≤768px (el navbar desktop no aparece en mobile, solo el dock inferior).
+- **Cards compactadas en mobile (≤768px)** en `index.css`:
+  - `.folder-card` (cursos): padding/tab/notch/fuentes reducidos, min-height 132px
+  - `.profile-card` (servicios): padding reducido, footer apilado (stats arriba, botón abajo full-width)
+  - `.lp-product-card` (tienda): padding reducido, fila precio+Comprar apilada con `!important` (sobreescribe inline styles); añadidos classNames `lp-product-card` y `lp-product-buyrow`
+- **Shop toolbar**: botones de ordenamiento con `flexWrap:wrap` para evitar overflow en pantallas <380px.
+- Secciones destacadas del Home con padding lateral reducido a 14px en mobile.
+- Verificado por screenshots a 412px, 360px (sin overflow) y 1440px (desktop intacto).
+
 ## 2026-06 — Mobile responsive: hero centrado + grids 2 columnas
 - **Hero mobile centrado** (`Home.jsx`): media query `max-width:768px` centra `.hero-left` (LED + titular + tags), `.hero-right` (subtítulo) y `.hero-cta-row` (botones). Se agregaron classNames `hero-left` y `hero-cta-row`. Desktop sin cambios.
 - **Grids a 2 columnas en mobile** (max-width:768px) en:

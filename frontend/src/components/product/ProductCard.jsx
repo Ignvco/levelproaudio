@@ -60,6 +60,7 @@ export default function ProductCard({ product }) {
   return (
     <div
       data-testid={`product-card-${product.slug}`}
+      className="lp-product-card"
       onClick={goToDetail}
       style={{
         background:    "#ffffff",
@@ -205,7 +206,7 @@ export default function ProductCard({ product }) {
         )}
 
         {/* Precio + Comprar */}
-        <div style={{
+        <div className="lp-product-buyrow" style={{
           display:"flex", alignItems:"center", justifyContent:"space-between",
           gap:"10px", marginTop:"14px",
         }}>

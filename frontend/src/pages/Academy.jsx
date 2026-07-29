@@ -111,7 +111,7 @@ export default function Academy() {
 
       <style>{`
         @media (max-width: 768px) {
-          .academy-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+          .academy-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
         }
       `}</style>
     </div>

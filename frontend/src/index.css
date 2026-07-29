@@ -613,3 +613,71 @@ h1 em, h2 em, h3 em {
   transition: background 250ms var(--ease);
 }
 .profile-card:hover .profile-card__btn { background: #2a2a2a; }
+
+/* ── Mobile (≤768px): compactar cards para grid de 2 columnas ── */
+@media (max-width: 768px) {
+  /* Folder card (cursos) */
+  .folder-card { padding: 8px; border-radius: 22px; }
+  .folder-card__img { border-radius: 16px; }
+  .folder-card__brand { top: 10px; right: 12px; font-size: 11px; line-height: 1.2; }
+  .folder-card__panel {
+    margin-top: -34px;
+    padding: 34px 12px 14px;
+    min-height: 132px;
+    border-radius: 16px;
+  }
+  .folder-card__tab {
+    top: -34px; height: 52px;
+    max-width: 78%; padding: 0 12px;
+    border-radius: 14px 14px 0 0;
+  }
+  .folder-card__tab::after {
+    top: 34px; right: -18px;
+    width: 18px; height: 18px;
+    background: radial-gradient(circle at bottom right, transparent 18px, var(--panel) 18.5px);
+  }
+  .folder-card__title { font-size: 13px; }
+  .folder-card__subtitle { font-size: 11px; }
+  .folder-card__stats { gap: 6px; }
+  .folder-card__num { font-size: 24px; }
+  .folder-card__num-unit { font-size: 11px; margin-left: 4px; }
+  .folder-card__price { font-size: 15px; }
+
+  /* Profile card (servicios) */
+  .profile-card { padding: 8px; border-radius: 20px; }
+  .profile-card__img { border-radius: 16px; }
+  .profile-card__body { padding: 12px 6px 4px; }
+  .profile-card__name { font-size: 15px; gap: 6px; }
+  .profile-card__verified { width: 16px; height: 16px; }
+  .profile-card__desc { font-size: 12.5px; margin-top: 7px; min-height: 0; }
+  .profile-card__footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-top: 12px;
+  }
+  .profile-card__stats { gap: 12px; }
+  .profile-card__stat { font-size: 12px; }
+  .profile-card__btn { justify-content: center; padding: 9px 14px; font-size: 12px; }
+
+  /* Product card (tienda) — inline styles overridden con !important */
+  .lp-product-card { padding: 10px !important; border-radius: 20px !important; }
+  .lp-product-card > div:last-child { padding: 12px 4px 4px !important; }
+  [data-testid^="product-name-"] { font-size: 1rem !important; }
+  [data-testid^="product-desc-"] { font-size: 12.5px !important; }
+  .lp-product-buyrow {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+    margin-top: 12px !important;
+  }
+  .lp-product-buyrow [data-testid^="product-price-"] {
+    text-align: center; font-size: 1rem !important;
+    padding: 10px 14px !important;
+  }
+  .lp-product-buyrow button {
+    justify-content: center !important;
+    font-size: 0.9rem !important;
+    padding: 10px 14px !important;
+  }
+}
