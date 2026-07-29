@@ -10,93 +10,52 @@ function CourseCard({ course, index }) {
   const ref = useScrollReveal({ delay: index * 80 })
 
   const LEVELS = {
-    beginner:     { label: "Principiante", color: "#4ade80" },
-    intermediate: { label: "Intermedio",   color: "#facc15" },
-    advanced:     { label: "Avanzado",     color: "#f87171" },
+    beginner:     "Principiante",
+    intermediate: "Intermedio",
+    advanced:     "Avanzado",
   }
-  const level = LEVELS[course.level] || { label: course.level, color: "#888" }
+  const levelLabel = course.level_display || LEVELS[course.level] || course.level || "Curso"
+  const lessons    = course.total_lessons || 0
+  const lessonsStr = String(lessons).padStart(2, "0")
+  const subtitle   = course.short_description || levelLabel
 
   return (
-    <Link ref={ref} to={`/academy/${course.slug}`} style={{
-      display:      "flex",
-      flexDirection:"column",
-      background:   "var(--surface)",
-      border:       "1px solid var(--border)",
-      borderRadius: "var(--r-xl)",
-      overflow:     "hidden",
-      textDecoration:"none",
-      transition:   "all var(--dur-slow) var(--ease)",
-    }}
-      className="card card-glow"
-    >
-      {/* Thumbnail */}
-      <div style={{ aspectRatio: "16/9", overflow: "hidden",
-        background: "var(--surface-2)", position: "relative" }}>
-        {course.thumbnail ? (
-          <img src={mediaUrl(course.thumbnail)} alt={course.title}
-            style={{ width: "100%", height: "100%", objectFit: "cover",
-              transition: "transform 600ms var(--ease)" }}
-            onMouseEnter={e => e.target.style.transform = "scale(1.05)"}
-            onMouseLeave={e => e.target.style.transform = "scale(1)"}
-          />
-        ) : (
-          <div style={{ width: "100%", height: "100%",
-            display: "flex", alignItems: "center",
-            justifyContent: "center", fontSize: "40px" }}>
-            🎬
-          </div>
-        )}
+    <Link ref={ref} to={`/academy/${course.slug}`}
+      className="folder-card"
+      data-testid={`course-card-${course.slug}`}>
 
-        {/* Badges */}
-        <div style={{ position: "absolute", top: "12px", left: "12px",
-          display: "flex", gap: "6px" }}>
-          <span style={{
-            background: level.color, color: "#000",
-            fontSize: "10px", fontWeight: 700,
-            padding: "3px 8px", borderRadius: "var(--r-full)",
-          }}>
-            {level.label}
-          </span>
-          {course.is_free && (
-            <span style={{
-              background: "var(--accent)", color: "#000",
-              fontSize: "10px", fontWeight: 700,
-              padding: "3px 8px", borderRadius: "var(--r-full)",
-            }}>
-              GRATIS
-            </span>
-          )}
+      {/* Banner */}
+      <div className="folder-card__img">
+        {course.thumbnail ? (
+          <img src={mediaUrl(course.thumbnail)} alt={course.title} />
+        ) : (
+          <div className="folder-card__img-fallback" aria-hidden="true" />
+        )}
+        <div className="folder-card__brand">
+          <span>{levelLabel}</span>
+          <span>Academia</span>
         </div>
       </div>
 
-      {/* Info */}
-      <div style={{ padding: "20px", flex: 1,
-        display: "flex", flexDirection: "column", gap: "10px" }}>
-        <h3 style={{ fontFamily: "var(--font-serif)", fontSize: "1.2rem",
-          fontWeight: 300, lineHeight: 1.3, color: "var(--text)" }}>
-          {course.title}
-        </h3>
-        {course.short_description && (
-          <p style={{ fontSize: "13px", color: "var(--text-3)",
-            lineHeight: 1.6, overflow: "hidden",
-            display: "-webkit-box", WebkitLineClamp: 2,
-            WebkitBoxOrient: "vertical" }}>
-            {course.short_description}
+      {/* Panel folder */}
+      <div className="folder-card__panel">
+        <div className="folder-card__tab">
+          <p className="folder-card__title" data-testid={`course-title-${course.slug}`}>
+            {course.title}
           </p>
-        )}
+          <p className="folder-card__subtitle">{subtitle}</p>
+        </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between",
-          alignItems: "center", marginTop: "auto", paddingTop: "12px",
-          borderTop: "1px solid var(--border)" }}>
-          <div style={{ display: "flex", gap: "14px", fontSize: "12px",
-            color: "var(--text-3)" }}>
-            <span>📹 {course.total_lessons || 0} lecciones</span>
-            {course.total_duration > 0 && (
-              <span>⏱ {course.total_duration} min</span>
-            )}
+        <div className="folder-card__stats">
+          <div data-testid={`course-lessons-${course.slug}`}>
+            <span className="folder-card__num">{lessonsStr}</span>
+            <span className="folder-card__num-unit">
+              {lessons === 1 ? "Lección" : "Lecciones"}
+            </span>
           </div>
-          <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.2rem",
-            color: course.is_free ? "var(--accent)" : "var(--text)" }}>
+          <p
+            className={`folder-card__price${course.is_free ? " folder-card__price--free" : ""}`}
+            data-testid={`course-price-${course.slug}`}>
             {course.is_free ? "Gratis" : `$${Number(course.price).toLocaleString("es-CL")}`}
           </p>
         </div>

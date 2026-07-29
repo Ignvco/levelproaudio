@@ -420,3 +420,8 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
 - **Backend**: `ProductListSerializer` ahora envía `short_description`, `brand_logo` e `images[]`.
 - **Archivos**: `frontend/src/components/product/ProductCard.jsx` (reescrito), `frontend/src/pages/Shop.jsx` (grid minmax 280px, gap 28px), `backend/apps/products/serializers.py`.
 - **Testing**: testing_agent frontend 100% (iteration_1_productcard.json). Carrusel de puntos no probado (productos sin imágenes en DB preview).
+
+## 2026-06 — Cards de Academia (folder-tab) + ProductCard en Home/Rewards
+- **ProductCard compartido** ahora se usa en Home "Destacados" (`featured-products`) y Rewards "Productos participantes" (con badge verde `+N tickets`). Se corrigió link roto `/product/:slug` → `/shop/:slug`. Testing agent 100% (iteration_4).
+- **CourseCard rediseñada** (`Academy.jsx`) con estilo "folder-tab" (referencia cliente): banner + tab superpuesto con muesca cóncava (título + subtítulo), esquina superior-derecha con nivel + "Academia", fila inferior con nº de lecciones (número grande) + precio. Estilos en `index.css` (`.folder-card*`). Fallback de banner = degradado verde de marca cuando el curso no tiene thumbnail.
+- Archivos: `frontend/src/pages/Academy.jsx`, `frontend/src/index.css`, `frontend/src/pages/Home.jsx`, `frontend/src/pages/Rewards.jsx`.
