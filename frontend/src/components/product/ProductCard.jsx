@@ -63,22 +63,25 @@ export default function ProductCard({ product }) {
       className="lp-product-card"
       onClick={goToDetail}
       style={{
-        background:    "#ffffff",
-        borderRadius:  "28px",
+        background:    "#121212",
+        border:        "1px solid rgba(255,255,255,0.06)",
+        borderRadius:  "26px",
         padding:       "14px",
         cursor:        "pointer",
-        boxShadow:     "0 18px 50px -12px rgba(0,0,0,0.45)",
-        transition:    "transform 400ms cubic-bezier(0.16,1,0.3,1), box-shadow 400ms cubic-bezier(0.16,1,0.3,1)",
+        boxShadow:     "0 18px 50px -20px rgba(0,0,0,0.7)",
+        transition:    "transform 400ms cubic-bezier(0.16,1,0.3,1), box-shadow 400ms cubic-bezier(0.16,1,0.3,1), border-color 300ms cubic-bezier(0.16,1,0.3,1)",
         display:       "flex",
         flexDirection: "column",
       }}
       onMouseEnter={e => {
         e.currentTarget.style.transform = "translateY(-6px)"
-        e.currentTarget.style.boxShadow = "0 30px 70px -12px rgba(0,0,0,0.6)"
+        e.currentTarget.style.boxShadow = "0 30px 60px -25px rgba(0,0,0,0.85)"
+        e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)"
       }}
       onMouseLeave={e => {
         e.currentTarget.style.transform = "translateY(0)"
-        e.currentTarget.style.boxShadow = "0 18px 50px -12px rgba(0,0,0,0.45)"
+        e.currentTarget.style.boxShadow = "0 18px 50px -20px rgba(0,0,0,0.7)"
+        e.currentTarget.style.borderColor = "rgba(255,255,255,0.06)"
       }}
     >
       {/* ── Imagen ── */}
@@ -87,7 +90,7 @@ export default function ProductCard({ product }) {
         borderRadius: "20px",
         overflow:     "hidden",
         aspectRatio:  "1 / 1.12",
-        background:   "#f1f1f1",
+        background:   "#1a1a1a",
       }}>
         {currentImg ? (
           <img
@@ -160,11 +163,11 @@ export default function ProductCard({ product }) {
         {/* Sin stock */}
         {outOfStock && (
           <div style={{ position:"absolute", inset:0, zIndex:3,
-            background:"rgba(255,255,255,0.7)", backdropFilter:"blur(3px)",
+            background:"rgba(10,10,10,0.72)", backdropFilter:"blur(3px)",
             display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <span style={{ fontSize:"13px", fontWeight:600, color:"#111",
-              background:"#fff", padding:"8px 16px", borderRadius:"9999px",
-              boxShadow:"0 4px 14px rgba(0,0,0,0.15)" }}>
+            <span style={{ fontSize:"13px", fontWeight:600, color:"#fff",
+              background:"#1c1c1c", padding:"8px 16px", borderRadius:"9999px",
+              border:"1px solid rgba(255,255,255,0.12)" }}>
               Sin stock
             </span>
           </div>
@@ -175,7 +178,7 @@ export default function ProductCard({ product }) {
       <div style={{ padding:"18px 8px 6px", display:"flex", flexDirection:"column", gap:"6px" }}>
         <h3 data-testid={`product-name-${product.slug}`} style={{
           fontFamily:"var(--font-display)", fontSize:"1.35rem", fontWeight:700,
-          lineHeight:1.15, color:"#111", letterSpacing:"-0.02em",
+          lineHeight:1.15, color:"#fff", letterSpacing:"-0.02em",
           overflow:"hidden", display:"-webkit-box",
           WebkitLineClamp:1, WebkitBoxOrient:"vertical",
         }}>
@@ -187,17 +190,17 @@ export default function ProductCard({ product }) {
           <img src={brandLogo} alt={product.brand_name || ""}
             style={{ height:"20px", width:"auto", objectFit:"contain",
               objectPosition:"left center", opacity:0.55,
-              filter:"grayscale(1)", alignSelf:"flex-start" }}
+              filter:"brightness(0) invert(1)", alignSelf:"flex-start" }}
             onError={e => { e.target.style.display = "none" }} />
         ) : product.brand_name ? (
-          <p style={{ fontSize:"15px", color:"#b0b0b0", fontWeight:500 }}>
+          <p style={{ fontSize:"15px", color:"#8c8c8c", fontWeight:500 }}>
             {product.brand_name}
           </p>
         ) : null}
 
         {product.short_description && (
           <p data-testid={`product-desc-${product.slug}`} style={{
-            fontSize:"15px", color:"#a0a0a0", lineHeight:1.4, marginTop:"2px",
+            fontSize:"15px", color:"#8c8c8c", lineHeight:1.4, marginTop:"2px",
             overflow:"hidden", display:"-webkit-box",
             WebkitLineClamp:2, WebkitBoxOrient:"vertical",
           }}>
@@ -213,8 +216,9 @@ export default function ProductCard({ product }) {
           <span
             data-testid={`product-price-${product.slug}`}
             style={{
-              background:"#f0f0f0", color:"#111", fontWeight:700,
+              background:"rgba(255,255,255,0.06)", color:"#fff", fontWeight:700,
               fontSize:"1.15rem", padding:"12px 22px", borderRadius:"9999px",
+              border:"1px solid rgba(255,255,255,0.08)",
               lineHeight:1, whiteSpace:"nowrap",
             }}>
             ${Number(product.price).toLocaleString("es-CL")}
@@ -226,8 +230,8 @@ export default function ProductCard({ product }) {
             disabled={outOfStock}
             style={{
               display:"flex", alignItems:"center", gap:"10px",
-              background: added ? "#1aa34a" : "#111",
-              color:"#fff", fontWeight:600, fontSize:"1rem",
+              background: added ? "#1aa34a" : "var(--accent)",
+              color:"#000", fontWeight:700, fontSize:"1rem",
               padding:"12px 10px 12px 22px", borderRadius:"9999px",
               border:"none",
               cursor: outOfStock ? "not-allowed" : "pointer",
@@ -255,7 +259,7 @@ export default function ProductCard({ product }) {
                 Comprar
                 <span style={{
                   width:"26px", height:"26px", borderRadius:"50%",
-                  background:"#fff", color:"#111", display:"flex",
+                  background:"#000", color:"var(--accent)", display:"flex",
                   alignItems:"center", justifyContent:"center",
                 }}>
                   <ArrowUpRight size={15} strokeWidth={2.5} />

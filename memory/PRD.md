@@ -453,6 +453,10 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
 - NOTA: se dejó una imagen de hero demo en el preview (site/hero_preview2.jpg); el usuario puede reemplazarla desde Personalización.
 - Verificado por testing agent: iteration_5.json (hero) PASÓ. Fix de imágenes de servicios verificado por curl (relativo /media, HTTP 200).
 
+## 2026-06 — Product cards oscuras + revisión mobile del flujo de compra
+- **ProductCard** (`components/product/ProductCard.jsx`): cambiada de fondo blanco `#ffffff` a **oscuro `#121212`** con borde `rgba(255,255,255,0.06)` (mismo look que `.profile-card` de servicios). Texto blanco, descripción/marca gris, imagen `#1a1a1a`, píldora de precio translúcida, y botón **"Comprar" en verde accent** (círculo negro con flecha). Overlay "Sin stock" adaptado a oscuro. Logo de marca subtítulo con `brightness(0) invert(1)` para verse sobre fondo oscuro.
+- **Revisión mobile del flujo de compra** (412px): ProductDetail, CourseDetail, ServiceDetail, Cart y Checkout **ya eran responsivos** (todos con `@media (max-width:768/900px)` que colapsan sus grids a 1 columna). Verificado end-to-end (detalle → carrito → login → checkout) sin overflow horizontal.
+
 ## 2026-06 — Grids responsive progresivos (1 col mobile → 2 tablet → N desktop)
 - Cambio de criterio del usuario: en vez de 2 columnas forzadas en mobile (quedaban apretadas), ahora **1 columna en mobile y expansión progresiva**.
 - **Home** (`Home.jsx`): `products/courses/services-grid` → 1 col ≤640px, 2 col 641–1024px, original (4/3/3) >1024px. Se mantiene hero centrado + logo mobile.
