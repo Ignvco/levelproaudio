@@ -1,6 +1,7 @@
 // pages/Services.jsx
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
+import { BadgeCheck, Clock, Tag, Plus } from "lucide-react"
 import { getServices } from "../api/services.api"
 import { useScrollReveal } from "../hooks/useScrollReveal"
 import { mediaUrl } from "../utils/mediaUrl"
@@ -8,49 +9,51 @@ import { mediaUrl } from "../utils/mediaUrl"
 function ServiceCard({ service, index }) {
   const ref = useScrollReveal({ delay: index * 80 })
   return (
-    <Link ref={ref} to={`/services/${service.slug}`} style={{
-      display:       "flex",
-      flexDirection: "column",
-      background:    "var(--surface)",
-      border:        "1px solid var(--border)",
-      borderRadius:  "var(--r-xl)",
-      overflow:      "hidden",
-      textDecoration:"none",
-      transition:    "all var(--dur-slow) var(--ease)",
-    }}
-      className="card card-glow"
-    >
-      {service.thumbnail && (
-        <div style={{ aspectRatio: "16/9", overflow: "hidden" }}>
-          <img src={mediaUrl(service.thumbnail)} alt={service.name}
-            style={{ width: "100%", height: "100%", objectFit: "cover",
-              transition: "transform 600ms var(--ease)" }}
-            onMouseEnter={e => e.target.style.transform = "scale(1.05)"}
-            onMouseLeave={e => e.target.style.transform = "scale(1)"}
-          />
+    <Link ref={ref} to={`/services/${service.slug}`}
+      className="profile-card"
+      data-testid={`service-card-${service.slug}`}>
+
+      {/* Imagen */}
+      <div className="profile-card__img">
+        {service.thumbnail ? (
+          <img src={mediaUrl(service.thumbnail)} alt={service.name} />
+        ) : (
+          <div className="profile-card__img-fallback" aria-hidden="true" />
+        )}
+      </div>
+
+      {/* Cuerpo */}
+      <div className="profile-card__body">
+        <div className="profile-card__name">
+          <span className="profile-card__name-text" data-testid={`service-name-${service.slug}`}>
+            {service.name}
+          </span>
+          {service.is_featured && (
+            <BadgeCheck className="profile-card__verified" size={20}
+              fill="#1aff6e" color="#0d0d0d" strokeWidth={2.5}
+              data-testid={`service-verified-${service.slug}`} />
+          )}
         </div>
-      )}
-      <div style={{ padding: "24px", flex: 1,
-        display: "flex", flexDirection: "column", gap: "12px" }}>
-        <h3 style={{ fontFamily: "var(--font-serif)", fontSize: "1.3rem",
-          fontWeight: 300, color: "var(--text)" }}>
-          {service.name}
-        </h3>
-        <p style={{ fontSize: "14px", color: "var(--text-3)", lineHeight: 1.7,
-          flex: 1 }}>
-          {service.short_description}
-        </p>
-        <div style={{ display: "flex", justifyContent: "space-between",
-          alignItems: "center", paddingTop: "16px",
-          borderTop: "1px solid var(--border)" }}>
-          <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.4rem",
-            color: "var(--text)" }}>
-            {service.price_display}
-          </p>
-          <span style={{ fontSize: "13px", color: "var(--accent)",
-            display: "flex", alignItems: "center", gap: "4px",
-            fontWeight: 500 }}>
-            Ver más →
+
+        {service.short_description && (
+          <p className="profile-card__desc">{service.short_description}</p>
+        )}
+
+        <div className="profile-card__footer">
+          <div className="profile-card__stats">
+            {service.duration_hours > 0 && (
+              <span className="profile-card__stat" data-testid={`service-duration-${service.slug}`}>
+                <Clock size={15} /> {service.duration_hours}h
+              </span>
+            )}
+            {service.price_display && (
+              <span className="profile-card__stat" data-testid={`service-price-${service.slug}`}>
+                <Tag size={15} /> {service.price_display}
+              </span>
+            )}
+          </div>
+          <span className="profile-card__btn" data-testid={`service-cta-${service.slug}`}>
+            Ver más <Plus size={15} strokeWidth={2.5} />
           </span>
         </div>
       </div>
@@ -109,14 +112,14 @@ export default function Services() {
         padding: "clamp(48px, 6vw, 80px) clamp(20px, 5vw, 60px)" }}>
         {isLoading ? (
           <div style={{ display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
+            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "24px" }}>
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="skeleton" style={{ height: "340px" }} />
+              <div key={i} className="skeleton" style={{ height: "440px", borderRadius: "26px" }} />
             ))}
           </div>
         ) : (
           <div style={{ display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
+            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "24px" }}>
             {services.map((s, i) => (
               <ServiceCard key={s.id} service={s} index={i} />
             ))}
