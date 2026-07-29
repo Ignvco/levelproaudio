@@ -120,12 +120,6 @@ export default function Services() {
         )}
       </div>
 
-      <style>{`
-        @media (max-width: 768px) {
-          .services-page-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
-        }
-      `}</style>
-
       {/* CTA */}
       <div ref={ctaRef} style={{
         maxWidth: "var(--container)", margin: "0 auto",

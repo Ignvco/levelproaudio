@@ -453,6 +453,13 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
 - NOTA: se dejó una imagen de hero demo en el preview (site/hero_preview2.jpg); el usuario puede reemplazarla desde Personalización.
 - Verificado por testing agent: iteration_5.json (hero) PASÓ. Fix de imágenes de servicios verificado por curl (relativo /media, HTTP 200).
 
+## 2026-06 — Grids responsive progresivos (1 col mobile → 2 tablet → N desktop)
+- Cambio de criterio del usuario: en vez de 2 columnas forzadas en mobile (quedaban apretadas), ahora **1 columna en mobile y expansión progresiva**.
+- **Home** (`Home.jsx`): `products/courses/services-grid` → 1 col ≤640px, 2 col 641–1024px, original (4/3/3) >1024px. Se mantiene hero centrado + logo mobile.
+- **Standalone** (`Shop/Academy/Services`): se revirtieron los grids forzados; vuelven al `auto-fill minmax(280–300px, 1fr)` original que ya es progresivo (1 col en teléfono, 2 en tablet, 3–4 en desktop).
+- Se **eliminó el bloque de compactado de cards** en `index.css` (ya no hace falta con cards full-width en 1 columna).
+- Verificado: sin overflow horizontal a 412px; 1 col a 412px, 2 col a 768px, desktop intacto.
+
 ## 2026-06 — Mobile responsive fix (Pixel 7) + logo hero + cards compactas
 - **Fix overflow horizontal** en mobile: los grids ahora usan `repeat(2, minmax(0,1fr))` (el `1fr` colapsaba por el min-content de las cards y desbordaba). Verificado: scrollWidth == clientWidth a 412px (Pixel 7) y 360px.
 - **Logo en el hero solo en mobile**: `Home.jsx` renderiza `<img class="hero-logo-mobile">` (importa `logo.png`). CSS `display:none` en desktop, `display:block` centrado a ≤768px (el navbar desktop no aparece en mobile, solo el dock inferior).

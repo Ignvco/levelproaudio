@@ -843,9 +843,9 @@ export default function Home() {
           .hero-visual     { height: 380px !important; margin-top: 20px !important; }
           .trust-grid      { grid-template-columns: repeat(2, 1fr) !important; gap: 20px !important; }
           .pillars-grid    { grid-template-columns: 1fr !important; }
-          .products-grid   { grid-template-columns: repeat(2, 1fr) !important; }
-          .courses-grid    { grid-template-columns: 1fr !important; }
-          .services-grid   { grid-template-columns: 1fr !important; }
+          .products-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+          .courses-grid    { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+          .services-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
           .testimonial-grid{ grid-template-columns: 1fr !important; }
           .brands-strip-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
         }
@@ -871,12 +871,12 @@ export default function Home() {
             text-align: center !important;
           }
           .hero-cta-row { justify-content: center !important; }
-          .products-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
-          .courses-grid  { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
-          .services-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px !important; }
-          [data-testid="featured-products"] > div,
-          [data-testid="featured-courses"] > div,
-          [data-testid="featured-services"] > div { padding: 18px 14px !important; }
+        }
+        @media (max-width: 640px) {
+          .trust-grid      { grid-template-columns: repeat(2, 1fr) !important; }
+          .products-grid   { grid-template-columns: 1fr !important; }
+          .courses-grid    { grid-template-columns: 1fr !important; }
+          .services-grid   { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>
