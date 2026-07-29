@@ -88,7 +88,7 @@ export default function Academy() {
         padding: "clamp(32px, 4vw, 48px) clamp(20px, 5vw, 60px)" }}>
 
         {isLoading ? (
-          <div style={{ display: "grid",
+          <div className="academy-grid" style={{ display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
             {[...Array(6)].map((_, i) => (
               <div key={i} className="skeleton" style={{ height: "360px" }} />
@@ -100,7 +100,7 @@ export default function Academy() {
             No hay cursos disponibles todavía.
           </div>
         ) : (
-          <div style={{ display: "grid",
+          <div className="academy-grid" style={{ display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
             {courses.map((course, i) => (
               <CourseCard key={course.id} course={course} index={i} />
@@ -108,6 +108,12 @@ export default function Academy() {
           </div>
         )}
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .academy-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+        }
+      `}</style>
     </div>
   )
 }

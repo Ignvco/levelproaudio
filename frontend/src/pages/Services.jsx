@@ -99,7 +99,7 @@ export default function Services() {
       <div style={{ maxWidth: "var(--container)", margin: "0 auto",
         padding: "clamp(48px, 6vw, 80px) clamp(20px, 5vw, 60px)" }}>
         {isLoading ? (
-          <div style={{ display: "grid",
+          <div className="services-page-grid" style={{ display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "24px" }}>
             {[...Array(4)].map((_, i) => (
               <div key={i} className="skeleton" style={{ height: "440px", borderRadius: "26px" }} />
@@ -111,7 +111,7 @@ export default function Services() {
             No hay servicios en esta categoría.
           </div>
         ) : (
-          <div style={{ display: "grid",
+          <div className="services-page-grid" style={{ display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "24px" }}>
             {services.map((s, i) => (
               <ServiceCard key={s.id} service={s} index={i} />
@@ -119,6 +119,12 @@ export default function Services() {
           </div>
         )}
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .services-page-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+        }
+      `}</style>
 
       {/* CTA */}
       <div ref={ctaRef} style={{

@@ -453,6 +453,17 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
 - NOTA: se dejó una imagen de hero demo en el preview (site/hero_preview2.jpg); el usuario puede reemplazarla desde Personalización.
 - Verificado por testing agent: iteration_5.json (hero) PASÓ. Fix de imágenes de servicios verificado por curl (relativo /media, HTTP 200).
 
+## 2026-06 — Mobile responsive: hero centrado + grids 2 columnas
+- **Hero mobile centrado** (`Home.jsx`): media query `max-width:768px` centra `.hero-left` (LED + titular + tags), `.hero-right` (subtítulo) y `.hero-cta-row` (botones). Se agregaron classNames `hero-left` y `hero-cta-row`. Desktop sin cambios.
+- **Grids a 2 columnas en mobile** (max-width:768px) en:
+  - Home: `.products-grid`, `.courses-grid`, `.services-grid` (secciones destacadas)
+  - `Shop.jsx`: `.shop-grid`
+  - `Academy.jsx`: `.academy-grid`
+  - `Services.jsx`: `.services-page-grid`
+  - Antes las páginas standalone usaban `minmax(280-300px,1fr)` que colapsaba a 1 col en mobile.
+- **Dock inferior**: sin cambios (el usuario confirmó "ya tenemos nuestro nav").
+- Verificado por screenshots mobile (390px): hero centrado + 2 col en Tienda/Academia/Servicios; desktop (1440px) intacto.
+
 ## 2026-06 — Hero: rotación de imágenes + fuente Poppins
 - Rotación de hasta 3 imágenes de hero con fundido cruzado (6s) + dots indicadores. Campos hero_image_2/3 en SiteSettings + serializer (urls relativas /media) + 3 slots de subida en Personalización.
 - Titular del hero ahora en fuente **Poppins** (var(--font-hero)), estilo geométrico redondeado tipo referencia del cliente. Poppins cargada vía Google Fonts en index.css.

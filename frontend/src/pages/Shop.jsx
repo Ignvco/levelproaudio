@@ -226,7 +226,7 @@ export default function Shop() {
 
         {/* Grid */}
         {isLoading ? (
-          <div style={{
+          <div className="shop-grid" style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
             gap: "28px",
@@ -257,7 +257,7 @@ export default function Shop() {
             </button>
           </div>
         ) : (
-          <div ref={gridRef} style={{
+          <div ref={gridRef} className="shop-grid" style={{
             display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
             gap: "28px",
@@ -303,6 +303,12 @@ export default function Shop() {
           </div>
         )}
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .shop-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+        }
+      `}</style>
     </div>
   )
 }

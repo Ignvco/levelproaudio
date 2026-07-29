@@ -196,7 +196,7 @@ export default function Home() {
         }} className="hero-grid">
 
           {/* LEFT — headline + tags */}
-          <div style={{ alignSelf: "center" }}>
+          <div className="hero-left" style={{ alignSelf: "center" }}>
             <LED color="green" label={s.tagline || "Chile & Argentina"} />
 
             <h1 data-testid="hero-headline" style={{
@@ -249,7 +249,7 @@ export default function Home() {
               {s.hero_subtitle || "El ecosistema completo para músicos, productores e ingenieros. Equipamiento, formación y servicios en un solo lugar."}
             </p>
 
-            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+            <div className="hero-cta-row" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
               <Link to={s.hero_cta1_link || "/shop"} data-testid="hero-cta-primary" style={{
                 display: "inline-flex", alignItems: "center", gap: "10px",
                 padding: "14px 12px 14px 24px", borderRadius: "var(--r-full)",
@@ -845,6 +845,25 @@ export default function Home() {
           .services-grid   { grid-template-columns: 1fr !important; }
           .testimonial-grid{ grid-template-columns: 1fr !important; }
           .brands-strip-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
+        }
+        @media (max-width: 768px) {
+          .hero-left {
+            text-align: center !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+          }
+          .hero-left [data-testid="hero-tags"] { justify-content: center !important; }
+          .hero-right {
+            justify-self: center !important;
+            align-self: center !important;
+            max-width: 100% !important;
+            text-align: center !important;
+          }
+          .hero-cta-row { justify-content: center !important; }
+          .products-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+          .courses-grid  { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
+          .services-grid { grid-template-columns: repeat(2, 1fr) !important; gap: 12px !important; }
         }
       `}</style>
     </div>
