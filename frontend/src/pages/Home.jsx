@@ -162,7 +162,7 @@ export default function Home() {
         }} className="hero-grid">
 
           {/* LEFT — headline + tags */}
-          <div style={{ alignSelf: "start" }}>
+          <div style={{ alignSelf: "center" }}>
             <LED color="green" label={s.tagline || "Chile & Argentina"} />
 
             <h1 className="display-bold" data-testid="hero-headline" style={{
