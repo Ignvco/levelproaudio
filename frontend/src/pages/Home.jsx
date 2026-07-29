@@ -103,9 +103,7 @@ export default function Home() {
   return (
     <div style={{
       background: "var(--bg)",
-      padding: "16px clamp(12px, 2vw, 20px) 40px",
       display: "flex", flexDirection: "column",
-      gap: "clamp(20px, 3vw, 32px)",
     }} data-testid="home-page">
 
       {/* ═════════════════════════════════════════════════════════════
@@ -116,10 +114,8 @@ export default function Home() {
         style={{
           position: "relative",
           background: "#0b0b0b",
-          border: "1px solid var(--border)",
-          borderRadius: "var(--r-2xl)",
           overflow: "hidden",
-          minHeight: "clamp(600px, 84vh, 820px)",
+          minHeight: "100vh",
           display: "flex", flexDirection: "column",
         }}
       >
@@ -133,7 +129,7 @@ export default function Home() {
               backgroundSize: "cover",
               backgroundPosition: "center",
               backgroundRepeat: "no-repeat",
-              opacity: 0.62,
+              opacity: 1,
               zIndex: 0,
             }}
           />
@@ -144,7 +140,7 @@ export default function Home() {
             aria-hidden
             style={{
               position: "absolute", inset: 0, pointerEvents: "none",
-              background: "linear-gradient(180deg, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0.3) 45%, rgba(8,8,8,0.92) 100%)",
+              background: "linear-gradient(90deg, rgba(8,8,8,0.82) 0%, rgba(8,8,8,0.5) 38%, rgba(8,8,8,0.12) 68%, rgba(8,8,8,0.35) 100%), linear-gradient(180deg, rgba(8,8,8,0.35) 0%, transparent 30%, transparent 55%, rgba(8,8,8,0.75) 100%)",
               zIndex: 1,
             }}
           />
@@ -162,23 +158,31 @@ export default function Home() {
           display: "grid", gridTemplateColumns: "1.25fr 0.85fr",
           gap: "40px", alignItems: "end",
           flex: 1,
-          padding: "clamp(40px, 5vw, 72px) clamp(28px, 5vw, 72px) 44px",
+          padding: "clamp(110px, 15vh, 165px) clamp(28px, 5vw, 72px) 40px",
         }} className="hero-grid">
 
           {/* LEFT — headline + tags */}
           <div style={{ alignSelf: "start" }}>
             <LED color="green" label={s.tagline || "Chile & Argentina"} />
 
-            <h1 data-testid="hero-headline" style={{
+            <h1 className="display-bold" data-testid="hero-headline" style={{
               fontFamily: "var(--font-display)",
-              fontSize: "clamp(3rem, 8vw, 6.8rem)",
-              fontWeight: 800, lineHeight: 0.92,
-              letterSpacing: "-0.04em", color: "var(--text)",
-              textTransform: "uppercase",
-              marginTop: "26px", marginBottom: "30px",
-              textShadow: s.hero_image_url ? "0 6px 40px rgba(0,0,0,0.55)" : "none",
+              fontSize: "clamp(2.6rem, 5.8vw, 4.8rem)",
+              fontWeight: 700, lineHeight: 1,
+              letterSpacing: "-0.045em", color: "var(--text)",
+              marginTop: "32px", marginBottom: "28px",
+              textShadow: s.hero_image_url ? "0 6px 40px rgba(0,0,0,0.5)" : "none",
             }}>
-              {s.hero_title || "Sonido nivel profesional"}
+              {(s.hero_title || "Llevá tu sonido al nivel profesional.").split(" ").map((w, i, arr) => {
+                const isLast = i === arr.length - 1
+                return isLast ? (
+                  <span key={i} style={{
+                    color: "var(--accent)", fontStyle: "italic", fontWeight: 500,
+                  }}>{w}</span>
+                ) : (
+                  <span key={i}>{w} </span>
+                )
+              })}
             </h1>
 
             <div data-testid="hero-tags" style={{ display: "flex",
@@ -247,24 +251,23 @@ export default function Home() {
           </div>
         </div>
 
-        {/* Tira de marcas dentro del hero */}
+        {/* Tira de marcas dentro del hero — transparente, un poco elevada */}
         {s.show_brands !== false && brands.length > 0 && (
           <div data-testid="hero-brands-strip" style={{
             position: "relative", zIndex: 2,
-            background: "rgba(0,0,0,0.55)",
-            backdropFilter: "blur(10px)",
-            borderTop: "1px solid rgba(255,255,255,0.08)",
-            padding: "18px 0", overflow: "hidden",
+            background: "transparent",
+            padding: "16px 0", overflow: "hidden",
+            marginBottom: "clamp(60px, 9vh, 110px)",
           }}>
             <div style={{ display: "flex", gap: "60px", width: "max-content",
               alignItems: "center", animation: "marquee 30s linear infinite",
               paddingLeft: "60px" }}>
               {[...brands, ...brands].map((b, i) => (
                 <div key={i} style={{ display: "flex", alignItems: "center",
-                  flexShrink: 0, height: "30px", opacity: 0.6,
+                  flexShrink: 0, height: "30px", opacity: 0.75,
                   transition: "opacity 200ms var(--ease)" }}
                   onMouseEnter={e => e.currentTarget.style.opacity = "1"}
-                  onMouseLeave={e => e.currentTarget.style.opacity = "0.6"}>
+                  onMouseLeave={e => e.currentTarget.style.opacity = "0.75"}>
                   {b.logo_url || b.logo ? (
                     <img src={mediaUrl(b.logo_url || b.logo)} alt={b.name}
                       style={{ height: "26px", maxWidth: "130px", objectFit: "contain",
@@ -282,6 +285,17 @@ export default function Home() {
           </div>
         )}
       </section>
+
+      {/* BODY — sube sobre el hero con bordes redondos superiores */}
+      <div className="home-body" style={{
+        position: "relative", zIndex: 3,
+        background: "var(--bg)",
+        borderRadius: "clamp(28px, 4vw, 44px) clamp(28px, 4vw, 44px) 0 0",
+        marginTop: "clamp(-56px, -6vh, -40px)",
+        padding: "clamp(40px, 5vw, 60px) clamp(12px, 2vw, 20px) 40px",
+        display: "flex", flexDirection: "column",
+        gap: "clamp(20px, 3vw, 32px)",
+      }} data-testid="home-body">
 
       {/* ═════════════════════════════════════════════════════════════
           TRUST STRIP — 4 métricas reales con digital readout
@@ -782,9 +796,13 @@ export default function Home() {
       </section>
       )}
 
+      </div>
+      {/* /home-body */}
+
       <style>{`
         @media (max-width: 1024px) {
           .hero-grid       { grid-template-columns: 1fr !important; }
+          .hero-right      { justify-self: start !important; max-width: 100% !important; }
           .hero-visual     { height: 380px !important; margin-top: 20px !important; }
           .trust-grid      { grid-template-columns: repeat(2, 1fr) !important; gap: 20px !important; }
           .pillars-grid    { grid-template-columns: 1fr !important; }
