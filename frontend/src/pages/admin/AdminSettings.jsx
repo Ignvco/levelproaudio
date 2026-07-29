@@ -146,7 +146,8 @@ export default function AdminSettings() {
     if (!f) return {}
     const clone = { ...f }
     // Removemos URLs derivadas del serializer read-only
-    ;["hero_image_url","logo_url","og_image_url","testimonial_photo_url",
+    ;["hero_image_url","hero_image_2_url","hero_image_3_url",
+      "logo_url","og_image_url","testimonial_photo_url",
       "id","created_at","updated_at"].forEach(k => delete clone[k])
     return clone
   }
@@ -260,11 +261,23 @@ export default function AdminSettings() {
                   onChange={e => set("hero_cta2_link", e.target.value)} />
               </Field>
             </div>
-            <Field label="Imagen del hero (opcional)"
+            <Field label="Imagen del hero 1 (opcional)"
               helper="Se muestra de fondo detrás del texto. Recomendado: 1600×900px.">
               <FileInput value={files.hero_image}
                 previewUrl={form.hero_image_url}
                 onChange={f => setFile("hero_image", f)} />
+            </Field>
+            <Field label="Imagen del hero 2 (opcional)"
+              helper="Si cargás 2 o 3 imágenes, el hero las rota automáticamente con un fundido.">
+              <FileInput value={files.hero_image_2}
+                previewUrl={form.hero_image_2_url}
+                onChange={f => setFile("hero_image_2", f)} />
+            </Field>
+            <Field label="Imagen del hero 3 (opcional)"
+              helper="Tercera imagen del carrusel del hero.">
+              <FileInput value={files.hero_image_3}
+                previewUrl={form.hero_image_3_url}
+                onChange={f => setFile("hero_image_3", f)} />
             </Field>
           </>
         )}

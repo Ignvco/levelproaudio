@@ -10,6 +10,8 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
     """Uso publico (GET) — devuelve URLs relativas /media/."""
 
     hero_image_url        = serializers.SerializerMethodField()
+    hero_image_2_url      = serializers.SerializerMethodField()
+    hero_image_3_url      = serializers.SerializerMethodField()
     logo_url              = serializers.SerializerMethodField()
     og_image_url          = serializers.SerializerMethodField()
     testimonial_photo_url = serializers.SerializerMethodField()
@@ -22,7 +24,7 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
             "hero_title", "hero_subtitle",
             "hero_cta1_text", "hero_cta1_link",
             "hero_cta2_text", "hero_cta2_link",
-            "hero_image_url",
+            "hero_image_url", "hero_image_2_url", "hero_image_3_url",
             # Brand
             "site_name", "tagline", "logo_url", "accent_color",
             # Contact
@@ -39,6 +41,8 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
         ]
 
     def get_hero_image_url(self, obj):        return _media_url(obj.hero_image)
+    def get_hero_image_2_url(self, obj):      return _media_url(obj.hero_image_2)
+    def get_hero_image_3_url(self, obj):      return _media_url(obj.hero_image_3)
     def get_logo_url(self, obj):              return _media_url(obj.logo)
     def get_og_image_url(self, obj):          return _media_url(obj.og_image)
     def get_testimonial_photo_url(self, obj): return _media_url(obj.testimonial_photo)
@@ -48,11 +52,14 @@ class SiteSettingsWriteSerializer(SiteSettingsSerializer):
     """Uso admin (PATCH) — permite escribir imágenes."""
 
     hero_image        = serializers.ImageField(write_only=True, required=False)
+    hero_image_2      = serializers.ImageField(write_only=True, required=False)
+    hero_image_3      = serializers.ImageField(write_only=True, required=False)
     logo              = serializers.ImageField(write_only=True, required=False)
     og_image          = serializers.ImageField(write_only=True, required=False)
     testimonial_photo = serializers.ImageField(write_only=True, required=False)
 
     class Meta(SiteSettingsSerializer.Meta):
         fields = SiteSettingsSerializer.Meta.fields + [
-            "hero_image", "logo", "og_image", "testimonial_photo",
+            "hero_image", "hero_image_2", "hero_image_3",
+            "logo", "og_image", "testimonial_photo",
         ]

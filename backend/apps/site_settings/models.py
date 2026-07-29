@@ -17,6 +17,8 @@ class SiteSettings(TimeStampedModel):
     hero_cta2_text  = models.CharField(max_length=40, default="Ver academia")
     hero_cta2_link  = models.CharField(max_length=200, default="/academy")
     hero_image      = models.ImageField(upload_to="site/", blank=True, null=True)
+    hero_image_2    = models.ImageField(upload_to="site/", blank=True, null=True)
+    hero_image_3    = models.ImageField(upload_to="site/", blank=True, null=True)
 
     # ── Marca / Branding ───────────────────────────────────
     site_name       = models.CharField(max_length=60, default="LevelPro Audio")

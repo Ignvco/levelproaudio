@@ -100,6 +100,17 @@ export default function Home() {
   const brands    = brandsData?.results    || brandsData    || []
   const s         = settings || {}
 
+  const heroImages = [s.hero_image_url, s.hero_image_2_url, s.hero_image_3_url]
+    .filter(Boolean)
+  const [heroIdx, setHeroIdx] = useState(0)
+  useEffect(() => {
+    if (heroImages.length < 2) return
+    const t = setInterval(
+      () => setHeroIdx(i => (i + 1) % heroImages.length), 6000
+    )
+    return () => clearInterval(t)
+  }, [heroImages.length])
+
   return (
     <div style={{
       background: "var(--bg)",
@@ -119,23 +130,26 @@ export default function Home() {
           display: "flex", flexDirection: "column",
         }}
       >
-        {/* Imagen de fondo custom (si el admin subió una en Personalización) */}
-        {s.hero_image_url && (
+        {/* Imágenes de fondo custom (Personalización) — rotan con fundido si hay 2-3 */}
+        {heroImages.map((img, i) => (
           <div
+            key={i}
             aria-hidden
+            data-testid={`hero-bg-${i}`}
             style={{
               position: "absolute", inset: 0, pointerEvents: "none",
-              backgroundImage: `url(${mediaUrl(s.hero_image_url)})`,
+              backgroundImage: `url(${mediaUrl(img)})`,
               backgroundSize: "cover",
               backgroundPosition: "center",
               backgroundRepeat: "no-repeat",
-              opacity: 1,
+              opacity: i === heroIdx ? 1 : 0,
+              transition: "opacity 1200ms ease-in-out",
               zIndex: 0,
             }}
           />
-        )}
+        ))}
         {/* Overlay oscuro para asegurar legibilidad del texto sobre la imagen */}
-        {s.hero_image_url && (
+        {heroImages.length > 0 && (
           <div
             aria-hidden
             style={{
@@ -144,6 +158,26 @@ export default function Home() {
               zIndex: 1,
             }}
           />
+        )}
+        {/* Indicadores del carrusel del hero */}
+        {heroImages.length > 1 && (
+          <div data-testid="hero-dots" style={{
+            position: "absolute", zIndex: 2, left: "clamp(28px, 5vw, 72px)",
+            bottom: "clamp(96px, 13vh, 150px)", display: "flex", gap: "8px",
+          }}>
+            {heroImages.map((_, i) => (
+              <button key={i}
+                data-testid={`hero-dot-${i}`}
+                aria-label={`Imagen ${i + 1}`}
+                onClick={() => setHeroIdx(i)}
+                style={{
+                  width: i === heroIdx ? "26px" : "8px", height: "8px",
+                  borderRadius: "9999px", border: "none", padding: 0, cursor: "pointer",
+                  background: i === heroIdx ? "var(--accent)" : "rgba(255,255,255,0.45)",
+                  transition: "all 300ms var(--ease)",
+                }} />
+            ))}
+          </div>
         )}
         <div style={{
           position: "absolute", inset: 0, pointerEvents: "none",
