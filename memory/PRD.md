@@ -441,3 +441,14 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
 - Usado en `Services.jsx` y `Home.jsx` sección "Servicios" (`featured-services`, grid 3col gap 20px, stagger reveal).
 - Sello verde verificado (BadgeCheck) ahora se muestra en TODOS los servicios (antes solo `is_featured`).
 - ServiceCard antigua de Home → `ServiceCardLegacy` (sin uso).
+
+## 2026-06 — Rediseño Hero (estilo referencia ISNI+)
+- Hero full-bleed a pantalla completa (imagen de fondo edge-to-edge, ~100vh) conservando el fondo personalizable (site settings hero_image), la nav, el color verde y el contenido.
+- Titular en la fuente original del sitio (mixed case, última palabra en verde itálica), fila de tags con "+" (Equipamiento + Formación + Servicios), párrafo + CTA a la derecha, tira de marcas transparente cerca del fondo.
+- Texto izquierdo (titular+tags) centrado verticalmente (alignSelf center); CTA a la derecha abajo.
+- Body con bordes redondos superiores que sube sobre el hero (data-testid home-body). Se eliminó la tira de marcas independiente (brands-strip) — ahora vive solo en el hero (hero-brands-strip).
+- Backend fix: ServiceListSerializer/ServiceDetailSerializer devuelven thumbnail como /media/... relativo (las imágenes de servicios ya se visualizan).
+- Admin Servicios: modal con subida de imagen + selector/creación de categoría + duración (FormData).
+- Servicios: portadas por defecto (serviceCover) + filtro por categoría.
+- NOTA: se dejó una imagen de hero demo en el preview (site/hero_preview2.jpg); el usuario puede reemplazarla desde Personalización.
+- Verificado por testing agent: iteration_5.json (hero) PASÓ. Fix de imágenes de servicios verificado por curl (relativo /media, HTTP 200).
