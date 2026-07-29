@@ -453,6 +453,19 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
 - NOTA: se dejó una imagen de hero demo en el preview (site/hero_preview2.jpg); el usuario puede reemplazarla desde Personalización.
 - Verificado por testing agent: iteration_5.json (hero) PASÓ. Fix de imágenes de servicios verificado por curl (relativo /media, HTTP 200).
 
+## 2026-06 — Densidad mobile: elementos más compactos (más aire)
+- Bloque `@media (max-width:768px)` en `index.css` que reduce tamaños solo en mobile (desktop intacto):
+  - `.home-body`: menos padding superior (30px) y menor `gap` entre secciones (14px)
+  - Hero headline más chico (`clamp(2rem,8.5vw,2.6rem)`)
+  - Secciones destacadas con padding interno mínimo (más ancho útil para las cards)
+  - `final-cta` / `testimonial` / `trust-strip` con paddings reducidos
+  - `.display-bold` (títulos de sección) a 1.5rem
+  - Pilares (`[data-testid^="pillar-"]`): `min-height:auto`, padding y gap reducidos, h3 a 20px
+  - Product card: imagen `aspect-ratio 4/3` (menos alta), nombre 1.1rem, precio/botón más chicos
+  - Folder card (cursos): banner `16/7`, panel `min-height 96px` (menos espacio muerto), num 26px
+  - Profile card (servicios): imagen `1/0.82`
+- Verificado por screenshots a 412px (compacto) y 1440px (desktop sin cambios).
+
 ## 2026-06 — Product cards oscuras + revisión mobile del flujo de compra
 - **ProductCard** (`components/product/ProductCard.jsx`): cambiada de fondo blanco `#ffffff` a **oscuro `#121212`** con borde `rgba(255,255,255,0.06)` (mismo look que `.profile-card` de servicios). Texto blanco, descripción/marca gris, imagen `#1a1a1a`, píldora de precio translúcida, y botón **"Comprar" en verde accent** (círculo negro con flecha). Overlay "Sin stock" adaptado a oscuro. Logo de marca subtítulo con `brightness(0) invert(1)` para verse sobre fondo oscuro.
 - **Revisión mobile del flujo de compra** (412px): ProductDetail, CourseDetail, ServiceDetail, Cart y Checkout **ya eran responsivos** (todos con `@media (max-width:768/900px)` que colapsan sus grids a 1 columna). Verificado end-to-end (detalle → carrito → login → checkout) sin overflow horizontal.

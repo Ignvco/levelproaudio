@@ -613,3 +613,48 @@ h1 em, h2 em, h3 em {
   transition: background 250ms var(--ease);
 }
 .profile-card:hover .profile-card__btn { background: #2a2a2a; }
+
+/* ── Mobile (≤768px): compactar elementos para dar más aire ── */
+@media (max-width: 768px) {
+  /* Body: menos padding superior y menos separación entre secciones */
+  .home-body { padding: 30px 12px 32px !important; gap: 14px !important; }
+
+  /* Hero: titular más contenido */
+  [data-testid="hero-headline"] { font-size: clamp(2rem, 8.5vw, 2.6rem) !important; margin-top: 22px !important; margin-bottom: 20px !important; }
+
+  /* Secciones destacadas / trust: padding interno más chico */
+  [data-testid="featured-products"] > div,
+  [data-testid="featured-courses"] > div,
+  [data-testid="featured-services"] > div { padding: 6px 4px !important; }
+  [data-testid="trust-strip"] > div { padding: 18px 16px !important; gap: 16px !important; }
+  [data-testid="final-cta"] > div { padding: 44px 20px !important; }
+  [data-testid="testimonial"] > div { padding: 26px 20px !important; }
+
+  /* Encabezados de sección: más chicos */
+  .display-bold { font-size: 1.5rem !important; }
+
+  /* Pilares: cards mucho más compactas */
+  [data-testid^="pillar-"] {
+    min-height: auto !important;
+    padding: 20px 18px !important;
+    gap: 14px !important;
+  }
+  [data-testid^="pillar-"] h3 { font-size: 20px !important; margin-bottom: 8px !important; }
+
+  /* Product card: imagen menos alta + textos más chicos */
+  .lp-product-card { padding: 10px !important; }
+  .lp-product-card > div:first-child { aspect-ratio: 4 / 3 !important; }
+  [data-testid^="product-name-"] { font-size: 1.1rem !important; }
+  [data-testid^="product-desc-"] { font-size: 13px !important; }
+  [data-testid^="product-price-"] { font-size: 1rem !important; padding: 10px 16px !important; }
+  .lp-product-buyrow button { font-size: 0.9rem !important; padding: 10px 8px 10px 16px !important; }
+
+  /* Course folder card: menos alto muerto */
+  .folder-card { padding: 8px !important; }
+  .folder-card__img { aspect-ratio: 16 / 7 !important; }
+  .folder-card__panel { min-height: 96px !important; padding: 28px 16px 14px !important; }
+  .folder-card__num { font-size: 26px !important; }
+
+  /* Service profile card: un poco más compacta */
+  .profile-card__img { aspect-ratio: 1 / 0.82 !important; }
+}
