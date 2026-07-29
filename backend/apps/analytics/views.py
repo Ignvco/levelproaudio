@@ -864,11 +864,31 @@ def admin_service_requests(request):
         } for r in qs]
     })
 
+
+def _svc_bool(val):
+    if isinstance(val, bool):
+        return val
+    return str(val).strip().lower() in ("true", "1", "yes", "on")
+
+
+def _svc_resolve_category(data):
+    """Resuelve la categoría desde category_name (crea/obtiene) o category (id)."""
+    cat_name = (data.get("category_name") or "").strip()
+    if cat_name:
+        cat, _ = ServiceCategory.objects.get_or_create(
+            slug=slugify(cat_name), defaults={"name": cat_name}
+        )
+        return cat
+    cat_id = (data.get("category") or "").strip() if data.get("category") else None
+    if cat_id:
+        return ServiceCategory.objects.filter(id=cat_id).first()
+    return None
+
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAdminOrStaff])
 def admin_services_crud(request):
     """GET/POST /api/v1/admin/services/list/"""
-   
 
     if request.method == "GET":
         services = Service.objects.select_related("category").order_by("order", "name")
@@ -877,29 +897,37 @@ def admin_services_crud(request):
                 "id":               str(s.id),
                 "name":             s.name,
                 "slug":             s.slug,
+                "category":         str(s.category.id) if s.category else None,
                 "category_name":    s.category.name if s.category else "—",
                 "short_description": s.short_description,
+                "description":      s.description,
+                "price":            str(s.price) if s.price is not None else "",
                 "price_display":    s.price_display,
                 "price_type":       s.price_type,
+                "duration_hours":   s.duration_hours,
                 "is_active":        s.is_active,
                 "is_featured":      s.is_featured,
+                "order":            s.order,
                 "thumbnail":        f"/media/{s.thumbnail.name}" if s.thumbnail and s.thumbnail.name else None,
             } for s in services]
         })
 
     # POST — crear servicio
-    
     data = request.data
+    name = data.get("name", "")
     service = Service.objects.create(
-        name             = data.get("name", ""),
-        slug             = slugify(data.get("name", "")),
+        name             = name,
+        slug             = slugify(name),
         short_description= data.get("short_description", ""),
         description      = data.get("description", ""),
         price_type       = data.get("price_type", "quote"),
         price            = data.get("price") or None,
-        is_active        = data.get("is_active", True),
-        is_featured      = data.get("is_featured", False),
-        order            = data.get("order", 0),
+        is_active        = _svc_bool(data.get("is_active", True)),
+        is_featured      = _svc_bool(data.get("is_featured", False)),
+        order            = data.get("order") or 0,
+        duration_hours   = int(data["duration_hours"]) if str(data.get("duration_hours") or "").strip() else None,
+        category         = _svc_resolve_category(data),
+        thumbnail        = request.FILES.get("thumbnail"),
     )
     return Response({"id": str(service.id), "name": service.name}, status=201)
 
@@ -919,10 +947,30 @@ def admin_service_detail(request, service_id):
         return Response({"deleted": True})
 
     allowed = ["name", "short_description", "description", "price_type",
-               "price", "is_active", "is_featured", "order"]
+               "price", "order"]
     for field in allowed:
         if field in request.data:
-            setattr(service, field, request.data[field])
+            val = request.data[field]
+            if field == "price" and (val is None or str(val).strip() == ""):
+                val = None
+            if field == "order" and (val is None or str(val).strip() == ""):
+                val = 0
+            setattr(service, field, val)
+
+    for bf in ["is_active", "is_featured"]:
+        if bf in request.data:
+            setattr(service, bf, _svc_bool(request.data[bf]))
+
+    if "duration_hours" in request.data:
+        dh = str(request.data["duration_hours"] or "").strip()
+        service.duration_hours = int(dh) if dh else None
+
+    if "category" in request.data or "category_name" in request.data:
+        service.category = _svc_resolve_category(request.data)
+
+    if request.FILES.get("thumbnail"):
+        service.thumbnail = request.FILES["thumbnail"]
+
     service.save()
     return Response({"id": str(service.id), "name": service.name})
 

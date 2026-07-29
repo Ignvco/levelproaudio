@@ -7,6 +7,8 @@ import {
   listAdminServicesCrud, createAdminService,
   updateAdminService, deleteAdminService,
 } from "../../api/admin.api"
+import { getServiceCategories } from "../../api/services.api"
+import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../components/ui/ToastNotification"
 
 const inputSt = {
@@ -302,23 +304,67 @@ function ServiceModal({ service, onClose, onSaved }) {
   const [form, setForm] = useState({
     name:              service?.name || "",
     short_description: service?.short_description || "",
-    description:       "",
+    description:       service?.description || "",
     price_type:        service?.price_type || "quote",
     price:             service?.price || "",
+    duration_hours:    service?.duration_hours || "",
+    category:          service?.category || "",
     is_active:         service?.is_active ?? true,
     is_featured:       service?.is_featured ?? false,
     order:             service?.order || 0,
   })
+  const [newCategory, setNewCategory] = useState("")
+  const [thumbFile, setThumbFile]     = useState(null)
+  const [thumbPreview, setThumbPreview] = useState(
+    service?.thumbnail ? mediaUrl(service.thumbnail) : null
+  )
+
+  const { data: catData } = useQuery({
+    queryKey: ["service-categories"],
+    queryFn:  getServiceCategories,
+  })
+  const categories = catData?.results || catData || []
+
+  const onFile = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 8 * 1024 * 1024) {
+      showToast("La imagen supera 8MB. Usa una más liviana.")
+      return
+    }
+    setThumbFile(file)
+    setThumbPreview(URL.createObjectURL(file))
+  }
+
+  const buildPayload = () => {
+    const fd = new FormData()
+    fd.append("name", form.name)
+    fd.append("short_description", form.short_description || "")
+    fd.append("description", form.description || "")
+    fd.append("price_type", form.price_type)
+    fd.append("price", form.price_type === "quote" ? "" : (form.price || ""))
+    fd.append("duration_hours", form.duration_hours || "")
+    fd.append("is_active", form.is_active ? "true" : "false")
+    fd.append("is_featured", form.is_featured ? "true" : "false")
+    fd.append("order", form.order || 0)
+    if (form.category === "__new__" && newCategory.trim()) {
+      fd.append("category_name", newCategory.trim())
+    } else {
+      fd.append("category", form.category || "")
+    }
+    if (thumbFile) fd.append("thumbnail", thumbFile)
+    return fd
+  }
 
   const save = useMutation({
     mutationFn: () => isEdit
-      ? updateAdminService(service.id, form)
-      : createAdminService(form),
+      ? updateAdminService(service.id, buildPayload())
+      : createAdminService(buildPayload()),
     onSuccess: () => {
       showToast(isEdit ? "Servicio actualizado" : "Servicio creado")
       onSaved(); onClose()
     },
-    onError: (err) => showToast(err?.response?.data?.error || "Error"),
+    onError: (err) => showToast(err?.response?.data?.error || "Error al guardar"),
   })
 
   return (
@@ -337,6 +383,38 @@ function ServiceModal({ service, onClose, onSaved }) {
         </h2>
 
         <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
+          {/* Imagen / portada */}
+          <div>
+            <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
+              letterSpacing:"0.08em", textTransform:"uppercase" }}>Imagen / portada</label>
+            <div style={{ marginTop:"8px", display:"flex", gap:"14px", alignItems:"center" }}>
+              <div style={{
+                width:"88px", height:"88px", borderRadius:"var(--r-lg)",
+                overflow:"hidden", flexShrink:0,
+                background:"var(--surface-2)", border:"1px solid var(--border)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+              }}>
+                {thumbPreview ? (
+                  <img src={thumbPreview} alt="preview"
+                    data-testid="service-thumb-preview"
+                    style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                ) : (
+                  <span style={{ fontSize:"22px", opacity:0.4 }}>🎧</span>
+                )}
+              </div>
+              <label className="btn" data-testid="service-thumb-label" style={{
+                padding:"9px 16px", fontSize:"13px", cursor:"pointer",
+                background:"var(--surface-2)", border:"1px solid var(--border)",
+                color:"var(--text)", borderRadius:"var(--r-full)",
+              }}>
+                {thumbPreview ? "Cambiar imagen" : "Subir imagen"}
+                <input type="file" accept="image/*" onChange={onFile}
+                  data-testid="input-service-thumbnail"
+                  style={{ display:"none" }} />
+              </label>
+            </div>
+          </div>
+
           <div>
             <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
               letterSpacing:"0.08em", textTransform:"uppercase" }}>Nombre *</label>
@@ -345,6 +423,29 @@ function ServiceModal({ service, onClose, onSaved }) {
               onChange={e => setForm(p => ({ ...p, name:e.target.value }))}
               placeholder="Mezcla y masterización"
               style={{ ...inputSt, marginTop:"6px" }} />
+          </div>
+
+          {/* Categoría */}
+          <div>
+            <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
+              letterSpacing:"0.08em", textTransform:"uppercase" }}>Categoría</label>
+            <select value={form.category}
+              data-testid="select-service-category"
+              onChange={e => setForm(p => ({ ...p, category:e.target.value }))}
+              style={{ ...inputSt, marginTop:"6px" }}>
+              <option value="">Sin categoría</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+              <option value="__new__">➕ Nueva categoría…</option>
+            </select>
+            {form.category === "__new__" && (
+              <input value={newCategory}
+                data-testid="input-new-category"
+                onChange={e => setNewCategory(e.target.value)}
+                placeholder="Nombre de la nueva categoría (ej. Producción)"
+                style={{ ...inputSt, marginTop:"8px" }} />
+            )}
           </div>
 
           <div>
@@ -390,6 +491,16 @@ function ServiceModal({ service, onClose, onSaved }) {
                 style={{ ...inputSt, marginTop:"6px",
                   opacity: form.price_type === "quote" ? 0.4 : 1 }} />
             </div>
+          </div>
+
+          <div style={{ width:"50%", paddingRight:"6px" }}>
+            <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
+              letterSpacing:"0.08em", textTransform:"uppercase" }}>Duración (horas)</label>
+            <input type="number" min="0" value={form.duration_hours}
+              data-testid="input-service-duration"
+              onChange={e => setForm(p => ({ ...p, duration_hours:e.target.value }))}
+              placeholder="Ej. 4"
+              style={{ ...inputSt, marginTop:"6px" }} />
           </div>
 
           <div style={{ display:"flex", gap:"18px", marginTop:"4px" }}>
