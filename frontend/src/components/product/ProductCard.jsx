@@ -1,202 +1,262 @@
 // components/product/ProductCard.jsx
-// La API pública de lista devuelve:
-//   product.primary_image  → URL relativa /media/... (campo plano del serializer de lista)
-//   product.images[]       → array completo (solo en detail)
-// Usamos primary_image para la lista, con fallback a images[0]
+// Card de producto estilo "white card" (referencia del cliente):
+//  - Imagen con badge arriba-izquierda + logo de marca (círculo) arriba-derecha
+//  - Puntos de carrusel sobre la imagen
+//  - Título + logo de marca como subtítulo + descripción corta
+//  - Píldora de precio + botón "Comprar" oscuro con flecha
+// Click en la card → detalle. Click en "Comprar" → agrega al carrito.
 
-import { useRef }          from "react"
-import { Link }            from "react-router-dom"
+import { useState }        from "react"
+import { useNavigate }     from "react-router-dom"
+import { ArrowUpRight }    from "lucide-react"
 import { useCartStore }    from "../../store/cartStore"
 import { mediaUrl }        from "../../utils/mediaUrl"
 import { showToast }       from "../ui/ToastNotification"
 
 export default function ProductCard({ product }) {
   const { addItem } = useCartStore()
-  const cardRef     = useRef(null)
-  const glowRef     = useRef(null)
+  const navigate    = useNavigate()
 
-  // primary_image viene del serializer de lista como URL relativa (/media/...)
-  // images[0].image viene del serializer de detalle — fallback por si acaso
-  const rawImg  = product.primary_image
-    || product.images?.find(i => i.is_primary)?.image
-    || product.images?.[0]?.image
-    || null
-  const img     = rawImg ? mediaUrl(rawImg) : null
+  const [imgIndex, setImgIndex] = useState(0)
+  const [added, setAdded]       = useState(false)
+
+  // Galería de imágenes (fallback a primary_image)
+  const gallery = (product.images && product.images.length
+    ? product.images
+    : [product.primary_image].filter(Boolean)
+  ).map(mediaUrl)
+
+  const currentImg = gallery[imgIndex] || null
+  const brandLogo  = product.brand_logo ? mediaUrl(product.brand_logo) : null
 
   const hasDiscount = product.compare_price && Number(product.compare_price) > Number(product.price)
   const discount    = hasDiscount
     ? Math.round((1 - Number(product.price) / Number(product.compare_price)) * 100)
     : 0
 
-  // ── 3D Tilt + Spotlight ──────────────────────────────────
-  const handleMouseMove = (e) => {
-    const card = cardRef.current
-    const glow = glowRef.current
-    if (!card) return
-    const rect    = card.getBoundingClientRect()
-    const x       = e.clientX - rect.left
-    const y       = e.clientY - rect.top
-    const cx      = rect.width  / 2
-    const cy      = rect.height / 2
-    const rX      = ((y - cy) / cy) * -6
-    const rY      = ((x - cx) / cx) *  6
-    card.style.transform  = `perspective(1000px) rotateX(${rX}deg) rotateY(${rY}deg) scale3d(1.02,1.02,1.02)`
-    card.style.transition = "transform 50ms linear"
-    if (glow) {
-      glow.style.opacity    = "1"
-      glow.style.background = `radial-gradient(circle at ${x}px ${y}px, rgba(26,255,110,0.12), transparent 60%)`
-    }
-  }
-  const handleMouseLeave = () => {
-    const card = cardRef.current
-    const glow = glowRef.current
-    if (!card) return
-    card.style.transform  = "perspective(1000px) rotateX(0) rotateY(0) scale3d(1,1,1)"
-    card.style.transition = "transform 500ms cubic-bezier(0.16, 1, 0.3, 1)"
-    if (glow) glow.style.opacity = "0"
+  const badge = hasDiscount
+    ? `-${discount}%`
+    : product.is_featured
+      ? "Destacado"
+      : null
+
+  const outOfStock = product.stock === 0
+
+  const goToDetail = () => navigate(`/shop/${product.slug}`)
+
+  const handleBuy = (e) => {
+    e.stopPropagation()
+    if (outOfStock) return
+    addItem(product, 1)
+    showToast(`${product.name} agregado al carrito`)
+    setAdded(true)
+    setTimeout(() => setAdded(false), 1000)
   }
 
   return (
-    <div ref={cardRef}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
-      style={{ position:"relative", borderRadius:"var(--r-xl)",
-        background:"var(--surface)", border:"1px solid var(--border)",
-        overflow:"hidden", willChange:"transform", transformStyle:"preserve-3d" }}>
-
-      {/* Spotlight */}
-      <div ref={glowRef} style={{ position:"absolute", inset:0, opacity:0,
-        zIndex:1, pointerEvents:"none", transition:"opacity 200ms",
-        borderRadius:"inherit" }} />
-
-      {/* Imagen */}
-      <Link to={`/shop/${product.slug}`} style={{ display:"block" }}>
-        <div style={{ aspectRatio:"1", overflow:"hidden",
-          background:"var(--surface-2)", position:"relative" }}>
-          {img ? (
-            <img src={img} alt={product.name}
-              style={{ width:"100%", height:"100%", objectFit:"cover",
-                transition:"transform 600ms cubic-bezier(0.16, 1, 0.3, 1)" }}
-              onMouseEnter={e => e.target.style.transform = "scale(1.06)"}
-              onMouseLeave={e => e.target.style.transform = "scale(1)"}
-              onError={e => { e.target.style.display = "none" }} />
-          ) : (
-            <div style={{ width:"100%", height:"100%", display:"flex",
-              alignItems:"center", justifyContent:"center", fontSize:"48px" }}>
-              🎧
-            </div>
-          )}
-
-          {/* Badges */}
-          <div style={{ position:"absolute", top:"12px", left:"12px",
-            display:"flex", gap:"6px", zIndex:2 }}>
-            {hasDiscount && (
-              <span style={{ background:"var(--accent)", color:"#000",
-                fontSize:"11px", fontWeight:700, padding:"3px 8px",
-                borderRadius:"var(--r-full)" }}>
-                -{discount}%
-              </span>
-            )}
-            {product.is_featured && (
-              <span style={{ background:"rgba(255,255,255,0.1)",
-                backdropFilter:"blur(10px)", color:"var(--text)",
-                fontSize:"11px", padding:"3px 8px", borderRadius:"var(--r-full)",
-                border:"1px solid rgba(255,255,255,0.1)" }}>
-                ⭐ Destacado
-              </span>
-            )}
+    <div
+      data-testid={`product-card-${product.slug}`}
+      onClick={goToDetail}
+      style={{
+        background:    "#ffffff",
+        borderRadius:  "28px",
+        padding:       "14px",
+        cursor:        "pointer",
+        boxShadow:     "0 18px 50px -12px rgba(0,0,0,0.45)",
+        transition:    "transform 400ms cubic-bezier(0.16,1,0.3,1), box-shadow 400ms cubic-bezier(0.16,1,0.3,1)",
+        display:       "flex",
+        flexDirection: "column",
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.transform = "translateY(-6px)"
+        e.currentTarget.style.boxShadow = "0 30px 70px -12px rgba(0,0,0,0.6)"
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform = "translateY(0)"
+        e.currentTarget.style.boxShadow = "0 18px 50px -12px rgba(0,0,0,0.45)"
+      }}
+    >
+      {/* ── Imagen ── */}
+      <div style={{
+        position:     "relative",
+        borderRadius: "20px",
+        overflow:     "hidden",
+        aspectRatio:  "1 / 1.12",
+        background:   "#f1f1f1",
+      }}>
+        {currentImg ? (
+          <img
+            src={currentImg}
+            alt={product.name}
+            data-testid={`product-image-${product.slug}`}
+            style={{ width:"100%", height:"100%", objectFit:"cover", display:"block" }}
+            onError={e => { e.target.style.display = "none" }}
+          />
+        ) : (
+          <div style={{ width:"100%", height:"100%", display:"flex",
+            alignItems:"center", justifyContent:"center", fontSize:"46px" }}>
+            🎧
           </div>
+        )}
 
-          {/* Sin stock overlay */}
-          {product.stock === 0 && (
-            <div style={{ position:"absolute", inset:0, zIndex:3,
-              background:"rgba(0,0,0,0.6)", backdropFilter:"blur(4px)",
-              display:"flex", alignItems:"center", justifyContent:"center" }}>
-              <span style={{ fontSize:"13px", fontWeight:500, color:"var(--text-2)",
-                background:"var(--surface)", padding:"8px 16px",
-                borderRadius:"var(--r-full)", border:"1px solid var(--border)" }}>
-                Sin stock
-              </span>
-            </div>
-          )}
-        </div>
-      </Link>
+        {/* Badge arriba-izquierda */}
+        {badge && (
+          <span
+            data-testid={`product-badge-${product.slug}`}
+            style={{
+              position:"absolute", top:"14px", left:"14px",
+              background:"rgba(20,20,20,0.72)", backdropFilter:"blur(8px)",
+              color:"#fff", fontSize:"12px", fontWeight:600,
+              padding:"6px 13px", borderRadius:"9999px", zIndex:2,
+            }}>
+            {badge}
+          </span>
+        )}
 
-      {/* Info */}
-      <div style={{ padding:"16px 18px 18px", position:"relative", zIndex:2 }}>
-        {product.brand_name && (
-          <p style={{ fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
-            letterSpacing:"0.08em", marginBottom:"6px" }}>
+        {/* Logo de marca arriba-derecha */}
+        {brandLogo && (
+          <div style={{
+            position:"absolute", top:"12px", right:"12px", zIndex:2,
+            width:"46px", height:"46px", borderRadius:"50%",
+            background:"#fff", display:"flex", alignItems:"center",
+            justifyContent:"center", padding:"9px",
+            boxShadow:"0 4px 14px rgba(0,0,0,0.18)",
+          }}>
+            <img src={brandLogo} alt={product.brand_name || ""}
+              style={{ width:"100%", height:"100%", objectFit:"contain" }}
+              onError={e => { e.target.parentElement.style.display = "none" }} />
+          </div>
+        )}
+
+        {/* Puntos de carrusel */}
+        {gallery.length > 1 && (
+          <div style={{
+            position:"absolute", bottom:"14px", left:"50%",
+            transform:"translateX(-50%)", display:"flex", gap:"6px", zIndex:2,
+          }}>
+            {gallery.map((_, i) => (
+              <button
+                key={i}
+                data-testid={`product-dot-${product.slug}-${i}`}
+                onClick={(e) => { e.stopPropagation(); setImgIndex(i) }}
+                style={{
+                  width: i === imgIndex ? "20px" : "7px",
+                  height:"7px",
+                  borderRadius:"9999px",
+                  border:"none", padding:0, cursor:"pointer",
+                  background: i === imgIndex ? "#fff" : "rgba(255,255,255,0.5)",
+                  transition:"all 300ms cubic-bezier(0.16,1,0.3,1)",
+                }}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Sin stock */}
+        {outOfStock && (
+          <div style={{ position:"absolute", inset:0, zIndex:3,
+            background:"rgba(255,255,255,0.7)", backdropFilter:"blur(3px)",
+            display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <span style={{ fontSize:"13px", fontWeight:600, color:"#111",
+              background:"#fff", padding:"8px 16px", borderRadius:"9999px",
+              boxShadow:"0 4px 14px rgba(0,0,0,0.15)" }}>
+              Sin stock
+            </span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Info ── */}
+      <div style={{ padding:"18px 8px 6px", display:"flex", flexDirection:"column", gap:"6px" }}>
+        <h3 data-testid={`product-name-${product.slug}`} style={{
+          fontFamily:"var(--font-display)", fontSize:"1.35rem", fontWeight:700,
+          lineHeight:1.15, color:"#111", letterSpacing:"-0.02em",
+          overflow:"hidden", display:"-webkit-box",
+          WebkitLineClamp:1, WebkitBoxOrient:"vertical",
+        }}>
+          {product.name}
+        </h3>
+
+        {/* Marca como logo (subtítulo) */}
+        {brandLogo ? (
+          <img src={brandLogo} alt={product.brand_name || ""}
+            style={{ height:"20px", width:"auto", objectFit:"contain",
+              objectPosition:"left center", opacity:0.55,
+              filter:"grayscale(1)", alignSelf:"flex-start" }}
+            onError={e => { e.target.style.display = "none" }} />
+        ) : product.brand_name ? (
+          <p style={{ fontSize:"15px", color:"#b0b0b0", fontWeight:500 }}>
             {product.brand_name}
           </p>
-        )}
-        <Link to={`/shop/${product.slug}`} style={{ display:"block", marginBottom:"12px" }}>
-          <h3 style={{ fontSize:"14px", fontWeight:500, lineHeight:1.4,
-            color:"var(--text)", overflow:"hidden", display:"-webkit-box",
-            WebkitLineClamp:2, WebkitBoxOrient:"vertical",
-            transition:"color var(--dur) var(--ease)" }}
-            className="hover-accent">
-            {product.name}
-          </h3>
-        </Link>
+        ) : null}
 
-        <div style={{ display:"flex", alignItems:"center",
-          justifyContent:"space-between", gap:"8px" }}>
-          <div>
-            <p style={{ fontFamily:"var(--font-serif)", fontSize:"1.3rem",
-              color:"var(--text)", lineHeight:1 }}>
-              ${Number(product.price).toLocaleString("es-CL")}
-            </p>
-            {hasDiscount && (
-              <p style={{ fontSize:"12px", color:"var(--text-3)",
-                textDecoration:"line-through", marginTop:"2px" }}>
-                ${Number(product.compare_price).toLocaleString("es-CL")}
-              </p>
-            )}
-          </div>
+        {product.short_description && (
+          <p data-testid={`product-desc-${product.slug}`} style={{
+            fontSize:"15px", color:"#a0a0a0", lineHeight:1.4, marginTop:"2px",
+            overflow:"hidden", display:"-webkit-box",
+            WebkitLineClamp:2, WebkitBoxOrient:"vertical",
+          }}>
+            {product.short_description}
+          </p>
+        )}
+
+        {/* Precio + Comprar */}
+        <div style={{
+          display:"flex", alignItems:"center", justifyContent:"space-between",
+          gap:"10px", marginTop:"14px",
+        }}>
+          <span
+            data-testid={`product-price-${product.slug}`}
+            style={{
+              background:"#f0f0f0", color:"#111", fontWeight:700,
+              fontSize:"1.15rem", padding:"12px 22px", borderRadius:"9999px",
+              lineHeight:1, whiteSpace:"nowrap",
+            }}>
+            ${Number(product.price).toLocaleString("es-CL")}
+          </span>
 
           <button
-            onClick={e => {
-              e.preventDefault()
-              if (product.stock > 0) {
-                addItem(product, 1)
-                showToast(`${product.name} agregado al carrito`)
-                const btn = e.currentTarget
-                btn.style.background  = "var(--accent)"
-                btn.style.color       = "#000"
-                btn.style.transform   = "scale(1.1)"
-                btn.textContent       = "✓"
-                setTimeout(() => {
-                  btn.style.background  = ""
-                  btn.style.color       = ""
-                  btn.style.transform   = ""
-                  btn.textContent       = "+"
-                }, 800)
-              }
+            data-testid={`product-buy-${product.slug}`}
+            onClick={handleBuy}
+            disabled={outOfStock}
+            style={{
+              display:"flex", alignItems:"center", gap:"10px",
+              background: added ? "#1aa34a" : "#111",
+              color:"#fff", fontWeight:600, fontSize:"1rem",
+              padding:"12px 10px 12px 22px", borderRadius:"9999px",
+              border:"none",
+              cursor: outOfStock ? "not-allowed" : "pointer",
+              opacity: outOfStock ? 0.4 : 1,
+              transition:"all 300ms cubic-bezier(0.16,1,0.3,1)",
+              whiteSpace:"nowrap",
             }}
-            disabled={product.stock === 0}
-            style={{ width:"36px", height:"36px", borderRadius:"50%",
-              background:"var(--surface-2)", border:"1px solid var(--border)",
-              color:"var(--text-2)", fontSize:"20px", fontWeight:300,
-              display:"flex", alignItems:"center", justifyContent:"center",
-              cursor: product.stock > 0 ? "pointer" : "not-allowed",
-              transition:"all 300ms cubic-bezier(0.16, 1, 0.3, 1)",
-              flexShrink:0, opacity: product.stock === 0 ? 0.4 : 1 }}
-            onMouseEnter={e => {
-              if (product.stock > 0) {
-                e.currentTarget.style.background   = "var(--accent)"
-                e.currentTarget.style.color        = "#000"
-                e.currentTarget.style.borderColor  = "var(--accent)"
-              }
-            }}
-            onMouseLeave={e => {
-              if (e.currentTarget.textContent === "+") {
-                e.currentTarget.style.background  = ""
-                e.currentTarget.style.color       = ""
-                e.currentTarget.style.borderColor = ""
-              }
-            }}>
-            +
+            onMouseEnter={e => { if (!outOfStock) e.currentTarget.style.transform = "scale(1.04)" }}
+            onMouseLeave={e => { e.currentTarget.style.transform = "scale(1)" }}
+          >
+            {added ? (
+              <>
+                Agregado
+                <span style={{
+                  width:"26px", height:"26px", borderRadius:"50%",
+                  background:"#fff", color:"#1aa34a", display:"flex",
+                  alignItems:"center", justifyContent:"center", fontSize:"16px",
+                  fontWeight:700,
+                }}>
+                  +
+                </span>
+              </>
+            ) : (
+              <>
+                Comprar
+                <span style={{
+                  width:"26px", height:"26px", borderRadius:"50%",
+                  background:"#fff", color:"#111", display:"flex",
+                  alignItems:"center", justifyContent:"center",
+                }}>
+                  <ArrowUpRight size={15} strokeWidth={2.5} />
+                </span>
+              </>
+            )}
           </button>
         </div>
       </div>

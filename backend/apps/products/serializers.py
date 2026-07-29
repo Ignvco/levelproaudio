@@ -74,15 +74,18 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 class ProductListSerializer(serializers.ModelSerializer):
     primary_image = serializers.SerializerMethodField()
+    images        = serializers.SerializerMethodField()
     in_stock      = serializers.BooleanField(read_only=True)
     brand_name    = serializers.CharField(source="brand.name", read_only=True, allow_null=True)
+    brand_logo    = serializers.SerializerMethodField()
 
     class Meta:
         model  = Product
         fields = [
             "id", "name", "slug", "price", "compare_price",
+            "short_description",
             "stock", "in_stock", "is_featured",
-            "primary_image", "brand_name",
+            "primary_image", "images", "brand_name", "brand_logo",
             "has_discount", "discount_percentage",
         ]
 
@@ -90,6 +93,16 @@ class ProductListSerializer(serializers.ModelSerializer):
         img = obj.images.filter(is_primary=True).first() or \
               obj.images.order_by("order", "id").first()
         return _media_url(img.image) if img else None
+
+    def get_images(self, obj):
+        imgs = sorted(
+            obj.images.all(),
+            key=lambda i: (not i.is_primary, i.order, i.id),
+        )
+        return [_media_url(i.image) for i in imgs if i.image]
+
+    def get_brand_logo(self, obj):
+        return _media_url(obj.brand.logo) if obj.brand and obj.brand.logo else None
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):

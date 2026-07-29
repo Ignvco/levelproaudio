@@ -228,11 +228,11 @@ export default function Shop() {
         {isLoading ? (
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-            gap: "20px",
+            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gap: "28px",
           }}>
             {[...Array(8)].map((_, i) => (
-              <div key={i} className="skeleton" style={{ height: "360px" }} />
+              <div key={i} className="skeleton" style={{ height: "420px", borderRadius: "28px" }} />
             ))}
           </div>
         ) : products.length === 0 ? (
@@ -259,8 +259,8 @@ export default function Shop() {
         ) : (
           <div ref={gridRef} style={{
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-            gap: "20px",
+            gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+            gap: "28px",
           }}>
             {products.map((product, i) => (
               <div key={product.id}
