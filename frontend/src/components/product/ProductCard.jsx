@@ -6,7 +6,7 @@
 //  - Píldora de precio + botón "Comprar" oscuro con flecha
 // Click en la card → detalle. Click en "Comprar" → agrega al carrito.
 
-import { useState }        from "react"
+import { useState, useRef, useEffect } from "react"
 import { useNavigate }     from "react-router-dom"
 import { ArrowUpRight }    from "lucide-react"
 import { useCartStore }    from "../../store/cartStore"
@@ -19,6 +19,9 @@ export default function ProductCard({ product }) {
 
   const [imgIndex, setImgIndex] = useState(0)
   const [added, setAdded]       = useState(false)
+  const addedTimer              = useRef(null)
+
+  useEffect(() => () => clearTimeout(addedTimer.current), [])
 
   // Galería de imágenes (fallback a primary_image)
   const gallery = (product.images && product.images.length
@@ -50,7 +53,8 @@ export default function ProductCard({ product }) {
     addItem(product, 1)
     showToast(`${product.name} agregado al carrito`)
     setAdded(true)
-    setTimeout(() => setAdded(false), 1000)
+    clearTimeout(addedTimer.current)
+    addedTimer.current = setTimeout(() => setAdded(false), 1000)
   }
 
   return (

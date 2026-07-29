@@ -410,3 +410,13 @@ Devtools del usuario mostró **HTTP 413 Content Too Large** al hacer PATCH a `/a
 ### 🚀 Deploy requerido
 Save to Github → Cloud Build recompila la imagen del frontend con el nuevo nginx.conf → deploy a Cloud Run.
 
+
+---
+
+## 2026-06 — Rediseño de Product Cards (Tienda)
+- **Diseño**: Card blanca (estilo referencia cliente) sobre el tema oscuro del sitio.
+- **Estructura**: imagen con badge (arriba-izq) + logo de marca en círculo (arriba-der) + puntos de carrusel; abajo: nombre (bold), logo de marca como subtítulo (fallback a texto), `short_description` (gris 2 líneas); fila inferior: precio en píldora gris + botón "Comprar" oscuro con flecha.
+- **Interacción**: click en card → detalle (`/shop/:slug`); botón "Comprar" → agrega al carrito sin navegar, muestra estado transitorio "Agregado +" verde ~1s.
+- **Backend**: `ProductListSerializer` ahora envía `short_description`, `brand_logo` e `images[]`.
+- **Archivos**: `frontend/src/components/product/ProductCard.jsx` (reescrito), `frontend/src/pages/Shop.jsx` (grid minmax 280px, gap 28px), `backend/apps/products/serializers.py`.
+- **Testing**: testing_agent frontend 100% (iteration_1_productcard.json). Carrusel de puntos no probado (productos sin imágenes en DB preview).
