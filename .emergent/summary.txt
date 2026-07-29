@@ -1,0 +1,107 @@
+<analysis>**original_problem_statement**: LevelPro Audio is a SaaS web platform combining e-commerce, an academy, and professional services targeting Chile and Argentina. Initially, the production environment was failing with 500 errors due to missing database migrations. After resolving the deployment configuration, the user reported three frontend/admin bugs: 1) The Home page hero image set in customization wasn't rendering, 2) Registered brands were not visible on the Home page, and 3) Uploading a hero image in Admin Settings failed to save.
+
+**User's preferred language**: Spanish
+INSTRUCT NEXT AGENT: The user's primary language is Spanish. You MUST automatically detect the user's primary language from their messages inside the <trajectory> tag and INSTRUCT next agent to respond in the user's preferred language only.
+
+**what currently exists?**: A fully functional full-stack application (React 19 + Django 5). The production DB migration issue was resolved by automating it in the backend Dockerfile. Bugs regarding brand visibility toggles and hero image rendering were fixed. A persistent issue with saving large images in production was traced to Nginx configuration and patched.
+
+**Last working item**:
+    - Last item agent was working: The agent was debugging why image uploads in Admin Settings failed in production. The root cause was identified via user screenshots as an HTTP 413 (Content Too Large) error. The agent modified  to increase  to 50M and added error handling for 413 status codes in .
+    - Status: USER VERIFICATION PENDING
+    - Agent Testing Done: N (Cannot test Nginx production config locally without deployment)
+    - Which testing method agent to use?: NA (Waiting for user to deploy via Save to Github and verify).
+    - User Testing Done: N
+
+**All Pending/In progress Issue list**:
+  None currently active. Waiting for user verification on the Nginx fix.
+
+**In progress Task List**:
+  None.
+
+**Upcoming and Future Tasks**
+    - Task 1: Shop UX Improvements: Add filter by brand, price range, breadcrumbs, related products, and wishlist. (P1) [Target files: , ]
+    - Task 2: Sparks Rewards: Compartir en Redes button to generate an image for IG Stories showing tickets. (P2) [Target: , ]
+    - Task 3: Sparks Rewards: Referral system with unique codes and extra tickets per friend purchase. (P2)
+    - Task 4: Complete migration of JWT to HTTPOnly cookies (Requires evaluating cross-domain implications with MercadoPago/PayPal). (P3)
+    - Task 5: Add video processing using  for generating automatic thumbnails and multiple resolutions (360p/720p/1080p) for Academy. (P3)
+    - Task 6: Refactoring: Break down  (1800+ lines) and  (560+ lines). (P3)
+
+**Completed work in this session**
+- Fixed production deployment 500 errors by adding  to  CMD.
+- : Fixed hero rendering to display  as a background with an overlay.
+- : Added  toggle to the modal to allow brands to be enabled for the home page marquee.
+- : Added a global Axios interceptor to properly strip the  header for  payloads, allowing the browser to set the correct boundary.
+- : Increased  to  to fix HTTP 413 errors during image uploads in production.
+
+**Earlier issues found/mentioned but not fixed**
+   None.
+
+**Known issue recurrence from previous fork**
+  - Issue recurrence in previous fork: Image uploads silently failing due to missing boundaries or server-side size limits.
+  - Recurrence count: 1
+  - Status: USER VERIFICATION PENDING
+
+**Code Architecture**
+-  - Django apps (users, products, orders, payments, academy, services, analytics, loyalty, billing, site_settings, rewards).
+-  - React frontend (pages, components, api, store, layouts).
+-  - Custom Nginx configuration for the frontend container proxy.
+
+**Key Technical Concepts**
+React 19, Zustand, Django REST Framework 5, PostgreSQL, GCP Cloud Run, GCP Cloud Build, Nginx proxy configs, Axios interceptors, FormData handling.
+
+**key DB schema**
+  - : Singleton configuration model (fields: , , , etc.)
+  - : {id, name, slug, logo, website, is_active}
+
+**changes in tech stack**
+  - Modified Nginx configuration to support larger payload sizes.
+
+**All files of reference**
+  -  (Automated migrations)
+  -  (Updated )
+  -  (Hero styling)
+  -  (Active toggle)
+  -  (Axios interceptor)
+  -  (Upload error handling)
+
+**Areas that need refactoring**: 
+ and  are severely bloated and need component/service abstraction.
+
+**key api endpoints**
+- 
+- 
+
+**Critical Info for New Agent** 
+The last change made was updating the  in the frontend directory to fix an HTTP 413 (Content Too Large) error that was preventing users from saving high-res hero images in the production environment. Do not touch the upload logic or settings page until the user has deployed this Nginx fix to production (via Save to Github) and confirmed whether the upload now works.
+
+**documents and test reports created in this job** 
+  - /app/memory/PRD.md (Updated with bug fix logs)
+
+**Last 10 User Messages and any pending HUMAN messages** 
+ - *User*: Confirm plan. (COMPLETED)
+ - *User*: Confirms applying Dockerfile fix. (COMPLETED)
+ - *User*: Reports production is working! (COMPLETED)
+ - *User*: Reports 3 new bugs (hero image not showing, brands not showing, settings image not saving). (COMPLETED)
+ - *User*: Reports fixes work in Dev but not Prod after pushing. (COMPLETED)
+ - *User*: Continua. (COMPLETED)
+ - *User*: Shows screenshots of file uploading but not saving, and brands having no active toggle. (COMPLETED)
+ - *User*: Reports Brands is fixed, but Settings upload still fails. (COMPLETED)
+ - *User*: Provides screenshots showing HTTP 413 error during upload. **(PENDING VERIFICATION POST-DEPLOY)**
+
+**Project Health Check:**
+Production functional, awaiting verification of Nginx config change for large image uploads.
+
+**3rd Party Integrations** 
+None modified in this session.
+
+**Testing status**
+  - Testing agent used after significant changes: NO (UI and config fixes tested manually via Playwright/screenshots).
+  - Troubleshoot agent used after agent stuck in loop: NO
+  - Test files created: None
+  - Known regressions: None
+
+**Credentials to test flow:**
+Use  (Check  for password).
+
+**What agent forgot to execute**
+The agent initially missed the default Nginx  limit (1MB) when debugging the image upload issue in production. This led to unnecessary iterations debugging frontend Axios logic before the user provided network logs revealing the HTTP 413 error.</analysis>
