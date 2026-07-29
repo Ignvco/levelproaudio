@@ -115,12 +115,12 @@ export default function Home() {
         data-testid="home-hero"
         style={{
           position: "relative",
-          background: "var(--surface)",
+          background: "#0b0b0b",
           border: "1px solid var(--border)",
           borderRadius: "var(--r-2xl)",
           overflow: "hidden",
-          minHeight: "clamp(560px, 78vh, 780px)",
-          padding: "clamp(40px, 5vw, 72px)",
+          minHeight: "clamp(600px, 84vh, 820px)",
+          display: "flex", flexDirection: "column",
         }}
       >
         {/* Imagen de fondo custom (si el admin subió una en Personalización) */}
@@ -133,7 +133,7 @@ export default function Home() {
               backgroundSize: "cover",
               backgroundPosition: "center",
               backgroundRepeat: "no-repeat",
-              opacity: 0.35,
+              opacity: 0.62,
               zIndex: 0,
             }}
           />
@@ -144,7 +144,7 @@ export default function Home() {
             aria-hidden
             style={{
               position: "absolute", inset: 0, pointerEvents: "none",
-              background: "linear-gradient(90deg, rgba(10,10,10,0.75) 0%, rgba(10,10,10,0.45) 55%, rgba(10,10,10,0.15) 100%)",
+              background: "linear-gradient(180deg, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0.3) 45%, rgba(8,8,8,0.92) 100%)",
               zIndex: 1,
             }}
           />
@@ -159,221 +159,128 @@ export default function Home() {
 
         <div style={{
           position: "relative", zIndex: 2,
-          display: "grid", gridTemplateColumns: "1.15fr 1fr",
-          gap: "40px", alignItems: "center",
-          height: "100%", minHeight: "inherit",
+          display: "grid", gridTemplateColumns: "1.25fr 0.85fr",
+          gap: "40px", alignItems: "end",
+          flex: 1,
+          padding: "clamp(40px, 5vw, 72px) clamp(28px, 5vw, 72px) 44px",
         }} className="hero-grid">
 
-          {/* LEFT — copy */}
-          <div>
+          {/* LEFT — headline + tags */}
+          <div style={{ alignSelf: "start" }}>
             <LED color="green" label={s.tagline || "Chile & Argentina"} />
 
-            <h1 className="display-bold" data-testid="hero-headline" style={{
+            <h1 data-testid="hero-headline" style={{
               fontFamily: "var(--font-display)",
-              fontSize: "clamp(2.6rem, 5.8vw, 4.8rem)",
-              fontWeight: 700, lineHeight: 1,
-              letterSpacing: "-0.045em", color: "var(--text)",
-              marginTop: "32px", marginBottom: "28px",
+              fontSize: "clamp(3rem, 8vw, 6.8rem)",
+              fontWeight: 800, lineHeight: 0.92,
+              letterSpacing: "-0.04em", color: "var(--text)",
+              textTransform: "uppercase",
+              marginTop: "26px", marginBottom: "30px",
+              textShadow: s.hero_image_url ? "0 6px 40px rgba(0,0,0,0.55)" : "none",
             }}>
-              {(s.hero_title || "Llevá tu sonido al nivel profesional.").split(" ").map((w, i, arr) => {
-                const isLast = i === arr.length - 1
-                return isLast ? (
-                  <span key={i} style={{
-                    color: "var(--accent)", fontStyle: "italic", fontWeight: 500,
-                  }}>{w}</span>
-                ) : (
-                  <span key={i}>{w} </span>
-                )
-              })}
+              {s.hero_title || "Sonido nivel profesional"}
             </h1>
 
+            <div data-testid="hero-tags" style={{ display: "flex",
+              alignItems: "center", gap: "16px", flexWrap: "wrap" }}>
+              {(s.hero_tags?.length ? s.hero_tags
+                : ["Equipamiento", "Formación", "Servicios"]).map((t, i) => (
+                <span key={i} style={{ display: "inline-flex",
+                  alignItems: "center", gap: "16px" }}>
+                  {i > 0 && (
+                    <span style={{ color: "var(--accent)", fontSize: "18px",
+                      fontWeight: 800, lineHeight: 1 }}>+</span>
+                  )}
+                  <span style={{ fontFamily: "var(--font-sans)", fontSize: "13px",
+                    fontWeight: 700, letterSpacing: "0.14em",
+                    textTransform: "uppercase", color: "var(--text-2)" }}>
+                    {t}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* RIGHT — copy + CTA */}
+          <div className="hero-right" style={{ alignSelf: "end", justifySelf: "end",
+            maxWidth: "380px", paddingBottom: "6px" }}>
             <p style={{
-              fontFamily: "var(--font-sans)", fontSize: "17px",
-              color: "var(--text-2)", lineHeight: 1.55,
-              maxWidth: "460px", marginBottom: "36px",
-              fontWeight: 400,
+              fontFamily: "var(--font-sans)", fontSize: "16px",
+              color: "var(--text-2)", lineHeight: 1.6, marginBottom: "24px",
             }}>
               {s.hero_subtitle || "El ecosistema completo para músicos, productores e ingenieros. Equipamiento, formación y servicios en un solo lugar."}
             </p>
 
             <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
               <Link to={s.hero_cta1_link || "/shop"} data-testid="hero-cta-primary" style={{
-                display: "inline-flex", alignItems: "center", gap: "8px",
-                padding: "13px 24px", borderRadius: "var(--r-full)",
+                display: "inline-flex", alignItems: "center", gap: "10px",
+                padding: "14px 12px 14px 24px", borderRadius: "var(--r-full)",
                 background: "var(--accent)", color: "#000",
                 fontSize: "14px", fontWeight: 700, textDecoration: "none",
                 fontFamily: "var(--font-sans)",
-                boxShadow: "0 8px 30px rgba(26,255,110,0.25)",
-                transition: "transform 200ms var(--ease), box-shadow 200ms var(--ease)",
+                boxShadow: "0 8px 30px rgba(26,255,110,0.3)",
+                transition: "transform 200ms var(--ease)",
               }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.transform = "translateY(-2px)"
-                  e.currentTarget.style.boxShadow = "0 12px 40px rgba(26,255,110,0.4)"
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.transform = "translateY(0)"
-                  e.currentTarget.style.boxShadow = "0 8px 30px rgba(26,255,110,0.25)"
-                }}>
-                {s.hero_cta1_text || "Explorar tienda"} <Icon name="arrow" size={16} />
+                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)" }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)" }}>
+                {s.hero_cta1_text || "Explorar tienda"}
+                <span style={{ width: "26px", height: "26px", borderRadius: "50%",
+                  background: "#000", color: "var(--accent)", display: "flex",
+                  alignItems: "center", justifyContent: "center" }}>
+                  <Icon name="arrow" size={14} />
+                </span>
               </Link>
               <Link to={s.hero_cta2_link || "/academy"} data-testid="hero-cta-secondary" style={{
                 display: "inline-flex", alignItems: "center", gap: "8px",
-                padding: "13px 24px", borderRadius: "var(--r-full)",
-                background: "transparent", color: "var(--text)",
-                border: "1px solid var(--border)",
+                padding: "14px 22px", borderRadius: "var(--r-full)",
+                background: "rgba(255,255,255,0.06)", color: "var(--text)",
+                border: "1px solid rgba(255,255,255,0.16)",
                 fontSize: "14px", fontWeight: 600, textDecoration: "none",
-                fontFamily: "var(--font-sans)",
+                fontFamily: "var(--font-sans)", backdropFilter: "blur(6px)",
                 transition: "all 200ms var(--ease)",
               }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = "var(--accent)"
-                  e.currentTarget.style.color = "var(--accent)"
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = "var(--border)"
-                  e.currentTarget.style.color = "var(--text)"
-                }}>
-                <Icon name="play" size={14} /> {s.hero_cta2_text || "Ver academia"}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)" }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.16)"; e.currentTarget.style.color = "var(--text)" }}>
+                {s.hero_cta2_text || "Ver academia"}
               </Link>
-            </div>
-
-            {/* Social proof compacto */}
-            <div style={{ display: "flex", alignItems: "center", gap: "12px",
-              marginTop: "40px" }}>
-              <div style={{ display: "flex" }}>
-                {[AVATARS.small1, AVATARS.small2, AVATARS.male].map((src, i) => (
-                  <img key={i} src={src} alt=""
-                    style={{
-                      width: "32px", height: "32px", borderRadius: "50%",
-                      objectFit: "cover", border: "2px solid var(--surface)",
-                      marginLeft: i === 0 ? 0 : "-8px",
-                      filter: "grayscale(30%)",
-                    }} />
-                ))}
-              </div>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: "4px",
-                  color: "var(--accent)", marginBottom: "2px" }}>
-                  {[...Array(5)].map((_, i) => (
-                    <Icon key={i} name="star" size={11} />
-                  ))}
-                </div>
-                <p style={{ fontFamily: "var(--font-sans)", fontSize: "12px",
-                  color: "var(--text-2)" }}>
-                  +2.000 productores confían en LevelPro
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT — console glass card */}
-          <div style={{
-            position: "relative", height: "460px",
-          }} className="hero-visual">
-
-            {/* MAIN — console mixer card */}
-            <div style={{
-              position: "absolute", top: "50%", left: "50%",
-              transform: "translate(-50%,-50%) rotate(-3deg)",
-              width: "340px",
-              background: "rgba(15,15,15,0.85)",
-              backdropFilter: "blur(20px) saturate(1.4)",
-              WebkitBackdropFilter: "blur(20px) saturate(1.4)",
-              border: "1px solid rgba(255,255,255,0.12)",
-              borderRadius: "var(--r-xl)",
-              padding: "20px",
-              boxShadow: `
-                inset 0 1px 0 rgba(255,255,255,0.15),
-                0 30px 80px rgba(0,0,0,0.6),
-                0 0 60px rgba(26,255,110,0.08)
-              `,
-              animation: "float 6s ease-in-out infinite",
-            }}>
-              {/* Header con LED REC */}
-              <div style={{ display: "flex", justifyContent: "space-between",
-                alignItems: "center", marginBottom: "16px" }}>
-                <LED color="red" label="REC" size={7} />
-                <DigitalReadout value="02:34" size="sm" tone="green" />
-              </div>
-
-              {/* Track name */}
-              <p style={{ fontFamily: "var(--font-display)", fontSize: "14px",
-                fontWeight: 700, color: "var(--text)",
-                letterSpacing: "-0.01em", marginBottom: "12px" }}>
-                Master Bus · 24-bit / 48 kHz
-              </p>
-
-              {/* Waveform */}
-              <div style={{ marginBottom: "16px", height: "42px" }}>
-                <AnimatedWaveform bars={28} />
-              </div>
-
-              {/* Faders + Knobs */}
-              <div style={{ display: "grid",
-                gridTemplateColumns: "repeat(3, 1fr) 1fr",
-                gap: "16px", padding: "16px 8px 8px",
-                borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                <Fader value={72} label="Kick" height={70} />
-                <Fader value={58} label="Bass" height={70} />
-                <Fader value={80} label="Vox"  height={70} />
-                <Knob  value={65} label="Comp" size={44} />
-              </div>
-            </div>
-
-            {/* Floating LED indicator card top-right */}
-            <div style={{
-              position: "absolute", top: "8%", right: "4%",
-              padding: "10px 14px",
-              background: "rgba(15,15,15,0.85)",
-              backdropFilter: "blur(20px)",
-              border: "1px solid rgba(26,255,110,0.3)",
-              borderRadius: "var(--r-md)",
-              transform: "rotate(8deg)",
-              animation: "float 7s ease-in-out infinite 1s",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
-            }}>
-              <LED color="green" label="Online" size={7} />
-              <div style={{ marginTop: "8px" }}>
-                <VUMeter value={78} segments={10} />
-              </div>
-            </div>
-
-            {/* Floating course tile bottom-left */}
-            <div style={{
-              position: "absolute", bottom: "6%", left: "0%",
-              padding: "12px 14px",
-              background: "rgba(15,15,15,0.85)",
-              backdropFilter: "blur(20px)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: "var(--r-md)",
-              transform: "rotate(-5deg)",
-              animation: "float 8s ease-in-out infinite 0.5s",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
-              display: "flex", alignItems: "center", gap: "10px",
-            }}>
-              <div style={{
-                width: "36px", height: "36px", borderRadius: "var(--r-sm)",
-                background: "var(--accent-dim)",
-                border: "1px solid rgba(26,255,110,0.3)",
-                display: "flex", alignItems: "center", justifyContent: "center",
-                color: "var(--accent)",
-              }}>
-                <Icon name="grad" size={16} />
-              </div>
-              <div>
-                <p style={{ fontFamily: "var(--font-sans)", fontSize: "9px",
-                  color: "var(--text-3)", textTransform: "uppercase",
-                  letterSpacing: "0.1em", marginBottom: "2px" }}>
-                  Academia
-                </p>
-                <p style={{ fontFamily: "var(--font-display)", fontSize: "13px",
-                  fontWeight: 700, color: "var(--text)" }}>
-                  {courses[0]?.title || "Mezcla pro"}
-                </p>
-              </div>
             </div>
           </div>
         </div>
+
+        {/* Tira de marcas dentro del hero */}
+        {s.show_brands !== false && brands.length > 0 && (
+          <div data-testid="hero-brands-strip" style={{
+            position: "relative", zIndex: 2,
+            background: "rgba(0,0,0,0.55)",
+            backdropFilter: "blur(10px)",
+            borderTop: "1px solid rgba(255,255,255,0.08)",
+            padding: "18px 0", overflow: "hidden",
+          }}>
+            <div style={{ display: "flex", gap: "60px", width: "max-content",
+              alignItems: "center", animation: "marquee 30s linear infinite",
+              paddingLeft: "60px" }}>
+              {[...brands, ...brands].map((b, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center",
+                  flexShrink: 0, height: "30px", opacity: 0.6,
+                  transition: "opacity 200ms var(--ease)" }}
+                  onMouseEnter={e => e.currentTarget.style.opacity = "1"}
+                  onMouseLeave={e => e.currentTarget.style.opacity = "0.6"}>
+                  {b.logo_url || b.logo ? (
+                    <img src={mediaUrl(b.logo_url || b.logo)} alt={b.name}
+                      style={{ height: "26px", maxWidth: "130px", objectFit: "contain",
+                        filter: "brightness(0) invert(1)" }} />
+                  ) : (
+                    <span style={{ fontFamily: "var(--font-display)", fontSize: "17px",
+                      fontWeight: 700, letterSpacing: "-0.02em", color: "var(--text)",
+                      whiteSpace: "nowrap" }}>
+                      {b.name}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ═════════════════════════════════════════════════════════════
@@ -806,54 +713,8 @@ export default function Home() {
       </section>
       )}
 
-      {/* Brands strip */}
-      {s.show_brands !== false && brands.length > 0 && (
-        <section data-testid="brands-strip" style={{ padding: 0 }}>
-          <div style={{
-            background: "var(--surface)",
-            border: "1px solid var(--border)",
-            borderRadius: "var(--r-2xl)",
-            padding: "24px clamp(24px, 3vw, 40px)",
-            display: "grid", gridTemplateColumns: "auto 1fr",
-            gap: "40px", alignItems: "center",
-          }} className="brands-strip-grid">
-            <p style={{ fontFamily: "var(--font-sans)", fontSize: "12px",
-              color: "var(--text-3)", maxWidth: "160px", lineHeight: 1.5,
-              textTransform: "uppercase", letterSpacing: "0.08em", fontWeight: 600 }}>
-              Marcas top del mundo
-            </p>
-            <div style={{ overflow: "hidden", position: "relative" }}>
-              <div style={{
-                display: "flex", gap: "60px", flexWrap: "nowrap",
-                animation: "marquee 30s linear infinite", width: "max-content",
-              }}>
-                {[...brands, ...brands].map((b, i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", flexShrink: 0,
-                    opacity: 0.4, height: "32px",
-                    transition: "opacity 200ms var(--ease)",
-                  }}
-                    onMouseEnter={e => e.currentTarget.style.opacity = "1"}
-                    onMouseLeave={e => e.currentTarget.style.opacity = "0.4"}>
-                    {b.logo_url || b.logo ? (
-                      <img src={mediaUrl(b.logo_url || b.logo)} alt={b.name}
-                        style={{ height: "26px", maxWidth: "140px",
-                          objectFit: "contain" }} />
-                    ) : (
-                      <span style={{ fontFamily: "var(--font-display)",
-                        fontSize: "18px", fontWeight: 700,
-                        letterSpacing: "-0.02em", color: "var(--text)",
-                        whiteSpace: "nowrap" }}>
-                        {b.name}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </section>
-      )}
+      {/* Brands strip movido al hero */}
+
 
       {/* Final CTA */}
       {s.show_final_cta !== false && (
