@@ -132,6 +132,14 @@ export default function AdminSettings() {
       setForm({ ...fresh })
       setFiles({})
     },
+    onError: (err) => {
+      const status = err?.response?.status
+      if (status === 413) {
+        alert("La imagen es demasiado grande. Reducila a menos de 25 MB e intentalo de nuevo.\n\nTip: si es una foto de Adobe Stock 4K, exportala como JPEG de 1920×1080 (queda debajo de 500 KB).")
+      } else {
+        alert("Error al guardar. Revisá la conexión e intentalo de nuevo.")
+      }
+    },
   })
 
   function cleanForPost(f) {

@@ -390,3 +390,23 @@ if (config.data instanceof FormData) {
 - TEST 1: Upload de hero image desde `/admin/settings` → `hero_image_url` actualizado en API ✅
 - TEST 2: Modal de marca muestra toggle `[data-testid="brand-active-toggle"]` con estado correcto ✅
 
+
+---
+
+## Sesión 9.2 — Fix definitivo Personalización: nginx client_max_body_size (2026-07-29)
+
+### 🎯 Root cause encontrado
+Devtools del usuario mostró **HTTP 413 Content Too Large** al hacer PATCH a `/api/v1/admin/site-settings/`. La imagen Adobe Stock que subía pesaba >1 MB → nginx del container frontend rechazaba con 413 antes de llegar al backend Django (que ya tenía `DATA_UPLOAD_MAX_MEMORY_SIZE = 500 MB`).
+
+### ✅ Fix aplicado
+**`frontend/nginx.conf`**:
+- Agregué `client_max_body_size 25M;` (Cloud Run tiene límite de 32 MB, quedamos con margen)
+- Aumenté `proxy_read_timeout` y `proxy_send_timeout` a 120s para uploads grandes
+- Agregué `proxy_request_buffering off;` para streaming del body al backend
+
+### ✅ Mejora UX: mensaje de error claro
+**`frontend/src/pages/admin/AdminSettings.jsx`**: Agregué `onError` handler al mutation. Si el server tira 413, muestra un `alert` con la explicación y tip para reducir el tamaño de la imagen.
+
+### 🚀 Deploy requerido
+Save to Github → Cloud Build recompila la imagen del frontend con el nuevo nginx.conf → deploy a Cloud Run.
+
