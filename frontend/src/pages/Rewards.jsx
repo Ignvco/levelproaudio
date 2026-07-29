@@ -4,6 +4,7 @@ import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { getActiveCampaigns, getPublicWinners } from "../api/rewards.api"
 import { mediaUrl } from "../utils/mediaUrl"
+import ProductCard from "../components/product/ProductCard"
 
 // ─────────────────────────────────────────────────────────────
 // Countdown hook
@@ -84,60 +85,27 @@ function Countdown({ target }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Product card en campaña
+// Product card en campaña — usa el ProductCard compartido (blanco)
+// + badge de tickets (info propia de Rewards)
 // ─────────────────────────────────────────────────────────────
-function ProductCard({ product }) {
+function RewardProductCard({ product }) {
+  const mapped = { ...product, primary_image: product.image }
   return (
-    <Link to={`/shop/${product.slug}`}
-      data-testid={`reward-product-${product.slug}`}
-      style={{
-        display:"block", background:"var(--surface)",
-        border:"1px solid var(--border)", borderRadius:"var(--r-xl)",
-        overflow:"hidden", transition:"all 220ms var(--ease)",
-        textDecoration:"none",
-      }}
-      onMouseEnter={e => {
-        e.currentTarget.style.borderColor = "rgba(26,255,110,0.3)"
-        e.currentTarget.style.transform = "translateY(-3px)"
-      }}
-      onMouseLeave={e => {
-        e.currentTarget.style.borderColor = "var(--border)"
-        e.currentTarget.style.transform = "translateY(0)"
-      }}>
-      <div style={{
-        aspectRatio:"1", background:"var(--surface-2)",
-        display:"flex", alignItems:"center", justifyContent:"center",
-      }}>
-        {product.image ? (
-          <img src={mediaUrl(product.image)} alt={product.name}
-            style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-        ) : (
-          <span style={{ fontSize:"48px", opacity:0.4 }}>🎧</span>
-        )}
-      </div>
-      <div style={{ padding:"18px 20px" }}>
-        <p style={{ fontSize:"14px", color:"var(--text)",
-          fontWeight:500, marginBottom:"6px",
-          overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-          {product.name}
-        </p>
-        <div style={{ display:"flex", justifyContent:"space-between",
-          alignItems:"center", marginTop:"12px" }}>
-          <p style={{ fontSize:"16px", color:"#fff", fontWeight:600 }}>
-            ${Number(product.price).toLocaleString("es-CL")}
-          </p>
-          <span style={{
-            fontSize:"11px", padding:"4px 10px",
-            borderRadius:"var(--r-full)",
-            background:"rgba(26,255,110,0.1)",
-            color:"var(--accent)", fontWeight:600,
-            border:"1px solid rgba(26,255,110,0.2)",
+    <div style={{ position:"relative" }}>
+      <ProductCard product={mapped} />
+      {product.entries_per_purchase != null && (
+        <span
+          data-testid={`reward-tickets-${product.slug}`}
+          style={{
+            position:"absolute", top:"24px", right:"24px", zIndex:5,
+            fontSize:"12px", padding:"6px 12px", borderRadius:"9999px",
+            background:"var(--accent)", color:"#000", fontWeight:700,
+            boxShadow:"0 4px 14px rgba(26,255,110,0.35)",
           }}>
-            +{product.entries_per_purchase} tickets
-          </span>
-        </div>
-      </div>
-    </Link>
+          +{product.entries_per_purchase} tickets
+        </span>
+      )}
+    </div>
   )
 }
 
@@ -320,10 +288,10 @@ export default function Rewards() {
               </div>
               <div style={{
                 display:"grid",
-                gridTemplateColumns:"repeat(auto-fill, minmax(220px, 1fr))",
-                gap:"16px",
+                gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))",
+                gap:"24px",
               }}>
-                {featured.products.map(p => <ProductCard key={p.id} product={p} />)}
+                {featured.products.map(p => <RewardProductCard key={p.id} product={p} />)}
               </div>
             </div>
           )}

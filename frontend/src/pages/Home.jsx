@@ -8,6 +8,7 @@ import { getCourses } from "../api/academy.api"
 import { getServices } from "../api/services.api"
 import { getSiteSettings } from "../api/siteSettings.api"
 import { mediaUrl } from "../utils/mediaUrl"
+import ProductCard from "../components/product/ProductCard"
 import {
   LED, VUMeter, DigitalReadout, Knob, Fader, AnimatedWaveform,
 } from "../components/ui/StudioUI"
@@ -624,10 +625,10 @@ export default function Home() {
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(4, 1fr)",
-              gap: "12px",
+              gap: "20px",
             }} className="products-grid">
               {featured.slice(0, 4).map((p) => (
-                <ProductStudioCard key={p.id} product={p} />
+                <ProductCard key={p.id} product={p} />
               ))}
             </div>
           </div>
