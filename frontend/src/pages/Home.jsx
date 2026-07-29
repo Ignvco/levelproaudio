@@ -9,6 +9,7 @@ import { getServices } from "../api/services.api"
 import { getSiteSettings } from "../api/siteSettings.api"
 import { mediaUrl } from "../utils/mediaUrl"
 import ProductCard from "../components/product/ProductCard"
+import CourseCard from "../components/academy/CourseCard"
 import {
   LED, VUMeter, DigitalReadout, Knob, Fader, AnimatedWaveform,
 } from "../components/ui/StudioUI"
@@ -679,10 +680,10 @@ export default function Home() {
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "12px",
+              gap: "20px",
             }} className="courses-grid">
-              {courses.slice(0, 3).map((c) => (
-                <CourseCard key={c.id} course={c} />
+              {courses.slice(0, 3).map((c, i) => (
+                <CourseCard key={c.id} course={c} index={i} />
               ))}
             </div>
           </div>
@@ -1047,9 +1048,10 @@ function ProductStudioCard({ product }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Course card — con nivel badge + duración + fader como progress deco
+// (legacy) Course card antigua — reemplazada por el CourseCard folder-tab compartido
 // ═══════════════════════════════════════════════════════════════
-function CourseCard({ course }) {
+// eslint-disable-next-line no-unused-vars
+function CourseCardLegacy({ course }) {
   const thumb = course.thumbnail_url || course.thumbnail
   const levelColors = {
     beginner:     "#4ade80",

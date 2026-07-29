@@ -425,3 +425,8 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
 - **ProductCard compartido** ahora se usa en Home "Destacados" (`featured-products`) y Rewards "Productos participantes" (con badge verde `+N tickets`). Se corrigió link roto `/product/:slug` → `/shop/:slug`. Testing agent 100% (iteration_4).
 - **CourseCard rediseñada** (`Academy.jsx`) con estilo "folder-tab" (referencia cliente): banner + tab superpuesto con muesca cóncava (título + subtítulo), esquina superior-derecha con nivel + "Academia", fila inferior con nº de lecciones (número grande) + precio. Estilos en `index.css` (`.folder-card*`). Fallback de banner = degradado verde de marca cuando el curso no tiene thumbnail.
 - Archivos: `frontend/src/pages/Academy.jsx`, `frontend/src/index.css`, `frontend/src/pages/Home.jsx`, `frontend/src/pages/Rewards.jsx`.
+
+## 2026-06 — CourseCard folder-tab compartida (Academy + Home)
+- Extraído `CourseCard` folder-tab a componente compartido: `frontend/src/components/academy/CourseCard.jsx`.
+- Usado en `Academy.jsx` (grid) y en `Home.jsx` sección "Academia · Destacados" (`featured-courses`, grid 3col gap 20px, con stagger reveal por index).
+- La `CourseCard` antigua de Home quedó como `CourseCardLegacy` (sin uso).
