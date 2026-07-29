@@ -10,6 +10,7 @@ import { getSiteSettings } from "../api/siteSettings.api"
 import { mediaUrl } from "../utils/mediaUrl"
 import ProductCard from "../components/product/ProductCard"
 import CourseCard from "../components/academy/CourseCard"
+import ServiceCard from "../components/services/ServiceCard"
 import {
   LED, VUMeter, DigitalReadout, Knob, Fader, AnimatedWaveform,
 } from "../components/ui/StudioUI"
@@ -734,10 +735,10 @@ export default function Home() {
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "12px",
+              gap: "20px",
             }} className="services-grid">
-              {services.slice(0, 3).map((s) => (
-                <ServiceCard key={s.id} service={s} />
+              {services.slice(0, 3).map((s, i) => (
+                <ServiceCard key={s.id} service={s} index={i} />
               ))}
             </div>
           </div>
@@ -1188,9 +1189,10 @@ function CourseCardLegacy({ course }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// Service card
+// (legacy) Service card antigua — reemplazada por el ServiceCard profile compartido
 // ═══════════════════════════════════════════════════════════════
-function ServiceCard({ service }) {
+// eslint-disable-next-line no-unused-vars
+function ServiceCardLegacy({ service }) {
   return (
     <Link to={`/services/${service.slug}`}
       data-testid={`featured-service-${service.slug}`} style={{

@@ -435,3 +435,9 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
 - `Services.jsx` ServiceCard rediseñada al estilo "profile card" de la referencia: imagen (portrait) arriba, nombre + sello verde verificado (`is_featured`), descripción corta (2 líneas), footer con métricas (duración con reloj + precio con tag) a la izquierda y botón "Ver más +" a la derecha.
 - Estilos en `index.css` (`.profile-card*`). Fallback de imagen = degradado verde de marca. Grid gap 24px.
 - Navegación a `/services/:slug` sin cambios.
+
+## 2026-06 — ServiceCard compartida (Services + Home) + sello en todos
+- Extraído `ServiceCard` profile-card a `frontend/src/components/services/ServiceCard.jsx`.
+- Usado en `Services.jsx` y `Home.jsx` sección "Servicios" (`featured-services`, grid 3col gap 20px, stagger reveal).
+- Sello verde verificado (BadgeCheck) ahora se muestra en TODOS los servicios (antes solo `is_featured`).
+- ServiceCard antigua de Home → `ServiceCardLegacy` (sin uso).
