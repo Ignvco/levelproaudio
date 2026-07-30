@@ -465,6 +465,7 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 - **`MainLayout.jsx`**: navbar `top:20px`; footer con `border-top` sutil, `max-width:1440`, `padding: 88px … 64px`, `columnGap:64 rowGap:40`.
 - **`ServiceCard`**: imagen `aspect-ratio 1.1/1` (menos alta) por spec.
 - **NO se tocó** el panel administrativo (item 10 del brief se dejó como está por la regla "no cambiar el panel admin").
+- **Páginas internas** (`Shop`, `Academy`, `Services`): migradas al mismo sistema `.lp-container` (max 1440 + `--container-pad`), reemplazando `var(--container)` (1280) y paddings horizontales ad-hoc. Wrappers usan `paddingBlock` para conservar el padding-inline del container. Consistencia total con la Home.
 - Verificado sin scroll horizontal a 1920/1440/900/412px; contenido capado a 1440 y centrado en pantallas grandes.
 
 ## 2026-06 — Densidad mobile: elementos más compactos (más aire)

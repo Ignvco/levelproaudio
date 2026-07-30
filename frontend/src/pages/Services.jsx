@@ -27,9 +27,9 @@ export default function Services() {
 
       {/* Hero */}
       <div ref={headerRef} style={{
-        padding: "clamp(60px, 9vw, 100px) clamp(20px, 5vw, 60px)",
+        padding: "clamp(60px, 9vw, 100px) 0",
       }}>
-        <div style={{ maxWidth: "var(--container)", margin: "0 auto" }}>
+        <div className="lp-container">
           <p style={{ fontSize: "11px", color: "var(--accent)", fontWeight: 600,
             letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "16px",
             display: "inline-flex", alignItems: "center", gap: "8px" }}>
@@ -96,8 +96,7 @@ export default function Services() {
       </div>
 
       {/* Grid */}
-      <div style={{ maxWidth: "var(--container)", margin: "0 auto",
-        padding: "clamp(48px, 6vw, 80px) clamp(20px, 5vw, 60px)" }}>
+      <div className="lp-container" style={{ paddingBlock: "clamp(48px, 6vw, 80px)" }}>
         {isLoading ? (
           <div className="services-page-grid" style={{ display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "24px" }}>
@@ -121,9 +120,8 @@ export default function Services() {
       </div>
 
       {/* CTA */}
-      <div ref={ctaRef} style={{
-        maxWidth: "var(--container)", margin: "0 auto",
-        padding: "0 clamp(20px, 5vw, 60px) clamp(80px, 10vw, 120px)",
+      <div ref={ctaRef} className="lp-container" style={{
+        paddingBottom: "clamp(80px, 10vw, 120px)",
       }}>
         <div style={{
           background:   "var(--surface)",

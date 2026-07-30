@@ -27,10 +27,10 @@ export default function Academy() {
 
       {/* Header */}
       <div ref={headerRef} style={{
-        padding: "clamp(60px, 9vw, 100px) clamp(20px, 5vw, 60px) clamp(40px, 6vw, 64px)",
+        padding: "clamp(60px, 9vw, 100px) 0 clamp(40px, 6vw, 64px)",
         position: "relative",
       }}>
-        <div style={{ maxWidth: "var(--container)", margin: "0 auto" }}>
+        <div className="lp-container">
           <p style={{ fontSize: "11px", color: "var(--accent)", fontWeight: 600,
             letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: "16px",
             display: "inline-flex", alignItems: "center", gap: "8px" }}>
@@ -84,8 +84,7 @@ export default function Academy() {
       </div>
 
       {/* Grid */}
-      <div style={{ maxWidth: "var(--container)", margin: "0 auto",
-        padding: "clamp(32px, 4vw, 48px) clamp(20px, 5vw, 60px)" }}>
+      <div className="lp-container" style={{ paddingBlock: "clamp(32px, 4vw, 48px)" }}>
 
         {isLoading ? (
           <div className="academy-grid" style={{ display: "grid",
