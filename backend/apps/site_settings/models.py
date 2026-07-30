@@ -20,6 +20,11 @@ class SiteSettings(TimeStampedModel):
     hero_image_2    = models.ImageField(upload_to="site/", blank=True, null=True)
     hero_image_3    = models.ImageField(upload_to="site/", blank=True, null=True)
 
+    # ── Pilares (fondos configurables de las 3 cards) ──────
+    pillar_shop_image     = models.ImageField(upload_to="site/", blank=True, null=True)
+    pillar_academy_image  = models.ImageField(upload_to="site/", blank=True, null=True)
+    pillar_services_image = models.ImageField(upload_to="site/", blank=True, null=True)
+
     # ── Marca / Branding ───────────────────────────────────
     site_name       = models.CharField(max_length=60, default="LevelPro Audio")
     tagline         = models.CharField(max_length=200, default="Audio profesional · Chile & Argentina")

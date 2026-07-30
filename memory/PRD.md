@@ -453,6 +453,16 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
 - NOTA: se dejó una imagen de hero demo en el preview (site/hero_preview2.jpg); el usuario puede reemplazarla desde Personalización.
 - Verificado por testing agent: iteration_5.json (hero) PASÓ. Fix de imágenes de servicios verificado por curl (relativo /media, HTTP 200).
 
+## 2026-06 — Cards "Todo lo que necesitás" con imagen de fondo configurable
+- Rediseño de las 3 cards de pilares al estilo de la referencia (imagen de fondo + degradado claro para legibilidad + badge ⚡ con número + título + CTA verde + descripción), sobre fondo negro del sitio.
+- **Fondo configurable desde el admin**:
+  - Backend `site_settings`: nuevos campos `pillar_shop_image`, `pillar_academy_image`, `pillar_services_image` (migración `0003`). Serializer expone `*_url` (relativas `/media/`) y acepta escritura multipart. Patrón idéntico al del hero.
+  - Admin (`AdminSettings.jsx`): nueva pestaña **"Pilares"** con 3 `FileInput`; `cleanForPost` limpia las nuevas `*_url`.
+  - Frontend (`Home.jsx`): cada card usa `s.pillar_*_image_url` como `<img class="eco-card__bg">`; si no hay imagen, muestra un fondo gris claro tipo placeholder.
+- CSS `.eco-card*` reescrito: `aspect-ratio` landscape, scrim claro a la izquierda, badge blanco, título #111, CTA verde `#14a85a`, desc gris. Responsive: 3 col desktop → 1 col ≤1024px.
+- Verificado: subida por admin funciona (imágenes de prueba de audio cargadas), sin overflow a 1440/412px.
+- Endpoints: `PATCH /api/v1/admin/site-settings/` (multipart), `GET /api/v1/site-settings/`.
+
 ## 2026-06 — Sección "Todo lo que necesitás": cards editoriales (estilo referencia)
 - Rediseño de las 3 cards de pilares (Tienda/Academia/Servicios) al estilo de la referencia premium (card horizontal tipo "Porsche 911"), adaptado a la identidad LevelPro (fondo oscuro + verde neón):
   - **Layout horizontal** `1.15fr / 0.85fr`: contenido a la izquierda, panel visual a la derecha (glow verde + ícono grande + número `/0N`).

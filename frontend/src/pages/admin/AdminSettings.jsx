@@ -6,6 +6,7 @@ import { mediaUrl } from "../../utils/mediaUrl"
 
 const TABS = [
   { id: "hero",     label: "Hero"        },
+  { id: "pillars",  label: "Pilares"     },
   { id: "brand",    label: "Marca"       },
   { id: "contact",  label: "Contacto"    },
   { id: "sections", label: "Secciones"   },
@@ -147,6 +148,7 @@ export default function AdminSettings() {
     const clone = { ...f }
     // Removemos URLs derivadas del serializer read-only
     ;["hero_image_url","hero_image_2_url","hero_image_3_url",
+      "pillar_shop_image_url","pillar_academy_image_url","pillar_services_image_url",
       "logo_url","og_image_url","testimonial_photo_url",
       "id","created_at","updated_at"].forEach(k => delete clone[k])
     return clone
@@ -278,6 +280,35 @@ export default function AdminSettings() {
               <FileInput value={files.hero_image_3}
                 previewUrl={form.hero_image_3_url}
                 onChange={f => setFile("hero_image_3", f)} />
+            </Field>
+          </>
+        )}
+
+        {tab === "pillars" && (
+          <>
+            <p style={{ fontSize: "13px", color: "var(--text-2)",
+              lineHeight: 1.6, marginBottom: "20px" }}>
+              Imágenes de fondo de las 3 cards de la sección <strong>“Todo lo que necesitás”</strong>.
+              El texto se muestra encima con un degradado para que sea legible.
+              Recomendado: 1200×750px (horizontal).
+            </p>
+            <Field label="Fondo · Tienda"
+              helper="Se muestra de fondo en la card 'Tienda'.">
+              <FileInput value={files.pillar_shop_image}
+                previewUrl={form.pillar_shop_image_url}
+                onChange={f => setFile("pillar_shop_image", f)} />
+            </Field>
+            <Field label="Fondo · Academia"
+              helper="Se muestra de fondo en la card 'Academia'.">
+              <FileInput value={files.pillar_academy_image}
+                previewUrl={form.pillar_academy_image_url}
+                onChange={f => setFile("pillar_academy_image", f)} />
+            </Field>
+            <Field label="Fondo · Servicios"
+              helper="Se muestra de fondo en la card 'Servicios'.">
+              <FileInput value={files.pillar_services_image}
+                previewUrl={form.pillar_services_image_url}
+                onChange={f => setFile("pillar_services_image", f)} />
             </Field>
           </>
         )}
