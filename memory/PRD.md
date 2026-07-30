@@ -571,4 +571,5 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 - Petición del usuario: usar las dimensiones de las tarjetas de producto en las de servicio para que el responsive aplique igual.
 - `frontend/src/index.css` `.profile-card__img`: aspect-ratio base cambiado de `1.1/1` a **`1/1.12`** (igual que product `.lp-product-card > div:first-child`), border-radius 20px.
 - Mobile (≤768px): `.profile-card { padding:10px }` + `.profile-card__img { aspect-ratio:4/3 }` (idénticos a product card mobile).
-- Verificado a 393px: service card 472px / imagen 251px (igual a product), sin overflow (scrollW==clientWidth).
+- **Fix real (la card, no la imagen)**: el footer del service card estaba apilado en vertical en mobile (stats arriba + botón abajo), lo que agrandaba la card. Se cambió a **fila horizontal** (`space-between`) igual que la buyrow del product card + `.profile-card__body` padding reducido y `.profile-card__desc` sin min-height. Card pasó de 472px → **428px** de alto.
+- Verificado a 393px: sin overflow (scrollW==clientWidth), footer 46px (== buyrow product).
