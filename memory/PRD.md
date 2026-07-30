@@ -662,3 +662,9 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 - `RichText.jsx` (componente): formatea descripciones largas en párrafos legibles (maxWidth 68ch, lineHeight 1.85, split por líneas en blanco).
 - Aplicado en `ProductDetail.jsx` y `ServiceDetail.jsx` (reemplaza el <p> plano de la descripción).
 - Verificado visualmente en escritorio (producto y servicio). OK.
+
+## 2026-07-30 — Shop overhaul completo (filtros + sidebar + drawer)
+- Backend: nuevo `apps/products/filters.py` (ProductFilter) con price_min/price_max, in_stock (stock>0), on_sale (compare_price>price). `views.py` ahora usa filterset_class=ProductFilter. Verificado por curl (price_min, in_stock, on_sale, brand__slug).
+- Frontend `components/product/ShopFilters.jsx` (nuevo): panel reutilizable con Categorías, Marcas, Rango de precio (mín/máx + aplicar), toggles En stock / En oferta, botón Limpiar. Prop `hideHeader` para evitar título duplicado en drawer.
+- `pages/Shop.jsx` reescrito: layout sidebar sticky (272px) + grid; toolbar con contador, chips de filtros activos removibles y dropdown de orden (4 opciones); estado vacío rediseñado; paginación. Móvil: botón "Filtros" abre drawer deslizante (createPortal a body, zIndex 300 para superar dock/logo). Todo con estética #121212 + acento verde + font-display.
+- Verificado visualmente: escritorio (filtro categoría aplica), móvil (drawer, header sin duplicado). Home compila OK.

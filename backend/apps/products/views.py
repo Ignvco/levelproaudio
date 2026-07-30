@@ -9,6 +9,7 @@ from .serializers import (
     ProductListSerializer,
     ProductDetailSerializer,
 )
+from .filters import ProductFilter
 
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
@@ -32,7 +33,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields      = ["name", "description", "brand__name"]
     ordering_fields    = ["price", "created_at", "name"]
     # category__slug se maneja manualmente en get_queryset para incluir hijos
-    filterset_fields   = ["brand__slug", "is_featured"]
+    filterset_class    = ProductFilter
 
     def get_serializer_class(self):
         if self.action == "retrieve":
