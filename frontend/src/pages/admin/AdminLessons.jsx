@@ -51,8 +51,8 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
 
       const { default: api } = await import("../../api/client")
       const endpoint = lesson?.id
-        ? `/admin/lessons/${lesson.id}/`
-        : `/admin/lessons/`
+        ? `/admin/academy/lessons/${lesson.id}/`
+        : `/admin/academy/lessons/`
       const method = lesson?.id ? "patch" : "post"
 
       await api[method](endpoint, fd, {
@@ -64,9 +64,18 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
       queryClient.invalidateQueries({ queryKey:["admin-lessons"] })
       onSave?.(); onClose()
     } catch (e) {
-      setError(e?.response?.data?.detail
-        || e?.response?.data?.video_file?.[0]
-        || "Error al guardar.")
+      const data = e?.response?.data
+      let msg = "Error al guardar."
+      if (data) {
+        if (typeof data === "string") msg = data
+        else if (data.detail) msg = data.detail
+        else {
+          const firstKey = Object.keys(data)[0]
+          const val = data[firstKey]
+          msg = `${firstKey}: ${Array.isArray(val) ? val[0] : val}`
+        }
+      }
+      setError(msg)
     } finally {
       setSaving(false)
     }
@@ -351,12 +360,12 @@ export default function AdminLessons() {
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
           borderRadius: "var(--r-xl)", overflow: "hidden" }}>
           <div style={{ display: "grid",
-            gridTemplateColumns: "40px 2.5fr 2fr 80px 80px 1fr 80px",
+            gridTemplateColumns: "40px 2.5fr 2fr 80px 80px 80px",
             padding: "10px 20px", borderBottom: "1px solid var(--border)",
             fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
             textTransform: "uppercase", letterSpacing: "0.08em" }}>
             <span>#</span><span>Título</span><span>Módulo</span>
-            <span>Duración</span><span>Tipo</span><span>Estado</span><span />
+            <span>Duración</span><span>Tipo</span><span />
           </div>
           {lessons.length === 0 ? (
             <div style={{ padding: "48px", textAlign: "center",
@@ -366,7 +375,7 @@ export default function AdminLessons() {
           ) : lessons.map((lesson, i) => (
             <div key={lesson.id} style={{
               display: "grid",
-              gridTemplateColumns: "40px 2.5fr 2fr 80px 80px 1fr 80px",
+              gridTemplateColumns: "40px 2.5fr 2fr 80px 80px 80px",
               padding: "12px 20px", alignItems: "center",
               borderTop: i > 0 ? "1px solid var(--border)" : "none", gap: "8px",
               transition: "background var(--dur) var(--ease)",
@@ -402,15 +411,6 @@ export default function AdminLessons() {
                 border:     `1px solid ${lesson.is_free ? "var(--accent-glow)" : "var(--border)"}`,
               }}>
                 {lesson.is_free ? "Free" : "Pro"}
-              </span>
-              <span style={{
-                padding: "2px 8px", borderRadius: "var(--r-full)", fontSize: "11px",
-                fontWeight: 500, display: "inline-block",
-                color:      lesson.is_active ? "var(--accent)" : "var(--text-3)",
-                background: lesson.is_active ? "var(--accent-dim)" : "var(--surface-2)",
-                border:     `1px solid ${lesson.is_active ? "var(--accent-glow)" : "var(--border)"}`,
-              }}>
-                {lesson.is_active ? "Activa" : "Inactiva"}
               </span>
               <div style={{ display: "flex", gap: "6px" }}>
                 <button onClick={() => setModal(lesson)} style={{
