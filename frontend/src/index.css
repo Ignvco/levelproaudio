@@ -745,6 +745,10 @@ h1 em, h2 em, h3 em {
 
   /* Service profile card: un poco más compacta */
   .profile-card__img { aspect-ratio: 1 / 0.82 !important; }
+  /* Footer apilado en mobile: evita que stats + botón se desborden */
+  .profile-card__footer { flex-direction: column; align-items: stretch; gap: 12px; }
+  .profile-card__stats { flex-wrap: wrap; justify-content: flex-start; gap: 10px 16px; }
+  .profile-card__btn { justify-content: center; }
 
   /* CTA final: sin min-height gigante en mobile */
   [data-testid="final-cta"] > div { min-height: 0 !important; padding: 48px 22px !important; }
