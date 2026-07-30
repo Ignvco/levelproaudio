@@ -716,8 +716,9 @@ h1 em, h2 em, h3 em {
   .eco-card { aspect-ratio: 16 / 8; }
 }
 @media (max-width: 768px) {
-  .eco-card { aspect-ratio: 16 / 9; }
-  .eco-card__desc { max-width: 64%; }
+  .eco-card { aspect-ratio: auto; min-height: 240px; }
+  .eco-card__content { justify-content: flex-end; padding: 24px 22px; gap: 16px; }
+  .eco-card__desc { max-width: 88%; }
 }
 
 /* ── Mobile (≤768px): compactar elementos para dar más aire ── */
