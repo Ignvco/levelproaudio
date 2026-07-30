@@ -23,11 +23,13 @@ function NavIcon({ name, size = 20, filled = false }) {
       ? "M12 2.1L1 12h3v9h6v-6h4v6h6v-9h3z"
       : "M3 12l9-9 9 9 M5 10v10h5v-6h4v6h5V10",
     search: "M11 19a8 8 0 100-16 8 8 0 000 16z M21 21l-4.35-4.35",
+    bag:    "M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z M3 6h18 M16 10a4 4 0 01-8 0",
     cart:   "M6 6h15l-1.5 9h-13z M6 6L4 2H1 M9 21a1 1 0 100-2 1 1 0 000 2z M18 21a1 1 0 100-2 1 1 0 000 2z",
     grad:   "M22 10L12 4 2 10l10 6 10-6z M6 12v5c3 3 9 3 12 0v-5",
     user:   "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2 M12 11a4 4 0 100-8 4 4 0 000 8z",
     arrow:  "M5 12h14 M12 5l7 7-7 7",
     tools:  "M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z",
+    sliders:"M4 21v-7 M4 10V3 M12 21v-9 M12 8V3 M20 21v-5 M20 12V3 M2 14h4 M10 8h4 M18 16h4",
     gift:   "M20 12v9H4v-9 M2 7h20v5H2z M12 21V7 M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z",
   }
   return (
@@ -384,9 +386,9 @@ function MobileDock() {
 
   const items = [
     { to: "/",         icon: "home",   label: "Home"     },
-    { to: "/shop",     icon: "search", label: "Tienda"   },
+    { to: "/shop",     icon: "bag",    label: "Tienda"   },
     { to: "/academy",  icon: "grad",   label: "Academia" },
-    { to: "/services", icon: "tools",  label: "Servicios"},
+    { to: "/services", icon: "sliders",label: "Servicios"},
     { to: "/rewards",  icon: "gift",   label: "Rewards"  },
     { to: "/cart",     icon: "cart",   label: "Carrito", badge: cartCount },
     {
@@ -436,6 +438,7 @@ function MobileDock() {
           const isActive = item.to === "/"
             ? location.pathname === "/"
             : location.pathname.startsWith(item.to)
+          const isCart = item.icon === "cart"
           return (
             <Link
               key={item.to}
@@ -444,16 +447,20 @@ function MobileDock() {
               style={{
                 position: "relative",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                width: "42px", height: "44px", borderRadius: "50%",
-                color: isActive ? "#fff" : "rgba(255,255,255,0.55)",
-                background: isActive ? "rgba(255,255,255,0.1)" : "transparent",
+                width: "44px", height: "44px", borderRadius: "50%",
+                color: isCart ? "#000" : "#fff",
+                background: isCart
+                  ? "var(--accent)"
+                  : isActive ? "rgba(255,255,255,0.12)" : "transparent",
+                opacity: isCart ? 1 : isActive ? 1 : 0.85,
+                boxShadow: isCart ? "0 4px 16px rgba(26,255,110,0.4)" : "none",
                 transition: "all 200ms var(--ease)",
                 textDecoration: "none",
               }}>
               {item.avatar ? (
                 <span style={{
                   width: "22px", height: "22px", borderRadius: "50%",
-                  background: isActive ? "var(--accent)" : "rgba(255,255,255,0.15)",
+                  background: isActive ? "var(--accent)" : "rgba(255,255,255,0.18)",
                   color: isActive ? "#000" : "#fff",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: "10px", fontWeight: 800,
@@ -462,18 +469,18 @@ function MobileDock() {
                   {item.avatar}
                 </span>
               ) : (
-                <NavIcon name={item.icon} size={19} filled={isActive && item.icon === "home"} />
+                <NavIcon name={item.icon} size={isCart ? 20 : 21} filled={isActive && item.icon === "home"} />
               )}
               {item.badge > 0 && (
                 <span style={{
-                  position: "absolute", top: "4px", right: "4px",
+                  position: "absolute", top: "2px", right: "2px",
                   minWidth: "18px", height: "18px", borderRadius: "9px",
                   padding: "0 4px",
-                  background: "var(--accent)", color: "#000",
+                  background: "#fff", color: "#000",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontFamily: "var(--font-sans)",
                   fontSize: "10px", fontWeight: 800,
-                  border: "2px solid rgba(15,15,15,0.9)",
+                  border: "2px solid var(--accent)",
                 }}>
                   {item.badge > 9 ? "9+" : item.badge}
                 </span>

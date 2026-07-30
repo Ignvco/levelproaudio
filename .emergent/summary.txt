@@ -1,107 +1,122 @@
-<analysis>**original_problem_statement**: LevelPro Audio is a SaaS web platform combining e-commerce, an academy, and professional services targeting Chile and Argentina. Initially, the production environment was failing with 500 errors due to missing database migrations. After resolving the deployment configuration, the user reported three frontend/admin bugs: 1) The Home page hero image set in customization wasn't rendering, 2) Registered brands were not visible on the Home page, and 3) Uploading a hero image in Admin Settings failed to save.
+<analysis>**original_problem_statement**: LevelPro Audio is a SaaS web platform combining e-commerce, an academy, and professional services targeting Chile and Argentina. PRODUCT REQUIREMENTS: Modern, responsive UI, dark mode, neon green accents. The platform required a comprehensive frontend overhaul, authentication improvements, and debugging of production payment flows.
 
-**User's preferred language**: Spanish
-INSTRUCT NEXT AGENT: The user's primary language is Spanish. You MUST automatically detect the user's primary language from their messages inside the <trajectory> tag and INSTRUCT next agent to respond in the user's preferred language only.
+**User's preferred language**: Spanish (You MUST respond to the user in Spanish only).
 
-**what currently exists?**: A fully functional full-stack application (React 19 + Django 5). The production DB migration issue was resolved by automating it in the backend Dockerfile. Bugs regarding brand visibility toggles and hero image rendering were fixed. A persistent issue with saving large images in production was traced to Nginx configuration and patched.
+**what currently exists?**: A fully functional React 19 + Django 5 platform. The UI has been heavily polished with a premium editorial aesthetic. The platform uses HTTPOnly cookies for authentication (migrated from localStorage/Bearer tokens). E-commerce features advanced filtering, grid/list toggles, and favorites. Services have a redesigned premium layout. Production deployment is handled via Google Cloud Build () to Cloud Run, with PostgreSQL DB, and securely integrates MercadoPago and PayPal using Google Secret Manager.
 
 **Last working item**:
-    - Last item agent was working: The agent was debugging why image uploads in Admin Settings failed in production. The root cause was identified via user screenshots as an HTTP 413 (Content Too Large) error. The agent modified  to increase  to 50M and added error handling for 413 status codes in .
-    - Status: USER VERIFICATION PENDING
-    - Agent Testing Done: N (Cannot test Nginx production config locally without deployment)
-    - Which testing method agent to use?: NA (Waiting for user to deploy via Save to Github and verify).
-    - User Testing Done: N
+    - Last item agent was working: Debugging and fixing the production payment flow for MercadoPago and PayPal. This included fixing a bug where MP redirected to the sandbox environment instead of production, implementing a CLP-to-USD conversion for PayPal (since PayPal doesn't support CLP), and securely configuring production environment variables/secrets inside .
+    - Status: RESOLVED (User confirmed it works perfectly in production).
+    - Agent Testing Done: Y (Created and used a custom diagnostic endpoint).
+    - Which testing method agent to use?: NA (testing is already done).
+    - User Testing Done: Y
 
-**All Pending/In progress Issue list**:
-  None currently active. Waiting for user verification on the Nginx fix.
+**All Pending/In progress Issue list**: 
+  None. All active issues were resolved.
 
 **In progress Task List**:
   None.
 
 **Upcoming and Future Tasks**
-    - Task 1: Shop UX Improvements: Add filter by brand, price range, breadcrumbs, related products, and wishlist. (P1) [Target files: , ]
-    - Task 2: Sparks Rewards: Compartir en Redes button to generate an image for IG Stories showing tickets. (P2) [Target: , ]
-    - Task 3: Sparks Rewards: Referral system with unique codes and extra tickets per friend purchase. (P2)
-    - Task 4: Complete migration of JWT to HTTPOnly cookies (Requires evaluating cross-domain implications with MercadoPago/PayPal). (P3)
-    - Task 5: Add video processing using  for generating automatic thumbnails and multiple resolutions (360p/720p/1080p) for Academy. (P3)
-    - Task 6: Refactoring: Break down  (1800+ lines) and  (560+ lines). (P3)
+  Task 1: Security: Remove or rotate the diagnostic key () for the  endpoint, or remove the endpoint entirely since payments are now verified. (P1)
+  Task 2: Automate the  conversion in the backend using a live exchange rate API instead of the current hardcoded/env-variable fallback rate (950). (P2)
+  Task 3: Sparks Rewards: Compartir en Redes button to generate an image for IG Stories showing tickets. (P3)
+  Task 4: Sparks Rewards: Referral system with unique codes and extra tickets per friend purchase. (P3)
+  Task 5: Refactoring: Break down  (1900+ lines). (P4)
+  Task 6: Add rich text formatting (bold, lists) support in the admin panel for product/service descriptions. (P4)
+  Task 7: Setup MercadoPago Argentina credentials (, ) if the user decides to start selling in AR. (P4)
 
 **Completed work in this session**
-- Fixed production deployment 500 errors by adding  to  CMD.
-- : Fixed hero rendering to display  as a background with an overlay.
-- : Added  toggle to the modal to allow brands to be enabled for the home page marquee.
-- : Added a global Axios interceptor to properly strip the  header for  payloads, allowing the browser to set the correct boundary.
-- : Increased  to  to fix HTTP 413 errors during image uploads in production.
+- Verified Desktop Navbar modifications &  component integration. (DONE)
+- Cleaned up the Desktop Navbar right-side logo (removed border/background) and fixed its mobile positioning (fixed top-center). (DONE)
+- Redesigned Shop page: Added comprehensive backend filters (price range, stock, sale, brand, category), mobile filter drawer, grid/list view toggle, and brand logos/initials on filters. (DONE)
+- Implemented Product Favorites: Added backend  model,  in frontend, toggle button on ProductCards, and a Mis favoritos dashboard page. (DONE)
+- Redesigned Services: Upgraded ServiceDetail to a premium card-based layout, added How we work section, and fixed the  form submission endpoint and validation. (DONE)
+- **Auth Migration**: Completely migrated JWT authentication from /Bearer headers to secure HTTPOnly cookies (, ). Updated  and backend Auth views/middleware. (DONE)
+- **Payments & Production Fixes**: Created  to debug prod issues. Fixed MercadoPago URL to use real  instead of sandbox. Added CLP to USD conversion logic for PayPal. (DONE)
+- **CI/CD Configuration**: Modified  to securely inject payment credentials (, , etc.) from Google Secret Manager into Cloud Run during deployment, preventing env vars from being wiped out on git push. (DONE)
 
 **Earlier issues found/mentioned but not fixed**
    None.
 
 **Known issue recurrence from previous fork**
-  - Issue recurrence in previous fork: Image uploads silently failing due to missing boundaries or server-side size limits.
-  - Recurrence count: 1
-  - Status: USER VERIFICATION PENDING
+  - Issue recurrence in previous fork: None
+  - Recurrence count: 0
+  - Status: RESOLVED
 
 **Code Architecture**
--  - Django apps (users, products, orders, payments, academy, services, analytics, loyalty, billing, site_settings, rewards).
--  - React frontend (pages, components, api, store, layouts).
--  - Custom Nginx configuration for the frontend container proxy.
+-  - Django apps (users, products, orders, payments, academy, services, loyalty).
+-  - Modular settings (, , ).
+-  - React frontend (pages, components, api, store, layouts). 
+-  - Root level CI/CD config for Google Cloud Platform.
 
 **Key Technical Concepts**
-React 19, Zustand, Django REST Framework 5, PostgreSQL, GCP Cloud Run, GCP Cloud Build, Nginx proxy configs, Axios interceptors, FormData handling.
+React 19, Zustand, Django REST Framework 5, HTTPOnly Cookies for JWT Auth, Google Cloud Build, Google Secret Manager, CSS Grid/Flexbox layouts.
 
 **key DB schema**
-  - : Singleton configuration model (fields: , , , etc.)
-  - : {id, name, slug, logo, website, is_active}
+  - : {user_id, product_id, created_at}
 
 **changes in tech stack**
-  - Modified Nginx configuration to support larger payload sizes.
+  - **Auth**: Fully migrated to HTTPOnly cookies. Frontend  no longer attaches  headers; the browser handles the cookies automatically.
+  - **CI/CD**:  was heavily modified to use  and  for deployment variables. 
 
-**All files of reference**
-  -  (Automated migrations)
-  -  (Updated )
-  -  (Hero styling)
-  -  (Active toggle)
-  -  (Axios interceptor)
-  -  (Upload error handling)
+**All files of reference** 
+  -  (New custom filters)
+  -  (Contains new  model)
+  -  (New Custom cookie-based Auth class)
+  -  &  (Updated for HTTPOnly cookies)
+  - , ,  (Redesigned)
+  -  &  (Payment logic, CLP->USD conversion, Diagnostics)
+  -  (CRITICAL: Contains the deployment pipeline with Secret Manager bindings)
 
 **Areas that need refactoring**: 
- and  are severely bloated and need component/service abstraction.
+ is severely bloated (1900+ lines).
 
 **key api endpoints**
+-  (Sets HTTPOnly cookies)
 - 
-- 
+-  (Admin-only diagnostic endpoint)
 
 **Critical Info for New Agent** 
-The last change made was updating the  in the frontend directory to fix an HTTP 413 (Content Too Large) error that was preventing users from saving high-res hero images in the production environment. Do not touch the upload logic or settings page until the user has deployed this Nginx fix to production (via Save to Github) and confirmed whether the upload now works.
+- **Language**: The user speaks strictly Spanish. You MUST respond in Spanish.
+- **Authentication**: JWTs are stored in HTTPOnly cookies. Do not attempt to read tokens via JavaScript or send them in headers. The backend  class handles it.
+- **Cloud Build**: The deployment relies entirely on . If you ever need to add new environment variables for production, YOU MUST ADD THEM TO  inside the  step using  or . Do not tell the user to run  commands manually, as the next git push will overwrite them.
+- **Diagnostics Key**: The user was reminded to remove the  or the payments diagnostic endpoint. Keep this in mind as a first step or suggestion.
 
 **documents and test reports created in this job** 
-  - /app/memory/PRD.md (Updated with bug fix logs)
+  -  (Updated)
 
 **Last 10 User Messages and any pending HUMAN messages** 
- - *User*: Confirm plan. (COMPLETED)
- - *User*: Confirms applying Dockerfile fix. (COMPLETED)
- - *User*: Reports production is working! (COMPLETED)
- - *User*: Reports 3 new bugs (hero image not showing, brands not showing, settings image not saving). (COMPLETED)
- - *User*: Reports fixes work in Dev but not Prod after pushing. (COMPLETED)
- - *User*: Continua. (COMPLETED)
- - *User*: Shows screenshots of file uploading but not saving, and brands having no active toggle. (COMPLETED)
- - *User*: Reports Brands is fixed, but Settings upload still fails. (COMPLETED)
- - *User*: Provides screenshots showing HTTP 413 error during upload. **(PENDING VERIFICATION POST-DEPLOY)**
+ - *User*: Donde hago eso? no tengo deployment setting o lo es atraves de spring boot
+ - *Agent*: Clarified it's Django, not Spring Boot. Sent instructions for GCP Cloud Run setup.
+ - *User*: pero que deploy te refieres? porque esta el deply del build que tengo que es al realizar push...
+ - *Agent*: Realized  was wiping env vars. Asked for the file.
+ - *User*: Uploaded .
+ - *Agent*: Updated  to include GCP Secret Manager bindings and env vars. Guided user to create secrets.
+ - *User*: debo reemplazar APP_USR-TU_ACCESS_TOKEN por mis credenciales?
+ - *Agent*: Yes. Explained exactly how to create secrets via gcloud.
+ - *User*: antes de realizarlo, cuando arreglamos el bug me volvió a redirigir al sandbox...
+ - *Agent*: Stripped the sandbox URL entirely from the backend to ensure a 100% fail-proof redirect to production .
+ - *User*: ERROR: Resource in projects is subject of a conflict: Secret already exists.
+ - *Agent*: Explained to use  instead of  since secrets existed.
+ - *User*: Hermoso!!! está todo funcionando!!! haré fork y seguiremos (No pending messages).
 
 **Project Health Check:**
-Production functional, awaiting verification of Nginx config change for large image uploads.
+Healthy.
 
 **3rd Party Integrations** 
-None modified in this session.
+- MercadoPago (Chile) — uses User API Key (Configured securely via Google Secret Manager in prod)
+- PayPal (Live) — uses User API Key (Configured securely via Google Secret Manager in prod)
 
 **Testing status**
-  - Testing agent used after significant changes: NO (UI and config fixes tested manually via Playwright/screenshots).
+  - Testing agent used after significant changes: NO (User preference).
   - Troubleshoot agent used after agent stuck in loop: NO
   - Test files created: None
   - Known regressions: None
 
 **Credentials to test flow:**
 Use  (Check  for password).
+Test Client: 
 
 **What agent forgot to execute**
-The agent initially missed the default Nginx  limit (1MB) when debugging the image upload issue in production. This led to unnecessary iterations debugging frontend Axios logic before the user provided network logs revealing the HTTP 413 error.</analysis>
+Nothing.</analysis>

@@ -17,7 +17,7 @@ import pytest
 import requests
 from datetime import datetime, timedelta, timezone
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://levelpro-audio.preview.emergentagent.com").rstrip("/")
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://lpa-preview.preview.emergentagent.com").rstrip("/")
 ADMIN_EMAIL = "ventas@levelproaudio.com"
 ADMIN_PASS  = "[REDACTED]"
 CLIENT_EMAIL = "cliente@test.com"
