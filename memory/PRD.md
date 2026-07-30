@@ -453,6 +453,18 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
 - NOTA: se dejó una imagen de hero demo en el preview (site/hero_preview2.jpg); el usuario puede reemplazarla desde Personalización.
 - Verificado por testing agent: iteration_5.json (hero) PASÓ. Fix de imágenes de servicios verificado por curl (relativo /media, HTTP 200).
 
+## 2026-06 — Sección "Todo lo que necesitás": cards editoriales (estilo referencia)
+- Rediseño de las 3 cards de pilares (Tienda/Academia/Servicios) al estilo de la referencia premium (card horizontal tipo "Porsche 911"), adaptado a la identidad LevelPro (fondo oscuro + verde neón):
+  - **Layout horizontal** `1.15fr / 0.85fr`: contenido a la izquierda, panel visual a la derecha (glow verde + ícono grande + número `/0N`).
+  - **Pill badges** arriba con punto verde (tags descriptivos por pilar).
+  - **Título a dos tonos**: nombre en blanco + subtítulo en gris muted (como "Porsche 911 / GT3 RS").
+  - Descripción + footer con stat y CTA verde, separado con `margin-top:auto` + borde superior.
+  - Card con borde sutil + inset highlight + sombra; hover eleva y realza el glow.
+- Grid pasa de 3 columnas a **1 columna (cards anchas apiladas)** para respetar la proporción horizontal de la referencia.
+- Clases nuevas en `index.css` (`.eco-card*`). Responsive ≤900px: el panel visual se vuelve banner superior.
+- Se conservan links (`/shop`, `/academy`, `/services`), `data-testid` y textos existentes; los tags/subtítulos son chips decorativos nuevos on-brand.
+- Verificado sin overflow a 1440/412px; links intactos.
+
 ## 2026-06 — Refactor de layout premium/editorial (Home)
 Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/lógica.
 - **`index.css`**: variables globales `--container-max:1440px`, `--container-pad:clamp(18,4vw,64)`, `--section-space:clamp(64,8vw,120)`, `--content-gap:clamp(32,4vw,48)`, `--card-gap:clamp(16,2vw,24)`. Nuevas clases `.lp-container` (max 1440 centrado + padding-inline), `.lp-sections` (flex column, gap = section-space) y `.section-header`.

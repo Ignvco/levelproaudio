@@ -414,123 +414,66 @@ export default function Home() {
 
           <div style={{
             display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
+            gridTemplateColumns: "1fr",
             gap: "var(--card-gap)",
           }} className="pillars-grid">
             {[
               {
                 num: "01", icon: "cart",
-                title: "Tienda",
+                title: "Tienda", subtitle: "Equipamiento pro",
                 desc: "Equipamiento profesional de las marcas top de la industria — con stock real y precios en CLP.",
                 to: "/shop", cta: "Ver tienda",
+                tags: ["Stock real", "Marcas top", "Precios en CLP"],
                 stat: { label: "Productos", value: "500+" },
               },
               {
                 num: "02", icon: "grad",
-                title: "Academia",
+                title: "Academia", subtitle: "Formación online",
                 desc: "Cursos técnicos en video con instructores del oficio. Producción, mezcla, masterización y más.",
                 to: "/academy", cta: "Ver cursos",
+                tags: ["Cursos en video", "Todos los niveles", "A tu ritmo"],
                 stat: { label: "Cursos", value: String(courses.length || 12) },
               },
               {
                 num: "03", icon: "tools",
-                title: "Servicios",
+                title: "Servicios", subtitle: "A tu medida",
                 desc: "Mezcla, mastering, operación en vivo y asesoría técnica — contratados a medida de tu proyecto.",
                 to: "/services", cta: "Ver servicios",
+                tags: ["Mezcla & master", "Sonido en vivo", "Asesoría técnica"],
                 stat: { label: "Servicios", value: String(services.length || 8) },
               },
             ].map(p => (
               <Link key={p.num} to={p.to} data-testid={`pillar-${p.title.toLowerCase()}`}
-                style={{
-                  background: "var(--surface)",
-                  border: "1px solid var(--border)",
-                  borderRadius: "var(--r-2xl)",
-                  padding: "32px 28px 28px",
-                  textDecoration: "none",
-                  display: "flex", flexDirection: "column",
-                  gap: "24px", minHeight: "320px",
-                  position: "relative", overflow: "hidden",
-                  transition: "border-color 240ms var(--ease), transform 240ms var(--ease)",
-                }}
-                onMouseEnter={e => {
-                  e.currentTarget.style.borderColor = "rgba(26,255,110,0.35)"
-                  e.currentTarget.style.transform = "translateY(-4px)"
-                  const g = e.currentTarget.querySelector(".pillar-glow")
-                  if (g) g.style.opacity = "1"
-                }}
-                onMouseLeave={e => {
-                  e.currentTarget.style.borderColor = "var(--border)"
-                  e.currentTarget.style.transform = "translateY(0)"
-                  const g = e.currentTarget.querySelector(".pillar-glow")
-                  if (g) g.style.opacity = "0"
-                }}>
-
-                {/* Glow decorativo */}
-                <div className="pillar-glow" style={{
-                  position: "absolute", top: "-30%", right: "-30%",
-                  width: "70%", height: "70%",
-                  background: "radial-gradient(circle, rgba(26,255,110,0.15) 0%, transparent 70%)",
-                  opacity: 0, transition: "opacity 300ms var(--ease)",
-                  pointerEvents: "none",
-                }} />
-
-                <div style={{ position: "relative", display: "flex",
-                  justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div style={{
-                    width: "48px", height: "48px", borderRadius: "var(--r-md)",
-                    background: "var(--accent-dim)",
-                    border: "1px solid rgba(26,255,110,0.25)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    color: "var(--accent)",
-                  }}>
-                    <Icon name={p.icon} size={22} />
+                className="eco-card">
+                <div className="eco-card__body">
+                  <div className="eco-card__tags">
+                    {p.tags.map(t => (
+                      <span key={t} className="eco-chip">
+                        <span className="eco-chip__dot" />{t}
+                      </span>
+                    ))}
                   </div>
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace",
-                    fontSize: "11px", color: "var(--text-3)",
-                    letterSpacing: "0.05em" }}>
-                    /{p.num}
-                  </span>
-                </div>
-
-                <div style={{ position: "relative", flex: 1 }}>
-                  <h3 style={{ fontFamily: "var(--font-display)",
-                    fontSize: "26px", fontWeight: 800, color: "var(--text)",
-                    letterSpacing: "-0.02em", lineHeight: 1,
-                    marginBottom: "12px" }}>
-                    {p.title}
-                  </h3>
-                  <p style={{ fontFamily: "var(--font-sans)", fontSize: "13px",
-                    color: "var(--text-2)", lineHeight: 1.6 }}>
-                    {p.desc}
-                  </p>
-                </div>
-
-                <div style={{ position: "relative",
-                  display: "flex", justifyContent: "space-between",
-                  alignItems: "center",
-                  marginTop: "auto",
-                  paddingTop: "28px",
-                  borderTop: "1px solid var(--border)" }}>
-                  <div>
-                    <p style={{ fontFamily: "var(--font-sans)", fontSize: "9px",
-                      color: "var(--text-3)", textTransform: "uppercase",
-                      letterSpacing: "0.15em", fontWeight: 700, marginBottom: "4px" }}>
-                      {p.stat.label}
-                    </p>
-                    <p style={{
-                      fontFamily: "var(--font-display)", fontSize: "20px",
-                      fontWeight: 800, color: "var(--text)",
-                      letterSpacing: "-0.02em", lineHeight: 1,
-                    }}>{p.stat.value}</p>
+                  <div className="eco-card__head">
+                    <h3 className="eco-card__title">
+                      {p.title}
+                      <span className="eco-card__sub">{p.subtitle}</span>
+                    </h3>
+                    <p className="eco-card__desc">{p.desc}</p>
                   </div>
-                  {/* arrow cta */}
-                  <span style={{
-                    display: "inline-flex", alignItems: "center", gap: "6px",
-                    color: "var(--accent)", fontSize: "12px", fontWeight: 700,
-                    fontFamily: "var(--font-sans)",
-                  }}>
-                    {p.cta} <Icon name="arrow" size={12} />
-                  </span>
+                  <div className="eco-card__footer">
+                    <div className="eco-card__stat">
+                      <span className="eco-card__stat-label">{p.stat.label}</span>
+                      <span className="eco-card__stat-val">{p.stat.value}</span>
+                    </div>
+                    <span className="eco-card__cta">
+                      {p.cta} <Icon name="arrow" size={14} />
+                    </span>
+                  </div>
+                </div>
+                <div className="eco-card__visual">
+                  <span className="eco-card__num">/{p.num}</span>
+                  <span className="eco-card__glow" aria-hidden="true" />
+                  <Icon name={p.icon} size={64} />
                 </div>
               </Link>
             ))}
