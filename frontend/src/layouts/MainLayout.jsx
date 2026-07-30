@@ -27,6 +27,7 @@ function NavIcon({ name, size = 20, filled = false }) {
     user:   "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2 M12 11a4 4 0 100-8 4 4 0 000 8z",
     arrow:  "M5 12h14 M12 5l7 7-7 7",
     tools:  "M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z",
+    gift:   "M20 12v9H4v-9 M2 7h20v5H2z M12 21V7 M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z",
   }
   return (
     <svg width={size} height={size} viewBox="0 0 24 24"
@@ -326,9 +327,11 @@ function MobileDock() {
   const cartCount = useCartStore(s => s.getCount())
 
   const items = [
-    { to: "/",         icon: "home",   label: "Home"    },
-    { to: "/shop",     icon: "search", label: "Tienda"  },
-    { to: "/rewards",  icon: "grad",   label: "Rewards" },
+    { to: "/",         icon: "home",   label: "Home"     },
+    { to: "/shop",     icon: "search", label: "Tienda"   },
+    { to: "/academy",  icon: "grad",   label: "Academia" },
+    { to: "/services", icon: "tools",  label: "Servicios"},
+    { to: "/rewards",  icon: "gift",   label: "Rewards"  },
     { to: "/cart",     icon: "cart",   label: "Carrito", badge: cartCount },
     {
       to: isAuthenticated ? "/dashboard" : "/login",
@@ -348,8 +351,8 @@ function MobileDock() {
         zIndex: 100,
       }}>
       <div style={{
-        display: "flex", alignItems: "center", gap: "4px",
-        padding: "8px 12px",
+        display: "flex", alignItems: "center", gap: "1px",
+        padding: "6px 7px",
         background: "rgba(15,15,15,0.9)",
         backdropFilter: "blur(20px) saturate(1.6)",
         WebkitBackdropFilter: "blur(20px) saturate(1.6)",
@@ -372,7 +375,7 @@ function MobileDock() {
               style={{
                 position: "relative",
                 display: "flex", alignItems: "center", justifyContent: "center",
-                width: "46px", height: "46px", borderRadius: "50%",
+                width: "42px", height: "44px", borderRadius: "50%",
                 color: isActive ? "#fff" : "rgba(255,255,255,0.55)",
                 background: isActive ? "rgba(255,255,255,0.1)" : "transparent",
                 transition: "all 200ms var(--ease)",
@@ -380,17 +383,17 @@ function MobileDock() {
               }}>
               {item.avatar ? (
                 <span style={{
-                  width: "24px", height: "24px", borderRadius: "50%",
+                  width: "22px", height: "22px", borderRadius: "50%",
                   background: isActive ? "var(--accent)" : "rgba(255,255,255,0.15)",
                   color: isActive ? "#000" : "#fff",
                   display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "11px", fontWeight: 800,
+                  fontSize: "10px", fontWeight: 800,
                   fontFamily: "var(--font-sans)",
                 }}>
                   {item.avatar}
                 </span>
               ) : (
-                <NavIcon name={item.icon} size={20} filled={isActive && item.icon === "home"} />
+                <NavIcon name={item.icon} size={19} filled={isActive && item.icon === "home"} />
               )}
               {item.badge > 0 && (
                 <span style={{

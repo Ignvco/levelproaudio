@@ -580,3 +580,9 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
   - `Home.jsx`: grid de featured-services → `repeat(auto-fill, minmax(300px, 1fr))`, gap 24px; se removieron los overrides `.services-grid` (2col ≤1024, 1col ≤640) del `<style>` inline para que el auto-fill gobierne la responsividad igual que la página de Servicios.
   - Revertidos los cambios previos en `Services.jsx` e `index.css`.
 - Verificado a 1440px: Home featured cards ahora 313px × 512px (imagen 317px), idénticas a `/services`.
+
+## 2026-07-30 — Dock mobile: agregadas todas las secciones
+- `MainLayout.jsx` MobileDock: antes solo tenía Home, Tienda, Rewards, Carrito, Cuenta (faltaban Academia y Servicios).
+- Ahora muestra las 7: Home, Tienda(search), **Academia(grad)**, **Servicios(tools)**, Rewards(nuevo ícono gift), Carrito, Cuenta.
+- Ajustados tamaños para que entren en pantallas chicas: item 42×44px, gap 1px, padding 6px 7px, ícono 19px. Dock total 316px (entra en 360px y 393px sin overflow).
+- Añadido path SVG `gift` a NavIcon. Verificado con screenshot a 393px y 360px.
