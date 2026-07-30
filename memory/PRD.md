@@ -633,3 +633,10 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 ## 2026-07-30 — Dashboard sidebar: logo real + botón "Volver al sitio"
 - `DashboardLayout.jsx`: reemplazado el logo de texto "L levelpro" por el logo real (`assets/logo.png`, filtro blanco) dentro de un `<Link to="/">` (data-testid dash-logo-home) → click vuelve al inicio.
 - Agregado botón "Volver al sitio" (ícono lucide Store, data-testid dash-back-to-site) justo arriba del user card, linkea a "/". Oculto en mobile (el logo ya cumple esa función).
+
+## 2026-07-30 — Pulido de credibilidad (P0/P1/P2)
+- **Navbar (fix overlap al scrollear)**: `MainLayout.jsx` Navbar ahora tiene estado `scrolled` (scrollY>24). Se agregó un scrim superior fijo (gradiente var(--bg)→transparent, zIndex 99, pointerEvents none) que aparece al scrollear y disuelve el contenido bajo/alrededor de la píldora. La píldora sube su opacidad (0.85→0.95) al scrollear. Aesthetic flotante conservado.
+- **Contraste (P1)**: `--text-3` #6b6b6b → **#8a8a8a** (labels de stats y textos secundarios ahora legibles).
+- **Badges pilares (P2)**: en `Home.jsx` los badges pasan de "500"/"5"/"5" a **"500+ productos" / "N cursos" / "N servicios"** (con dato real de courses/services).
+- **Color (P1)**: el usuario decidió NO tocar la tensión verde/púrpura por ahora (opción c).
+- Marcas de prueba ("Rode Test", etc.): descartado — el usuario aún no subió imágenes en dev, ya está resuelto en su lado.
