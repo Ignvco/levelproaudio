@@ -1,10 +1,11 @@
 // layouts/DashboardLayout.jsx
-import { NavLink, useNavigate } from "react-router-dom"
+import { NavLink, useNavigate, Link } from "react-router-dom"
 import {
   LayoutDashboard, Package, FileText, PlayCircle,
-  Wrench, Star, Gift, User, LogOut,
+  Wrench, Star, Gift, User, LogOut, Store,
 } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
+import logoImg from "../assets/logo.png"
 
 const NAV = [
   { to: "/dashboard",           label: "Inicio",              Icon: LayoutDashboard, end: true },
@@ -35,17 +36,11 @@ export default function DashboardLayout({ children }) {
         borderRight: "1px solid rgba(255,255,255,0.06)",
       }}>
         {/* Marca */}
-        <div style={{ display: "flex", alignItems: "center", gap: "10px",
-          padding: "8px 12px 20px" }}>
-          <span style={{ width: "30px", height: "30px", borderRadius: "9px",
-            background: "var(--accent)", color: "#000", display: "flex",
-            alignItems: "center", justifyContent: "center", fontWeight: 800,
-            fontFamily: "var(--font-display)", fontSize: "15px" }}>L</span>
-          <span style={{ fontFamily: "var(--font-display)", fontWeight: 800,
-            fontSize: "17px", letterSpacing: "-0.02em", color: "var(--text)" }}>
-            levelpro
-          </span>
-        </div>
+        <Link to="/" data-testid="dash-logo-home" style={{ display: "flex", alignItems: "center",
+          padding: "8px 12px 20px", textDecoration: "none" }}>
+          <img src={logoImg} alt="LevelPro Audio" style={{ height: "24px", objectFit: "contain",
+            filter: "brightness(0) invert(1)", maxWidth: "150px" }} />
+        </Link>
 
         {/* Nav */}
         <nav style={{ display: "flex", flexDirection: "column", gap: "4px" }} className="dash-nav">
@@ -73,6 +68,18 @@ export default function DashboardLayout({ children }) {
         </nav>
 
         <div style={{ flex: 1 }} className="dash-spacer" />
+
+        {/* Volver al sitio */}
+        <Link to="/" data-testid="dash-back-to-site" className="dash-backsite" style={{ display: "flex", alignItems: "center",
+          gap: "10px", padding: "11px 14px", borderRadius: "14px", marginBottom: "8px",
+          fontSize: "14px", fontWeight: 600, color: "var(--text-2)", textDecoration: "none",
+          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)",
+          transition: "all var(--dur) var(--ease)" }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(26,255,110,0.3)"; e.currentTarget.style.color = "var(--text)" }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "var(--text-2)" }}>
+          <Store size={18} strokeWidth={2} />
+          Volver al sitio
+        </Link>
 
         {/* User card */}
         <div style={{ background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
@@ -127,6 +134,7 @@ export default function DashboardLayout({ children }) {
           }
           .dash-nav-link { flex-shrink: 0; }
           .dash-usercard { display: none !important; }
+          .dash-backsite { display: none !important; }
         }
       `}</style>
     </div>

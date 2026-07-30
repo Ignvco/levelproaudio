@@ -629,3 +629,7 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 - `Orders.jsx`: tabla premium en panel #121212 (mismas columnas), badges de estado, empty state premium.
 - `OrderDetail.jsx`: cards #121212, título font-display, timeline con check de acento, panel de pago con íconos lucide (CreditCard/Globe/Landmark), CTA pill de acento; lógica de pago/cancelación 1:1.
 - Verificado logueado (cliente@test.com) a 1440px y 393px: sin overflow; flujos de pago/timeline OK.
+
+## 2026-07-30 — Dashboard sidebar: logo real + botón "Volver al sitio"
+- `DashboardLayout.jsx`: reemplazado el logo de texto "L levelpro" por el logo real (`assets/logo.png`, filtro blanco) dentro de un `<Link to="/">` (data-testid dash-logo-home) → click vuelve al inicio.
+- Agregado botón "Volver al sitio" (ícono lucide Store, data-testid dash-back-to-site) justo arriba del user card, linkea a "/". Oculto en mobile (el logo ya cumple esa función).
