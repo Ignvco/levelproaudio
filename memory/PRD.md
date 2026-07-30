@@ -566,3 +566,9 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
   - CTA principal estilo pill accent con círculo negro + flecha (igual al hero de Home).
   - data-testids añadidos: rewards-page, rewards-hero, rewards-featured, rewards-more, rewards-winners, winner-{id}, rewards-campaign-{id}.
 - Verificado visualmente (screenshot) a 1440px y 393px: consistente, sin overflow.
+
+## 2026-07-30 — Unificación de dimensiones: service cards = product cards
+- Petición del usuario: usar las dimensiones de las tarjetas de producto en las de servicio para que el responsive aplique igual.
+- `frontend/src/index.css` `.profile-card__img`: aspect-ratio base cambiado de `1.1/1` a **`1/1.12`** (igual que product `.lp-product-card > div:first-child`), border-radius 20px.
+- Mobile (≤768px): `.profile-card { padding:10px }` + `.profile-card__img { aspect-ratio:4/3 }` (idénticos a product card mobile).
+- Verificado a 393px: service card 472px / imagen 251px (igual a product), sin overflow (scrollW==clientWidth).

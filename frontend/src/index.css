@@ -600,8 +600,8 @@ h1 em, h2 em, h3 em {
 }
 .profile-card__img {
   position: relative;
-  aspect-ratio: 1.1 / 1;
-  border-radius: 22px;
+  aspect-ratio: 1 / 1.12;
+  border-radius: 20px;
   overflow: hidden;
   background: #1a1a1a;
 }
@@ -743,7 +743,8 @@ h1 em, h2 em, h3 em {
   .folder-card__panel { min-height: 96px !important; padding: 28px 16px 14px !important; }
   .folder-card__num { font-size: 26px !important; }
 
-  /* Service profile card: un poco más compacta */
+  /* Service profile card: mismas dimensiones que product card en mobile */
+  .profile-card { padding: 10px !important; }
   .profile-card__img { aspect-ratio: 4 / 3 !important; }
   /* Footer apilado en mobile: evita que stats + botón se desborden */
   .profile-card__footer { flex-direction: column; align-items: stretch; gap: 12px; }
