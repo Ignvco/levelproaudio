@@ -616,8 +616,8 @@ export default function Home() {
 
             <div style={{
               display: "grid",
-              gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "var(--card-gap)",
+              gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+              gap: "24px",
               alignItems: "stretch",
             }} className="services-grid">
               {services.slice(0, 3).map((s, i) => (
@@ -773,7 +773,6 @@ export default function Home() {
           .trust-grid      { grid-template-columns: repeat(2, 1fr) !important; gap: 20px !important; }
           .pillars-grid    { grid-template-columns: 1fr !important; }
           .courses-grid    { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
-          .services-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
           .testimonial-grid{ grid-template-columns: 1fr !important; }
           .brands-strip-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
         }
@@ -804,7 +803,6 @@ export default function Home() {
           .trust-grid      { grid-template-columns: repeat(2, 1fr) !important; }
           .products-grid   { grid-template-columns: 1fr !important; }
           .courses-grid    { grid-template-columns: 1fr !important; }
-          .services-grid   { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>

@@ -99,9 +99,9 @@ export default function Services() {
       <div className="lp-container" style={{ paddingBlock: "clamp(48px, 6vw, 80px)" }}>
         {isLoading ? (
           <div className="services-page-grid" style={{ display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)", gap: "var(--card-gap)" }}>
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="skeleton" style={{ height: "620px", borderRadius: "26px" }} />
+            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "24px" }}>
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="skeleton" style={{ height: "440px", borderRadius: "26px" }} />
             ))}
           </div>
         ) : services.length === 0 ? (
@@ -111,7 +111,7 @@ export default function Services() {
           </div>
         ) : (
           <div className="services-page-grid" style={{ display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)", gap: "var(--card-gap)" }}>
+            gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "24px" }}>
             {services.map((s, i) => (
               <ServiceCard key={s.id} service={s} index={i} />
             ))}

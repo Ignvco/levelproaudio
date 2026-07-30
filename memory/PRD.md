@@ -576,6 +576,7 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 
 ## 2026-07-30 — Página de Servicios: misma grilla que "Servicios destacados" del Home
 - El usuario reportó que las cards de la página `/services` se veían distintas a las de "Servicios destacados" del inicio. Causa real: **la grilla**, no el card (mismo componente `ServiceCard`). La página usaba `repeat(auto-fill, minmax(300px,1fr))` → 4 columnas (cards 313px) en desktop, mientras el Home usa `repeat(3,1fr)` (cards 426px).
-- `Services.jsx`: grid cambiada a `repeat(3, 1fr)` con `gap: var(--card-gap)` (skeleton y real).
-- `index.css`: agregados breakpoints `.services-page-grid` → 3 col base, 2 col ≤1024px, 1 col ≤640px (idéntico al `.services-grid` del Home).
-- Verificado a 1440px: Services page cards ahora 426px × 638px (imagen 443px), idénticas al Home.
+- **CORRECCIÓN (dirección invertida por pedido del usuario)**: se dejó la página de Servicios con su grilla original (`auto-fill minmax(300px,1fr)`, cards compactas 313px) y se cambió el **Home "Servicios destacados"** a esa misma grilla compacta.
+  - `Home.jsx`: grid de featured-services → `repeat(auto-fill, minmax(300px, 1fr))`, gap 24px; se removieron los overrides `.services-grid` (2col ≤1024, 1col ≤640) del `<style>` inline para que el auto-fill gobierne la responsividad igual que la página de Servicios.
+  - Revertidos los cambios previos en `Services.jsx` e `index.css`.
+- Verificado a 1440px: Home featured cards ahora 313px × 512px (imagen 317px), idénticas a `/services`.
