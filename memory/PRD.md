@@ -716,3 +716,13 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 - MP iba a sandbox: `Checkout.jsx` usaba `sandbox_url || init_point`. Cambiado a `init_point || sandbox_url` (usa el link real de producción).
 - PayPal cobraba el monto CLP como USD (140.000 CLP → 140.000 USD). PayPal no soporta CLP. Fix en `create_paypal_order`: convierte CLP→USD con tasa configurable `USD_CLP_RATE` (default 950 CLP/USD), manda `amount.total` en USD y quita `item_list` (evita descuadres). Descripción incluye el monto CLP original. Nuevo setting `USD_CLP_RATE` (env.float) en base.py.
 - Verificado: conversión correcta (140.000 CLP → 147,37 USD a tasa 950). Requiere redeploy a producción. Recomendado setear USD_CLP_RATE al tipo de cambio actual.
+
+## 2026-07-30 — Pagos producción RESUELTO ✅
+- Causa raíz del "vuelve a fallar": el `cloudbuild.yaml` (deploy Cloud Run por git push) usaba `--set-env-vars` que RESETEA todas las env vars → borraba las credenciales de pago en cada push.
+- Solución permanente: agregadas al paso deploy-backend del `/app/cloudbuild.yaml`:
+  - `--set-env-vars`: FRONTEND_URL, BACKEND_URL, PAYPAL_MODE=live, USD_CLP_RATE=950
+  - `--update-secrets`: MP_CL_ACCESS_TOKEN, MP_CL_PUBLIC_KEY, PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET (Secret Manager, ya existían como secretos; se agregó versión con `versions add`).
+- MP iba a sandbox: fix doble → frontend usa `init_point`; backend ya NO devuelve `sandbox_url` en `create_mercadopago_preference`.
+- PayPal cobraba CLP como USD → `create_paypal_order` convierte CLP→USD con `USD_CLP_RATE` (default 950), sin item_list.
+- Endpoint diagnóstico `GET /api/v1/payments/diagnostics/?key=lpa-diag-2026` (key en settings DIAGNOSTICS_KEY). PENDIENTE: quitar/rotar la key cuando ya no se use.
+- Confirmado por el usuario: pagos MP + PayPal funcionando en producción. ✅
