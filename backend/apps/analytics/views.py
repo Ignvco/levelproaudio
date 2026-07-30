@@ -69,11 +69,15 @@ class AdminBrandSerializer(drf_serializers.ModelSerializer):
 
 
 class AdminModuleSerializer(drf_serializers.ModelSerializer):
-    course_title = drf_serializers.CharField(source="course.title", read_only=True)
+    course_title  = drf_serializers.CharField(source="course.title", read_only=True)
+    lessons_count = drf_serializers.SerializerMethodField()
 
     class Meta:
         model  = Module
-        fields = ["id", "title", "order", "course", "course_title"]
+        fields = ["id", "title", "order", "course", "course_title", "lessons_count"]
+
+    def get_lessons_count(self, obj):
+        return obj.lessons.count()
 
 
 class AdminLessonSerializer(drf_serializers.ModelSerializer):

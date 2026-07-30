@@ -111,7 +111,9 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
               style={inputSt}>
               <option value="">Seleccionar módulo</option>
               {modules.map(m => (
-                <option key={m.id} value={m.id}>{m.title}</option>
+                <option key={m.id} value={m.id}>
+                  {m.course_title ? `${m.course_title} — ${m.title}` : m.title}
+                </option>
               ))}
             </select>
           </div>
@@ -260,7 +262,6 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
           </div>
           <div style={{ display: "flex", gap: "20px" }}>
             {[
-              { key: "is_active", label: "Lección activa" },
               { key: "is_free",   label: "Gratis (preview)" },
             ].map(({ key, label }) => (
               <label key={key} style={{ display: "flex", alignItems: "center",

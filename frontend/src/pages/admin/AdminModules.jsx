@@ -13,27 +13,31 @@ const inputSt = {
   borderRadius: "var(--r-md)", color: "var(--text)", fontSize: "13px", outline: "none",
 }
 
-function ModuleModal({ module, courseId, onClose, onSave }) {
+function ModuleModal({ module, courseId, courses = [], onClose, onSave }) {
   const [form, setForm]     = useState({
-    title:     module?.title     || "",
-    order:     module?.order     ?? 1,
-    course:    module?.course    || courseId || "",
-    is_active: module?.is_active ?? true,
+    title:  module?.title  || "",
+    order:  module?.order  ?? 1,
+    course: module?.course || courseId || "",
   })
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState("")
   const queryClient         = useQueryClient()
 
-  const mutation = useMutation({
-    mutationFn: () => module?.id
-      ? updateAdminModule(module.id, form)
-      : createAdminModule(form),
-    onSuccess: () => {
+  const handleSave = () => {
+    if (!form.title.trim()) { setError("El título es requerido."); return }
+    if (!form.course)       { setError("Seleccioná un curso."); return }
+    setSaving(true); setError("")
+    const payload = { title: form.title.trim(), order: form.order, course: form.course }
+    const req = module?.id
+      ? updateAdminModule(module.id, payload)
+      : createAdminModule(payload)
+    req.then(() => {
       queryClient.invalidateQueries(["admin-modules"])
       onSave?.(); onClose()
-    },
-    onError: (e) => setError(e?.response?.data?.detail || "Error al guardar."),
-  })
+    }).catch(e => {
+      setError(e?.response?.data?.detail || e?.response?.data?.course?.[0] || "Error al guardar.")
+    }).finally(() => setSaving(false))
+  }
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
@@ -41,7 +45,7 @@ function ModuleModal({ module, courseId, onClose, onSave }) {
       alignItems: "center", justifyContent: "center", padding: "24px" }}
       onClick={e => e.target === e.currentTarget && onClose()}>
       <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-2xl)", width: "100%", maxWidth: "400px",
+        borderRadius: "var(--r-2xl)", width: "100%", maxWidth: "440px",
         animation: "scaleIn 200ms var(--ease)" }}>
         <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)",
           display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -59,9 +63,21 @@ function ModuleModal({ module, courseId, onClose, onSave }) {
           )}
           <div>
             <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+              color: "var(--text-2)", marginBottom: "7px" }}>Curso *</label>
+            <select value={form.course}
+              onChange={e => setForm(p => ({ ...p, course: e.target.value }))}
+              style={inputSt} data-testid="module-course-select">
+              <option value="">Seleccionar curso</option>
+              {courses.map(c => (
+                <option key={c.id} value={c.id}>{c.title}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
               color: "var(--text-2)", marginBottom: "7px" }}>Título *</label>
             <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-              style={inputSt} placeholder="Nombre del módulo"
+              style={inputSt} placeholder="Nombre del módulo" data-testid="module-title-input"
               onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
               onBlur={e => e.target.style.borderColor = "var(--border)"} />
           </div>
@@ -74,22 +90,15 @@ function ModuleModal({ module, courseId, onClose, onSave }) {
               onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
               onBlur={e => e.target.style.borderColor = "var(--border)"} />
           </div>
-          <label style={{ display: "flex", alignItems: "center", gap: "8px",
-            cursor: "pointer", fontSize: "13px" }}>
-            <input type="checkbox" checked={form.is_active}
-              onChange={e => setForm(p => ({ ...p, is_active: e.target.checked }))}
-              style={{ accentColor: "var(--accent)" }} />
-            Módulo activo
-          </label>
         </div>
         <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)",
           display: "flex", gap: "10px", justifyContent: "flex-end" }}>
           <button onClick={onClose} className="btn btn-ghost"
             style={{ padding: "9px 18px", fontSize: "13px" }}>Cancelar</button>
-          <button onClick={() => mutation.mutate()} disabled={mutation.isPending}
-            className="btn btn-accent"
-            style={{ padding: "9px 18px", fontSize: "13px", opacity: mutation.isPending ? 0.7 : 1 }}>
-            {mutation.isPending ? "Guardando..." : "Guardar"}
+          <button onClick={handleSave} disabled={saving}
+            className="btn btn-accent" data-testid="module-save-btn"
+            style={{ padding: "9px 18px", fontSize: "13px", opacity: saving ? 0.7 : 1 }}>
+            {saving ? "Guardando..." : "Guardar"}
           </button>
         </div>
       </div>
@@ -125,6 +134,7 @@ export default function AdminModules() {
         <ModuleModal
           module={modal === "new" ? null : modal}
           courseId={courseFilter}
+          courses={courses}
           onClose={() => setModal(null)}
           onSave={() => queryClient.invalidateQueries(["admin-modules"])}
         />
@@ -137,7 +147,7 @@ export default function AdminModules() {
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px",
             marginBottom: "8px", fontSize: "13px", color: "var(--text-3)" }}>
-            <Link to="/admin/academy/courses" className="hover-accent"
+            <Link to="/admin/academy" className="hover-accent"
               style={{ transition: "color var(--dur)" }}>
               Academia
             </Link>
@@ -170,12 +180,12 @@ export default function AdminModules() {
       ) : (
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
           borderRadius: "var(--r-xl)", overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "48px 3fr 2fr 1fr 80px",
+          <div style={{ display: "grid", gridTemplateColumns: "48px 3fr 2fr 1.4fr 80px",
             padding: "10px 20px", borderBottom: "1px solid var(--border)",
             fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
             textTransform: "uppercase", letterSpacing: "0.08em" }}>
             <span>#</span><span>Título</span>
-            <span>Curso</span><span>Estado</span><span />
+            <span>Curso</span><span>Lecciones</span><span />
           </div>
           {modules.length === 0 ? (
             <div style={{ padding: "48px", textAlign: "center",
@@ -184,7 +194,7 @@ export default function AdminModules() {
             </div>
           ) : modules.map((mod, i) => (
             <div key={mod.id} style={{
-              display: "grid", gridTemplateColumns: "48px 3fr 2fr 1fr 80px",
+              display: "grid", gridTemplateColumns: "48px 3fr 2fr 1.4fr 80px",
               padding: "13px 20px", alignItems: "center",
               borderTop: i > 0 ? "1px solid var(--border)" : "none", gap: "8px",
               transition: "background var(--dur) var(--ease)",
@@ -196,22 +206,20 @@ export default function AdminModules() {
                 color: "var(--text-3)" }}>{mod.order}</span>
               <div>
                 <p style={{ fontSize: "13px", fontWeight: 500 }}>{mod.title}</p>
-                <p style={{ fontSize: "11px", color: "var(--text-3)" }}>
-                  {mod.lessons_count ?? 0} lecciones
-                </p>
               </div>
               <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
                 {mod.course_title || courses.find(c => c.id === mod.course)?.title || "—"}
               </span>
-              <span style={{
-                padding: "2px 8px", borderRadius: "var(--r-full)", fontSize: "11px",
-                fontWeight: 500, display: "inline-block",
-                color:      mod.is_active ? "var(--accent)" : "var(--text-3)",
-                background: mod.is_active ? "var(--accent-dim)" : "var(--surface-2)",
-                border:     `1px solid ${mod.is_active ? "var(--accent-glow)" : "var(--border)"}`,
-              }}>
-                {mod.is_active ? "Activo" : "Inactivo"}
-              </span>
+              <Link to={`/admin/academy/lessons?module=${mod.id}`}
+                data-testid={`module-lessons-link-${mod.id}`}
+                style={{
+                  fontSize: "12px", fontWeight: 500, textDecoration: "none",
+                  color: "#60a5fa", justifySelf: "start",
+                  padding: "4px 10px", borderRadius: "var(--r-full)",
+                  background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)",
+                }}>
+                {mod.lessons_count ?? 0} lecciones →
+              </Link>
               <div style={{ display: "flex", gap: "6px" }}>
                 <button onClick={() => setModal(mod)} style={{
                   padding: "4px 8px", borderRadius: "var(--r-sm)", fontSize: "11px",

@@ -24,7 +24,7 @@ function CourseModal({ course, onClose, onSave }) {
     description:       course?.description       || "",
     price:             course?.price             || "",
     level:             course?.level             || "beginner",
-    is_active:         course?.is_active         ?? true,
+    is_published:      course?.is_published      ?? true,
     is_free:           course?.is_free           ?? false,
   })
   const [thumbnail, setThumbnail] = useState(null)
@@ -135,7 +135,7 @@ function CourseModal({ course, onClose, onSave }) {
           </div>
           <div style={{ display: "flex", gap: "20px" }}>
             {[
-              { key: "is_active", label: "Curso activo" },
+              { key: "is_published", label: "Publicado (visible en la web)" },
               { key: "is_free",   label: "Gratuito" },
             ].map(({ key, label }) => (
               <label key={key} style={{ display: "flex", alignItems: "center",
@@ -286,6 +286,12 @@ export default function AdminAcademy() {
                         GRATIS
                       </span>
                     )}
+                    {!course.is_published && (
+                      <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 8px",
+                        borderRadius: "var(--r-full)", background: "#f59e0b", color: "#000" }}>
+                        BORRADOR
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -298,7 +304,7 @@ export default function AdminAcademy() {
                   <div style={{ display: "flex", gap: "12px", fontSize: "12px",
                     color: "var(--text-3)", marginBottom: "12px" }}>
                     <span>📹 {course.total_lessons || 0} lecciones</span>
-                    <span>👥 {course.enrolled_count || 0} inscritos</span>
+                    <span>👥 {course.enrollment_count || 0} inscritos</span>
                     <span style={{ fontFamily: "var(--font-serif)", fontSize: "13px",
                       color: course.is_free ? "var(--accent)" : "var(--text-2)" }}>
                       {course.is_free ? "Gratis" : `$${Number(course.price).toLocaleString("es-CL")}`}

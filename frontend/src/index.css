@@ -729,14 +729,6 @@ h1 em, h2 em, h3 em {
   /* Encabezados de sección: más chicos */
   .display-bold { font-size: 1.5rem !important; }
 
-  /* Pilares: cards mucho más compactas */
-  [data-testid^="pillar-"] {
-    min-height: auto !important;
-    padding: 20px 18px !important;
-    gap: 14px !important;
-  }
-  [data-testid^="pillar-"] h3 { font-size: 20px !important; margin-bottom: 8px !important; }
-
   /* Product card: imagen menos alta + textos más chicos */
   .lp-product-card { padding: 10px !important; }
   .lp-product-card > div:first-child { aspect-ratio: 4 / 3 !important; }
@@ -753,4 +745,7 @@ h1 em, h2 em, h3 em {
 
   /* Service profile card: un poco más compacta */
   .profile-card__img { aspect-ratio: 1 / 0.82 !important; }
+
+  /* CTA final: sin min-height gigante en mobile */
+  [data-testid="final-cta"] > div { min-height: 0 !important; padding: 48px 22px !important; }
 }
