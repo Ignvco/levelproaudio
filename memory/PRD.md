@@ -608,3 +608,11 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
   - Estado carrito vacío rediseñado (ShoppingBag + CTA acento). Grid colapsa a 1 col ≤900px.
   - **Lógica intacta 1:1**: react-hook-form + zod, POST /orders/, createPayment, redirección MercadoPago/PayPal/Global66, loyalty_points_redeemed. data-testids: checkout-page, checkout-method-{id}, checkout-submit, checkout-total, checkout-back, checkout-summary, checkout-error, checkout-empty.
 - Verificado (logueado, con items) a 1440px y 393px: sin overflow; selección de método actualiza el chip.
+
+## 2026-07-30 — Cierre de flujo de pago rediseñado (transferencia, éxito, error)
+- Rediseñadas 3 pantallas en `frontend/src/pages/payment/` con el estilo editorial premium (cards #121212, títulos font-display 800, eyebrows de acento, íconos lucide, CTAs pill de acento; paddingTop para librar navbar):
+  - `TransferInstructions.jsx`: ícono Landmark, datos bancarios con monto de acento, pasos numerados en círculos de acento, CTA WhatsApp (MessageCircle).
+  - `PaymentSuccess.jsx`: ícono Check en círculo de acento, confetti conservado, comprobante con eyebrows, total de acento, bloque "¿Qué sigue?" con íconos Mail/Package/GraduationCap, chip de estado (paid/pending), CTAs.
+  - `PaymentFailure.jsx`: ícono X rojo, CTAs Reintentar (acento) / Volver (ghost) + WhatsApp.
+  - Lógica intacta: queries getOrder, confetti+clearCart, refetch de estado pendiente, links. data-testids añadidos.
+- Verificado con orden real (transfer aa49ce3f) a 1440px; failure sin overflow a 393px.
