@@ -1,116 +1,125 @@
 // pages/dashboard/Orders.jsx
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
+import { ChevronRight, ShoppingBag } from "lucide-react"
 import { getOrders } from "../../api/orders.api"
 
 const statusConfig = {
   pending:   { label: "Pendiente",  color: "#facc15" },
-  paid:      { label: "Pagado",     color: "#4ade80" },
+  paid:      { label: "Pagado",     color: "#1aff6e" },
   shipped:   { label: "Enviado",    color: "#60a5fa" },
-  completed: { label: "Completado", color: "#4ade80" },
+  completed: { label: "Completado", color: "#1aff6e" },
   cancelled: { label: "Cancelado",  color: "#f87171" },
 }
 
+function StatusBadge({ status }) {
+  const c = statusConfig[status] || { label: status, color: "var(--text-3)" }
+  return (
+    <span style={{ padding: "4px 12px", borderRadius: "var(--r-full)", fontSize: "11px",
+      fontWeight: 600, color: c.color, background: `${c.color}18`,
+      border: `1px solid ${c.color}33`, whiteSpace: "nowrap" }}>
+      {c.label}
+    </span>
+  )
+}
+
 export default function Orders() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["orders"], queryFn: getOrders,
-  })
+  const { data, isLoading } = useQuery({ queryKey: ["orders"], queryFn: getOrders })
   const orders = data?.results || data || []
 
   return (
-    <div style={{ padding: "clamp(32px, 5vw, 56px)", maxWidth: "800px" }}>
-      <div style={{ marginBottom: "32px" }}>
-        <p style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600,
-          letterSpacing: "0.08em", textTransform: "uppercase",
-          marginBottom: "8px" }}>
-          Mi cuenta
-        </p>
-        <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2rem, 4vw, 3rem)",
-          fontWeight: 300, letterSpacing: "-0.02em" }}>
+    <div style={{ padding: "clamp(20px, 3vw, 40px) clamp(20px, 4vw, 48px)" }} data-testid="orders-page">
+      <div style={{ marginBottom: "24px" }}>
+        <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent)",
+          textTransform: "uppercase", letterSpacing: "0.15em" }}>· Mi cuenta</p>
+        <h1 className="display-bold" style={{ fontFamily: "var(--font-display)",
+          fontSize: "clamp(1.8rem, 3.4vw, 2.6rem)", fontWeight: 800, letterSpacing: "-0.03em",
+          marginTop: "10px", color: "var(--text)" }}>
           Mis pedidos
         </h1>
       </div>
 
       {isLoading && (
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: "80px" }} />
-          ))}
+          {[...Array(4)].map((_, i) => <div key={i} className="skeleton" style={{ height: "64px" }} />)}
         </div>
       )}
 
       {!isLoading && orders.length === 0 && (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-2xl)", padding: "64px 32px", textAlign: "center" }}>
-          <p style={{ fontSize: "48px", marginBottom: "16px" }}>📦</p>
-          <h3 style={{ fontFamily: "var(--font-serif)", fontWeight: 300,
-            fontSize: "1.6rem", marginBottom: "8px" }}>
+        <div style={{ background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: "24px", padding: "64px 32px", textAlign: "center" }}>
+          <div style={{ width: "68px", height: "68px", borderRadius: "50%",
+            background: "rgba(26,255,110,0.08)", border: "1px solid rgba(26,255,110,0.2)",
+            color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto 18px" }}><ShoppingBag size={30} /></div>
+          <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 800, fontSize: "1.5rem",
+            letterSpacing: "-0.02em", marginBottom: "8px", color: "var(--text)" }}>
             Sin pedidos todavía
           </h3>
-          <p style={{ fontSize: "14px", color: "var(--text-3)", marginBottom: "28px" }}>
+          <p style={{ fontSize: "14px", color: "var(--text-3)", marginBottom: "26px" }}>
             Explorá la tienda y realizá tu primer pedido.
           </p>
-          <Link to="/shop" className="btn btn-accent">Ir a la tienda →</Link>
+          <Link to="/shop" style={{ display: "inline-flex", alignItems: "center", gap: "8px",
+            padding: "13px 24px", borderRadius: "var(--r-full)", background: "var(--accent)",
+            color: "#000", fontWeight: 700, fontSize: "14px", textDecoration: "none" }}>
+            Ir a la tienda <ChevronRight size={15} />
+          </Link>
         </div>
       )}
 
       {!isLoading && orders.length > 0 && (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-2xl)", overflow: "hidden" }}>
-          {orders.map((order, i) => {
-            const s = statusConfig[order.status] || { label: order.status, color: "#888" }
-            return (
-              <Link key={order.id} to={`/dashboard/orders/${order.id}`} style={{
-                display:        "flex",
-                alignItems:     "center",
-                justifyContent: "space-between",
-                padding:        "20px 24px",
-                gap:            "16px",
-                borderTop:      i > 0 ? "1px solid var(--border)" : "none",
-                transition:     "background var(--dur) var(--ease)",
-                textDecoration: "none",
-              }}
-                className="hover:bg-[var(--surface-2)]"
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                  {/* Status indicator */}
-                  <div style={{ width: "8px", height: "8px", borderRadius: "50%",
-                    background: s.color, flexShrink: 0 }} />
-                  <div>
-                    <p style={{ fontSize: "13px", fontWeight: 500,
-                      fontFamily: "monospace", color: "var(--text)",
-                      marginBottom: "4px" }}>
-                      #{order.id.slice(0, 8).toUpperCase()}
-                    </p>
-                    <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                      {new Date(order.created_at).toLocaleDateString("es-CL", {
-                        day: "numeric", month: "short", year: "numeric"
-                      })}
-                      {" · "}{order.items_count} producto{order.items_count !== 1 ? "s" : ""}
-                    </p>
-                  </div>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-                  <span style={{
-                    padding: "3px 10px", borderRadius: "var(--r-full)",
-                    fontSize: "11px", fontWeight: 500,
-                    color: s.color, background: `${s.color}14`,
-                    border: `1px solid ${s.color}30`,
-                  }}>
-                    {s.label}
-                  </span>
-                  <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.2rem",
-                    color: "var(--text)", whiteSpace: "nowrap" }}>
-                    ${Number(order.total).toLocaleString("es-CL")}
-                  </p>
-                  <span style={{ color: "var(--text-3)", fontSize: "16px" }}>›</span>
-                </div>
-              </Link>
-            )
-          })}
+        <div style={{ background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
+          borderRadius: "24px", overflow: "hidden" }} data-testid="orders-table">
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "620px" }}>
+              <thead>
+                <tr>
+                  {["Pedido", "Productos", "Total", "Estado", "Fecha", ""].map((h, i) => (
+                    <th key={i} style={{ padding: "14px 24px", textAlign: "left", fontSize: "11px",
+                      fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase",
+                      letterSpacing: "0.08em", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {orders.map((o, i) => (
+                  <tr key={o.id} data-testid={`order-row-${o.id}`} className="dash-row"
+                    style={{ borderBottom: i < orders.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                    <td style={{ padding: "16px 24px" }}>
+                      <span style={{ fontFamily: "monospace", fontSize: "13px", fontWeight: 600,
+                        color: "var(--text)" }}>#{o.id.slice(0, 8).toUpperCase()}</span>
+                    </td>
+                    <td style={{ padding: "16px 24px", fontSize: "13px", color: "var(--text-2)" }}>
+                      {o.items_count} producto{o.items_count !== 1 ? "s" : ""}
+                    </td>
+                    <td style={{ padding: "16px 24px", fontSize: "14px", fontWeight: 700,
+                      color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>
+                      ${Number(o.total).toLocaleString("es-CL")}
+                    </td>
+                    <td style={{ padding: "16px 24px" }}><StatusBadge status={o.status} /></td>
+                    <td style={{ padding: "16px 24px", fontSize: "13px", color: "var(--text-3)", whiteSpace: "nowrap" }}>
+                      {new Date(o.created_at).toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" })}
+                    </td>
+                    <td style={{ padding: "16px 24px", textAlign: "right" }}>
+                      <Link to={`/dashboard/orders/${o.id}`} data-testid={`order-view-${o.id}`}
+                        style={{ color: "var(--text-3)", display: "inline-flex", transition: "color var(--dur)" }}
+                        onMouseEnter={e => e.currentTarget.style.color = "var(--accent)"}
+                        onMouseLeave={e => e.currentTarget.style.color = "var(--text-3)"}>
+                        <ChevronRight size={18} />
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
+
+      <style>{`
+        .dash-row { transition: background var(--dur) var(--ease); }
+        .dash-row:hover { background: rgba(255,255,255,0.02); }
+      `}</style>
     </div>
   )
 }
