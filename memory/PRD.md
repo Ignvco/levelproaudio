@@ -616,3 +616,8 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
   - `PaymentFailure.jsx`: ícono X rojo, CTAs Reintentar (acento) / Volver (ghost) + WhatsApp.
   - Lógica intacta: queries getOrder, confetti+clearCart, refetch de estado pendiente, links. data-testids añadidos.
 - Verificado con orden real (transfer aa49ce3f) a 1440px; failure sin overflow a 393px.
+
+## 2026-07-30 — Detalle de Producto y Detalle de Servicio rediseñados (estilo premium)
+- `ProductDetail.jsx`: contenedor `.lp-container` + paddingTop navbar; breadcrumb; imagen en card #121212 (fallback ShoppingBag); marca como eyebrow de acento; nombre `font-display` 800; card de precio #121212 con precio `font-display` 800 + pill de descuento + stock; stepper de cantidad con lucide Minus/Plus; CTA "Agregar al carrito" pill de acento con flecha; descripción con eyebrow; bloque Rewards con Gift; features con lucide (Truck/ShieldCheck/RotateCcw/MessageCircle). Grid → 1 col ≤900px, imagen sticky→static. Lógica intacta (addItem, qty, rewards). data-testids: pd-qty-plus/minus, pd-add-to-cart, product-detail-price.
+- `ServiceDetail.jsx`: hero full-bleed cuando hay thumbnail (con marginTop negativo) o paddingTop 140px sin hero; categoría eyebrow; nombre `font-display` 800; precio `font-display` 800 accent; descripción/entregables con eyebrows e íconos Check en círculo de acento; duración con Clock; form card #121212 con inputs oscuros, submit pill de acento con flecha, WhatsApp (MessageCircle), estado enviado con Check. Grid → 1 col ≤900px. Lógica de formulario/mutación intacta. data-testids: service-input-{key}, service-submit, service-request-sent/error.
+- Verificado a 1440px y 393px: sin overflow horizontal; contenido libra el navbar (h1Top 220px).
