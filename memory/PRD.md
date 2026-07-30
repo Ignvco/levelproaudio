@@ -700,3 +700,14 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
   - `App.jsx`: `checkAuth()` al montar para restaurar sesión desde cookie.
 - Verificado (browser + curl): login setea cookies HttpOnly (sin token en JS), sesión persiste al recargar, /profile por cookie, refresh, logout (profile→401), admin login OK, POST protegido (favoritos) 200. Bearer fallback intacto.
 - NOTA: el redirect real de MP/PayPal no se pudo probar E2E (no hay pago real), pero la config SameSite=Lax es la correcta para ese flujo.
+
+## 2026-07-30 — Debug pago producción (MP + PayPal fallan antes de redirigir)
+- Aislado: la auth por cookies FUNCIONA (POST /orders/ → 201 con cookie). El que falla es POST /payments/create/ → 500 (excepción en create_mercadopago_preference / create_paypal_order). El código ocultaba el error real con mensaje genérico.
+- Fix aplicado:
+  - `payments/views.py` create_payment: ahora loguea traceback completo y devuelve `detail` con el error real (para diagnóstico).
+  - Nuevo endpoint `GET /api/v1/payments/diagnostics/` (solo staff): reporta config (FRONTEND_URL, BACKEND_URL, PAYPAL_MODE, y si están seteadas MP_CL/AR tokens, PAYPAL client id/secret enmascarados) y ejecuta un test real de creación de preferencia MP (CL/AR) y de orden PayPal, devolviendo el error exacto de cada uno.
+- Causa raíz probable (ambos fallan a la vez) = config de producción:
+  - FRONTEND_URL/BACKEND_URL no seteadas → default http://localhost:5173/8000 → PayPal rechaza return_url localhost en modo live y MP puede rechazar back_urls.
+  - Credenciales MP/PayPal faltantes o inválidas en el entorno de producción.
+  - PAYPAL_MODE default "sandbox": para pagos reales debe ser "live" con credenciales live.
+- Acción pendiente del usuario: redeploy + abrir /api/v1/payments/diagnostics/ logueado como admin y compartir el resultado (o setear las env vars de producción).
