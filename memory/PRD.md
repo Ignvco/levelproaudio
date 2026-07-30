@@ -550,3 +550,9 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 - Rotación de hasta 3 imágenes de hero con fundido cruzado (6s) + dots indicadores. Campos hero_image_2/3 en SiteSettings + serializer (urls relativas /media) + 3 slots de subida en Personalización.
 - Titular del hero ahora en fuente **Poppins** (var(--font-hero)), estilo geométrico redondeado tipo referencia del cliente. Poppins cargada vía Google Fonts en index.css.
 - Verificado por screenshot (fuente Poppins aplicada, dots del carrusel visibles, imagen full-bleed).
+
+## 2026-07-30 — Fix responsive "Servicios destacados" mobile (Nubia Neo 3)
+- **Problema**: en mobile (≤768px) la regla `.profile-card__img { aspect-ratio: 1 / 0.82 }` hacía la imagen ~322px de alto (en 393px de ancho), volviendo la tarjeta de servicio demasiado alta (ocupaba casi toda la pantalla en Nubia Neo 3).
+- **Fix** (`frontend/src/index.css`, bloque `@media (max-width:768px)`): cambiado a `aspect-ratio: 4 / 3 !important` → tarjeta compacta y legible.
+- Verificado visualmente con screenshot a 393px: tarjetas ahora compactas y premium.
+- **Tarea de Procesamiento de Video (ffmpeg) CANCELADA** por decisión del usuario (2026-07-30). Ya no está en el backlog activo.
