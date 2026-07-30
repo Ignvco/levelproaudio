@@ -453,6 +453,14 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
 - NOTA: se dejó una imagen de hero demo en el preview (site/hero_preview2.jpg); el usuario puede reemplazarla desde Personalización.
 - Verificado por testing agent: iteration_5.json (hero) PASÓ. Fix de imágenes de servicios verificado por curl (relativo /media, HTTP 200).
 
+## 2026-06 — Fix: videos de Academia no reproducían + reproductor de archivos + Range
+Bug: los videos se subían/publicaban pero no se reproducían ni se podía clickear la lección.
+- **Causa 1** (`CourseDetail.jsx`): el `VideoPlayer` recibía `activeLesson.video_url` (vacío para videos SUBIDOS) → no renderizaba nada. Ahora recibe la lección completa y usa `video_source` (unificado).
+- **Causa 2**: el `VideoPlayer` solo hacía `<iframe>`. Ahora detecta: YouTube/Vimeo → `<iframe>` embed; archivo subido (`/media/...`) → `<video controls>` con `mediaUrl()`. `data-testid`: `lesson-video-file` / `lesson-video-embed`.
+- **Causa 3** (`academy/serializers.py` `get_is_locked`): admin/staff ahora pueden previsualizar (no bloqueado) → se puede clickear y reproducir.
+- **Causa 4 (raíz del streaming)** (`core/views.py` `MediaProxyView`): no soportaba HTTP Range → los `<video>` fallaban (error 4). Se agregó soporte **Range (206 Partial Content)** + `Accept-Ranges: bytes` para local y GCS.
+- Verificado en navegador real: video WEBM subido reproduce (`readyState:4`, avanzando, sin error); YouTube embebido OK; lecciones clickeables. El mp4 H.264 solo falla en el Chromium headless de test (sin códec propietario), reproduce en navegadores reales.
+
 ## 2026-06 — Cards "Todo lo que necesitás" con imagen de fondo configurable
 - Rediseño de las 3 cards de pilares al estilo de la referencia (imagen de fondo + degradado claro para legibilidad + badge ⚡ con número + título + CTA verde + descripción), sobre fondo negro del sitio.
 - **Fondo configurable desde el admin**:

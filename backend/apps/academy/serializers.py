@@ -22,6 +22,9 @@ class LessonSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return not obj.is_free
+        # Staff/admin siempre pueden previsualizar
+        if request.user.is_staff or request.user.is_superuser:
+            return False
         enrolled = Enrollment.objects.filter(user=request.user, course=obj.module.course).exists()
         return not enrolled and not obj.is_free
 

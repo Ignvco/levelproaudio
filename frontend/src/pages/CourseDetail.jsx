@@ -12,18 +12,44 @@ import { useAuthStore } from "../store/authStore"
 import { mediaUrl } from "../utils/mediaUrl"
 
 // ── Video Player ──────────────────────────────────────────────
-function VideoPlayer({ url, title }) {
-  const getEmbed = (u) => {
-    if (!u) return null
+function VideoPlayer({ lesson, title }) {
+  const raw = lesson?.video_source || lesson?.video_url || lesson?.video_file || ""
+
+  const getYouTube = (u) => {
     const m = u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/)
-    return m ? `https://www.youtube.com/embed/${m[1]}?rel=0&modestbranding=1` : u
+    return m ? `https://www.youtube.com/embed/${m[1]}?rel=0&modestbranding=1` : null
   }
-  const embed = getEmbed(url)
-  if (!embed) return null
+  const getVimeo = (u) => {
+    const m = u.match(/vimeo\.com\/(?:video\/)?(\d+)/)
+    return m ? `https://player.vimeo.com/video/${m[1]}` : null
+  }
+
+  if (!raw) return null
+
+  const yt = getYouTube(raw)
+  const vm = !yt ? getVimeo(raw) : null
+  const embed = yt || vm
+
+  const wrapSt = {
+    position: "relative", width: "100%", aspectRatio: "16/9",
+    borderRadius: "var(--r-2xl)", overflow: "hidden", background: "#000",
+  }
+
+  // Video subido (archivo) → <video>; externo YouTube/Vimeo → <iframe>
+  if (!embed) {
+    const fileSrc = /^https?:\/\//.test(raw) ? raw : mediaUrl(raw)
+    return (
+      <div style={wrapSt} data-testid="lesson-video-file">
+        <video src={fileSrc} title={title} controls playsInline
+          controlsList="nodownload"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%",
+            objectFit: "contain", background: "#000" }} />
+      </div>
+    )
+  }
 
   return (
-    <div style={{ position: "relative", width: "100%", aspectRatio: "16/9",
-      borderRadius: "var(--r-2xl)", overflow: "hidden", background: "#000" }}>
+    <div style={wrapSt} data-testid="lesson-video-embed">
       <iframe src={embed} title={title}
         style={{ position: "absolute", inset: 0, width: "100%", height: "100%" }}
         frameBorder="0"
@@ -298,7 +324,7 @@ export default function CourseDetail() {
             {/* Video o thumbnail */}
             {activeLesson ? (
               <>
-                <VideoPlayer url={activeLesson.video_url} title={activeLesson.title} />
+                <VideoPlayer lesson={activeLesson} title={activeLesson.title} />
 
                 {/* Info de la lección activa */}
                 <div style={{ display: "flex", justifyContent: "space-between",
