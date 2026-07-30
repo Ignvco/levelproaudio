@@ -640,3 +640,13 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 - **Badges pilares (P2)**: en `Home.jsx` los badges pasan de "500"/"5"/"5" a **"500+ productos" / "N cursos" / "N servicios"** (con dato real de courses/services).
 - **Color (P1)**: el usuario decidió NO tocar la tensión verde/púrpura por ahora (opción c).
 - Marcas de prueba ("Rode Test", etc.): descartado — el usuario aún no subió imágenes en dev, ya está resuelto en su lado.
+
+## 2026-07-30 — Dashboard usuario: alineado al lenguaje del panel admin (credibilidad)
+- Feedback: el dashboard del usuario se veía "marketing/demo" vs el admin (más creíble).
+- `Dashboard.jsx` reescrito adoptando el lenguaje del `AdminDashboard.jsx`:
+  - KPI cards compactas (`--surface`, `--border`, `--r-xl`, padding 18/22) con label uppercase + ícono thin arriba-derecha, número 28px en color (Pedidos blanco, Puntos verde, Cursos azul, Servicios púrpura) y **línea de contexto** ("4 pendientes · 1 hoy", "Nivel silver", etc.).
+  - Banner de alerta amarillo "Tenés pagos pendientes" (igual patrón que admin "Necesitan tu atención").
+  - Se eliminó el gráfico de barras decorativo y la tarjeta verde gigante.
+  - ActionCards con listas reales en `--surface-2`: "Pagos pendientes" (montos) + "Últimos pedidos" (badges de estado), con "Ver todo".
+  - Barra de progreso de loyalty compacta.
+- Sidebar (pills) se mantiene. Verificado a 1440px sin overflow; datos reales del cliente de prueba.
