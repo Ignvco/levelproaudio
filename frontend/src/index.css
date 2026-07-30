@@ -656,7 +656,7 @@ h1 em, h2 em, h3 em {
   overflow: hidden;
   aspect-ratio: 16 / 10;
   text-decoration: none;
-  background: linear-gradient(135deg, #edeef0 0%, #dfe0e3 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #0e0e0e 100%);
   box-shadow: 0 0 0 6px rgba(255,255,255,0.04), 0 30px 60px -30px rgba(0,0,0,0.85);
   transition: transform 340ms var(--ease), box-shadow 340ms var(--ease);
 }
@@ -671,12 +671,10 @@ h1 em, h2 em, h3 em {
 }
 .eco-card__scrim {
   position: absolute; inset: 0; pointer-events: none;
-  background: linear-gradient(95deg,
-    rgba(238,239,241,0.98) 0%,
-    rgba(238,239,241,0.96) 30%,
-    rgba(238,239,241,0.72) 50%,
-    rgba(238,239,241,0.18) 70%,
-    rgba(238,239,241,0) 84%);
+  background: linear-gradient(90deg,
+    rgba(0,0,0,0.88) 0%,
+    rgba(0,0,0,0.72) 45%,
+    rgba(0,0,0,0.55) 100%);
 }
 .eco-card__content {
   position: relative; z-index: 2; height: 100%;
@@ -699,18 +697,18 @@ h1 em, h2 em, h3 em {
   font-family: var(--font-display);
   font-size: clamp(1.7rem, 2.4vw, 2.5rem);
   font-weight: 800; letter-spacing: -0.03em; line-height: 1;
-  color: #111;
+  color: #fff;
 }
 .eco-card__cta {
   margin-top: 8px;
   font-family: var(--font-sans);
   font-size: 15px; font-weight: 600;
-  color: #14a85a;
+  color: var(--accent);
 }
 .eco-card__desc {
   margin-top: 14px;
   font-family: var(--font-sans);
-  font-size: 13.5px; color: #555; line-height: 1.5;
+  font-size: 13.5px; color: rgba(255,255,255,0.75); line-height: 1.5;
   max-width: 255px;
 }
 

@@ -459,7 +459,7 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
   - Backend `site_settings`: nuevos campos `pillar_shop_image`, `pillar_academy_image`, `pillar_services_image` (migración `0003`). Serializer expone `*_url` (relativas `/media/`) y acepta escritura multipart. Patrón idéntico al del hero.
   - Admin (`AdminSettings.jsx`): nueva pestaña **"Pilares"** con 3 `FileInput`; `cleanForPost` limpia las nuevas `*_url`.
   - Frontend (`Home.jsx`): cada card usa `s.pillar_*_image_url` como `<img class="eco-card__bg">`; si no hay imagen, muestra un fondo gris claro tipo placeholder.
-- CSS `.eco-card*` reescrito: `aspect-ratio` landscape, scrim claro a la izquierda, badge blanco, título #111, CTA verde `#14a85a`, desc gris. Responsive: 3 col desktop → 1 col ≤1024px.
+- CSS `.eco-card*`: overlay **negro completo** sobre la imagen (gradiente `rgba(0,0,0,0.88→0.55)`), texto blanco, título #fff, desc gris claro, CTA verde neón `var(--accent)`, badge blanco. Fondo por defecto (sin imagen) oscuro. Responsive: 3 col desktop → 1 col ≤1024px.
 - Verificado: subida por admin funciona (imágenes de prueba de audio cargadas), sin overflow a 1440/412px.
 - Endpoints: `PATCH /api/v1/admin/site-settings/` (multipart), `GET /api/v1/site-settings/`.
 
