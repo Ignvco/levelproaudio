@@ -556,3 +556,13 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 - **Fix** (`frontend/src/index.css`, bloque `@media (max-width:768px)`): cambiado a `aspect-ratio: 4 / 3 !important` → tarjeta compacta y legible.
 - Verificado visualmente con screenshot a 393px: tarjetas ahora compactas y premium.
 - **Tarea de Procesamiento de Video (ffmpeg) CANCELADA** por decisión del usuario (2026-07-30). Ya no está en el backlog activo.
+
+## 2026-07-30 — Rewards: aplicado el diseño editorial premium
+- Reescrito `frontend/src/pages/Rewards.jsx` para alinearlo al sistema de diseño actual:
+  - Contenedor `.lp-container .lp-sections` (max-width 1440px, ritmo vertical consistente) en lugar del contenedor propio de 1200px.
+  - Encabezados con `--font-display` weight 800 + letterSpacing -0.03em (antes `--font-serif` weight 300) y eyebrow de acento (`· LABEL`, 11px uppercase verde).
+  - Íconos **lucide-react** (Trophy, Users, Ticket, ArrowRight) reemplazando emojis (🏆👥🎫).
+  - Grids con `--card-gap`/`--content-gap`; grid de productos a `minmax(280px,340px)` como Home.
+  - CTA principal estilo pill accent con círculo negro + flecha (igual al hero de Home).
+  - data-testids añadidos: rewards-page, rewards-hero, rewards-featured, rewards-more, rewards-winners, winner-{id}, rewards-campaign-{id}.
+- Verificado visualmente (screenshot) a 1440px y 393px: consistente, sin overflow.
