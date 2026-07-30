@@ -586,3 +586,15 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 - Ahora muestra las 7: Home, Tienda(search), **Academia(grad)**, **Servicios(tools)**, Rewards(nuevo ícono gift), Carrito, Cuenta.
 - Ajustados tamaños para que entren en pantallas chicas: item 42×44px, gap 1px, padding 6px 7px, ícono 19px. Dock total 316px (entra en 360px y 393px sin overflow).
 - Añadido path SVG `gift` a NavIcon. Verificado con screenshot a 393px y 360px.
+
+## 2026-07-30 — Carrito rediseñado (estilo editorial premium)
+- `frontend/src/pages/Cart.jsx` reescrito para alinearlo al sistema de diseño:
+  - Contenedor `.lp-container` (1440px) + paddingTop para librar el navbar flotante.
+  - Encabezado con eyebrow "· Carrito" + título `font-display` weight 800.
+  - Items como **cards oscuras** (#121212, borde sutil, radius 20px) con eyebrow de marca, nombre bold, stepper de cantidad con íconos lucide (Minus/Plus) en pill, precio bold y botón eliminar (Trash2) circular con hover rojo.
+  - Panel Resumen (#121212) sticky con eyebrow "· Resumen", líneas de productos, subtotal, total bold, CTA pill de acento con flecha (AccentCTA), "Seguir comprando" con ArrowLeft.
+  - Bloques Loyalty (Star) y Rewards preview (Gift) restilizados; toda la lógica intacta (canje de puntos, slider, preview participaciones).
+  - Estados vacío y "orden pendiente" rediseñados con íconos lucide (ShoppingBag/Clock) y CTA de acento.
+  - Íconos lucide reemplazan todos los emojis (🎧⏳🎁⭐). data-testids añadidos: cart-page, cart-item-{slug}, cart-qty-plus/minus-{slug}, cart-remove-{slug}, cart-clear, cart-summary, cart-total, cart-checkout, cart-continue, cart-empty.
+  - Grid colapsa a 1 columna ≤900px.
+- Verificado a 1440px y 393px (vacío y con items): sin overflow horizontal.
