@@ -453,6 +453,20 @@ Save to Github → Cloud Build recompila la imagen del frontend con el nuevo ngi
 - NOTA: se dejó una imagen de hero demo en el preview (site/hero_preview2.jpg); el usuario puede reemplazarla desde Personalización.
 - Verificado por testing agent: iteration_5.json (hero) PASÓ. Fix de imágenes de servicios verificado por curl (relativo /media, HTTP 200).
 
+## 2026-06 — Refactor de layout premium/editorial (Home)
+Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/lógica.
+- **`index.css`**: variables globales `--container-max:1440px`, `--container-pad:clamp(18,4vw,64)`, `--section-space:clamp(64,8vw,120)`, `--content-gap:clamp(32,4vw,48)`, `--card-gap:clamp(16,2vw,24)`. Nuevas clases `.lp-container` (max 1440 centrado + padding-inline), `.lp-sections` (flex column, gap = section-space) y `.section-header`.
+- **`Home.jsx`**: el `home-body` ahora envuelve todo en `.lp-container.lp-sections` → ancho máximo 1440, márgenes consistentes, ritmo vertical uniforme entre secciones (antes gap arbitrario). Padding-top clamp(56,7vw,96) y padding-bottom clamp(80,10vw,120) para separar del footer.
+  - Encabezados de sección con `margin-bottom: var(--content-gap)` (48px) consistente.
+  - Pilares: gap `--card-gap`, footer con `margin-top:auto` + `padding-top:28px`.
+  - **Productos destacados**: grid `repeat(auto-fill, minmax(280px,340px))` + `justify-content:start` → no se estiran, quedan alineados a la izquierda cuando hay pocos (sin columnas vacías). Progresivo 4→2→1.
+  - Cursos/Servicios: gap `--card-gap`, servicios `align-items:stretch`.
+  - **Final CTA**: `min-height` editorial (~520), radius 32, contenido centrado, jerarquía de gaps (eyebrow/título/desc/botones) según spec.
+- **`MainLayout.jsx`**: navbar `top:20px`; footer con `border-top` sutil, `max-width:1440`, `padding: 88px … 64px`, `columnGap:64 rowGap:40`.
+- **`ServiceCard`**: imagen `aspect-ratio 1.1/1` (menos alta) por spec.
+- **NO se tocó** el panel administrativo (item 10 del brief se dejó como está por la regla "no cambiar el panel admin").
+- Verificado sin scroll horizontal a 1920/1440/900/412px; contenido capado a 1440 y centrado en pantallas grandes.
+
 ## 2026-06 — Densidad mobile: elementos más compactos (más aire)
 - Bloque `@media (max-width:768px)` en `index.css` que reduce tamaños solo en mobile (desktop intacto):
   - `.home-body`: menos padding superior (30px) y menor `gap` entre secciones (14px)

@@ -328,10 +328,10 @@ export default function Home() {
         background: "var(--bg)",
         borderRadius: "clamp(28px, 4vw, 44px) clamp(28px, 4vw, 44px) 0 0",
         marginTop: "clamp(-56px, -6vh, -40px)",
-        padding: "clamp(40px, 5vw, 60px) clamp(12px, 2vw, 20px) 40px",
-        display: "flex", flexDirection: "column",
-        gap: "clamp(20px, 3vw, 32px)",
+        paddingTop: "clamp(56px, 7vw, 96px)",
+        paddingBottom: "clamp(80px, 10vw, 120px)",
       }} data-testid="home-body">
+      <div className="lp-container lp-sections">
 
       {/* ═════════════════════════════════════════════════════════════
           TRUST STRIP — 4 métricas reales con digital readout
@@ -381,10 +381,10 @@ export default function Home() {
           Reemplaza el bloque "planes" ficticio con los verticales reales
           ═════════════════════════════════════════════════════════════ */}
       {s.show_pillars !== false && (
-      <section data-testid="pillars-section" style={{ padding: "clamp(24px, 3vw, 40px) 0" }}>
+      <section data-testid="pillars-section" style={{ padding: 0 }}>
         <div style={{
           display: "flex", flexDirection: "column",
-          gap: "clamp(32px, 4vw, 48px)",
+          gap: "var(--content-gap)",
         }}>
           <div style={{ display: "flex", justifyContent: "space-between",
             alignItems: "flex-end", flexWrap: "wrap", gap: "16px",
@@ -415,7 +415,7 @@ export default function Home() {
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(3, 1fr)",
-            gap: "12px",
+            gap: "var(--card-gap)",
           }} className="pillars-grid">
             {[
               {
@@ -508,7 +508,8 @@ export default function Home() {
                 <div style={{ position: "relative",
                   display: "flex", justifyContent: "space-between",
                   alignItems: "center",
-                  paddingTop: "20px",
+                  marginTop: "auto",
+                  paddingTop: "28px",
                   borderTop: "1px solid var(--border)" }}>
                   <div>
                     <p style={{ fontFamily: "var(--font-sans)", fontSize: "9px",
@@ -544,14 +545,13 @@ export default function Home() {
       {s.show_products !== false && featured.length > 0 && (
         <section data-testid="featured-products" style={{ padding: 0 }}>
           <div style={{
-            background: "var(--bg)",
+            background: "transparent",
             border: "none",
-            borderRadius: "var(--r-2xl)",
-            padding: "clamp(28px, 3vw, 40px)",
+            padding: 0,
           }}>
-            <div style={{
+            <div className="section-header-flex" style={{
               display: "flex", justifyContent: "space-between",
-              alignItems: "flex-end", marginBottom: "32px", flexWrap: "wrap",
+              alignItems: "flex-end", marginBottom: "var(--content-gap)", flexWrap: "wrap",
               gap: "16px",
             }}>
               <div>
@@ -583,8 +583,9 @@ export default function Home() {
 
             <div style={{
               display: "grid",
-              gridTemplateColumns: "repeat(4, 1fr)",
-              gap: "20px",
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 340px))",
+              gap: "var(--card-gap)",
+              justifyContent: "start",
             }} className="products-grid">
               {featured.slice(0, 4).map((p) => (
                 <ProductCard key={p.id} product={p} />
@@ -598,14 +599,13 @@ export default function Home() {
       {s.show_courses !== false && courses.length > 0 && (
         <section data-testid="featured-courses" style={{ padding: 0 }}>
           <div style={{
-            background: "var(--bg)",
+            background: "transparent",
             border: "none",
-            borderRadius: "var(--r-2xl)",
-            padding: "clamp(28px, 3vw, 40px)",
+            padding: 0,
           }}>
             <div style={{
               display: "flex", justifyContent: "space-between",
-              alignItems: "flex-end", marginBottom: "32px", flexWrap: "wrap",
+              alignItems: "flex-end", marginBottom: "var(--content-gap)", flexWrap: "wrap",
               gap: "16px",
             }}>
               <div>
@@ -638,7 +638,7 @@ export default function Home() {
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "20px",
+              gap: "var(--card-gap)",
             }} className="courses-grid">
               {courses.slice(0, 3).map((c, i) => (
                 <CourseCard key={c.id} course={c} index={i} />
@@ -652,14 +652,13 @@ export default function Home() {
       {s.show_services !== false && services.length > 0 && (
         <section data-testid="featured-services" style={{ padding: 0 }}>
           <div style={{
-            background: "var(--bg)",
+            background: "transparent",
             border: "none",
-            borderRadius: "var(--r-2xl)",
-            padding: "clamp(28px, 3vw, 40px)",
+            padding: 0,
           }}>
             <div style={{
               display: "flex", justifyContent: "space-between",
-              alignItems: "flex-end", marginBottom: "32px", flexWrap: "wrap",
+              alignItems: "flex-end", marginBottom: "var(--content-gap)", flexWrap: "wrap",
               gap: "16px",
             }}>
               <div>
@@ -692,7 +691,8 @@ export default function Home() {
             <div style={{
               display: "grid",
               gridTemplateColumns: "repeat(3, 1fr)",
-              gap: "20px",
+              gap: "var(--card-gap)",
+              alignItems: "stretch",
             }} className="services-grid">
               {services.slice(0, 3).map((s, i) => (
                 <ServiceCard key={s.id} service={s} index={i} />
@@ -773,8 +773,10 @@ export default function Home() {
           position: "relative",
           background: "var(--surface)",
           border: "1px solid var(--border)",
-          borderRadius: "var(--r-2xl)",
-          padding: "clamp(56px, 8vw, 100px) clamp(28px, 4vw, 60px)",
+          borderRadius: "32px",
+          padding: "clamp(56px, 8vw, 72px) clamp(28px, 4vw, 40px)",
+          minHeight: "clamp(420px, 55vw, 520px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
           overflow: "hidden",
           textAlign: "center",
         }}>
@@ -784,7 +786,7 @@ export default function Home() {
               radial-gradient(ellipse 70% 60% at 50% 30%, rgba(26,255,110,0.15) 0%, transparent 60%)
             `,
           }} />
-          <div style={{ position: "relative", zIndex: 1, maxWidth: "640px",
+          <div style={{ position: "relative", zIndex: 1, maxWidth: "680px",
             margin: "0 auto" }}>
             <LED color="green" label="Empezá hoy" />
             <h2 className="display-bold" style={{
@@ -792,19 +794,19 @@ export default function Home() {
               fontSize: "clamp(2rem, 4vw, 3.4rem)",
               fontWeight: 900, lineHeight: 0.95,
               letterSpacing: "-0.04em", color: "var(--text)",
-              marginTop: "20px", marginBottom: "20px",
+              marginTop: "20px", marginBottom: "24px",
             }}>
               Subí el nivel.<br />
               De verdad.
             </h2>
             <p style={{ fontFamily: "var(--font-sans)", fontSize: "16px",
               color: "var(--text-2)", lineHeight: 1.65,
-              marginBottom: "36px", maxWidth: "480px",
-              margin: "0 auto 36px" }}>
+              maxWidth: "480px",
+              margin: "0 auto 32px" }}>
               Sumate a los +2.000 profesionales que compraron equipo,
               se capacitaron y contrataron servicios con LevelPro.
             </p>
-            <div style={{ display: "flex", gap: "12px",
+            <div style={{ display: "flex", gap: "14px",
               justifyContent: "center", flexWrap: "wrap" }}>
               <Link to="/shop" data-testid="final-cta-shop" style={{
                 display: "inline-flex", alignItems: "center", gap: "8px",
@@ -833,6 +835,7 @@ export default function Home() {
       )}
 
       </div>
+      </div>
       {/* /home-body */}
 
       <style>{`
@@ -843,7 +846,6 @@ export default function Home() {
           .hero-visual     { height: 380px !important; margin-top: 20px !important; }
           .trust-grid      { grid-template-columns: repeat(2, 1fr) !important; gap: 20px !important; }
           .pillars-grid    { grid-template-columns: 1fr !important; }
-          .products-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
           .courses-grid    { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
           .services-grid   { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
           .testimonial-grid{ grid-template-columns: 1fr !important; }

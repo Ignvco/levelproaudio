@@ -69,7 +69,7 @@ function Navbar() {
       className="lp-navbar-desktop"
       style={{
         position:  "fixed",
-        top:       "18px",
+        top:       "20px",
         left:      "50%",
         transform: "translateX(-50%)",
         zIndex:    100,
@@ -420,14 +420,15 @@ function MobileDock() {
 // ═════════════════════════════════════════════════════════════
 function Footer() {
   return (
-    <footer style={{ background:"var(--bg)", marginTop:"auto" }}>
+    <footer style={{ background:"var(--bg)", marginTop:"auto",
+      borderTop:"1px solid var(--border)" }}>
       <div style={{
-        maxWidth:"var(--container, 1200px)", margin:"0 auto",
-        padding:"clamp(56px,8vw,88px) clamp(20px,5vw,60px) clamp(36px,5vw,56px)",
+        maxWidth:"var(--container-max, 1440px)", margin:"0 auto",
+        padding:"88px var(--container-pad, clamp(20px,4vw,64px)) 64px",
       }}>
         <div style={{
           display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr",
-          gap:"clamp(28px,5vw,56px)", marginBottom:"clamp(40px,6vw,64px)",
+          columnGap:"64px", rowGap:"40px", marginBottom:"clamp(40px,6vw,64px)",
         }} className="lp-footer-grid">
 
           {/* Brand */}

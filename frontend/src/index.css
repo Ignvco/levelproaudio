@@ -42,6 +42,12 @@
 
   /* Espaciado */
   --container:    1280px;
+  --container-max: 1440px;
+  --container-pad: clamp(18px, 4vw, 64px);
+  --section-space: clamp(64px, 8vw, 120px);
+  --section-space-lg: clamp(88px, 10vw, 160px);
+  --content-gap:  clamp(32px, 4vw, 48px);
+  --card-gap:     clamp(16px, 2vw, 24px);
 
   /* Border radius */
   --r-sm:         6px;
@@ -124,6 +130,34 @@ h1 em, h2 em, h3 em {
   max-width: var(--container);
   margin: 0 auto;
   padding: 0 clamp(20px, 5vw, 60px);
+}
+
+/* ── Sistema global de layout premium (home) ──────────────── */
+.lp-container {
+  width: 100%;
+  max-width: var(--container-max);
+  margin-inline: auto;
+  padding-inline: var(--container-pad);
+}
+.lp-sections {
+  display: flex;
+  flex-direction: column;
+  gap: var(--section-space);
+}
+.section-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 40px;
+  margin-bottom: var(--content-gap);
+}
+.section-header__desc { max-width: 460px; }
+@media (max-width: 768px) {
+  .section-header {
+    grid-template-columns: 1fr;
+    gap: 20px;
+    margin-bottom: 32px;
+  }
 }
 
 /* ── Inputs ────────────────────────────────────────────────── */
@@ -566,7 +600,7 @@ h1 em, h2 em, h3 em {
 }
 .profile-card__img {
   position: relative;
-  aspect-ratio: 1 / 1.04;
+  aspect-ratio: 1.1 / 1;
   border-radius: 22px;
   overflow: hidden;
   background: #1a1a1a;
@@ -616,19 +650,8 @@ h1 em, h2 em, h3 em {
 
 /* ── Mobile (≤768px): compactar elementos para dar más aire ── */
 @media (max-width: 768px) {
-  /* Body: menos padding superior y menos separación entre secciones */
-  .home-body { padding: 30px 12px 32px !important; gap: 14px !important; }
-
   /* Hero: titular más contenido */
   [data-testid="hero-headline"] { font-size: clamp(2rem, 8.5vw, 2.6rem) !important; margin-top: 22px !important; margin-bottom: 20px !important; }
-
-  /* Secciones destacadas / trust: padding interno más chico */
-  [data-testid="featured-products"] > div,
-  [data-testid="featured-courses"] > div,
-  [data-testid="featured-services"] > div { padding: 6px 4px !important; }
-  [data-testid="trust-strip"] > div { padding: 18px 16px !important; gap: 16px !important; }
-  [data-testid="final-cta"] > div { padding: 44px 20px !important; }
-  [data-testid="testimonial"] > div { padding: 26px 20px !important; }
 
   /* Encabezados de sección: más chicos */
   .display-bold { font-size: 1.5rem !important; }
