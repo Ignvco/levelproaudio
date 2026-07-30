@@ -2,7 +2,7 @@
 import { NavLink, useNavigate, Link } from "react-router-dom"
 import {
   LayoutDashboard, Package, FileText, PlayCircle,
-  Wrench, Star, Gift, User, LogOut, Store,
+  Wrench, Star, Gift, User, LogOut, Store, Heart,
 } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
 import logoImg from "../assets/logo.png"
@@ -12,6 +12,7 @@ const NAV = [
   { to: "/dashboard",           label: "Inicio",              Icon: LayoutDashboard, end: true },
   { sep: "Mi actividad" },
   { to: "/dashboard/orders",    label: "Pedidos",             Icon: Package },
+  { to: "/dashboard/favorites", label: "Mis favoritos",       Icon: Heart },
   { to: "/dashboard/courses",   label: "Mis cursos",          Icon: PlayCircle },
   { to: "/dashboard/services",  label: "Servicios",           Icon: Wrench },
   { to: "/dashboard/documents", label: "Documentos",          Icon: FileText },

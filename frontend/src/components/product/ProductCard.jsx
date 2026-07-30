@@ -12,6 +12,7 @@ import { ArrowUpRight }    from "lucide-react"
 import { useCartStore }    from "../../store/cartStore"
 import { mediaUrl }        from "../../utils/mediaUrl"
 import { showToast }       from "../ui/ToastNotification"
+import { FavoriteButton }  from "./FavoriteButton"
 
 export default function ProductCard({ product }) {
   const { addItem } = useCartStore()
@@ -107,19 +108,22 @@ export default function ProductCard({ product }) {
           </div>
         )}
 
-        {/* Badge arriba-izquierda */}
-        {badge && (
-          <span
-            data-testid={`product-badge-${product.slug}`}
-            style={{
-              position:"absolute", top:"14px", left:"14px",
-              background:"rgba(20,20,20,0.72)", backdropFilter:"blur(8px)",
-              color:"#fff", fontSize:"12px", fontWeight:600,
-              padding:"6px 13px", borderRadius:"9999px", zIndex:2,
-            }}>
-            {badge}
-          </span>
-        )}
+        {/* Fila superior-izquierda: corazón + badge */}
+        <div style={{ position:"absolute", top:"14px", left:"14px", zIndex:2,
+          display:"flex", alignItems:"center", gap:"8px" }}>
+          <FavoriteButton productId={product.id} slug={product.slug} size={38} />
+          {badge && (
+            <span
+              data-testid={`product-badge-${product.slug}`}
+              style={{
+                background:"rgba(20,20,20,0.72)", backdropFilter:"blur(8px)",
+                color:"#fff", fontSize:"12px", fontWeight:600,
+                padding:"6px 13px", borderRadius:"9999px",
+              }}>
+              {badge}
+            </span>
+          )}
+        </div>
 
         {/* Logo de marca arriba-derecha */}
         {brandLogo && (

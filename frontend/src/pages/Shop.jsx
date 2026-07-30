@@ -3,11 +3,14 @@ import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { useQuery } from "@tanstack/react-query"
 import { useSearchParams } from "react-router-dom"
-import { Search, SlidersHorizontal, X, ChevronDown, ArrowUpDown, PackageSearch } from "lucide-react"
+import { Search, SlidersHorizontal, X, ChevronDown, ArrowUpDown, PackageSearch, LayoutGrid, Rows3 } from "lucide-react"
 import { getProducts, getCategories, getBrands } from "../api/products.api"
 import ProductCard from "../components/product/ProductCard"
+import ProductRow from "../components/product/ProductRow"
 import ShopFilters, { money } from "../components/product/ShopFilters"
 import { useScrollReveal } from "../hooks/useScrollReveal"
+import { useFavoritesStore } from "../store/favoritesStore"
+import { useAuthStore } from "../store/authStore"
 
 const ORDERINGS = [
   { value: "-created_at", label: "Más recientes" },
@@ -22,6 +25,16 @@ export default function Shop() {
   const [page, setPage]           = useState(1)
   const [drawerOpen, setDrawer]   = useState(false)
   const [sortOpen, setSortOpen]   = useState(false)
+  const [view, setView]           = useState(() => localStorage.getItem("shop_view") || "grid")
+
+  const isAuth      = useAuthStore(s => s.isAuthenticated)
+  const loadFavs    = useFavoritesStore(s => s.load)
+  useEffect(() => {
+    if (isAuth) loadFavs()
+    else useFavoritesStore.setState({ ids: [], loaded: false })
+  }, [isAuth, loadFavs])
+
+  const changeView = (v) => { setView(v); localStorage.setItem("shop_view", v) }
 
   const values = {
     search:    searchParams.get("search")    || undefined,
@@ -167,6 +180,24 @@ export default function Shop() {
               </p>
 
               <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                {/* Toggle grilla / lista */}
+                <div style={{ display: "flex", gap: "2px", padding: "3px",
+                  background: "var(--surface-2)", border: "1px solid var(--border)",
+                  borderRadius: "var(--r-full)" }} className="shop-view-toggle">
+                  {[["grid", LayoutGrid], ["list", Rows3]].map(([v, Icon]) => (
+                    <button key={v} data-testid={`shop-view-${v}`} onClick={() => changeView(v)}
+                      aria-label={v === "grid" ? "Vista grilla" : "Vista lista"}
+                      style={{ width: "34px", height: "30px", borderRadius: "9999px",
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                        cursor: "pointer", border: "none",
+                        background: view === v ? "var(--text)" : "transparent",
+                        color: view === v ? "var(--bg)" : "var(--text-3)",
+                        transition: "all 180ms var(--ease)" }}>
+                      <Icon size={15} />
+                    </button>
+                  ))}
+                </div>
+
                 {/* Botón filtros (mobile) */}
                 <button data-testid="shop-open-filters" onClick={() => setDrawer(true)}
                   className="btn btn-dark shop-filter-btn"
@@ -273,12 +304,17 @@ export default function Shop() {
                 </button>
               </div>
             ) : (
-              <div className="shop-grid" style={{ display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "24px" }}>
+              <div className={view === "list" ? "shop-list" : "shop-grid"} style={
+                view === "list"
+                  ? { display: "flex", flexDirection: "column", gap: "16px" }
+                  : { display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "24px" }
+              }>
                 {products.map((product, i) => (
                   <div key={product.id}
                     style={{ animation: `fadeUp 500ms cubic-bezier(0.16,1,0.3,1) ${i * 45}ms both` }}>
-                    <ProductCard product={product} />
+                    {view === "list"
+                      ? <ProductRow product={product} />
+                      : <ProductCard product={product} />}
                   </div>
                 ))}
               </div>
@@ -354,6 +390,9 @@ export default function Shop() {
           .shop-layout { grid-template-columns: 1fr !important; }
           .shop-sidebar { display: none !important; }
           .shop-filter-btn { display: inline-flex !important; }
+        }
+        @media (max-width: 560px) {
+          .shop-view-toggle { display: none !important; }
         }
       `}</style>
     </div>

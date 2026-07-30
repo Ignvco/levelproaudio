@@ -1,6 +1,7 @@
 # apps/products/models.py
 
 from django.db import models
+from django.conf import settings
 from django.utils.text import slugify
 from core.models import TimeStampedModel
 
@@ -172,3 +173,23 @@ class ProductImage(TimeStampedModel):
                 product=self.product, is_primary=True
             ).exclude(pk=self.pk).update(is_primary=False)
         super().save(*args, **kwargs)
+
+
+class Favorite(TimeStampedModel):
+    """Producto guardado como favorito por un usuario."""
+    user    = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name="favorites"
+    )
+    product = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="favorited_by"
+    )
+
+    class Meta:
+        verbose_name        = "Favorito"
+        verbose_name_plural = "Favoritos"
+        ordering            = ["-created_at"]
+        unique_together     = ("user", "product")
+
+    def __str__(self):
+        return f"{self.user.email} ♥ {self.product.name}"

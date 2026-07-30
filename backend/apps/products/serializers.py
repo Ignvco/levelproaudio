@@ -22,10 +22,11 @@ class CategorySerializer(serializers.ModelSerializer):
         required=False,
     )
     image = serializers.SerializerMethodField()
+    product_count = serializers.IntegerField(read_only=True, required=False)
 
     class Meta:
         model  = Category
-        fields = ["id", "name", "slug", "parent", "description", "image", "order", "is_active"]
+        fields = ["id", "name", "slug", "parent", "description", "image", "order", "is_active", "product_count"]
         extra_kwargs = {"slug": {"required": False, "allow_blank": True}}
 
     def get_image(self, obj):
@@ -45,10 +46,11 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class BrandSerializer(serializers.ModelSerializer):
     logo = serializers.SerializerMethodField()
+    product_count = serializers.IntegerField(read_only=True, required=False)
 
     class Meta:
         model  = Brand
-        fields = ["id", "name", "slug", "logo", "website", "is_active"]
+        fields = ["id", "name", "slug", "logo", "website", "is_active", "product_count"]
         extra_kwargs = {"slug": {"required": False, "allow_blank": True}}
 
     def get_logo(self, obj):
@@ -78,6 +80,7 @@ class ProductListSerializer(serializers.ModelSerializer):
     in_stock      = serializers.BooleanField(read_only=True)
     brand_name    = serializers.CharField(source="brand.name", read_only=True, allow_null=True)
     brand_logo    = serializers.SerializerMethodField()
+    is_favorited  = serializers.SerializerMethodField()
 
     class Meta:
         model  = Product
@@ -86,8 +89,18 @@ class ProductListSerializer(serializers.ModelSerializer):
             "short_description",
             "stock", "in_stock", "is_featured",
             "primary_image", "images", "brand_name", "brand_logo",
-            "has_discount", "discount_percentage",
+            "has_discount", "discount_percentage", "is_favorited",
         ]
+
+    def get_is_favorited(self, obj):
+        fav_ids = self.context.get("favorite_ids")
+        if fav_ids is not None:
+            return obj.id in fav_ids
+        request = self.context.get("request")
+        if request and request.user.is_authenticated:
+            from .models import Favorite
+            return Favorite.objects.filter(user=request.user, product=obj).exists()
+        return False
 
     def get_primary_image(self, obj):
         img = obj.images.filter(is_primary=True).first() or \

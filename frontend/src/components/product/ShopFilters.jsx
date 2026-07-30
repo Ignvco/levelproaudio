@@ -1,6 +1,7 @@
 // components/product/ShopFilters.jsx — Panel de filtros (sidebar desktop + drawer mobile)
 import { useState, useEffect } from "react"
 import { Check, X, SlidersHorizontal } from "lucide-react"
+import { mediaUrl } from "../../utils/mediaUrl"
 
 const money = (v) => `$${Number(v).toLocaleString("es-CL")}`
 
@@ -16,12 +17,12 @@ function Section({ title, children }) {
   )
 }
 
-function RowButton({ active, onClick, testid, children }) {
+function RowButton({ active, onClick, testid, leading, count, children }) {
   return (
     <button data-testid={testid} onClick={onClick}
       style={{
-        width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "9px 14px", borderRadius: "var(--r-full)", cursor: "pointer",
+        width: "100%", display: "flex", alignItems: "center", gap: "10px",
+        padding: "8px 12px", borderRadius: "var(--r-full)", cursor: "pointer",
         fontSize: "13.5px", fontWeight: active ? 600 : 500, textAlign: "left",
         background: active ? "var(--accent)" : "transparent",
         color: active ? "#000" : "var(--text-2)",
@@ -31,9 +32,38 @@ function RowButton({ active, onClick, testid, children }) {
       }}
       onMouseEnter={e => { if (!active) { e.currentTarget.style.background = "rgba(255,255,255,0.05)"; e.currentTarget.style.color = "var(--text)" } }}
       onMouseLeave={e => { if (!active) { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "var(--text-2)" } }}>
-      {children}
+      {leading}
+      <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {children}
+      </span>
+      {count != null && (
+        <span style={{ fontSize: "11.5px", fontWeight: 600,
+          color: active ? "rgba(0,0,0,0.55)" : "var(--text-3)",
+          background: active ? "rgba(0,0,0,0.12)" : "var(--surface-3)",
+          minWidth: "22px", height: "20px", borderRadius: "9999px", padding: "0 7px",
+          display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+          {count}
+        </span>
+      )}
       {active && <Check size={15} strokeWidth={2.6} />}
     </button>
+  )
+}
+
+function BrandLogo({ brand, active }) {
+  const logo = brand.logo ? mediaUrl(brand.logo) : null
+  const initials = brand.name.split(" ").map(w => w[0]).join("").slice(0, 2).toUpperCase()
+  return (
+    <span style={{ width: "26px", height: "26px", borderRadius: "50%", flexShrink: 0,
+      background: logo ? "#fff" : (active ? "rgba(0,0,0,0.15)" : "var(--surface-3)"),
+      display: "flex", alignItems: "center", justifyContent: "center",
+      fontSize: "10px", fontWeight: 800, overflow: "hidden",
+      color: active ? "#000" : "var(--text-2)", padding: logo ? "4px" : 0 }}>
+      {logo
+        ? <img src={logo} alt={brand.name} style={{ width: "100%", height: "100%", objectFit: "contain" }}
+            onError={e => { e.target.style.display = "none" }} />
+        : initials}
+    </span>
   )
 }
 
@@ -102,7 +132,7 @@ export default function ShopFilters({
             onClick={() => onSet({ category: null })}>Todas</RowButton>
           {categories.map(cat => (
             <RowButton key={cat.id} active={values.category === cat.slug}
-              testid={`filter-cat-${cat.slug}`}
+              testid={`filter-cat-${cat.slug}`} count={cat.product_count}
               onClick={() => onSet({ category: values.category === cat.slug ? null : cat.slug })}>
               {cat.name}
             </RowButton>
@@ -116,7 +146,8 @@ export default function ShopFilters({
             onClick={() => onSet({ brand: null })}>Todas las marcas</RowButton>
           {brands.map(b => (
             <RowButton key={b.id} active={values.brand === b.slug}
-              testid={`filter-brand-${b.slug}`}
+              testid={`filter-brand-${b.slug}`} count={b.product_count}
+              leading={<BrandLogo brand={b} active={values.brand === b.slug} />}
               onClick={() => onSet({ brand: values.brand === b.slug ? null : b.slug })}>
               {b.name}
             </RowButton>

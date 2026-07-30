@@ -668,3 +668,15 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 - Frontend `components/product/ShopFilters.jsx` (nuevo): panel reutilizable con Categorías, Marcas, Rango de precio (mín/máx + aplicar), toggles En stock / En oferta, botón Limpiar. Prop `hideHeader` para evitar título duplicado en drawer.
 - `pages/Shop.jsx` reescrito: layout sidebar sticky (272px) + grid; toolbar con contador, chips de filtros activos removibles y dropdown de orden (4 opciones); estado vacío rediseñado; paginación. Móvil: botón "Filtros" abre drawer deslizante (createPortal a body, zIndex 300 para superar dock/logo). Todo con estética #121212 + acento verde + font-display.
 - Verificado visualmente: escritorio (filtro categoría aplica), móvil (drawer, header sin duplicado). Home compila OK.
+
+## 2026-07-30 — Shop: Grilla/Lista, Contadores, Logos de marca, Favoritos
+- Backend `products`: modelo `Favorite` (user+product, unique_together) + migración 0007. Serializers Category/Brand con `product_count` (annotate Count activos); ProductList con `is_favorited` (context favorite_ids para evitar N+1). Endpoints: GET /favorites/, POST /favorites/toggle/, GET /favorites/ids/ (IsAuthenticated). Verificado por curl.
+- Frontend:
+  - `store/favoritesStore.js` (zustand, optimista) + `api/favorites.api.js`.
+  - `components/product/FavoriteButton.jsx`: corazón reutilizable; si no logueado → toast + redirect a /login.
+  - `ProductCard`: corazón en fila superior-izquierda junto al badge.
+  - `ProductRow.jsx` (nuevo): vista lista horizontal (marca, título, desc, stock, envío, precio tachado/actual, corazón + Comprar).
+  - `Shop.jsx`: toggle Grilla/Lista (persistido en localStorage), carga favoritos al montar, hides toggle <560px.
+  - `ShopFilters.jsx`: contadores por categoría/marca + logo de marca (iniciales como fallback).
+  - `pages/dashboard/MyFavorites.jsx` + ruta `/dashboard/favorites` + link "Mis favoritos" en sidebar.
+- Verificado visualmente: grid+list, contadores, iniciales (AT), toggle de corazón (toast), dashboard con 2 favoritos. Todo OK.
