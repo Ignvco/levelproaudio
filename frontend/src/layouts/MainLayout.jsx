@@ -114,7 +114,8 @@ function Navbar() {
       {/* Logo plataforma (derecha) — en todas menos la principal */}
       {!isHome && (
         <Link to="/" data-testid="nav-logo-right" aria-label="Inicio"
-          style={{ ...sideElBase, right: "24px", justifyContent: "center", padding: "0 24px" }}>
+          style={{ position: "fixed", top: "20px", right: "24px", zIndex: 100, height: "52px",
+            display: "flex", alignItems: "center", justifyContent: "center" }}>
           <img src={logoImg} alt="LevelPro Audio" style={{ height: "30px", objectFit: "contain",
             filter: "brightness(0) invert(1)", maxWidth: "160px" }} />
         </Link>
