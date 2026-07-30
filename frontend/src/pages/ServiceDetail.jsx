@@ -1,24 +1,47 @@
-// pages/ServiceDetail.jsx
-import { useParams, Link } from "react-router-dom"
+// pages/ServiceDetail.jsx — Detalle premium basado en cards
+import { useParams, Link, useNavigate } from "react-router-dom"
 import { useQuery, useMutation } from "@tanstack/react-query"
 import { useState } from "react"
-import { Check, Clock, ArrowRight, MessageCircle, SearchX } from "lucide-react"
-import { getService } from "../api/services.api"
+import {
+  Check, Clock, ArrowRight, MessageCircle, SearchX,
+  Tag, Layers, Zap, ShieldCheck, Sparkles,
+} from "lucide-react"
+import { getService, getServices } from "../api/services.api"
+import { createServiceRequest } from "../api/services.api"
 import { useAuthStore } from "../store/authStore"
-import { mediaUrl } from "../utils/mediaUrl"
 import { RichText } from "../components/ui/RichText"
-import api from "../api/client"
+import { showToast } from "../components/ui/ToastNotification"
+import ServiceProcess from "../components/services/ServiceProcess"
+import ServiceCard from "../components/services/ServiceCard"
+import { serviceCover } from "../utils/serviceCover"
+
+const CARD = {
+  background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
+  borderRadius: "22px", padding: "clamp(22px, 3vw, 32px)",
+}
+const EYEBROW = { fontSize: "11px", fontWeight: 700, color: "var(--accent)",
+  textTransform: "uppercase", letterSpacing: "0.15em" }
+
+function Chip({ Icon, children }) {
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: "8px",
+      padding: "9px 15px", borderRadius: "9999px", fontSize: "13px", fontWeight: 500,
+      background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+      color: "var(--text-2)" }}>
+      <Icon size={15} style={{ color: "var(--accent)" }} /> {children}
+    </span>
+  )
+}
 
 export default function ServiceDetail() {
   const { slug } = useParams()
-  const { user } = useAuthStore()
+  const { user, isAuthenticated } = useAuthStore()
+  const navigate = useNavigate()
   const [form, setForm] = useState({
     name: user?.first_name ? `${user.first_name} ${user.last_name || ""}`.trim() : "",
     email: user?.email || "",
     phone: user?.phone || "",
-    message: "",
-    budget: "",
-    preferred_date: "",
+    message: "", budget: "", preferred_date: "",
   })
   const [sent, setSent] = useState(false)
   const [error, setError] = useState("")
@@ -28,15 +51,16 @@ export default function ServiceDetail() {
     queryFn:  () => getService(slug),
   })
 
+  const { data: allData } = useQuery({
+    queryKey: ["services", "all-for-related"],
+    queryFn:  () => getServices(),
+  })
+
   const mutation = useMutation({
     mutationFn: async () => {
-      await api.post("/services/requests/", {
-        service:        service.id,
-        name:           form.name,
-        email:          form.email,
-        phone:          form.phone,
-        message:        form.message,
-        budget:         form.budget || null,
+      await createServiceRequest({
+        service: service.id, name: form.name, email: form.email, phone: form.phone,
+        message: form.message, budget: form.budget || null,
         preferred_date: form.preferred_date || null,
       })
     },
@@ -75,120 +99,134 @@ export default function ServiceDetail() {
   const inputSt = {
     width: "100%", padding: "12px 16px",
     background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: "var(--r-md)", color: "var(--text)",
+    borderRadius: "12px", color: "var(--text)",
     fontSize: "14px", outline: "none", transition: "border-color var(--dur)",
   }
   const labelSt = { display: "block", fontSize: "12px", fontWeight: 600,
     color: "var(--text-2)", marginBottom: "7px" }
-  const eyebrowSt = { fontSize: "11px", fontWeight: 700, color: "var(--accent)",
-    textTransform: "uppercase", letterSpacing: "0.15em" }
   const onFocus = e => e.target.style.borderColor = "rgba(26,255,110,0.5)"
   const onBlur  = e => e.target.style.borderColor = "rgba(255,255,255,0.1)"
+
+  const cover = serviceCover(service)
+  const related = (allData?.results || allData || [])
+    .filter(s => s.slug !== service.slug).slice(0, 3)
+  const modalidad = service.price_type_display || "A cotizar"
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
 
-      {/* Hero del servicio */}
-      {service.thumbnail && (
-        <div style={{ height: "clamp(260px, 42vw, 460px)", overflow: "hidden", position: "relative" }}>
-          <img src={mediaUrl(service.thumbnail)} alt={service.name}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-          <div style={{ position: "absolute", inset: 0,
-            background: "linear-gradient(to top, var(--bg) 2%, rgba(8,8,8,0.45) 55%, rgba(8,8,8,0.55) 100%)" }} />
+      {/* ── Hero con imagen difuminada ── */}
+      <div style={{ position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", inset: 0,
+          backgroundImage: `url(${cover})`, backgroundSize: "cover",
+          backgroundPosition: "center", filter: "saturate(1.05)" }} />
+        <div style={{ position: "absolute", inset: 0,
+          background: "linear-gradient(to bottom, rgba(8,8,8,0.55) 0%, rgba(8,8,8,0.8) 55%, var(--bg) 100%)" }} />
+        <div className="lp-container" style={{ position: "relative",
+          paddingTop: "clamp(110px, 13vw, 160px)", paddingBottom: "clamp(40px, 6vw, 72px)" }}>
+
+          {/* Breadcrumb */}
+          <div style={{ display: "flex", alignItems: "center", gap: "8px",
+            fontSize: "13px", color: "var(--text-3)", marginBottom: "22px" }}>
+            <Link to="/services" className="hover-accent" style={{ transition: "color var(--dur)" }}>Servicios</Link>
+            <span>/</span>
+            <span style={{ color: "var(--text-2)" }}>{service.name}</span>
+          </div>
+
+          {service.category && (
+            <p style={{ ...EYEBROW, marginBottom: "14px" }}>· {service.category.name}</p>
+          )}
+          <h1 className="display-bold" style={{ fontFamily: "var(--font-display)",
+            fontSize: "clamp(2.2rem, 5vw, 4rem)", fontWeight: 800, letterSpacing: "-0.035em",
+            lineHeight: 1.0, marginBottom: "18px", color: "#fff", maxWidth: "800px" }}>
+            {service.name}
+          </h1>
+          {service.short_description && (
+            <p style={{ fontSize: "clamp(15px,1.8vw,18px)", color: "rgba(255,255,255,0.82)",
+              lineHeight: 1.6, maxWidth: "620px", marginBottom: "26px" }}>
+              {service.short_description}
+            </p>
+          )}
+
+          {/* Chips meta */}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
+            <Chip Icon={Tag}>{service.price_display}</Chip>
+            <Chip Icon={Layers}>{modalidad}</Chip>
+            {service.duration_hours && (
+              <Chip Icon={Clock}>{service.duration_hours} hora{service.duration_hours !== 1 ? "s" : ""}</Chip>
+            )}
+            <Chip Icon={Zap}>Respuesta en 24 hs</Chip>
+          </div>
         </div>
-      )}
+      </div>
 
-      <div className="lp-container" style={{
-        paddingTop: service.thumbnail ? "clamp(24px, 3vw, 40px)" : "clamp(100px, 12vw, 140px)",
-        paddingBottom: "clamp(60px, 8vw, 100px)",
-        marginTop: service.thumbnail ? "clamp(-80px, -8vw, -40px)" : 0, position: "relative" }}>
+      {/* ── Contenido ── */}
+      <div className="lp-container" style={{ paddingBottom: "clamp(60px, 8vw, 100px)" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 400px",
+          gap: "clamp(24px, 3vw, 40px)", alignItems: "start" }} className="service-grid">
 
-        {/* Breadcrumb */}
-        <div style={{ display: "flex", alignItems: "center", gap: "8px",
-          fontSize: "13px", color: "var(--text-3)", marginBottom: "28px" }}>
-          <Link to="/services" className="hover-accent" style={{ transition: "color var(--dur)" }}>Servicios</Link>
-          <span>/</span>
-          <span style={{ color: "var(--text-2)" }}>{service.name}</span>
-        </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 380px",
-          gap: "clamp(32px, 5vw, 64px)", alignItems: "start" }} className="service-grid">
-
-          {/* Info */}
-          <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-            <div>
-              {service.category && (
-                <p style={{ ...eyebrowSt, marginBottom: "14px" }}>
-                  · {service.category.name}
-                </p>
-              )}
-              <h1 className="display-bold" style={{ fontFamily: "var(--font-display)",
-                fontSize: "clamp(2rem, 4vw, 3.5rem)", fontWeight: 800,
-                letterSpacing: "-0.03em", lineHeight: 1.02, marginBottom: "18px", color: "var(--text)" }}>
-                {service.name}
-              </h1>
-              <p style={{ fontFamily: "var(--font-display)", fontSize: "2rem", fontWeight: 800,
-                letterSpacing: "-0.02em", color: "var(--accent)", marginBottom: "20px" }}>
-                {service.price_display}
-              </p>
-              {service.short_description && (
-                <p style={{ fontSize: "16px", color: "var(--text-2)", lineHeight: 1.8 }}>
-                  {service.short_description}
-                </p>
-              )}
-            </div>
+          {/* Columna izquierda: cards */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
             {service.description && (
-              <div style={{ paddingTop: "24px", borderTop: "1px solid var(--border)" }}>
-                <p style={eyebrowSt}>· Descripción</p>
-                <RichText text={service.description} style={{ marginTop: "14px" }} />
+              <div style={CARD} data-testid="service-about-card">
+                <p style={EYEBROW}>· Sobre el servicio</p>
+                <div style={{ marginTop: "16px" }}>
+                  <RichText text={service.description} size="15.5px" />
+                </div>
               </div>
             )}
 
-            {/* Entregables */}
             {service.deliverables_list?.length > 0 && (
-              <div style={{ paddingTop: "24px", borderTop: "1px solid var(--border)" }}>
-                <p style={{ ...eyebrowSt, marginBottom: "16px" }}>· Qué incluye</p>
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <div style={CARD} data-testid="service-includes-card">
+                <p style={{ ...EYEBROW, marginBottom: "20px" }}>· Qué incluye</p>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                  gap: "14px" }}>
                   {service.deliverables_list.map((item, i) => (
-                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "12px" }}>
+                    <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: "12px",
+                      padding: "14px 16px", borderRadius: "14px",
+                      background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
                       <span style={{ width: "22px", height: "22px", borderRadius: "50%",
-                        background: "rgba(26,255,110,0.1)", border: "1px solid rgba(26,255,110,0.25)",
+                        background: "rgba(26,255,110,0.12)", border: "1px solid rgba(26,255,110,0.3)",
                         color: "var(--accent)", flexShrink: 0, marginTop: "1px",
                         display: "flex", alignItems: "center", justifyContent: "center" }}>
                         <Check size={13} strokeWidth={3} />
                       </span>
-                      <p style={{ fontSize: "14px", color: "var(--text-2)", lineHeight: 1.6 }}>{item}</p>
+                      <p style={{ fontSize: "14px", color: "var(--text-2)", lineHeight: 1.5 }}>{item}</p>
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Duración */}
-            {service.duration_hours && (
-              <div style={{ display: "flex", alignItems: "center", gap: "10px",
-                padding: "14px 18px", borderRadius: "var(--r-lg)", background: "#121212",
-                border: "1px solid rgba(255,255,255,0.06)", fontSize: "14px", color: "var(--text-2)" }}>
-                <span style={{ color: "var(--accent)", display: "flex" }}><Clock size={18} /></span>
-                Duración estimada: {service.duration_hours} hora{service.duration_hours !== 1 ? "s" : ""}
-              </div>
-            )}
+            {/* Cómo trabajamos */}
+            <div style={CARD} data-testid="service-process-card">
+              <p style={{ ...EYEBROW, marginBottom: "22px" }}>· Cómo trabajamos</p>
+              <ServiceProcess variant="card" />
+            </div>
           </div>
 
-          {/* Formulario */}
-          <div style={{ position: "sticky", top: "100px" }} className="service-form">
+          {/* Columna derecha: formulario sticky */}
+          <div style={{ position: "sticky", top: "96px", display: "flex",
+            flexDirection: "column", gap: "14px" }} className="service-form">
             <div style={{ background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
-              borderRadius: "var(--r-2xl)", overflow: "hidden" }}>
+              borderRadius: "22px", overflow: "hidden" }}>
 
-              <div style={{ padding: "20px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-                <p style={eyebrowSt}>· Solicitar</p>
-                <p style={{ fontSize: "16px", fontWeight: 700, fontFamily: "var(--font-display)",
-                  letterSpacing: "-0.01em", color: "var(--text)", marginTop: "8px" }}>
-                  Solicitar este servicio
-                </p>
-                <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "4px" }}>
-                  Te contactamos en menos de 24hs
+              {/* Encabezado con precio */}
+              <div style={{ padding: "22px 24px",
+                borderBottom: "1px solid rgba(255,255,255,0.06)",
+                background: "linear-gradient(135deg, rgba(26,255,110,0.06), transparent)" }}>
+                <p style={EYEBROW}>· Solicitar</p>
+                <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between",
+                  gap: "10px", marginTop: "10px" }}>
+                  <p style={{ fontFamily: "var(--font-display)", fontSize: "1.9rem", fontWeight: 800,
+                    letterSpacing: "-0.02em", color: "var(--accent)", lineHeight: 1 }}>
+                    {service.price_display}
+                  </p>
+                  <span style={{ fontSize: "12px", color: "var(--text-3)" }}>{modalidad}</span>
+                </div>
+                <p style={{ fontSize: "12.5px", color: "var(--text-3)", marginTop: "8px" }}>
+                  Dejanos tus datos y te contactamos en menos de 24 hs.
                 </p>
               </div>
 
@@ -212,12 +250,11 @@ export default function ServiceDetail() {
                 <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "14px" }}>
                   {error && (
                     <div data-testid="service-request-error" style={{ padding: "10px 14px",
-                      borderRadius: "var(--r-md)", background: "rgba(255,77,77,0.08)",
+                      borderRadius: "12px", background: "rgba(255,77,77,0.08)",
                       border: "1px solid rgba(255,77,77,0.2)", color: "var(--danger)", fontSize: "13px" }}>
                       {error}
                     </div>
                   )}
-
                   {[
                     { key: "name",  label: "Nombre",   type: "text",  placeholder: "Tu nombre" },
                     { key: "email", label: "Email",    type: "email", placeholder: "tu@email.com" },
@@ -231,14 +268,13 @@ export default function ServiceDetail() {
                         style={inputSt} onFocus={onFocus} onBlur={onBlur} />
                     </div>
                   ))}
-
                   <div>
                     <label style={labelSt}>Mensaje</label>
                     <textarea value={form.message} rows={3} placeholder="Contanos sobre tu proyecto..."
+                      data-testid="service-input-message"
                       onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
                       style={{ ...inputSt, resize: "vertical" }} onFocus={onFocus} onBlur={onBlur} />
                   </div>
-
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                     <div>
                       <label style={labelSt}>Presupuesto</label>
@@ -253,16 +289,21 @@ export default function ServiceDetail() {
                         style={inputSt} onFocus={onFocus} onBlur={onBlur} />
                     </div>
                   </div>
-
-                  <button
-                    data-testid="service-submit"
-                    onClick={() => mutation.mutate()}
-                    disabled={mutation.isPending || !form.name || !form.email}
+                  <button data-testid="service-submit"
+                    onClick={() => {
+                      if (!isAuthenticated) {
+                        showToast("Iniciá sesión para enviar tu solicitud", "error")
+                        navigate("/login")
+                        return
+                      }
+                      mutation.mutate()
+                    }}
+                    disabled={mutation.isPending || !form.name || !form.email || !form.message}
                     style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "10px",
-                      padding: "14px 14px 14px 24px", borderRadius: "var(--r-full)",
+                      padding: "14px 14px 14px 24px", borderRadius: "9999px",
                       background: "var(--accent)", color: "#000", border: "none", fontSize: "14px",
                       fontWeight: 700, cursor: "pointer", marginTop: "4px",
-                      opacity: (mutation.isPending || !form.name || !form.email) ? 0.6 : 1,
+                      opacity: (mutation.isPending || !form.name || !form.email || !form.message) ? 0.6 : 1,
                       boxShadow: "0 8px 30px rgba(26,255,110,0.25)" }}>
                     {mutation.isPending ? "Enviando..." : "Enviar solicitud"}
                     {!mutation.isPending && (
@@ -272,19 +313,66 @@ export default function ServiceDetail() {
                       </span>
                     )}
                   </button>
-
                   <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
                     style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                      padding: "12px", borderRadius: "var(--r-lg)", fontSize: "13px", fontWeight: 600,
+                      padding: "12px", borderRadius: "14px", fontSize: "13px", fontWeight: 600,
                       color: "#25d166", textDecoration: "none", background: "rgba(37,211,102,0.06)",
                       border: "1px solid rgba(37,211,102,0.15)" }}>
                     <MessageCircle size={16} /> Consultar por WhatsApp
                   </a>
+                  {!isAuthenticated && (
+                    <p style={{ fontSize: "11.5px", color: "var(--text-3)", textAlign: "center",
+                      lineHeight: 1.5 }}>
+                      Necesitás una cuenta para enviar la solicitud. También podés escribirnos por WhatsApp.
+                    </p>
+                  )}
                 </div>
               )}
             </div>
+
+            {/* Fila de confianza */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px",
+              padding: "16px 20px", borderRadius: "18px",
+              background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.06)" }}>
+              {[
+                [ShieldCheck, "Presupuesto sin compromiso"],
+                [Zap,         "Respuesta en menos de 24 hs"],
+                [Sparkles,    "Atención personalizada"],
+              ].map(([Icon, text]) => (
+                <div key={text} style={{ display: "flex", alignItems: "center", gap: "10px",
+                  fontSize: "13px", color: "var(--text-2)" }}>
+                  <Icon size={16} style={{ color: "var(--accent)", flexShrink: 0 }} /> {text}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
+
+        {/* ── Otros servicios ── */}
+        {related.length > 0 && (
+          <div style={{ marginTop: "clamp(56px, 8vw, 88px)" }} data-testid="service-related">
+            <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between",
+              gap: "16px", marginBottom: "28px", flexWrap: "wrap" }}>
+              <div>
+                <p style={EYEBROW}>· Seguí explorando</p>
+                <h2 className="display-bold" style={{ fontFamily: "var(--font-display)",
+                  fontSize: "clamp(1.6rem, 3vw, 2.4rem)", fontWeight: 800,
+                  letterSpacing: "-0.03em", marginTop: "10px", color: "var(--text)" }}>
+                  Otros servicios
+                </h2>
+              </div>
+              <Link to="/services" style={{ display: "inline-flex", alignItems: "center", gap: "8px",
+                fontSize: "14px", fontWeight: 600, color: "var(--text-2)", textDecoration: "none" }}
+                className="hover-accent">
+                Ver todos <ArrowRight size={15} />
+              </Link>
+            </div>
+            <div className="services-page-grid" style={{ display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "24px" }}>
+              {related.map((s, i) => <ServiceCard key={s.id} service={s} index={i} />)}
+            </div>
+          </div>
+        )}
       </div>
 
       <style>{`

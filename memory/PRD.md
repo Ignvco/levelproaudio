@@ -680,3 +680,10 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
   - `ShopFilters.jsx`: contadores por categoría/marca + logo de marca (iniciales como fallback).
   - `pages/dashboard/MyFavorites.jsx` + ruta `/dashboard/favorites` + link "Mis favoritos" en sidebar.
 - Verificado visualmente: grid+list, contadores, iniciales (AT), toggle de corazón (toast), dashboard con 2 favoritos. Todo OK.
+
+## 2026-07-30 — Servicios: rediseño premium (listado + detalle) + fix de envío
+- `components/services/ServiceProcess.jsx` (nuevo): pasos "Cómo trabajamos" (Consultás→Cotizamos→Ejecutamos→Entregamos), variantes card/grid.
+- `ServiceDetail.jsx` reescrito premium: hero con imagen difuminada + chips meta (precio, modalidad, duración, respuesta 24h); cards "Sobre el servicio" (RichText), "Qué incluye" (checklist en grid), "Cómo trabajamos"; formulario sticky con header de precio + fila de confianza; sección "Otros servicios" (related). Responsive.
+- `Services.jsx`: filtros de categoría con contador (services_count + total), sección "Cómo trabajamos", CTA pulida (sin emoji, ícono lucide).
+- FIX importante (bug preexistente): el formulario posteaba a `/services/requests/` (404/405). Corregido a `createServiceRequest` → `/service-requests/`. Además el campo Mensaje es obligatorio en backend → ahora requerido en el form (submit deshabilitado sin mensaje). Usuarios no logueados: submit redirige a /login + nota (el endpoint es IsAuthenticated).
+- Verificado E2E: envío logueado devuelve "Solicitud enviada" (201); vistas OK en escritorio y móvil.
