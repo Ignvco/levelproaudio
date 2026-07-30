@@ -65,7 +65,24 @@ function Navbar() {
     return () => document.removeEventListener("mousedown", fn)
   }, [])
 
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24)
+    window.addEventListener("scroll", onScroll, { passive: true })
+    onScroll()
+    return () => window.removeEventListener("scroll", onScroll)
+  }, [])
+
   return createPortal(
+    <>
+      {/* Scrim superior: al scrollear, el contenido se disuelve limpio bajo/alrededor de la píldora */}
+      <div aria-hidden="true" style={{
+        position: "fixed", top: 0, left: 0, right: 0,
+        height: "clamp(78px, 9vh, 104px)", zIndex: 99, pointerEvents: "none",
+        background: "linear-gradient(to bottom, var(--bg) 32%, rgba(8,8,8,0.62) 64%, transparent 100%)",
+        opacity: scrolled ? 1 : 0,
+        transition: "opacity 320ms var(--ease)",
+      }} />
     <header
       className="lp-navbar-desktop"
       style={{
@@ -81,11 +98,12 @@ function Navbar() {
         alignItems:      "center",
         gap:             "6px",
         padding:         "6px 6px 6px 22px",
-        background:      "rgba(15,15,15,0.85)",
+        background:      scrolled ? "rgba(15,15,15,0.95)" : "rgba(15,15,15,0.85)",
         backdropFilter:  "blur(20px) saturate(1.6)",
         WebkitBackdropFilter: "blur(20px) saturate(1.6)",
         border:          "1px solid rgba(255,255,255,0.08)",
         borderRadius:    "var(--r-full)",
+        transition:      "background 320ms var(--ease)",
         boxShadow: `
           0 20px 60px rgba(0,0,0,0.55),
           0 0 0 1px rgba(255,255,255,0.04) inset,
@@ -313,7 +331,8 @@ function Navbar() {
           )}
         </div>
       </div>
-    </header>,
+    </header>
+    </>,
     document.body
   )
 }

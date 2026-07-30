@@ -422,19 +422,19 @@ export default function Home() {
                 icon: "cart", title: "Tienda",
                 desc: "Equipamiento profesional de las marcas top de la industria — con stock real y precios en CLP.",
                 to: "/shop", cta: "ver tienda",
-                badge: "500", bg: s.pillar_shop_image_url,
+                badge: "500+ productos", bg: s.pillar_shop_image_url,
               },
               {
                 icon: "grad", title: "Academia",
                 desc: "Cursos técnicos en video con instructores del oficio. Producción, mezcla, masterización y más.",
                 to: "/academy", cta: "ver cursos",
-                badge: String(courses.length || 4), bg: s.pillar_academy_image_url,
+                badge: `${courses.length || 4} cursos`, bg: s.pillar_academy_image_url,
               },
               {
                 icon: "tools", title: "Servicios",
                 desc: "Mezcla, mastering, operación en vivo y asesoría técnica — contratados a medida de tu proyecto.",
                 to: "/services", cta: "agendar",
-                badge: String(services.length || 5), bg: s.pillar_services_image_url,
+                badge: `${services.length || 5} servicios`, bg: s.pillar_services_image_url,
               },
             ].map(p => (
               <Link key={p.title} to={p.to}
