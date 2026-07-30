@@ -397,6 +397,19 @@ function MobileDock() {
   ]
 
   return createPortal(
+    <>
+    {/* Logo fijo arriba al centro — siempre visible en mobile */}
+    <Link to="/" data-testid="mobile-logo-top" aria-label="Inicio"
+      style={{
+        position: "fixed", top: "18px", left: "50%",
+        transform: "translateX(-50%)", zIndex: 100,
+        display: "flex", alignItems: "center", justifyContent: "center",
+      }}>
+      <img src={logoImg} alt="LevelPro Audio" style={{
+        height: "26px", objectFit: "contain",
+        filter: "brightness(0) invert(1)", maxWidth: "150px",
+      }} />
+    </Link>
     <div
       className="lp-mobile-dock"
       style={{
@@ -469,7 +482,8 @@ function MobileDock() {
           )
         })}
       </div>
-    </div>,
+    </div>
+    </>,
     document.body
   )
 }
