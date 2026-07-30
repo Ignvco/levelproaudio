@@ -106,10 +106,9 @@ def create_mercadopago_preference(order: Order, provider: str) -> dict:
     )
 
     return {
-    "preference_id": preference["id"],
-    "init_point":    preference["init_point"],
-    "sandbox_url":   preference.get("sandbox_init_point", preference["init_point"]),
-}
+        "preference_id": preference["id"],
+        "init_point":    preference["init_point"],  # link de checkout REAL (producción)
+    }
 
 
 def process_mercadopago_webhook(data: dict, provider: str) -> None:
