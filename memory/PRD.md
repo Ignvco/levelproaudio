@@ -573,3 +573,9 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 - Mobile (≤768px): `.profile-card { padding:10px }` + `.profile-card__img { aspect-ratio:4/3 }` (idénticos a product card mobile).
 - **Fix real (la card, no la imagen)**: el footer del service card estaba apilado en vertical en mobile (stats arriba + botón abajo), lo que agrandaba la card. Se cambió a **fila horizontal** (`space-between`) igual que la buyrow del product card + `.profile-card__body` padding reducido y `.profile-card__desc` sin min-height. Card pasó de 472px → **428px** de alto.
 - Verificado a 393px: sin overflow (scrollW==clientWidth), footer 46px (== buyrow product).
+
+## 2026-07-30 — Página de Servicios: misma grilla que "Servicios destacados" del Home
+- El usuario reportó que las cards de la página `/services` se veían distintas a las de "Servicios destacados" del inicio. Causa real: **la grilla**, no el card (mismo componente `ServiceCard`). La página usaba `repeat(auto-fill, minmax(300px,1fr))` → 4 columnas (cards 313px) en desktop, mientras el Home usa `repeat(3,1fr)` (cards 426px).
+- `Services.jsx`: grid cambiada a `repeat(3, 1fr)` con `gap: var(--card-gap)` (skeleton y real).
+- `index.css`: agregados breakpoints `.services-page-grid` → 3 col base, 2 col ≤1024px, 1 col ≤640px (idéntico al `.services-grid` del Home).
+- Verificado a 1440px: Services page cards ahora 426px × 638px (imagen 443px), idénticas al Home.

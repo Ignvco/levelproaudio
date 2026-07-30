@@ -712,6 +712,16 @@ h1 em, h2 em, h3 em {
   max-width: 255px;
 }
 
+/* ── Services page grid: mismas columnas que "Servicios destacados" del Home ── */
+.services-page-grid { grid-template-columns: repeat(3, 1fr); }
+@media (max-width: 1024px) {
+  .services-page-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+@media (max-width: 640px) {
+  .services-page-grid { grid-template-columns: 1fr !important; }
+}
+
+
 @media (max-width: 1024px) {
   .eco-card { aspect-ratio: 16 / 8; }
 }
