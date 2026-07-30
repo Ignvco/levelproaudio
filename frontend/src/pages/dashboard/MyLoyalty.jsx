@@ -1,6 +1,7 @@
 // pages/dashboard/MyLoyalty.jsx — Página completa de puntos
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
+import { Award } from "lucide-react"
 import { getMyLoyalty } from "../../api/loyalty.api"
 
 const NIVELES = {
@@ -41,9 +42,9 @@ export default function MyLoyalty() {
           textTransform:"uppercase", marginBottom:"8px" }}>
           Programa de Fidelización
         </p>
-        <h1 style={{ fontFamily:"var(--font-serif)",
-          fontSize:"clamp(2rem, 4vw, 3rem)", fontWeight:300,
-          letterSpacing:"-0.02em" }}>
+        <h1 className="display-bold" style={{ fontFamily:"var(--font-display)",
+          fontSize:"clamp(1.7rem, 3vw, 2.4rem)", fontWeight:800,
+          letterSpacing:"-0.03em" }}>
           Mis puntos
         </h1>
       </div>
@@ -59,13 +60,16 @@ export default function MyLoyalty() {
         <div style={{ display:"flex", alignItems:"center",
           justifyContent:"space-between", flexWrap:"wrap", gap:"16px" }}>
           <div style={{ display:"flex", gap:"18px", alignItems:"center" }}>
-            <span style={{ fontSize:"56px" }}>{nivel.emoji}</span>
+            <span style={{ width:"64px", height:"64px", borderRadius:"50%",
+              background:`${nivel.color}18`, border:`1px solid ${nivel.color}55`,
+              color:nivel.color, display:"flex", alignItems:"center", justifyContent:"center",
+              flexShrink:0 }}><Award size={30} /></span>
             <div>
               <p style={{ fontSize:"11px", color:"var(--text-3)",
                 letterSpacing:"0.1em", textTransform:"uppercase",
                 marginBottom:"6px" }}>Nivel actual</p>
-              <p style={{ fontSize:"26px", fontWeight:500, color:nivel.color,
-                fontFamily:"var(--font-serif)", letterSpacing:"-0.01em" }}>
+              <p style={{ fontSize:"24px", fontWeight:800, color:nivel.color,
+                fontFamily:"var(--font-display)", letterSpacing:"-0.02em" }}>
                 {nivel.label}
               </p>
             </div>
@@ -74,8 +78,8 @@ export default function MyLoyalty() {
             <p style={{ fontSize:"11px", color:"var(--text-3)",
               letterSpacing:"0.1em", textTransform:"uppercase",
               marginBottom:"6px" }}>Puntos disponibles</p>
-            <p style={{ fontFamily:"var(--font-serif)", fontSize:"clamp(2rem, 5vw, 3.4rem)",
-              color:"var(--accent)", fontWeight:300, lineHeight:1,
+            <p style={{ fontFamily:"var(--font-display)", fontSize:"clamp(2rem, 5vw, 3.4rem)",
+              color:"var(--accent)", fontWeight:800, lineHeight:1, letterSpacing:"-0.03em",
               fontVariantNumeric:"tabular-nums" }}>
               {data.puntos_disponibles.toLocaleString("es-CL")}
             </p>
@@ -91,7 +95,7 @@ export default function MyLoyalty() {
             <div style={{ display:"flex", justifyContent:"space-between",
               fontSize:"12px", marginBottom:"10px" }}>
               <span style={{ color:"var(--text-3)" }}>
-                Progreso a {sigNivel.emoji} {sigNivel.label}
+                Progreso a {sigNivel.label}
               </span>
               <span style={{ color:sigNivel.color, fontWeight:600 }}>
                 {data.progreso_nivel}%

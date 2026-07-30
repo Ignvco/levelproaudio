@@ -650,3 +650,9 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
   - ActionCards con listas reales en `--surface-2`: "Pagos pendientes" (montos) + "Últimos pedidos" (badges de estado), con "Ver todo".
   - Barra de progreso de loyalty compacta.
 - Sidebar (pills) se mantiene. Verificado a 1440px sin overflow; datos reales del cliente de prueba.
+
+## 2026-07-30 — Sidebar app-style + páginas internas + detalle de curso unificados
+- **DashboardLayout.jsx**: sidebar agrupado por secciones (Panel / Mi actividad / Fidelización / Cuenta) con etiquetas uppercase (como el admin). NavLink pasó de pill verde grande a estilo sutil (activo = color accent + fondo surface-2, radius md, ícono thin). Seps ocultos en mobile.
+- **Páginas internas** (Profile, MyCourses, MyServices, MyDocuments, MyLoyalty, MyEntries): headers `font-serif` 300 → `font-display` 800; emojis reemplazados por íconos lucide (GraduationCap/Film, Wrench, FileText, Award para medallas). Loyalty: número y nivel en font-display; medalla con ícono Award en color del nivel.
+- **CourseDetail.jsx**: contenedor `.lp-container` + paddingTop para librar navbar; título/precio a font-display 800; emojis → lucide (Lock/Check/Play en lecciones, Film thumbnail, CreditCard/Globe/Landmark métodos de pago, Video/Clock/Smartphone/Infinity en "incluye", Check en inscripto/completada). Lógica de inscripción/pago/video intacta.
+- Verificado (cliente@test.com) a 1440px: sidebar agrupado, MyLoyalty, y CourseDetail renderizan sin overflow. Frontend compila (HMR OK).

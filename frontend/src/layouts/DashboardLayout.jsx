@@ -8,13 +8,17 @@ import { useAuthStore } from "../store/authStore"
 import logoImg from "../assets/logo.png"
 
 const NAV = [
+  { sep: "Panel" },
   { to: "/dashboard",           label: "Inicio",              Icon: LayoutDashboard, end: true },
+  { sep: "Mi actividad" },
   { to: "/dashboard/orders",    label: "Pedidos",             Icon: Package },
-  { to: "/dashboard/documents", label: "Documentos",          Icon: FileText },
   { to: "/dashboard/courses",   label: "Mis cursos",          Icon: PlayCircle },
   { to: "/dashboard/services",  label: "Servicios",           Icon: Wrench },
+  { to: "/dashboard/documents", label: "Documentos",          Icon: FileText },
+  { sep: "Fidelización" },
   { to: "/dashboard/loyalty",   label: "Mis puntos",          Icon: Star },
   { to: "/dashboard/rewards",   label: "Mis participaciones",  Icon: Gift },
+  { sep: "Cuenta" },
   { to: "/dashboard/profile",   label: "Perfil",              Icon: User },
 ]
 
@@ -43,28 +47,34 @@ export default function DashboardLayout({ children }) {
         </Link>
 
         {/* Nav */}
-        <nav style={{ display: "flex", flexDirection: "column", gap: "4px" }} className="dash-nav">
-          {NAV.map(({ to, label, Icon, end }) => (
+        <nav style={{ display: "flex", flexDirection: "column", gap: "2px" }} className="dash-nav">
+          {NAV.map((item, idx) => {
+            if (item.sep) return (
+              <p key={`sep-${idx}`} className="dash-sep" style={{ fontSize: "10px", fontWeight: 600,
+                color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em",
+                padding: "16px 12px 6px", opacity: 0.55 }}>{item.sep}</p>
+            )
+            const { to, label, Icon, end } = item
+            return (
             <NavLink key={to} to={to} end={end} data-testid={`dash-nav-${to.split("/").pop() || "home"}`}
               style={({ isActive }) => ({
-                display: "flex", alignItems: "center", gap: "12px",
-                padding: "11px 14px", borderRadius: "14px", fontSize: "14px",
+                display: "flex", alignItems: "center", gap: "11px",
+                padding: "9px 12px", borderRadius: "var(--r-md)", fontSize: "13px",
                 whiteSpace: "nowrap",
-                color: isActive ? "#000" : "var(--text-3)",
-                background: isActive ? "var(--accent)" : "transparent",
-                fontWeight: isActive ? 700 : 500,
-                boxShadow: isActive ? "0 6px 20px rgba(26,255,110,0.25)" : "none",
+                color: isActive ? "var(--accent)" : "var(--text-2)",
+                background: isActive ? "var(--surface-2)" : "transparent",
+                fontWeight: isActive ? 600 : 400,
                 transition: "all var(--dur) var(--ease)", textDecoration: "none",
               })}
               className="dash-nav-link">
               {({ isActive }) => (
                 <>
-                  <Icon size={18} strokeWidth={isActive ? 2.4 : 2} />
+                  <Icon size={16} strokeWidth={1.8} style={{ opacity: isActive ? 1 : 0.6, flexShrink: 0 }} />
                   {label}
                 </>
               )}
             </NavLink>
-          ))}
+          )})}
         </nav>
 
         <div style={{ flex: 1 }} className="dash-spacer" />
@@ -133,6 +143,7 @@ export default function DashboardLayout({ children }) {
             padding-bottom: 6px; -webkit-overflow-scrolling: touch;
           }
           .dash-nav-link { flex-shrink: 0; }
+          .dash-sep { display: none !important; }
           .dash-usercard { display: none !important; }
           .dash-backsite { display: none !important; }
         }

@@ -1,6 +1,7 @@
 // pages/dashboard/Courses.jsx
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
+import { GraduationCap, Film } from "lucide-react"
 import { getEnrollments } from "../../api/academy.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 
@@ -40,8 +41,8 @@ export default function Courses() {
           letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "8px" }}>
           Academia
         </p>
-        <h1 style={{ fontFamily: "var(--font-serif)", fontSize: "clamp(2rem, 4vw, 3rem)",
-          fontWeight: 300, letterSpacing: "-0.02em" }}>
+        <h1 className="display-bold" style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.7rem, 3vw, 2.4rem)",
+          fontWeight: 800, letterSpacing: "-0.03em" }}>
           Mis cursos
         </h1>
       </div>
@@ -57,9 +58,12 @@ export default function Courses() {
       {!isLoading && enrollments.length === 0 && (
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
           borderRadius: "var(--r-2xl)", padding: "64px 32px", textAlign: "center" }}>
-          <p style={{ fontSize: "48px", marginBottom: "16px" }}>🎓</p>
-          <h3 style={{ fontFamily: "var(--font-serif)", fontWeight: 300,
-            fontSize: "1.6rem", marginBottom: "8px" }}>
+          <div style={{ width: "64px", height: "64px", borderRadius: "50%",
+            background: "rgba(26,255,110,0.08)", border: "1px solid rgba(26,255,110,0.2)",
+            color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto 18px" }}><GraduationCap size={28} /></div>
+          <h3 className="display-bold" style={{ fontFamily: "var(--font-display)", fontWeight: 800,
+            fontSize: "1.4rem", letterSpacing: "-0.02em", marginBottom: "8px" }}>
             Sin cursos todavía
           </h3>
           <p style={{ fontSize: "14px", color: "var(--text-3)", marginBottom: "28px" }}>
@@ -96,8 +100,8 @@ export default function Courses() {
                   ) : (
                     <div style={{ width: "100%", height: "100%",
                       display: "flex", alignItems: "center",
-                      justifyContent: "center", fontSize: "28px" }}>
-                      🎬
+                      justifyContent: "center", color: "var(--text-3)" }}>
+                      <Film size={28} />
                     </div>
                   )}
                 </div>

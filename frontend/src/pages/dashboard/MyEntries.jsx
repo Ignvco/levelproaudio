@@ -105,9 +105,9 @@ export default function MyEntries() {
           textTransform:"uppercase", marginBottom:"8px" }}>
           LevelPro Rewards
         </p>
-        <h1 style={{ fontFamily:"var(--font-serif)",
-          fontSize:"clamp(2rem, 4vw, 3rem)", fontWeight:300,
-          letterSpacing:"-0.02em" }}>
+        <h1 className="display-bold" style={{ fontFamily:"var(--font-display)",
+          fontSize:"clamp(1.7rem, 3vw, 2.4rem)", fontWeight:800,
+          letterSpacing:"-0.03em" }}>
           Mis participaciones
         </h1>
       </div>

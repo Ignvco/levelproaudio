@@ -1,6 +1,7 @@
 // pages/dashboard/MyDocuments.jsx — Documentos tributarios del cliente
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
+import { FileText } from "lucide-react"
 import { getMyDocuments, downloadMyDocument } from "../../api/billing.api"
 import { showToast } from "../../components/ui/ToastNotification"
 
@@ -90,9 +91,9 @@ export default function MyDocuments() {
           textTransform:"uppercase", marginBottom:"8px" }}>
           Facturación
         </p>
-        <h1 style={{ fontFamily:"var(--font-serif)",
-          fontSize:"clamp(2rem, 4vw, 3rem)", fontWeight:300,
-          letterSpacing:"-0.02em" }}>
+        <h1 className="display-bold" style={{ fontFamily:"var(--font-display)",
+          fontSize:"clamp(1.7rem, 3vw, 2.4rem)", fontWeight:800,
+          letterSpacing:"-0.03em" }}>
           Mis documentos
         </h1>
         <p style={{ fontSize:"14px", color:"var(--text-3)", marginTop:"6px" }}>
@@ -108,7 +109,10 @@ export default function MyDocuments() {
           border:"1px solid var(--border)", borderRadius:"var(--r-2xl)",
           textAlign:"center",
         }}>
-          <p style={{ fontSize:"46px", marginBottom:"12px" }}>📄</p>
+          <div style={{ width: "60px", height: "60px", borderRadius: "50%",
+            background: "rgba(26,255,110,0.08)", border: "1px solid rgba(26,255,110,0.2)",
+            color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center",
+            margin: "0 auto 16px" }}><FileText size={26} /></div>
           <p style={{ fontSize:"15px", color:"var(--text-2)",
             marginBottom:"6px" }}>
             Todavía no tenés documentos emitidos.

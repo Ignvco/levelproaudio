@@ -10,6 +10,10 @@ import {
 import { createPayment } from "../api/payments.api"
 import { useAuthStore } from "../store/authStore"
 import { mediaUrl } from "../utils/mediaUrl"
+import {
+  Lock, Check, Play, Film, Frown, CreditCard, Globe, Landmark,
+  Video, Clock, Smartphone, Infinity as InfinityIcon, ArrowRight,
+} from "lucide-react"
 
 // ── Video Player ──────────────────────────────────────────────
 function VideoPlayer({ lesson, title }) {
@@ -96,7 +100,7 @@ function LessonItem({ lesson, isActive, isCompleted, onSelect }) {
         border:          isCompleted || isActive
           ? "none" : "1px solid var(--border)",
       }}>
-        {lesson.is_locked ? "🔒" : isCompleted ? "✓" : "▶"}
+        {lesson.is_locked ? <Lock size={13} /> : isCompleted ? <Check size={14} strokeWidth={3} /> : <Play size={12} fill="currentColor" />}
       </div>
 
       <div style={{ flex: 1, minWidth: 0 }}>
@@ -223,8 +227,8 @@ export default function CourseDetail() {
     ? Math.round((completedIds.size / allLessons.length) * 100) : 0
 
   if (isLoading) return (
-    <div style={{ maxWidth: "var(--container)", margin: "0 auto",
-      padding: "clamp(40px, 6vw, 80px) clamp(20px, 5vw, 60px)" }}>
+    <div className="lp-container" style={{
+      paddingTop: "clamp(96px, 12vw, 130px)", paddingBottom: "80px" }}>
       <div style={{ display: "grid",
         gridTemplateColumns: "1fr 340px", gap: "48px" }}>
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -240,10 +244,13 @@ export default function CourseDetail() {
   )
 
   if (isError || !course) return (
-    <div style={{ textAlign: "center", padding: "80px 24px" }}>
-      <p style={{ fontSize: "48px", marginBottom: "16px" }}>😕</p>
-      <h2 style={{ fontFamily: "var(--font-serif)", fontWeight: 300,
-        marginBottom: "16px" }}>
+    <div style={{ textAlign: "center", padding: "clamp(120px,16vw,160px) 24px" }}>
+      <div style={{ width: "72px", height: "72px", borderRadius: "50%",
+        background: "rgba(255,255,255,0.04)", border: "1px solid var(--border)",
+        color: "var(--text-3)", display: "flex", alignItems: "center", justifyContent: "center",
+        margin: "0 auto 20px" }}><Frown size={30} /></div>
+      <h2 className="display-bold" style={{ fontFamily: "var(--font-display)", fontWeight: 800,
+        letterSpacing: "-0.03em", marginBottom: "20px" }}>
         Curso no encontrado
       </h2>
       <Link to="/academy" className="btn btn-accent">← Academia</Link>
@@ -272,11 +279,11 @@ export default function CourseDetail() {
               background: "rgba(26,255,110,0.1)",
               border: "2px solid rgba(26,255,110,0.3)",
               display: "flex", alignItems: "center", justifyContent: "center",
-              margin: "0 auto 20px", fontSize: "32px", color: "var(--accent)" }}>
-              ✓
+              margin: "0 auto 20px", color: "var(--accent)" }}>
+              <Check size={34} strokeWidth={3} />
             </div>
-            <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.8rem",
-              fontWeight: 300, marginBottom: "10px" }}>
+            <h2 className="display-bold" style={{ fontFamily: "var(--font-display)", fontSize: "1.7rem",
+              fontWeight: 800, letterSpacing: "-0.02em", marginBottom: "10px" }}>
               ¡Inscripción exitosa!
             </h2>
             <p style={{ fontSize: "14px", color: "var(--text-2)",
@@ -299,8 +306,8 @@ export default function CourseDetail() {
         </div>
       )}
 
-      <div style={{ maxWidth: "var(--container)", margin: "0 auto",
-        padding: "clamp(40px, 6vw, 80px) clamp(20px, 5vw, 60px)" }}>
+      <div className="lp-container" style={{
+        paddingTop: "clamp(96px, 12vw, 130px)", paddingBottom: "clamp(60px, 8vw, 100px)" }}>
 
         {/* Breadcrumb */}
         <div style={{ display: "flex", alignItems: "center", gap: "8px",
@@ -330,8 +337,8 @@ export default function CourseDetail() {
                 <div style={{ display: "flex", justifyContent: "space-between",
                   alignItems: "flex-start", gap: "16px", flexWrap: "wrap" }}>
                   <div style={{ flex: 1 }}>
-                    <h2 style={{ fontFamily: "var(--font-serif)", fontSize: "1.5rem",
-                      fontWeight: 300, marginBottom: "6px" }}>
+                    <h2 style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem",
+                      fontWeight: 700, letterSpacing: "-0.02em", marginBottom: "6px" }}>
                       {activeLesson.title}
                     </h2>
                     {activeLesson.description && (
@@ -362,7 +369,7 @@ export default function CourseDetail() {
                         transition:   "all var(--dur) var(--ease)",
                       }}>
                       {completedIds.has(activeLesson.id)
-                        ? "✓ Completada" : "Marcar completa"}
+                        ? <><Check size={14} strokeWidth={3} /> Completada</> : "Marcar completa"}
                     </button>
                   )}
                 </div>
@@ -392,7 +399,7 @@ export default function CourseDetail() {
                   <img src={mediaUrl(course.thumbnail)} alt={course.title}
                     style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 ) : (
-                  <span style={{ fontSize: "80px" }}>🎬</span>
+                  <Film size={72} style={{ color: "var(--text-3)" }} />
                 )}
               </div>
             )}
@@ -413,9 +420,9 @@ export default function CourseDetail() {
                   </span>
                 ))}
               </div>
-              <h1 style={{ fontFamily: "var(--font-serif)",
-                fontSize: "clamp(1.8rem, 3.5vw, 3rem)", fontWeight: 300,
-                letterSpacing: "-0.02em", marginBottom: "14px" }}>
+              <h1 className="display-bold" style={{ fontFamily: "var(--font-display)",
+                fontSize: "clamp(1.9rem, 3.5vw, 3rem)", fontWeight: 800,
+                letterSpacing: "-0.03em", lineHeight: 1.05, marginBottom: "14px" }}>
                 {course.title}
               </h1>
               {course.description && (
@@ -461,8 +468,8 @@ export default function CourseDetail() {
 
               {/* Precio */}
               <div style={{ padding: "24px 24px 20px" }}>
-                <p style={{ fontFamily: "var(--font-serif)", fontSize: "2.4rem",
-                  lineHeight: 1, marginBottom: "4px",
+                <p style={{ fontFamily: "var(--font-display)", fontSize: "2.4rem",
+                  lineHeight: 1, marginBottom: "4px", fontWeight: 800, letterSpacing: "-0.03em",
                   color: course.is_free ? "var(--accent)" : "var(--text)" }}>
                   {course.is_free ? "Gratis"
                     : `$${Number(course.price).toLocaleString("es-CL")}`}
@@ -484,7 +491,7 @@ export default function CourseDetail() {
                       background: "rgba(26,255,110,0.06)",
                       border: "1px solid rgba(26,255,110,0.2)",
                       fontSize: "13px", color: "var(--accent)" }}>
-                      <span>✓</span>
+                      <Check size={14} strokeWidth={3} />
                       <span>Inscripto en este curso</span>
                     </div>
                     <ProgressBar pct={localProgress} />
@@ -516,9 +523,9 @@ export default function CourseDetail() {
                       Método de pago:
                     </p>
                     {[
-                      { id: "mercadopago_cl", label: "MercadoPago", icon: "💳" },
-                      { id: "paypal",         label: "PayPal",      icon: "🌐" },
-                      { id: "global66",       label: "Transferencia",icon: "🏦" },
+                      { id: "mercadopago_cl", label: "MercadoPago", Icon: CreditCard },
+                      { id: "paypal",         label: "PayPal",      Icon: Globe },
+                      { id: "global66",       label: "Transferencia",Icon: Landmark },
                     ].map(m => (
                       <button key={m.id} type="button"
                         onClick={() => setPaymentMethod(m.id)}
@@ -533,7 +540,7 @@ export default function CourseDetail() {
                           transition: "all var(--dur) var(--ease)",
                           width: "100%",
                         }}>
-                        <span style={{ fontSize: "16px" }}>{m.icon}</span>
+                        <span style={{ display: "flex", color: "var(--text-2)" }}><m.Icon size={18} /></span>
                         <span style={{ fontSize: "13px" }}>{m.label}</span>
                       </button>
                     ))}
@@ -542,7 +549,7 @@ export default function CourseDetail() {
                       className="btn btn-accent"
                       style={{ justifyContent: "center", marginTop: "4px",
                         width: "100%", opacity: payMutation.isPending ? 0.7 : 1 }}>
-                      {payMutation.isPending ? "Redirigiendo..." : "Ir al pago →"}
+                      {payMutation.isPending ? "Redirigiendo..." : "Ir al pago"}
                     </button>
                     <button onClick={() => { setShowPayment(false); setPurchaseOrderId(null) }}
                       style={{ fontSize: "12px", color: "var(--text-3)",
@@ -562,14 +569,14 @@ export default function CourseDetail() {
                     Este curso incluye
                   </p>
                   {[
-                    { icon: "📹", text: `${course.total_lessons} lecciones en video` },
-                    { icon: "⏱️", text: `${course.total_duration} min de contenido` },
-                    { icon: "📱", text: "Acceso desde cualquier dispositivo" },
-                    { icon: "♾️", text: "Acceso de por vida" },
-                  ].map(({ icon, text }) => (
+                    { Icon: Video, text: `${course.total_lessons} lecciones en video` },
+                    { Icon: Clock, text: `${course.total_duration} min de contenido` },
+                    { Icon: Smartphone, text: "Acceso desde cualquier dispositivo" },
+                    { Icon: InfinityIcon, text: "Acceso de por vida" },
+                  ].map(({ Icon, text }) => (
                     <div key={text} style={{ display: "flex", alignItems: "center",
                       gap: "10px", fontSize: "13px", color: "var(--text-2)" }}>
-                      <span style={{ fontSize: "15px" }}>{icon}</span>
+                      <span style={{ display: "flex", color: "var(--accent)" }}><Icon size={16} /></span>
                       <span>{text}</span>
                     </div>
                   ))}
