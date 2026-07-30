@@ -183,6 +183,13 @@ def configure_paypal():
 def create_paypal_order(order: Order) -> dict:
     configure_paypal()
 
+    # PayPal no soporta CLP → convertimos el total a USD con una tasa configurable.
+    from decimal import Decimal, ROUND_HALF_UP
+    rate = Decimal(str(settings.USD_CLP_RATE or 1))
+    total_usd = (Decimal(str(order.total)) / rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    if total_usd < Decimal("1.00"):
+        total_usd = Decimal("1.00")  # PayPal exige mínimo
+
     paypal_payment = paypalrestsdk.Payment({
         "intent": "sale",
         "payer":  {"payment_method": "paypal"},
@@ -191,23 +198,12 @@ def create_paypal_order(order: Order) -> dict:
             "cancel_url": f"{settings.FRONTEND_URL}/payment/failure?order={order.id}",
         },
         "transactions": [{
-            "item_list": {
-                "items": [
-                    {
-                        "name":     item.product_name,
-                        "sku":      str(item.id),
-                        "price":    f"{float(item.price):.2f}",
-                        "currency": "USD",
-                        "quantity": item.quantity,
-                    }
-                    for item in order.items.all()
-                ]
-            },
             "amount": {
-                "total":    f"{float(order.total):.2f}",
+                "total":    f"{total_usd:.2f}",
                 "currency": "USD",
             },
-            "description": f"LevelPro Audio — Orden #{str(order.id)[:8].upper()}",
+            "description": f"LevelPro Audio — Orden #{str(order.id)[:8].upper()} "
+                           f"(${float(order.total):,.0f} CLP)",
         }],
     })
 

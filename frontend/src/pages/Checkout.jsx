@@ -125,7 +125,7 @@ export default function Checkout() {
         clearCart()
         navigate(`/payment/transfer/${order.id}`, { state: { transferData: paymentData } })
       } else if (selectedMethod === "mercadopago_cl" || selectedMethod === "mercadopago_ar") {
-        window.location.href = paymentData.sandbox_url || paymentData.init_point
+        window.location.href = paymentData.init_point || paymentData.sandbox_url
       } else if (selectedMethod === "paypal") {
         window.location.href = paymentData.approve_url
       }

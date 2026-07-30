@@ -711,3 +711,8 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
   - Credenciales MP/PayPal faltantes o inválidas en el entorno de producción.
   - PAYPAL_MODE default "sandbox": para pagos reales debe ser "live" con credenciales live.
 - Acción pendiente del usuario: redeploy + abrir /api/v1/payments/diagnostics/ logueado como admin y compartir el resultado (o setear las env vars de producción).
+
+## 2026-07-30 — Fixes pago producción (post credenciales)
+- MP iba a sandbox: `Checkout.jsx` usaba `sandbox_url || init_point`. Cambiado a `init_point || sandbox_url` (usa el link real de producción).
+- PayPal cobraba el monto CLP como USD (140.000 CLP → 140.000 USD). PayPal no soporta CLP. Fix en `create_paypal_order`: convierte CLP→USD con tasa configurable `USD_CLP_RATE` (default 950 CLP/USD), manda `amount.total` en USD y quita `item_list` (evita descuadres). Descripción incluye el monto CLP original. Nuevo setting `USD_CLP_RATE` (env.float) en base.py.
+- Verificado: conversión correcta (140.000 CLP → 147,37 USD a tasa 950). Requiere redeploy a producción. Recomendado setear USD_CLP_RATE al tipo de cambio actual.

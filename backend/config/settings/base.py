@@ -186,6 +186,10 @@ PAYPAL_CLIENT_ID     = env("PAYPAL_CLIENT_ID",     default="")
 PAYPAL_CLIENT_SECRET = env("PAYPAL_CLIENT_SECRET", default="")
 PAYPAL_MODE          = env("PAYPAL_MODE",          default="sandbox")
 
+# Tasa de conversión CLP → USD para PayPal (CLP por 1 USD). PayPal no acepta CLP.
+# Ajustá según el tipo de cambio actual, o seteá USD_CLP_RATE en el entorno.
+USD_CLP_RATE = env.float("USD_CLP_RATE", default=950.0)
+
 # ── Global66 ─────────────────────────────────────────────────
 GLOBAL66_ALIAS        = env("GLOBAL66_ALIAS",        default="")
 GLOBAL66_ACCOUNT_NAME = env("GLOBAL66_ACCOUNT_NAME", default="LevelPro Audio")
