@@ -1,10 +1,14 @@
-// pages/Checkout.jsx
+// pages/Checkout.jsx — Checkout estilo editorial premium
 /* eslint-disable react-hooks/immutability */
 import { useState } from "react"
 import { useNavigate, Link } from "react-router-dom"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import {
+  ArrowLeft, ArrowRight, User, MapPin, CreditCard,
+  Globe, Landmark, ShieldCheck, ShoppingBag,
+} from "lucide-react"
 import api from "../api/client"
 import { createPayment } from "../api/payments.api"
 import { useCartStore } from "../store/cartStore"
@@ -22,15 +26,25 @@ const schema = z.object({
 })
 
 const PAYMENT_METHODS = [
-  { id: "mercadopago_cl", label: "MercadoPago",   icon: "💳", desc: "Tarjetas, Khipu, efectivo" },
-  { id: "paypal",         label: "PayPal",         icon: "🌐", desc: "Tarjetas internacionales"  },
-  { id: "global66",       label: "Transferencia",  icon: "🏦", desc: "Global66 · 24hs hábiles"  },
+  { id: "mercadopago_cl", label: "MercadoPago",  Icon: CreditCard, desc: "Tarjetas, Khipu, efectivo" },
+  { id: "paypal",         label: "PayPal",        Icon: Globe,      desc: "Tarjetas internacionales"  },
+  { id: "global66",       label: "Transferencia", Icon: Landmark,   desc: "Global66 · 24hs hábiles"  },
 ]
+
+function Eyebrow({ children }) {
+  return (
+    <p style={{ fontFamily: "var(--font-sans)", fontSize: "11px",
+      color: "var(--accent)", textTransform: "uppercase",
+      letterSpacing: "0.15em", fontWeight: 700 }}>
+      {children}
+    </p>
+  )
+}
 
 function Field({ label, error, children }) {
   return (
     <div>
-      <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+      <label style={{ display: "block", fontSize: "12px", fontWeight: 600,
         color: "var(--text-2)", marginBottom: "8px", letterSpacing: "0.02em" }}>
         {label}
       </label>
@@ -44,11 +58,32 @@ function Field({ label, error, children }) {
   )
 }
 
+// Section — card oscura con encabezado + ícono lucide
+function Section({ title, icon: Icon, children }) {
+  return (
+    <div style={{ background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
+      borderRadius: "var(--r-2xl)", overflow: "hidden" }}>
+      <div style={{ padding: "16px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)",
+        display: "flex", alignItems: "center", gap: "12px" }}>
+        <span style={{ width: "34px", height: "34px", borderRadius: "50%",
+          background: "rgba(26,255,110,0.08)", border: "1px solid rgba(26,255,110,0.2)",
+          color: "var(--accent)", display: "flex", alignItems: "center",
+          justifyContent: "center", flexShrink: 0 }}>
+          <Icon size={16} />
+        </span>
+        <p style={{ fontFamily: "var(--font-display)", fontSize: "15px",
+          fontWeight: 700, letterSpacing: "-0.01em", color: "var(--text)" }}>{title}</p>
+      </div>
+      <div style={{ padding: "24px" }}>{children}</div>
+    </div>
+  )
+}
+
 export default function Checkout() {
   const [selectedMethod, setSelectedMethod] = useState("mercadopago_cl")
   const [isLoading, setIsLoading]           = useState(false)
   const [serverError, setServerError]       = useState("")
-  const { items, clearCart, getTotal, pointsToRedeem, setPointsToRedeem } = useCartStore()
+  const { items, clearCart, getTotal, pointsToRedeem } = useCartStore()
   const { user }                            = useAuthStore()
   const navigate                            = useNavigate()
   const total                               = getTotal()
@@ -101,168 +136,157 @@ export default function Checkout() {
     }
   }
 
+  const pageWrap = {
+    background: "var(--bg)", minHeight: "100vh",
+    paddingTop: "clamp(100px, 12vw, 140px)",
+    paddingBottom: "clamp(60px, 8vw, 100px)",
+  }
+
   if (!items.length) return (
-    <div style={{ minHeight: "80vh", display: "flex", alignItems: "center",
-      justifyContent: "center", flexDirection: "column", gap: "16px",
-      padding: "40px" }}>
-      <span style={{ fontSize: "48px" }}>🛒</span>
-      <p style={{ color: "var(--text-2)", fontSize: "15px" }}>
-        Tu carrito está vacío.
-      </p>
-      <Link to="/shop" className="btn btn-accent">Ir a la tienda</Link>
+    <div style={pageWrap}>
+      <div className="lp-container" style={{ display: "flex", flexDirection: "column",
+        alignItems: "center", justifyContent: "center", gap: "22px",
+        textAlign: "center", minHeight: "50vh" }} data-testid="checkout-empty">
+        <div style={{ width: "76px", height: "76px", borderRadius: "50%",
+          background: "rgba(26,255,110,0.08)", border: "1px solid rgba(26,255,110,0.2)",
+          color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <ShoppingBag size={34} />
+        </div>
+        <p style={{ color: "var(--text-2)", fontSize: "15px" }}>Tu carrito está vacío.</p>
+        <Link to="/shop" style={{ display: "inline-flex", alignItems: "center", gap: "10px",
+          padding: "14px 14px 14px 24px", borderRadius: "var(--r-full)",
+          background: "var(--accent)", color: "#000", fontSize: "14px", fontWeight: 700,
+          textDecoration: "none", boxShadow: "0 8px 30px rgba(26,255,110,0.3)" }}>
+          Ir a la tienda
+          <span style={{ width: "26px", height: "26px", borderRadius: "50%", background: "#000",
+            color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <ArrowRight size={14} />
+          </span>
+        </Link>
+      </div>
     </div>
   )
 
   return (
-    <div style={{ background: "var(--bg)", minHeight: "100vh",
-      padding: "clamp(40px, 6vw, 80px) 0" }}>
-      <div style={{ maxWidth: "var(--container)", margin: "0 auto",
-        padding: "0 clamp(20px, 5vw, 60px)" }}>
+    <div style={pageWrap} data-testid="checkout-page">
+      <div className="lp-container">
 
         {/* Header */}
-        <div style={{ marginBottom: "48px" }}>
-          <Link to="/cart" style={{ fontSize: "13px", color: "var(--text-3)",
-            display: "inline-flex", alignItems: "center", gap: "6px",
-            marginBottom: "16px", transition: "color var(--dur)" }}
-            className="hover-accent">
-            ← Volver al carrito
+        <div style={{ marginBottom: "clamp(28px, 4vw, 44px)" }}>
+          <Link to="/cart" data-testid="checkout-back" style={{ fontSize: "13px",
+            color: "var(--text-3)", display: "inline-flex", alignItems: "center", gap: "7px",
+            marginBottom: "18px", textDecoration: "none", transition: "color var(--dur)" }}
+            onMouseEnter={e => e.currentTarget.style.color = "var(--text)"}
+            onMouseLeave={e => e.currentTarget.style.color = "var(--text-3)"}>
+            <ArrowLeft size={14} /> Volver al carrito
           </Link>
-          <h1 style={{ fontFamily: "var(--font-serif)",
-            fontSize: "clamp(2rem, 5vw, 4rem)",
-            fontWeight: 300, letterSpacing: "-0.02em" }}>
-            Checkout
+          <Eyebrow>· Pago seguro</Eyebrow>
+          <h1 className="display-bold" style={{ fontFamily: "var(--font-display)",
+            fontSize: "clamp(2rem, 4vw, 3.2rem)", fontWeight: 800,
+            letterSpacing: "-0.03em", lineHeight: 1, marginTop: "12px", color: "var(--text)" }}>
+            Finalizá tu compra
           </h1>
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)}>
-          <div style={{ display: "grid",
-            gridTemplateColumns: "1fr 360px", gap: "48px",
-            alignItems: "start" }}
-            className="checkout-grid"
-          >
-            {/* Columna izquierda */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 380px",
+            gap: "clamp(24px, 3vw, 40px)", alignItems: "start" }} className="checkout-grid">
 
-              {/* Datos de contacto */}
-              <Section title="Datos de contacto" icon="◈">
-                <div style={{ display: "grid",
-                  gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+            {/* Columna izquierda */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
+              <Section title="Datos de contacto" icon={User}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
                   <Field label="Nombre" error={errors.first_name?.message}>
-                    <input {...register("first_name")} className="input"
-                      placeholder="Juan" />
+                    <input {...register("first_name")} className="input" placeholder="Juan" />
                   </Field>
                   <Field label="Apellido" error={errors.last_name?.message}>
-                    <input {...register("last_name")} className="input"
-                      placeholder="García" />
+                    <input {...register("last_name")} className="input" placeholder="García" />
                   </Field>
                 </div>
-                <div style={{ display: "grid",
-                  gridTemplateColumns: "1fr 1fr", gap: "14px", marginTop: "14px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
+                  gap: "14px", marginTop: "14px" }}>
                   <Field label="Email" error={errors.email?.message}>
-                    <input type="email" {...register("email")} className="input"
-                      placeholder="tu@email.com" />
+                    <input type="email" {...register("email")} className="input" placeholder="tu@email.com" />
                   </Field>
                   <Field label="Teléfono" error={errors.phone?.message}>
-                    <input {...register("phone")} className="input"
-                      placeholder="+56 9 1234 5678" />
+                    <input {...register("phone")} className="input" placeholder="+56 9 1234 5678" />
                   </Field>
                 </div>
               </Section>
 
-              {/* Dirección de envío */}
-              <Section title="Dirección de envío" icon="◫">
+              <Section title="Dirección de envío" icon={MapPin}>
                 <Field label="Calle y número" error={errors.address_street?.message}>
-                  <input {...register("address_street")} className="input"
-                    placeholder="Av. Providencia 1234" />
+                  <input {...register("address_street")} className="input" placeholder="Av. Providencia 1234" />
                 </Field>
-                <div style={{ display: "grid",
-                  gridTemplateColumns: "1fr 1fr", gap: "14px", marginTop: "14px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr",
+                  gap: "14px", marginTop: "14px" }}>
                   <Field label="Ciudad" error={errors.address_city?.message}>
-                    <input {...register("address_city")} className="input"
-                      placeholder="Santiago" />
+                    <input {...register("address_city")} className="input" placeholder="Santiago" />
                   </Field>
                   <Field label="Región" error={errors.address_province?.message}>
-                    <input {...register("address_province")} className="input"
-                      placeholder="Metropolitana" />
+                    <input {...register("address_province")} className="input" placeholder="Metropolitana" />
                   </Field>
                 </div>
                 <div style={{ marginTop: "14px" }}>
                   <Field label="Notas (opcional)">
-                    <textarea {...register("notes")} className="input"
-                      rows={2} style={{ resize: "none" }}
-                      placeholder="Instrucciones especiales de entrega..." />
+                    <textarea {...register("notes")} className="input" rows={2}
+                      style={{ resize: "none" }} placeholder="Instrucciones especiales de entrega..." />
                   </Field>
                 </div>
               </Section>
 
-              {/* Método de pago */}
-              <Section title="Método de pago" icon="◎">
+              <Section title="Método de pago" icon={CreditCard}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {PAYMENT_METHODS.map(m => (
-                    <button key={m.id} type="button"
-                      onClick={() => setSelectedMethod(m.id)}
-                      style={{
-                        display:    "flex",
-                        alignItems: "center",
-                        gap:        "14px",
-                        padding:    "16px 18px",
-                        borderRadius: "var(--r-xl)",
-                        textAlign:  "left",
-                        cursor:     "pointer",
-                        background: selectedMethod === m.id
-                          ? "rgba(26,255,110,0.04)" : "var(--surface-2)",
-                        border:     `1px solid ${selectedMethod === m.id
-                          ? "rgba(26,255,110,0.3)" : "var(--border)"}`,
-                        transition: "all var(--dur) var(--ease)",
-                        width:      "100%",
-                      }}>
-                      {/* Radio */}
-                      <div style={{
-                        width:           "18px",
-                        height:          "18px",
-                        borderRadius:    "50%",
-                        border:          `2px solid ${selectedMethod === m.id
-                          ? "var(--accent)" : "var(--border)"}`,
-                        display:         "flex",
-                        alignItems:      "center",
-                        justifyContent:  "center",
-                        flexShrink:      0,
-                        transition:      "border-color var(--dur)",
-                      }}>
-                        {selectedMethod === m.id && (
-                          <div style={{ width: "8px", height: "8px",
-                            borderRadius: "50%", background: "var(--accent)" }} />
-                        )}
-                      </div>
-                      <span style={{ fontSize: "22px" }}>{m.icon}</span>
-                      <div>
-                        <p style={{ fontSize: "14px", fontWeight: 500,
-                          marginBottom: "2px" }}>{m.label}</p>
-                        <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                          {m.desc}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
+                  {PAYMENT_METHODS.map(m => {
+                    const active = selectedMethod === m.id
+                    return (
+                      <button key={m.id} type="button"
+                        data-testid={`checkout-method-${m.id}`}
+                        onClick={() => setSelectedMethod(m.id)}
+                        style={{
+                          display: "flex", alignItems: "center", gap: "14px",
+                          padding: "16px 18px", borderRadius: "var(--r-xl)",
+                          textAlign: "left", cursor: "pointer", width: "100%",
+                          background: active ? "rgba(26,255,110,0.05)" : "rgba(255,255,255,0.03)",
+                          border: `1px solid ${active ? "rgba(26,255,110,0.35)" : "rgba(255,255,255,0.08)"}`,
+                          transition: "all var(--dur) var(--ease)",
+                        }}>
+                        <div style={{ width: "18px", height: "18px", borderRadius: "50%",
+                          border: `2px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          flexShrink: 0, transition: "border-color var(--dur)" }}>
+                          {active && <div style={{ width: "8px", height: "8px",
+                            borderRadius: "50%", background: "var(--accent)" }} />}
+                        </div>
+                        <span style={{ color: active ? "var(--accent)" : "var(--text-2)",
+                          display: "flex", alignItems: "center" }}>
+                          <m.Icon size={22} />
+                        </span>
+                        <div>
+                          <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)",
+                            marginBottom: "2px" }}>{m.label}</p>
+                          <p style={{ fontSize: "12px", color: "var(--text-3)" }}>{m.desc}</p>
+                        </div>
+                      </button>
+                    )
+                  })}
                 </div>
               </Section>
             </div>
 
             {/* Resumen sticky */}
-            <div style={{
-              background:   "var(--surface)",
-              border:       "1px solid var(--border)",
-              borderRadius: "var(--r-2xl)",
-              padding:      "28px",
-              position:     "sticky",
-              top:          "88px",
-            }}>
-              <h2 style={{ fontSize: "15px", fontWeight: 500,
-                marginBottom: "20px" }}>
-                Tu pedido
+            <div data-testid="checkout-summary" style={{
+              background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: "var(--r-2xl)", padding: "26px",
+              position: "sticky", top: "100px" }}>
+              <Eyebrow>· Tu pedido</Eyebrow>
+              <h2 style={{ fontFamily: "var(--font-display)", fontSize: "18px",
+                fontWeight: 700, letterSpacing: "-0.01em", margin: "10px 0 20px",
+                color: "var(--text)" }}>
+                Resumen
               </h2>
 
-              {/* Items */}
               <div style={{ display: "flex", flexDirection: "column",
                 gap: "10px", marginBottom: "16px" }}>
                 {items.map(item => (
@@ -272,67 +296,75 @@ export default function Checkout() {
                     <span style={{ color: "var(--text-2)", overflow: "hidden",
                       textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
                       {item.product.name}
-                      <span style={{ color: "var(--text-3)" }}>
-                        {" "}×{item.quantity}
-                      </span>
+                      <span style={{ color: "var(--text-3)" }}> ×{item.quantity}</span>
                     </span>
-                    <span style={{ flexShrink: 0, fontWeight: 500 }}>
+                    <span style={{ flexShrink: 0, color: "var(--text-2)", fontWeight: 600,
+                      fontVariantNumeric: "tabular-nums" }}>
                       ${(Number(item.product.price) * item.quantity).toLocaleString("es-CL")}
                     </span>
                   </div>
                 ))}
               </div>
 
-              {/* Total */}
-              <div style={{ borderTop: "1px solid var(--border)",
-                paddingTop: "16px", marginBottom: "24px",
-                display: "flex", justifyContent: "space-between",
+              <div style={{ borderTop: "1px solid var(--border)", paddingTop: "16px",
+                marginBottom: "24px", display: "flex", justifyContent: "space-between",
                 alignItems: "baseline" }}>
-                <span style={{ fontSize: "14px", fontWeight: 500 }}>Total</span>
-                <span style={{ fontFamily: "var(--font-serif)", fontSize: "2rem" }}>
+                <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)" }}>Total</span>
+                <span data-testid="checkout-total" style={{ fontFamily: "var(--font-display)",
+                  fontSize: "2rem", fontWeight: 800, letterSpacing: "-0.03em",
+                  color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>
                   ${Number(total || 0).toLocaleString("es-CL")}
                 </span>
               </div>
 
-              {/* Método seleccionado */}
               {selectedMethod && (
                 <div style={{ display: "flex", alignItems: "center", gap: "10px",
-                  padding: "10px 14px", borderRadius: "var(--r-lg)",
-                  background: "rgba(26,255,110,0.04)",
-                  border: "1px solid rgba(26,255,110,0.12)",
-                  fontSize: "13px", marginBottom: "16px",
-                  color: "var(--text-2)" }}>
-                  <span>{PAYMENT_METHODS.find(m => m.id === selectedMethod)?.icon}</span>
-                  <span>{PAYMENT_METHODS.find(m => m.id === selectedMethod)?.label}</span>
+                  padding: "12px 14px", borderRadius: "var(--r-lg)",
+                  background: "rgba(26,255,110,0.05)", border: "1px solid rgba(26,255,110,0.15)",
+                  fontSize: "13px", marginBottom: "16px", color: "var(--text)" }}>
+                  {(() => {
+                    const m = PAYMENT_METHODS.find(m => m.id === selectedMethod)
+                    return m ? <><span style={{ color: "var(--accent)", display: "flex" }}><m.Icon size={16} /></span><span>{m.label}</span></> : null
+                  })()}
                 </div>
               )}
 
               {serverError && (
-                <div style={{ padding: "12px 14px", borderRadius: "var(--r-md)",
-                  background: "rgba(255,77,77,0.08)",
-                  border: "1px solid rgba(255,77,77,0.2)",
-                  color: "var(--danger)", fontSize: "13px",
-                  marginBottom: "14px" }}>
+                <div data-testid="checkout-error" style={{ padding: "12px 14px",
+                  borderRadius: "var(--r-md)", background: "rgba(255,77,77,0.08)",
+                  border: "1px solid rgba(255,77,77,0.2)", color: "var(--danger)",
+                  fontSize: "13px", marginBottom: "14px" }}>
                   {serverError}
                 </div>
               )}
 
               <button type="submit" disabled={isLoading || !selectedMethod}
-                className="btn btn-accent"
-                style={{ width: "100%", justifyContent: "center",
-                  fontSize: "15px", padding: "15px",
-                  opacity: isLoading ? 0.7 : 1 }}>
+                data-testid="checkout-submit"
+                style={{ width: "100%", display: "inline-flex", alignItems: "center",
+                  justifyContent: "center", gap: "10px",
+                  padding: "15px 14px 15px 24px", borderRadius: "var(--r-full)",
+                  background: "var(--accent)", color: "#000", border: "none",
+                  fontSize: "15px", fontWeight: 700, fontFamily: "var(--font-sans)",
+                  cursor: isLoading ? "wait" : "pointer", opacity: isLoading ? 0.7 : 1,
+                  boxShadow: "0 8px 30px rgba(26,255,110,0.3)",
+                  transition: "transform 200ms var(--ease)" }}
+                onMouseEnter={e => { if (!isLoading) e.currentTarget.style.transform = "translateY(-2px)" }}
+                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)" }}>
                 {isLoading ? "Procesando..." :
-                  selectedMethod === "global66"
-                    ? "Ver instrucciones de transferencia"
-                    : "Ir al pago →"}
+                  selectedMethod === "global66" ? "Ver instrucciones de transferencia" : "Ir al pago"}
+                {!isLoading && (
+                  <span style={{ width: "26px", height: "26px", borderRadius: "50%",
+                    background: "#000", color: "var(--accent)", display: "flex",
+                    alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <ArrowRight size={14} />
+                  </span>
+                )}
               </button>
 
-              <p style={{ fontSize: "11px", color: "var(--text-3)",
-                textAlign: "center", marginTop: "14px",
-                display: "flex", alignItems: "center",
+              <p style={{ fontSize: "11px", color: "var(--text-3)", textAlign: "center",
+                marginTop: "14px", display: "flex", alignItems: "center",
                 justifyContent: "center", gap: "6px" }}>
-                🔒 Compra 100% segura
+                <ShieldCheck size={13} color="var(--accent)" /> Compra 100% segura
               </p>
             </div>
           </div>
@@ -340,26 +372,10 @@ export default function Checkout() {
       </div>
 
       <style>{`
-        @media (max-width: 768px) {
+        @media (max-width: 900px) {
           .checkout-grid { grid-template-columns: 1fr !important; }
         }
       `}</style>
-    </div>
-  )
-}
-
-// Componente Section reutilizable
-function Section({ title, icon, children }) {
-  return (
-    <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-      borderRadius: "var(--r-2xl)", overflow: "hidden" }}>
-      <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)",
-        background: "var(--surface-2)", display: "flex", alignItems: "center",
-        gap: "10px" }}>
-        <span style={{ fontSize: "13px", color: "var(--text-3)" }}>{icon}</span>
-        <p style={{ fontSize: "14px", fontWeight: 500 }}>{title}</p>
-      </div>
-      <div style={{ padding: "24px" }}>{children}</div>
     </div>
   )
 }

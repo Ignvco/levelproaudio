@@ -598,3 +598,13 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
   - Íconos lucide reemplazan todos los emojis (🎧⏳🎁⭐). data-testids añadidos: cart-page, cart-item-{slug}, cart-qty-plus/minus-{slug}, cart-remove-{slug}, cart-clear, cart-summary, cart-total, cart-checkout, cart-continue, cart-empty.
   - Grid colapsa a 1 columna ≤900px.
 - Verificado a 1440px y 393px (vacío y con items): sin overflow horizontal.
+
+## 2026-07-30 — Checkout rediseñado (estilo editorial premium, parejo con el carrito)
+- `frontend/src/pages/Checkout.jsx` reescrito con el sistema de diseño:
+  - Contenedor `.lp-container` + paddingTop para librar el navbar; back link con ArrowLeft; eyebrow "· Pago seguro" + título `font-display` bold "Finalizá tu compra".
+  - Secciones (Datos de contacto/Dirección/Método de pago) como cards oscuras #121212 con ícono lucide en círculo de acento (User/MapPin/CreditCard) y título bold.
+  - Métodos de pago con íconos lucide (CreditCard/Globe/Landmark) en vez de emojis; estado activo con borde/acento; el chip del resumen se actualiza al método elegido.
+  - Panel Resumen sticky #121212 con eyebrow, líneas, total bold, botón submit pill de acento con flecha, ShieldCheck "Compra 100% segura".
+  - Estado carrito vacío rediseñado (ShoppingBag + CTA acento). Grid colapsa a 1 col ≤900px.
+  - **Lógica intacta 1:1**: react-hook-form + zod, POST /orders/, createPayment, redirección MercadoPago/PayPal/Global66, loyalty_points_redeemed. data-testids: checkout-page, checkout-method-{id}, checkout-submit, checkout-total, checkout-back, checkout-summary, checkout-error, checkout-empty.
+- Verificado (logueado, con items) a 1440px y 393px: sin overflow; selección de método actualiza el chip.
