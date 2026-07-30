@@ -2,9 +2,11 @@
 
 import json
 import logging
+import traceback
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, renderer_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
 from django.utils.decorators import method_decorator
@@ -150,98 +152,115 @@ def webhook_mercadopago_ar(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@renderer_classes([JSONRenderer])
+@permission_classes([AllowAny])
 def payment_diagnostics(request):
     """
-    GET /api/v1/payments/diagnostics/  (solo staff)
+    GET /api/v1/payments/diagnostics/?key=<DIAGNOSTICS_KEY>   (o logueado como staff)
     Verifica la configuración de pagos y prueba MP + PayPal con las
     credenciales reales, devolviendo el error exacto si algo falla.
-    Úsalo en producción logueado como admin para diagnosticar errores de pago.
+    Nunca lanza 500: cualquier fallo se devuelve como JSON legible.
     """
-    if not (request.user.is_staff or request.user.is_superuser):
-        return Response({"error": "Solo administradores."}, status=status.HTTP_403_FORBIDDEN)
-
     from django.conf import settings as s
 
-    def _mask(v):
-        if not v:
-            return None
-        v = str(v)
-        return f"{v[:4]}…{v[-4:]} (len {len(v)})" if len(v) > 8 else "set"
+    try:
+        # ── Control de acceso: staff O key correcta ──
+        user = getattr(request, "user", None)
+        is_staff = bool(user and user.is_authenticated and (user.is_staff or user.is_superuser))
+        key_ok = request.GET.get("key") and request.GET.get("key") == getattr(s, "DIAGNOSTICS_KEY", None)
+        if not (is_staff or key_ok):
+            return Response(
+                {"error": "Acceso denegado. Logueate como admin o agregá ?key=<DIAGNOSTICS_KEY> a la URL."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
-    report = {
-        "config": {
-            "FRONTEND_URL":        s.FRONTEND_URL,
-            "BACKEND_URL":         s.BACKEND_URL,
-            "PAYPAL_MODE":         s.PAYPAL_MODE,
-            "MP_CL_ACCESS_TOKEN":  _mask(s.MP_CL_ACCESS_TOKEN),
-            "MP_AR_ACCESS_TOKEN":  _mask(s.MP_AR_ACCESS_TOKEN),
-            "PAYPAL_CLIENT_ID":    _mask(s.PAYPAL_CLIENT_ID),
-            "PAYPAL_CLIENT_SECRET":_mask(s.PAYPAL_CLIENT_SECRET),
-        },
-        "tests": {},
-    }
+        def _mask(v):
+            if not v:
+                return None
+            v = str(v)
+            return f"{v[:4]}…{v[-4:]} (len {len(v)})" if len(v) > 8 else "set"
 
-    # ── Test MercadoPago (CL) ──
-    for prov_key, token in [("mercadopago_cl", s.MP_CL_ACCESS_TOKEN),
-                            ("mercadopago_ar", s.MP_AR_ACCESS_TOKEN)]:
-        if not token:
-            report["tests"][prov_key] = {"ok": False, "error": "Access token no configurado"}
-            continue
-        try:
-            import mercadopago
-            sdk = mercadopago.SDK(token)
-            currency = "ARS" if prov_key == "mercadopago_ar" else "CLP"
-            pref = {
-                "items": [{"title": "Test", "quantity": 1, "unit_price": 1000.0, "currency_id": currency}],
-                "back_urls": {
-                    "success": f"{s.FRONTEND_URL}/payment/success",
-                    "failure": f"{s.FRONTEND_URL}/payment/failure",
-                    "pending": f"{s.FRONTEND_URL}/payment/pending",
-                },
-            }
-            if "localhost" not in s.FRONTEND_URL:
-                pref["auto_return"] = "approved"
-            result = sdk.preference().create(pref)
-            if result["status"] == 201:
-                report["tests"][prov_key] = {"ok": True, "status": 201}
-            else:
-                report["tests"][prov_key] = {"ok": False, "status": result["status"],
-                                             "error": result.get("response")}
-        except Exception as e:
-            report["tests"][prov_key] = {"ok": False, "error": str(e)}
+        report = {
+            "config": {
+                "FRONTEND_URL":         getattr(s, "FRONTEND_URL", None),
+                "BACKEND_URL":          getattr(s, "BACKEND_URL", None),
+                "PAYPAL_MODE":          getattr(s, "PAYPAL_MODE", None),
+                "MP_CL_ACCESS_TOKEN":   _mask(getattr(s, "MP_CL_ACCESS_TOKEN", "")),
+                "MP_AR_ACCESS_TOKEN":   _mask(getattr(s, "MP_AR_ACCESS_TOKEN", "")),
+                "PAYPAL_CLIENT_ID":     _mask(getattr(s, "PAYPAL_CLIENT_ID", "")),
+                "PAYPAL_CLIENT_SECRET": _mask(getattr(s, "PAYPAL_CLIENT_SECRET", "")),
+            },
+            "tests": {},
+        }
 
-    # ── Test PayPal ──
-    if not s.PAYPAL_CLIENT_ID or not s.PAYPAL_CLIENT_SECRET:
-        report["tests"]["paypal"] = {"ok": False, "error": "Client ID/Secret no configurado"}
-    else:
-        try:
-            import paypalrestsdk
-            paypalrestsdk.configure({
-                "mode": s.PAYPAL_MODE,
-                "client_id": s.PAYPAL_CLIENT_ID,
-                "client_secret": s.PAYPAL_CLIENT_SECRET,
-            })
-            payment = paypalrestsdk.Payment({
-                "intent": "sale",
-                "payer": {"payment_method": "paypal"},
-                "redirect_urls": {
-                    "return_url": f"{s.FRONTEND_URL}/payment/success",
-                    "cancel_url": f"{s.FRONTEND_URL}/payment/failure",
-                },
-                "transactions": [{
-                    "amount": {"total": "1.00", "currency": "USD"},
-                    "description": "Test",
-                }],
-            })
-            if payment.create():
-                report["tests"]["paypal"] = {"ok": True}
-            else:
-                report["tests"]["paypal"] = {"ok": False, "error": payment.error}
-        except Exception as e:
-            report["tests"]["paypal"] = {"ok": False, "error": str(e)}
+        # ── Test MercadoPago (CL y AR) ──
+        for prov_key, token in [("mercadopago_cl", getattr(s, "MP_CL_ACCESS_TOKEN", "")),
+                                ("mercadopago_ar", getattr(s, "MP_AR_ACCESS_TOKEN", ""))]:
+            if not token:
+                report["tests"][prov_key] = {"ok": False, "error": "Access token no configurado"}
+                continue
+            try:
+                import mercadopago
+                sdk = mercadopago.SDK(token)
+                currency = "ARS" if prov_key == "mercadopago_ar" else "CLP"
+                pref = {
+                    "items": [{"title": "Test", "quantity": 1, "unit_price": 1000.0, "currency_id": currency}],
+                    "back_urls": {
+                        "success": f"{s.FRONTEND_URL}/payment/success",
+                        "failure": f"{s.FRONTEND_URL}/payment/failure",
+                        "pending": f"{s.FRONTEND_URL}/payment/pending",
+                    },
+                }
+                if "localhost" not in str(s.FRONTEND_URL):
+                    pref["auto_return"] = "approved"
+                result = sdk.preference().create(pref)
+                if result.get("status") == 201:
+                    report["tests"][prov_key] = {"ok": True, "status": 201}
+                else:
+                    report["tests"][prov_key] = {"ok": False, "status": result.get("status"),
+                                                 "error": str(result.get("response"))[:800]}
+            except Exception as e:
+                report["tests"][prov_key] = {"ok": False, "error": str(e)}
 
-    return Response(report)
+        # ── Test PayPal ──
+        if not getattr(s, "PAYPAL_CLIENT_ID", "") or not getattr(s, "PAYPAL_CLIENT_SECRET", ""):
+            report["tests"]["paypal"] = {"ok": False, "error": "Client ID/Secret no configurado"}
+        else:
+            try:
+                import paypalrestsdk
+                paypalrestsdk.configure({
+                    "mode": s.PAYPAL_MODE,
+                    "client_id": s.PAYPAL_CLIENT_ID,
+                    "client_secret": s.PAYPAL_CLIENT_SECRET,
+                })
+                payment = paypalrestsdk.Payment({
+                    "intent": "sale",
+                    "payer": {"payment_method": "paypal"},
+                    "redirect_urls": {
+                        "return_url": f"{s.FRONTEND_URL}/payment/success",
+                        "cancel_url": f"{s.FRONTEND_URL}/payment/failure",
+                    },
+                    "transactions": [{
+                        "amount": {"total": "1.00", "currency": "USD"},
+                        "description": "Test",
+                    }],
+                })
+                if payment.create():
+                    report["tests"]["paypal"] = {"ok": True}
+                else:
+                    report["tests"]["paypal"] = {"ok": False, "error": str(payment.error)[:800]}
+            except Exception as e:
+                report["tests"]["paypal"] = {"ok": False, "error": str(e)}
+
+        return Response(report)
+
+    except Exception as e:
+        logger.error(f"Error en payment_diagnostics: {e}\n{traceback.format_exc()}")
+        return Response(
+            {"fatal": str(e), "trace": traceback.format_exc()[-1500:]},
+            status=status.HTTP_200_OK,  # 200 para que se lea el detalle en el browser
+        )
+
 
 
 @api_view(["GET"])

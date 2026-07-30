@@ -196,6 +196,10 @@ GLOBAL66_EMAIL        = env("GLOBAL66_EMAIL",        default="")
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
 BACKEND_URL  = env("BACKEND_URL",  default="http://localhost:8000")
 
+# Clave para el endpoint de diagnóstico de pagos (?key=). Solo revela config
+# enmascarada y resultados de test — no expone credenciales.
+DIAGNOSTICS_KEY = env("DIAGNOSTICS_KEY", default="lpa-diag-2026")
+
 # ── Email ────────────────────────────────────────────────────
 DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ventas@levelproaudio.com")
 EMAIL_BACKEND      = "django.core.mail.backends.console.EmailBackend"
