@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { Link, useNavigate, useLocation } from "react-router-dom"
+import { ArrowLeft } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
 import { useCartStore } from "../store/cartStore"
 import logoImg from "../assets/logo.png"
@@ -73,6 +74,20 @@ function Navbar() {
     return () => window.removeEventListener("scroll", onScroll)
   }, [])
 
+  const isHome = location.pathname === "/"
+  const pillBg = scrolled ? "rgba(15,15,15,0.95)" : "rgba(15,15,15,0.85)"
+  const sideElBase = {
+    position: "fixed", top: "20px", zIndex: 100, height: "52px",
+    display: "flex", alignItems: "center",
+    background: pillBg,
+    backdropFilter: "blur(20px) saturate(1.6)",
+    WebkitBackdropFilter: "blur(20px) saturate(1.6)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    borderRadius: "var(--r-full)",
+    boxShadow: "0 20px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04) inset",
+    transition: "all var(--dur) var(--ease)",
+  }
+
   return createPortal(
     <>
       {/* Scrim superior: al scrollear, el contenido se disuelve limpio bajo/alrededor de la píldora */}
@@ -83,6 +98,27 @@ function Navbar() {
         opacity: scrolled ? 1 : 0,
         transition: "opacity 320ms var(--ease)",
       }} />
+
+      {/* Botón Volver (izquierda) — en todas menos la principal */}
+      {!isHome && (
+        <button onClick={() => navigate(-1)} data-testid="nav-back" aria-label="Volver"
+          style={{ ...sideElBase, left: "24px", gap: "8px", padding: "0 20px 0 15px",
+            color: "var(--text-2)", cursor: "pointer", fontSize: "14px", fontWeight: 600,
+            fontFamily: "var(--font-sans)" }}
+          onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.borderColor = "rgba(26,255,110,0.3)" }}
+          onMouseLeave={e => { e.currentTarget.style.color = "var(--text-2)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)" }}>
+          <ArrowLeft size={17} strokeWidth={2} /> Volver
+        </button>
+      )}
+
+      {/* Logo plataforma (derecha) — en todas menos la principal */}
+      {!isHome && (
+        <Link to="/" data-testid="nav-logo-right" aria-label="Inicio"
+          style={{ ...sideElBase, right: "24px", justifyContent: "center", padding: "0 24px" }}>
+          <img src={logoImg} alt="LevelPro Audio" style={{ height: "30px", objectFit: "contain",
+            filter: "brightness(0) invert(1)", maxWidth: "160px" }} />
+        </Link>
+      )}
     <header
       className="lp-navbar-desktop"
       style={{

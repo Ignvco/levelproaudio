@@ -12,6 +12,7 @@ import { useCartStore } from "../store/cartStore"
 import { useScrollReveal } from "../hooks/useScrollReveal"
 import { mediaUrl } from "../utils/mediaUrl"
 import { showToast } from "../components/ui/ToastNotification"
+import { RichText } from "../components/ui/RichText"
 
 export default function ProductDetail() {
   const { slug }  = useParams()
@@ -158,7 +159,7 @@ export default function ProductDetail() {
           </h1>
 
           {product.short_description && (
-            <p style={{ fontSize: "16px", color: "var(--text-2)", lineHeight: 1.7 }}>
+            <p style={{ fontSize: "16px", color: "var(--text-2)", lineHeight: 1.7, maxWidth: "60ch" }}>
               {product.short_description}
             </p>
           )}
@@ -235,9 +236,7 @@ export default function ProductDetail() {
           {product.description && (
             <div style={{ paddingTop: "22px", borderTop: "1px solid var(--border)" }}>
               <p style={eyebrowSt}>· Descripción</p>
-              <p style={{ fontSize: "15px", color: "var(--text-2)", lineHeight: 1.8, marginTop: "14px" }}>
-                {product.description}
-              </p>
+              <RichText text={product.description} style={{ marginTop: "16px" }} />
             </div>
           )}
 
