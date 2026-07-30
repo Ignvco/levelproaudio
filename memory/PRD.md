@@ -656,3 +656,9 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 - **Páginas internas** (Profile, MyCourses, MyServices, MyDocuments, MyLoyalty, MyEntries): headers `font-serif` 300 → `font-display` 800; emojis reemplazados por íconos lucide (GraduationCap/Film, Wrench, FileText, Award para medallas). Loyalty: número y nivel en font-display; medalla con ícono Award en color del nivel.
 - **CourseDetail.jsx**: contenedor `.lp-container` + paddingTop para librar navbar; título/precio a font-display 800; emojis → lucide (Lock/Check/Play en lecciones, Film thumbnail, CreditCard/Globe/Landmark métodos de pago, Video/Clock/Smartphone/Infinity en "incluye", Check en inscripto/completada). Lógica de inscripción/pago/video intacta.
 - Verificado (cliente@test.com) a 1440px: sidebar agrupado, MyLoyalty, y CourseDetail renderizan sin overflow. Frontend compila (HMR OK).
+
+## 2026-07-30 — Navbar desktop (Volver + Logo) + RichText descripciones
+- Navbar escritorio (`MainLayout.jsx`): botón "Volver" flotante a la izquierda (navigate(-1), data-testid nav-back) y logo de plataforma flotante a la derecha (data-testid nav-logo-right), ambos ocultos en la página principal. Píldora central de navegación conservada.
+- `RichText.jsx` (componente): formatea descripciones largas en párrafos legibles (maxWidth 68ch, lineHeight 1.85, split por líneas en blanco).
+- Aplicado en `ProductDetail.jsx` y `ServiceDetail.jsx` (reemplaza el <p> plano de la descripción).
+- Verificado visualmente en escritorio (producto y servicio). OK.

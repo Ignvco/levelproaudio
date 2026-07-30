@@ -6,6 +6,7 @@ import { Check, Clock, ArrowRight, MessageCircle, SearchX } from "lucide-react"
 import { getService } from "../api/services.api"
 import { useAuthStore } from "../store/authStore"
 import { mediaUrl } from "../utils/mediaUrl"
+import { RichText } from "../components/ui/RichText"
 import api from "../api/client"
 
 export default function ServiceDetail() {
@@ -140,9 +141,7 @@ export default function ServiceDetail() {
             {service.description && (
               <div style={{ paddingTop: "24px", borderTop: "1px solid var(--border)" }}>
                 <p style={eyebrowSt}>· Descripción</p>
-                <p style={{ fontSize: "15px", color: "var(--text-2)", lineHeight: 1.8, marginTop: "14px" }}>
-                  {service.description}
-                </p>
+                <RichText text={service.description} style={{ marginTop: "14px" }} />
               </div>
             )}
 
