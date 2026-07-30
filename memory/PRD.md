@@ -687,3 +687,16 @@ Sistema global de spacing + ritmo vertical, sin tocar identidad/textos/colores/l
 - `Services.jsx`: filtros de categoría con contador (services_count + total), sección "Cómo trabajamos", CTA pulida (sin emoji, ícono lucide).
 - FIX importante (bug preexistente): el formulario posteaba a `/services/requests/` (404/405). Corregido a `createServiceRequest` → `/service-requests/`. Además el campo Mensaje es obligatorio en backend → ahora requerido en el form (submit deshabilitado sin mensaje). Usuarios no logueados: submit redirige a /login + nota (el endpoint es IsAuthenticated).
 - Verificado E2E: envío logueado devuelve "Solicitud enviada" (201); vistas OK en escritorio y móvil.
+
+## 2026-07-30 — Auth: migración JWT → cookies HTTPOnly (COMPLETADA)
+- Backend:
+  - `apps/users/authentication.py`: `CookieJWTAuthentication` (lee access de cookie HTTPOnly `access_token`, fallback a header Bearer). Seteada como DEFAULT_AUTHENTICATION_CLASSES.
+  - `apps/users/views.py`: `CookieTokenObtainPairView` (login setea cookies access+refresh y NO devuelve tokens en el body), `CookieTokenRefreshView` (lee refresh de cookie, renueva access), `LogoutView` (blacklist refresh + borra cookies). Helpers set/clear cookie.
+  - `base.py`: AUTH_COOKIE_ACCESS/REFRESH, AUTH_COOKIE_SECURE (env, default True), AUTH_COOKIE_SAMESITE (env, default "Lax").
+  - SameSite=Lax → la cookie sobrevive el redirect top-level GET de MercadoPago/PayPal de vuelta al sitio, y bloquea POST cross-site (protección CSRF). DRF no exige CSRF token porque no usa SessionAuthentication.
+- Frontend:
+  - `api/client.js`: `withCredentials:true`, sin header Authorization; interceptor 401 renueva vía `/auth/token/refresh/` (cookie) con dedupe.
+  - `store/authStore.js`: sin almacenar tokens en JS; solo `user`+`isAuthenticated`. `login/register` usan cookies; `checkAuth()` valida sesión contra `/auth/profile/`; `logout()` llama backend; `clearSession()` para el interceptor. Purga tokens legacy de storage.
+  - `App.jsx`: `checkAuth()` al montar para restaurar sesión desde cookie.
+- Verificado (browser + curl): login setea cookies HttpOnly (sin token en JS), sesión persiste al recargar, /profile por cookie, refresh, logout (profile→401), admin login OK, POST protegido (favoritos) 200. Bearer fallback intacto.
+- NOTA: el redirect real de MP/PayPal no se pudo probar E2E (no hay pago real), pero la config SameSite=Lax es la correcta para ese flujo.

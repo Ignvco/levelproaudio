@@ -1,130 +1,82 @@
 // store/authStore.js
-
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 import axios from "axios"
 
-// ── Storage seguro: sessionStorage evita persistir tokens entre pestañas
-// cerradas y mitiga vectores de XSS persistente vs localStorage.
-// Se migra transparentemente cualquier valor previo de localStorage.
-const secureStorage = {
-  getItem: (name) => {
-    const v = sessionStorage.getItem(name)
-    if (v) return v
-    // Migración transparente desde localStorage → sessionStorage
-    const legacy = localStorage.getItem(name)
-    if (legacy) {
-      sessionStorage.setItem(name, legacy)
-      localStorage.removeItem(name)
-    }
-    return legacy
-  },
-  setItem: (name, value) => sessionStorage.setItem(name, value),
-  removeItem: (name) => {
-    sessionStorage.removeItem(name)
-    localStorage.removeItem(name)  // limpia migrar residual
-  },
-}
-
-// ← Importación directa de axios para evitar dependencia circular con api/client.js
+// Los tokens JWT viven en cookies HTTPOnly (no accesibles desde JS).
+// El store sólo guarda el objeto `user` y el flag `isAuthenticated` para la UI;
+// la fuente de verdad de la sesión es la cookie, que se valida con checkAuth().
 const authAxios = axios.create({
   baseURL: "/api/v1",
   headers: { "Content-Type": "application/json" },
+  withCredentials: true,
 })
 
-// Migración one-shot de tokens legacy en localStorage a sessionStorage
-;(function migrateLegacyTokens() {
-  for (const key of ["accessToken", "refreshToken"]) {
-    const legacy = localStorage.getItem(key)
-    if (legacy && !sessionStorage.getItem(key)) {
-      sessionStorage.setItem(key, legacy)
+// Limpieza one-shot de tokens legacy que quedaron en storage de versiones previas.
+;(function purgeLegacyTokens() {
+  try {
+    for (const key of ["accessToken", "refreshToken"]) {
+      sessionStorage.removeItem(key)
+      localStorage.removeItem(key)
     }
-    localStorage.removeItem(key)
-  }
+  } catch { /* noop */ }
 })()
 
 export const useAuthStore = create(
   persist(
     (set, get) => ({
-
-      accessToken: null,
-      refreshToken: null,
       user: null,
       isAuthenticated: false,
-
-      setTokens: (access, refresh) => {
-        sessionStorage.setItem("accessToken", access)
-        sessionStorage.setItem("refreshToken", refresh)
-        set({
-          accessToken: access,
-          refreshToken: refresh,
-          isAuthenticated: true,
-        })
-      },
 
       setUser: (user) => set({ user }),
 
       login: async (email, password) => {
-        // ← URL correcta según las rutas del backend
-        const { data } = await authAxios.post("/auth/login/", { email, password })
-
-        // Guarda tokens en sessionStorage
-        sessionStorage.setItem("accessToken", data.access)
-        sessionStorage.setItem("refreshToken", data.refresh)
-
-        // Obtiene el perfil — URL correcta es /auth/profile/
-        const { data: user } = await authAxios.get("/auth/profile/", {
-          headers: { Authorization: `Bearer ${data.access}` }
-        })
-
-        set({
-          accessToken: data.access,
-          refreshToken: data.refresh,
-          isAuthenticated: true,
-          user,
-        })
-
+        await authAxios.post("/auth/login/", { email, password })
+        const { data: user } = await authAxios.get("/auth/profile/")
+        set({ isAuthenticated: true, user })
         return user
       },
 
       register: async (formData) => {
-      const username = formData.email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "") + Math.floor(Math.random() * 1000)
-      await authAxios.post("/auth/register/", { ...formData, username })
-        // Auto-login después del registro
-        const { data } = await authAxios.post("/auth/login/", {
+        const username =
+          formData.email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "") +
+          Math.floor(Math.random() * 1000)
+        await authAxios.post("/auth/register/", { ...formData, username })
+        await authAxios.post("/auth/login/", {
           email: formData.email,
           password: formData.password,
         })
-        sessionStorage.setItem("accessToken", data.access)
-        sessionStorage.setItem("refreshToken", data.refresh)
-        const { data: user } = await authAxios.get("/auth/profile/", {
-          headers: { Authorization: `Bearer ${data.access}` }
-        })
-        set({ accessToken: data.access, refreshToken: data.refresh, isAuthenticated: true, user })
+        const { data: user } = await authAxios.get("/auth/profile/")
+        set({ isAuthenticated: true, user })
         return user
       },
 
-      logout: () => {
-        sessionStorage.removeItem("accessToken")
-        sessionStorage.removeItem("refreshToken")
-        localStorage.removeItem("accessToken")   // limpia residuales
-        localStorage.removeItem("refreshToken")
-        set({
-          accessToken: null,
-          refreshToken: null,
-          user: null,
-          isAuthenticated: false,
-        })
+      // Valida la sesión contra la cookie al cargar la app.
+      checkAuth: async () => {
+        try {
+          const { data: user } = await authAxios.get("/auth/profile/")
+          set({ isAuthenticated: true, user })
+          return user
+        } catch {
+          set({ isAuthenticated: false, user: null })
+          return null
+        }
       },
 
-      getToken: () => get().accessToken,
+      logout: async () => {
+        try {
+          await authAxios.post("/auth/logout/")
+        } catch { /* noop */ }
+        set({ user: null, isAuthenticated: false })
+      },
+
+      // Limpieza local sin llamada al backend (usado por el interceptor en 401).
+      clearSession: () => set({ user: null, isAuthenticated: false }),
     }),
     {
       name: "levelproaudio-auth",
-      storage: createJSONStorage(() => secureStorage),
+      storage: createJSONStorage(() => sessionStorage),
       partialize: (state) => ({
-        accessToken: state.accessToken,
-        refreshToken: state.refreshToken,
         user: state.user,
         isAuthenticated: state.isAuthenticated,
       }),

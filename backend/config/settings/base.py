@@ -55,7 +55,7 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "apps.users.authentication.CookieJWTAuthentication",
     ),
 
     "DEFAULT_PERMISSION_CLASSES": [
@@ -85,6 +85,15 @@ SIMPLE_JWT = {
     'BLACKLIST_AFTER_ROTATION': True,                 # Invalida el refresh anterior
     'AUTH_HEADER_TYPES': ('Bearer',),
 }
+
+# ── Cookies HTTPOnly para JWT ─────────────────────────────────
+# El access/refresh viajan en cookies HTTPOnly (no accesibles desde JS).
+# SameSite=Lax: la cookie sobrevive redirecciones top-level GET (MercadoPago/PayPal
+# vuelven al sitio) y bloquea envíos cross-site en POST → protección CSRF.
+AUTH_COOKIE_ACCESS   = "access_token"
+AUTH_COOKIE_REFRESH  = "refresh_token"
+AUTH_COOKIE_SECURE   = env.bool("AUTH_COOKIE_SECURE", default=True)
+AUTH_COOKIE_SAMESITE = env("AUTH_COOKIE_SAMESITE", default="Lax")
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

@@ -3,6 +3,7 @@
 // ProtectedRoute redirige al login si el usuario no está autenticado
 import PageTransition from "./components/ui/PageTransition"
 import { Routes, Route, Navigate } from "react-router-dom"
+import { useEffect } from "react"
 import { useAuthStore } from "./store/authStore"
 
 
@@ -104,6 +105,11 @@ function AdminRoute({ children }) {
 }
 // ── App ─────────────────────────────────────────────────────
 function App() {
+  // Valida la sesión contra la cookie HTTPOnly al cargar la app.
+  useEffect(() => {
+    useAuthStore.getState().checkAuth()
+  }, [])
+
   return (
     
     <PageTransition>
