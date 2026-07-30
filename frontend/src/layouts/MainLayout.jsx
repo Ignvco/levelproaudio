@@ -438,7 +438,6 @@ function MobileDock() {
           const isActive = item.to === "/"
             ? location.pathname === "/"
             : location.pathname.startsWith(item.to)
-          const isCart = item.icon === "cart"
           return (
             <Link
               key={item.to}
@@ -448,20 +447,18 @@ function MobileDock() {
                 position: "relative",
                 display: "flex", alignItems: "center", justifyContent: "center",
                 width: "44px", height: "44px", borderRadius: "50%",
-                color: isCart ? "#000" : "#fff",
-                background: isCart
-                  ? "var(--accent)"
-                  : isActive ? "rgba(255,255,255,0.12)" : "transparent",
-                opacity: isCart ? 1 : isActive ? 1 : 0.85,
-                boxShadow: isCart ? "0 4px 16px rgba(26,255,110,0.4)" : "none",
+                color: isActive ? "#000" : "#fff",
+                background: isActive ? "var(--accent)" : "transparent",
+                opacity: isActive ? 1 : 0.85,
+                boxShadow: isActive ? "0 4px 16px rgba(26,255,110,0.4)" : "none",
                 transition: "all 200ms var(--ease)",
                 textDecoration: "none",
               }}>
               {item.avatar ? (
                 <span style={{
                   width: "22px", height: "22px", borderRadius: "50%",
-                  background: isActive ? "var(--accent)" : "rgba(255,255,255,0.18)",
-                  color: isActive ? "#000" : "#fff",
+                  background: isActive ? "#000" : "rgba(255,255,255,0.18)",
+                  color: isActive ? "var(--accent)" : "#fff",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontSize: "10px", fontWeight: 800,
                   fontFamily: "var(--font-sans)",
@@ -469,18 +466,18 @@ function MobileDock() {
                   {item.avatar}
                 </span>
               ) : (
-                <NavIcon name={item.icon} size={isCart ? 20 : 21} filled={isActive && item.icon === "home"} />
+                <NavIcon name={item.icon} size={21} filled={isActive && item.icon === "home"} />
               )}
               {item.badge > 0 && (
                 <span style={{
                   position: "absolute", top: "2px", right: "2px",
                   minWidth: "18px", height: "18px", borderRadius: "9px",
                   padding: "0 4px",
-                  background: "#fff", color: "#000",
+                  background: "var(--accent)", color: "#000",
                   display: "flex", alignItems: "center", justifyContent: "center",
                   fontFamily: "var(--font-sans)",
                   fontSize: "10px", fontWeight: 800,
-                  border: "2px solid var(--accent)",
+                  border: "2px solid rgba(15,15,15,0.9)",
                 }}>
                   {item.badge > 9 ? "9+" : item.badge}
                 </span>
