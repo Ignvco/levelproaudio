@@ -122,15 +122,17 @@ export default function ServiceDetail() {
   )
 
   const inputSt = {
-    width: "100%", padding: "12px 16px",
-    background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
-    borderRadius: "12px", color: "var(--text)",
-    fontSize: "14px", outline: "none", transition: "border-color var(--dur)",
+    width: "100%", padding: "11px 2px 10px",
+    background: "transparent", border: "none",
+    borderBottom: "1.5px solid var(--border)", borderRadius: 0,
+    color: "var(--text)", fontSize: "15px", outline: "none",
+    transition: "border-color 220ms var(--ease)",
   }
-  const labelSt = { display: "block", fontSize: "12px", fontWeight: 600,
-    color: "var(--text-2)", marginBottom: "7px" }
-  const onFocus = e => e.target.style.borderColor = "rgba(26,255,110,0.5)"
-  const onBlur  = e => e.target.style.borderColor = "rgba(255,255,255,0.1)"
+  const labelSt = { display: "block", fontSize: "11px", fontWeight: 700,
+    letterSpacing: "0.1em", textTransform: "uppercase",
+    color: "var(--text-3)", marginBottom: "4px" }
+  const onFocus = e => e.target.style.borderBottomColor = "var(--accent)"
+  const onBlur  = e => e.target.style.borderBottomColor = "rgba(255,255,255,0.1)"
 
   const cover = serviceCover(service)
   const related = (allData?.results || allData || [])
@@ -395,7 +397,7 @@ export default function ServiceDetail() {
                   </p>
                 </div>
               ) : (
-                <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "14px" }}>
+                <div style={{ padding: "26px 24px 24px", display: "flex", flexDirection: "column", gap: "18px" }}>
                   {error && (
                     <div data-testid="service-request-error" style={{ padding: "10px 14px",
                       borderRadius: "12px", background: "rgba(255,77,77,0.08)",
@@ -438,38 +440,45 @@ export default function ServiceDetail() {
                         style={inputSt} onFocus={onFocus} onBlur={onBlur} />
                     </div>
                   </div>
-                  <button data-testid="service-submit"
-                    onClick={() => {
-                      if (!isAuthenticated) {
-                        showToast("Iniciá sesión para enviar tu solicitud", "error")
-                        navigate(`/login?next=/services/${service.slug}`)
-                        return
-                      }
-                      setError("")
-                      mutation.mutate()
-                    }}
-                    disabled={mutation.isPending || (isAuthenticated && !form.message.trim())}
-                    style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "10px",
-                      padding: "14px 14px 14px 24px", borderRadius: "9999px",
-                      background: "var(--accent)", color: "#000", border: "none", fontSize: "14px",
-                      fontWeight: 700, cursor: "pointer", marginTop: "4px",
-                      opacity: (mutation.isPending || (isAuthenticated && !form.message.trim())) ? 0.6 : 1,
-                      boxShadow: "0 8px 30px rgba(26,255,110,0.25)" }}>
-                    {mutation.isPending ? "Enviando..." : "Enviar solicitud"}
-                    {!mutation.isPending && (
-                      <span style={{ width: "26px", height: "26px", borderRadius: "50%", background: "#000",
-                        color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <ArrowRight size={14} />
-                      </span>
-                    )}
-                  </button>
-                  <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
-                    style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                      padding: "12px", borderRadius: "14px", fontSize: "13px", fontWeight: 600,
-                      color: "#25d166", textDecoration: "none", background: "rgba(37,211,102,0.06)",
-                      border: "1px solid rgba(37,211,102,0.15)" }}>
-                    <MessageCircle size={16} /> Consultar por WhatsApp
-                  </a>
+                  <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
+                    <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+                      style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        gap: "8px", padding: "14px", borderRadius: "var(--r-full)", fontSize: "14px",
+                        fontWeight: 700, color: "#000", textDecoration: "none", background: "#25d366",
+                        boxShadow: "0 8px 26px rgba(37,211,102,0.28)",
+                        transition: "transform 200ms var(--ease)" }}
+                      onMouseEnter={e => e.currentTarget.style.transform = "translateY(-2px)"}
+                      onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
+                      <MessageCircle size={17} /> WhatsApp
+                    </a>
+                    <button data-testid="service-submit"
+                      onClick={() => {
+                        if (!isAuthenticated) {
+                          showToast("Iniciá sesión para enviar tu solicitud", "error")
+                          navigate(`/login?next=/services/${service.slug}`)
+                          return
+                        }
+                        setError("")
+                        mutation.mutate()
+                      }}
+                      disabled={mutation.isPending || (isAuthenticated && !form.message.trim())}
+                      style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center",
+                        gap: "9px", padding: "14px 10px 14px 18px", borderRadius: "var(--r-full)",
+                        background: "#fff", color: "#000", border: "none", fontSize: "14px",
+                        fontWeight: 700, cursor: "pointer",
+                        opacity: (mutation.isPending || (isAuthenticated && !form.message.trim())) ? 0.45 : 1,
+                        transition: "transform 200ms var(--ease), opacity 200ms var(--ease)" }}
+                      onMouseEnter={e => { if (!(mutation.isPending || (isAuthenticated && !form.message.trim()))) e.currentTarget.style.transform = "translateY(-2px)" }}
+                      onMouseLeave={e => e.currentTarget.style.transform = "translateY(0)"}>
+                      {mutation.isPending ? "Enviando..." : "Enviar"}
+                      {!mutation.isPending && (
+                        <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: "var(--accent)",
+                          color: "#000", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          <ArrowRight size={13} strokeWidth={2.5} />
+                        </span>
+                      )}
+                    </button>
+                  </div>
                   {!isAuthenticated && (
                     <p style={{ fontSize: "11.5px", color: "var(--text-3)", textAlign: "center",
                       lineHeight: 1.5 }}>
