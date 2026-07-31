@@ -409,8 +409,8 @@ function MobileDock() {
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
       <img src={logoImg} alt="LevelPro Audio" style={{
-        height: "26px", objectFit: "contain",
-        filter: "brightness(0) invert(1)", maxWidth: "150px",
+        height: "34px", objectFit: "contain",
+        filter: "brightness(0) invert(1)", maxWidth: "190px",
       }} />
     </Link>
     )}

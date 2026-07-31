@@ -7,7 +7,6 @@ from .views import (
     webhook_mercadopago_cl,
     webhook_mercadopago_ar,
     payment_status,
-    payment_diagnostics,
 )
 
 urlpatterns = [
@@ -16,5 +15,4 @@ urlpatterns = [
     path("payments/webhook/mercadopago/cl/",    webhook_mercadopago_cl,  name="webhook-mp-cl"),
     path("payments/webhook/mercadopago/ar/",    webhook_mercadopago_ar,  name="webhook-mp-ar"),
     path("payments/status/<uuid:order_id>/",    payment_status,          name="payment-status"),
-    path("payments/diagnostics/",               payment_diagnostics,     name="payment-diagnostics"),
 ]

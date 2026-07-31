@@ -783,7 +783,7 @@ export default function Home() {
           }
           .hero-logo-mobile {
             display: block !important;
-            height: 30px;
+            height: 42px;
             width: auto;
             margin: 0 0 30px;
             filter: brightness(0) invert(1);
