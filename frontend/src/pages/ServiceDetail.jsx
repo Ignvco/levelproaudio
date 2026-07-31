@@ -251,13 +251,76 @@ export default function ServiceDetail() {
               <p style={{ ...EYEBROW, marginBottom: "22px" }}>· Cómo trabajamos</p>
               <ServiceProcess variant="card" />
             </div>
+
+            {/* Card promocional oscura con imagen */}
+            <div data-testid="service-promo-card" style={{ position: "relative", overflow: "hidden",
+              borderRadius: "var(--r-2xl)", border: "1px solid rgba(255,255,255,0.06)",
+              minHeight: "300px", display: "flex", flexDirection: "column", justifyContent: "flex-end" }}>
+              <img
+                src="https://images.unsplash.com/photo-1514320291840-2e0a9bf2a9ae?crop=entropy&cs=srgb&fm=jpg&q=80&w=1200"
+                alt="" loading="lazy"
+                style={{ position: "absolute", inset: 0, width: "100%", height: "100%",
+                  objectFit: "cover" }} />
+              <div style={{ position: "absolute", inset: 0,
+                background: "linear-gradient(115deg, rgba(8,8,8,0.94) 0%, rgba(8,8,8,0.78) 45%, rgba(8,8,8,0.35) 100%)" }} />
+              <div style={{ position: "absolute", inset: 0,
+                boxShadow: "inset 0 0 120px rgba(26,255,110,0.06)" }} />
+              <div style={{ position: "relative", padding: "clamp(28px, 4vw, 44px)", maxWidth: "560px" }}>
+                <p style={{ ...EYEBROW, color: "var(--accent)", marginBottom: "14px" }}>· Tu proyecto</p>
+                <h3 className="display-bold" style={{ fontFamily: "var(--font-display)",
+                  fontSize: "clamp(1.7rem, 3.4vw, 2.5rem)", fontWeight: 800, letterSpacing: "-0.03em",
+                  lineHeight: 1.02, color: "#fff", marginBottom: "14px" }}>
+                  Hablemos de tu proyecto
+                </h3>
+                <p style={{ fontSize: "14.5px", color: "rgba(255,255,255,0.72)", lineHeight: 1.6,
+                  marginBottom: "24px", maxWidth: "440px" }}>
+                  Contanos qué necesitás y armamos una propuesta a medida para tu iglesia,
+                  estudio o evento. Sin compromiso y con respuesta en menos de 24 horas.
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "12px" }}>
+                  {isFixed ? (
+                    <button onClick={() => handlePay("mercadopago_cl")} data-testid="service-promo-cta"
+                      style={{ display: "inline-flex", alignItems: "center", gap: "10px",
+                        padding: "13px 12px 13px 22px", borderRadius: "var(--r-full)",
+                        background: "var(--accent)", color: "#000", border: "none", cursor: "pointer",
+                        fontSize: "14px", fontWeight: 700, boxShadow: "0 8px 30px rgba(26,255,110,0.28)" }}>
+                      Contratar ahora
+                      <span style={{ width: "26px", height: "26px", borderRadius: "50%", background: "#000",
+                        color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <ArrowRight size={14} />
+                      </span>
+                    </button>
+                  ) : (
+                    <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+                      data-testid="service-promo-cta"
+                      style={{ display: "inline-flex", alignItems: "center", gap: "10px",
+                        padding: "13px 22px", borderRadius: "var(--r-full)",
+                        background: "var(--accent)", color: "#000", textDecoration: "none",
+                        fontSize: "14px", fontWeight: 700, boxShadow: "0 8px 30px rgba(26,255,110,0.28)" }}>
+                      <MessageCircle size={16} /> Escribinos por WhatsApp
+                    </a>
+                  )}
+                  <a href="#solicitar-card"
+                    onClick={(e) => { e.preventDefault(); document.querySelector('[data-testid="service-quote-card"]')?.scrollIntoView({ behavior: "smooth", block: "center" }) }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: "8px",
+                      padding: "13px 22px", borderRadius: "var(--r-full)",
+                      background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.14)",
+                      color: "#fff", textDecoration: "none", fontSize: "14px", fontWeight: 600,
+                      backdropFilter: "blur(6px)" }}>
+                    Ver detalles
+                  </a>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Columna derecha: formulario sticky */}
           <div style={{ position: "sticky", top: "96px", display: "flex",
             flexDirection: "column", gap: "14px" }} className="service-form">
-            <div style={{ background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
-              borderRadius: "22px", overflow: "hidden" }}>
+            <div data-testid="service-quote-card" style={{ background: "var(--surface)",
+              border: "1px solid var(--border)",
+              borderRadius: "var(--r-2xl)", overflow: "hidden",
+              boxShadow: "0 24px 60px rgba(0,0,0,0.4)" }}>
 
               {/* Encabezado con precio */}
               <div style={{ padding: "22px 24px",
