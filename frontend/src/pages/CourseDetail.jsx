@@ -10,6 +10,9 @@ import {
 import { createPayment } from "../api/payments.api"
 import { useAuthStore } from "../store/authStore"
 import { mediaUrl } from "../utils/mediaUrl"
+import Seo from "../components/Seo"
+import JsonLd from "../components/JsonLd"
+import { SITE_URL, absUrl } from "../utils/seo"
 import {
   Lock, Check, Play, Film, Frown, CreditCard, Globe, Landmark,
   Video, Clock, Smartphone, Infinity as InfinityIcon, ArrowRight,
@@ -259,6 +262,33 @@ export default function CourseDetail() {
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
+      <Seo title={course.title}
+        description={course.description?.replace(/<[^>]+>/g, "").slice(0, 160)}
+        image={course.thumbnail ? mediaUrl(course.thumbnail) : undefined} />
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "Course",
+        name: course.title,
+        ...(course.description ? { description: course.description.replace(/<[^>]+>/g, "").slice(0, 300) } : {}),
+        provider: { "@type": "Organization", name: "LevelPro Audio", url: SITE_URL },
+        ...(course.thumbnail ? { image: absUrl(mediaUrl(course.thumbnail)) } : {}),
+        offers: {
+          "@type": "Offer",
+          price: course.is_free ? 0 : Number(course.price),
+          priceCurrency: "CLP",
+          category: course.is_free ? "Free" : "Paid",
+          url: `${SITE_URL}/academy/${slug}`,
+        },
+      }} />
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Inicio", item: SITE_URL },
+          { "@type": "ListItem", position: 2, name: "Academia", item: `${SITE_URL}/academy` },
+          { "@type": "ListItem", position: 3, name: course.title, item: `${SITE_URL}/academy/${slug}` },
+        ],
+      }} />
 
       {/* Éxito de inscripción */}
       {showSuccess && (

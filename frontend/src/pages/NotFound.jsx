@@ -1,6 +1,7 @@
 // pages/NotFound.jsx
 import { Link, useNavigate } from "react-router-dom"
 import { useEffect, useState } from "react"
+import Seo from "../components/Seo"
 
 export default function NotFound() {
   const navigate    = useNavigate()
@@ -28,6 +29,7 @@ export default function NotFound() {
       position:       "relative",
       overflow:       "hidden",
     }}>
+      <Seo title="Página no encontrada" noindex />
       {/* Glow de fondo */}
       <div style={{
         position:     "absolute",

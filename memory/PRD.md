@@ -29,7 +29,38 @@ SaaS Chile/Argentina: e-commerce (Tienda), Academia y Servicios de audio. UI dar
 ## Backlog (orden: a✔ admin → b✔ legales → c✔ SEO → d✔ Resend → e✔ recuperar pass)
 - (backlog legal/auth completo)
 
-## Checkboxes de aceptación legal (2026-07-31) ✅
+## SEO — FASE 1: Indexación (2026-07-31) ✅
+Decisiones del usuario: prerendering en build (Fase 2, pendiente), mantener URLs actuales (/shop/:slug, ?category=), dominio dual (canónico primario: https://levelproaudio.com), arrancar por Fase 1.
+
+**Backend:**
+- `apps/seo/views.py` + `urls.py`: sitemap.xml dinámico desde BD (estáticas + categorías activas + productos activos + servicios activos + cursos publicados, con lastmod real). Montado en `/api/v1/seo/sitemap.xml`.
+- `config/settings/base.py`: `SITE_URL` (env, default https://levelproaudio.com).
+
+**Frontend (sin cambios visuales):**
+- `nginx.conf`: `location = /sitemap.xml` → proxy al backend.
+- `public/robots.txt`: reescrito (disallow admin/dashboard/checkout/login/register/etc + Sitemap directive).
+- `components/Seo.jsx`: reescrito → canonical absoluto, robots meta (index/noindex), og:url absoluto, twitter card. Prop `noindex`.
+- `components/JsonLd.jsx`, `components/SeoGlobal.jsx` (Organization + WebSite + verificación GSC), `components/Analytics.jsx` (GA4 vía env), `utils/seo.js`, `utils/analytics.js` (helper track()).
+- `App.jsx`: monta `<SeoGlobal/>` + `<Analytics/>`.
+- `ProductDetail.jsx`: JSON-LD Product + BreadcrumbList.
+- `Home.jsx`: title/description objetivo Chile. Login/Register: noindex.
+
+**Env vars nuevas:** frontend `.env` → VITE_SITE_URL, VITE_GA4_ID, VITE_GOOGLE_SITE_VERIFICATION. Backend `/app/.env` + cloudbuild → SITE_URL.
+
+Verificado (curl + playwright): sitemap XML válido con 28+ URLs, canonical/robots/og/JSON-LD (Organization,WebSite,Product,BreadcrumbList) OK, login noindex, diseño intacto.
+
+**PENDIENTE SEO (fases siguientes):** Fase 2 prerendering en build (crítico para preview social), Fase 5 blog + Article schema, Fase 6 eventos GA4 (helper track() ya listo) + SEO editable en admin. Punto 31 (contadores home incoherentes) y mejoras 404 (búsqueda/destacados): pendientes.
+
+## SEO — FASE 3 y 4: Datos estructurados (2026-07-31) ✅
+- `ProductDetail.jsx`: JSON-LD Product + BreadcrumbList.
+- `ServiceDetail.jsx`: JSON-LD Service + BreadcrumbList.
+- `CourseDetail.jsx`: agregado `<Seo>` (no tenía) + JSON-LD Course + BreadcrumbList.
+- `Shop.jsx`: metadata dinámica por categoría (title "{Cat} en Chile", canonical /shop?category=slug indexable); búsqueda interna (?search=) → noindex; filtros (brand/price) → canonical consolidado a /shop.
+- `NotFound.jsx`: `<Seo noindex>`. Login/Register: noindex.
+- Verificado (playwright DOM): todas las páginas con title/canonical/robots/JSON-LD correctos, sin cambios visuales.
+
+
+
 - `components/legal/AcceptCheckbox.jsx`: checkbox reutilizable (no togglea al clickear enlaces internos).
 - Registro (`Register.jsx`): checkbox obligatorio Términos + Privacidad (bloquea submit, muestra error). Enlaces a /terminos y /privacidad (target=_blank).
 - Compra de stickers (`Rewards.jsx` StickerModal): checkbox obligatorio Bases del Sorteo (botones de pago disabled hasta aceptar). Enlace a /bases-sorteo.

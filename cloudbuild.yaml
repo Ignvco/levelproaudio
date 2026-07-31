@@ -69,6 +69,7 @@ steps:
       - --set-env-vars=CLOUD_SQL_CONNECTION_NAME=${_SQL_INSTANCE}
       # ── Config de pagos (no secreta) ──
       - --set-env-vars=FRONTEND_URL=https://levelproaudio.com
+      - --set-env-vars=SITE_URL=https://levelproaudio.com
       - --set-env-vars=BACKEND_URL=https://levelproaudio.com
       - --set-env-vars=PAYPAL_MODE=live
       - --set-env-vars=USD_CLP_RATE=950

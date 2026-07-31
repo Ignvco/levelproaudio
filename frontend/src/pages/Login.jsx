@@ -4,6 +4,7 @@ import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { ArrowRight } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
 import AuthShell, { AuthField, AuthSubmit } from "../components/auth/AuthShell"
+import Seo from "../components/Seo"
 
 export default function Login() {
   const [email, setEmail]       = useState("")
@@ -36,6 +37,8 @@ export default function Login() {
   }
 
   return (
+    <>
+    <Seo title="Iniciar sesión" noindex />
     <AuthShell
       eyebrow="· Bienvenido de vuelta"
       title="Iniciá sesión"
@@ -82,5 +85,6 @@ export default function Login() {
         </AuthSubmit>
       </form>
     </AuthShell>
+    </>
   )
 }

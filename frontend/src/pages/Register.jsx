@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
 import AuthShell, { AuthField, AuthSubmit } from "../components/auth/AuthShell"
 import AcceptCheckbox from "../components/legal/AcceptCheckbox"
+import Seo from "../components/Seo"
 
 export default function Register() {
   const [form, setForm]     = useState({
@@ -50,6 +51,8 @@ export default function Register() {
   const set = key => e => setForm(p => ({ ...p, [key]: e.target.value }))
 
   return (
+    <>
+    <Seo title="Crear cuenta" noindex />
     <AuthShell
       eyebrow="· Sumate gratis"
       title="Crear cuenta"
@@ -107,5 +110,6 @@ export default function Register() {
         </AuthSubmit>
       </form>
     </AuthShell>
+    </>
   )
 }

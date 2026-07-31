@@ -118,7 +118,9 @@ export default function Home() {
       background: "var(--bg)",
       display: "flex", flexDirection: "column",
     }} data-testid="home-page">
-      <Seo />
+      <Seo
+        title="Equipamiento de Audio Profesional en Chile"
+        description="Micrófonos, interfaces de audio, monitores de estudio, cursos, mezcla, mastering y servicios de audio profesional en Chile y Argentina." />
 
       {/* ═════════════════════════════════════════════════════════════
           HERO — split · left copy · right console-inspired glass

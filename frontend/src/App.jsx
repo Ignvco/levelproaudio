@@ -5,6 +5,8 @@ import PageTransition from "./components/ui/PageTransition"
 import { Routes, Route, Navigate } from "react-router-dom"
 import { useEffect } from "react"
 import { useAuthStore } from "./store/authStore"
+import SeoGlobal from "./components/SeoGlobal"
+import Analytics from "./components/Analytics"
 
 
 import Orders from "./pages/dashboard/Orders"
@@ -118,6 +120,8 @@ function App() {
   return (
     
     <PageTransition>
+      <SeoGlobal />
+      <Analytics />
       <Routes>
 
         <Route path="/admin/login" element={<AdminLogin />} />

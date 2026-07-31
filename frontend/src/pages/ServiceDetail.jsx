@@ -16,6 +16,8 @@ import ServiceProcess from "../components/services/ServiceProcess"
 import ServiceCard from "../components/services/ServiceCard"
 import { serviceCover } from "../utils/serviceCover"
 import Seo from "../components/Seo"
+import JsonLd from "../components/JsonLd"
+import { SITE_URL, absUrl } from "../utils/seo"
 
 const CARD = {
   background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
@@ -167,6 +169,30 @@ export default function ServiceDetail() {
       <Seo type="product" title={service.name}
         description={service.short_description || service.description?.slice(0, 160)}
         image={cover} />
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "Service",
+        name: service.name,
+        ...(service.short_description || service.description
+          ? { description: (service.short_description || service.description).replace(/<[^>]+>/g, "").slice(0, 300) }
+          : {}),
+        provider: { "@type": "Organization", name: "LevelPro Audio", url: SITE_URL },
+        areaServed: ["CL", "AR"],
+        ...(service.category ? { serviceType: service.category.name } : {}),
+        ...(isFixed ? { offers: {
+          "@type": "Offer", price: Number(service.price), priceCurrency: "CLP",
+          url: `${SITE_URL}/services/${service.slug}`,
+        } } : {}),
+      }} />
+      <JsonLd data={{
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        itemListElement: [
+          { "@type": "ListItem", position: 1, name: "Inicio", item: SITE_URL },
+          { "@type": "ListItem", position: 2, name: "Servicios", item: `${SITE_URL}/services` },
+          { "@type": "ListItem", position: 3, name: service.name, item: `${SITE_URL}/services/${service.slug}` },
+        ],
+      }} />
 
       {/* ── Hero con imagen difuminada ── */}
       <div style={{ position: "relative", overflow: "hidden" }}>

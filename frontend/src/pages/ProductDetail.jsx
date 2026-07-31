@@ -14,6 +14,8 @@ import { mediaUrl } from "../utils/mediaUrl"
 import { showToast } from "../components/ui/ToastNotification"
 import { RichText } from "../components/ui/RichText"
 import Seo from "../components/Seo"
+import JsonLd from "../components/JsonLd"
+import { SITE_URL, absUrl } from "../utils/seo"
 
 export default function ProductDetail() {
   const { slug }  = useParams()
@@ -76,11 +78,48 @@ export default function ProductDetail() {
     showToast(`${product.name} agregado al carrito`)
   }
 
+  const productUrl = `${SITE_URL}/shop/${product.slug}`
+  const productSchema = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: product.name,
+    ...(imgUrl ? { image: [absUrl(imgUrl)] } : {}),
+    ...(product.description || product.short_description
+      ? { description: (product.short_description || product.description).replace(/<[^>]+>/g, "").slice(0, 300) }
+      : {}),
+    ...(product.sku ? { sku: product.sku } : {}),
+    ...(product.brand ? { brand: { "@type": "Brand", name: product.brand.name } } : {}),
+    ...(product.category ? { category: product.category.name } : {}),
+    offers: {
+      "@type": "Offer",
+      url: productUrl,
+      priceCurrency: "CLP",
+      price: Number(product.price),
+      availability: product.stock > 0
+        ? "https://schema.org/InStock"
+        : "https://schema.org/OutOfStock",
+    },
+  }
+  const breadcrumbSchema = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      { "@type": "ListItem", position: 1, name: "Inicio", item: SITE_URL },
+      { "@type": "ListItem", position: 2, name: "Tienda", item: `${SITE_URL}/shop` },
+      ...(product.category
+        ? [{ "@type": "ListItem", position: 3, name: product.category.name, item: `${SITE_URL}/shop?category=${product.category.slug}` }]
+        : []),
+      { "@type": "ListItem", position: product.category ? 4 : 3, name: product.name, item: productUrl },
+    ],
+  }
+
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh", ...pageTop }}>
       <Seo type="product" title={product.name}
         description={product.short_description || product.description?.slice(0, 160)}
         image={imgUrl} />
+      <JsonLd data={productSchema} />
+      <JsonLd data={breadcrumbSchema} />
 
       {/* Breadcrumb */}
       <div className="lp-container" style={{ paddingTop: "20px",

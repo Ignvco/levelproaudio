@@ -1,9 +1,19 @@
 User-agent: *
 Allow: /
 
+# Áreas privadas / no indexables
 Disallow: /admin
 Disallow: /dashboard
 Disallow: /checkout
 Disallow: /payment
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /cart
 
-Sitemap: https://www.levelproaudio.com/sitemap.xml
+# Evitar indexación de búsquedas y variantes con parámetros
+Disallow: /*?q=
+Disallow: /*?ref=
+
+Sitemap: https://levelproaudio.com/sitemap.xml

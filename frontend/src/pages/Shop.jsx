@@ -109,9 +109,18 @@ export default function Shop() {
 
   const currentSort = ORDERINGS.find(o => o.value === values.ordering) || ORDERINGS[0]
 
+  // SEO dinámico: categoría → landing indexable; búsqueda interna → noindex
+  const activeCat = values.category ? categories.find(c => c.slug === values.category) : null
+  const isSearch  = !!values.search
+  const seoTitle  = activeCat ? `${activeCat.name} en Chile` : "Tienda"
+  const seoDesc   = activeCat
+    ? `Comprá ${activeCat.name.toLowerCase()} de audio profesional en Chile. Stock real, mejores marcas y envíos a Chile y Argentina — LevelPro Audio.`
+    : "Equipamiento de audio profesional de las mejores marcas, con stock real y envíos en Chile y Argentina."
+  const seoCanonical = activeCat ? `/shop?category=${activeCat.slug}` : "/shop"
+
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
-      <Seo title="Tienda" description="Equipamiento de audio profesional de las mejores marcas, con stock real y envíos en Chile y Argentina." />
+      <Seo title={seoTitle} description={seoDesc} noindex={isSearch} canonicalPath={seoCanonical} />
 
       {/* ── Header ── */}
       <div ref={headerRef} style={{ padding: "clamp(60px, 9vw, 100px) 0 0" }}>

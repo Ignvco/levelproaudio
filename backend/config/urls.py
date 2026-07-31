@@ -40,6 +40,9 @@ urlpatterns = [
     # Configuración del sitio (Personalización)
     path("api/v1/", include("apps.site_settings.urls")),
 
+    # SEO — sitemap dinámico (proxy nginx: /sitemap.xml → /api/v1/seo/sitemap.xml)
+    path("api/v1/seo/", include("apps.seo.urls")),
+
     # LevelPro Rewards — módulo de sorteos/campañas
     path("api/v1/rewards/",       include("apps.rewards.urls_public")),
     path("api/v1/admin/rewards/", include("apps.rewards.urls_admin")),
