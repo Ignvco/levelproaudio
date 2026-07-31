@@ -156,8 +156,8 @@ export default function AdminLoyalty() {
       {modal && <AdjustModal account={modal} onClose={() => setModal(null)} />}
 
       <div style={{ marginBottom:"28px" }}>
-        <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
-          fontWeight:300, letterSpacing:"-0.02em", marginBottom:"6px" }}>Fidelización</h1>
+        <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
+          fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>Fidelización</h1>
         <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
           Sistema de puntos y niveles para clientes
         </p>
@@ -201,7 +201,7 @@ export default function AdminLoyalty() {
                       textTransform:"uppercase", letterSpacing:"0.06em" }}>{label}</p>
                     <span style={{ fontSize:"18px" }}>{icon}</span>
                   </div>
-                  <p style={{ fontFamily:"var(--font-serif)", fontSize:"1.8rem",
+                  <p style={{ fontFamily:"var(--font-display)", fontSize:"1.8rem",
                     color: accent ? "var(--accent)" : "var(--text)", lineHeight:1 }}>{value}</p>
                 </div>
               ))}
@@ -222,7 +222,7 @@ export default function AdminLoyalty() {
                         borderRadius:"var(--r-lg)", border:"1px solid var(--border)",
                         background:"var(--surface-2)" }}>
                         <span style={{ fontSize:"28px", display:"block", marginBottom:"8px" }}>{icon}</span>
-                        <p style={{ fontFamily:"var(--font-serif)", fontSize:"1.6rem",
+                        <p style={{ fontFamily:"var(--font-display)", fontSize:"1.6rem",
                           color, lineHeight:1, marginBottom:"4px" }}>{count}</p>
                         <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{label}</p>
                         <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"4px" }}>

@@ -74,8 +74,8 @@ export default function AdminPayments() {
 
       {/* Header */}
       <div style={{ marginBottom:"28px" }}>
-        <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
-          fontWeight:300, letterSpacing:"-0.02em", marginBottom:"6px" }}>Pagos</h1>
+        <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
+          fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>Pagos</h1>
         {data?.total_approved > 0 && (
           <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
             Total aprobado:{" "}
@@ -100,7 +100,7 @@ export default function AdminPayments() {
                 border:     `1px solid ${statusFilter === s ? color+"40" : "var(--border)"}` }}>
               <p style={{ fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
                 letterSpacing:"0.06em", marginBottom:"6px" }}>{label}</p>
-              <p style={{ fontFamily:"var(--font-serif)", fontSize:"1.6rem",
+              <p style={{ fontFamily:"var(--font-display)", fontSize:"1.6rem",
                 color, lineHeight:1 }}>{count}</p>
             </button>
           )

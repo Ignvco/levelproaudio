@@ -1,0 +1,9 @@
+User-agent: *
+Allow: /
+
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /checkout
+Disallow: /payment
+
+Sitemap: https://www.levelproaudio.com/sitemap.xml

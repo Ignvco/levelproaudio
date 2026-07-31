@@ -15,6 +15,7 @@ import { showToast } from "../components/ui/ToastNotification"
 import ServiceProcess from "../components/services/ServiceProcess"
 import ServiceCard from "../components/services/ServiceCard"
 import { serviceCover } from "../utils/serviceCover"
+import Seo from "../components/Seo"
 
 const CARD = {
   background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
@@ -163,6 +164,9 @@ export default function ServiceDetail() {
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
+      <Seo type="product" title={service.name}
+        description={service.short_description || service.description?.slice(0, 160)}
+        image={cover} />
 
       {/* ── Hero con imagen difuminada ── */}
       <div style={{ position: "relative", overflow: "hidden" }}>

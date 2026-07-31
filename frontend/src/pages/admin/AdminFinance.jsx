@@ -36,7 +36,7 @@ function KpiCard({ label, value, sub, accent, icon }) {
           letterSpacing:"0.08em", fontWeight:500 }}>{label}</p>
         <span style={{ fontSize:"20px" }}>{icon}</span>
       </div>
-      <p style={{ fontFamily:"var(--font-serif)", fontSize:"1.9rem", lineHeight:1,
+      <p style={{ fontFamily:"var(--font-display)", fontSize:"1.9rem", lineHeight:1,
         marginBottom:"6px", color: accent ? "var(--accent)" : "var(--text)" }}>
         {value}
       </p>
@@ -299,7 +299,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
               <p style={{ fontSize:"12px", color:"var(--text-3)", marginBottom:"4px" }}>
                 Saldo disponible en {selectedCat.name}
               </p>
-              <p style={{ fontFamily:"var(--font-serif)", fontSize:"1.4rem",
+              <p style={{ fontFamily:"var(--font-display)", fontSize:"1.4rem",
                 color: selectedCat.balance > 0 ? "var(--accent)" : "var(--danger)" }}>
                 {fmt(selectedCat.balance)}
               </p>
@@ -426,8 +426,8 @@ export default function AdminFinance() {
       <div style={{ display:"flex", justifyContent:"space-between",
         alignItems:"flex-start", marginBottom:"28px", flexWrap:"wrap", gap:"16px" }}>
         <div>
-          <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
-            fontWeight:300, letterSpacing:"-0.02em", marginBottom:"6px" }}>Finanzas</h1>
+          <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
+            fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>Finanzas</h1>
           <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
             Distribución automática de ingresos y retiros
           </p>
@@ -519,7 +519,7 @@ export default function AdminFinance() {
                 <div style={{ display:"flex", justifyContent:"space-between",
                   alignItems:"baseline" }}>
                   <span style={{ fontSize:"12px", color:"var(--text-3)" }}>Disponible</span>
-                  <span style={{ fontFamily:"var(--font-serif)", fontSize:"1.3rem",
+                  <span style={{ fontFamily:"var(--font-display)", fontSize:"1.3rem",
                     fontWeight:600,
                     color: cat.balance >= 0 ? "var(--accent)" : "var(--danger)" }}>
                     {fmt(cat.balance)}

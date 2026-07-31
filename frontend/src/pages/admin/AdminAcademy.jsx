@@ -195,8 +195,8 @@ export default function AdminAcademy() {
       <div style={{ display: "flex", justifyContent: "space-between",
         alignItems: "flex-start", marginBottom: "28px", gap: "16px" }}>
         <div>
-          <h1 style={{ fontFamily: "var(--font-serif)",
-            fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 300,
+          <h1 style={{ fontFamily: "var(--font-display)",
+            fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 800,
             letterSpacing: "-0.02em", marginBottom: "6px" }}>
             Academia
           </h1>
@@ -239,7 +239,7 @@ export default function AdminAcademy() {
           background: "var(--surface)", border: "1px solid var(--border)",
           borderRadius: "var(--r-2xl)" }}>
           <p style={{ fontSize: "40px", marginBottom: "12px" }}>🎬</p>
-          <h3 style={{ fontFamily: "var(--font-serif)", fontWeight: 300,
+          <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 800,
             fontSize: "1.4rem", marginBottom: "8px" }}>Sin cursos</h3>
           <p style={{ fontSize: "14px", color: "var(--text-3)", marginBottom: "20px" }}>
             Crea el primer curso de la academia.
@@ -305,7 +305,7 @@ export default function AdminAcademy() {
                     color: "var(--text-3)", marginBottom: "12px" }}>
                     <span>📹 {course.total_lessons || 0} lecciones</span>
                     <span>👥 {course.enrollment_count || 0} inscritos</span>
-                    <span style={{ fontFamily: "var(--font-serif)", fontSize: "13px",
+                    <span style={{ fontFamily: "var(--font-display)", fontSize: "13px",
                       color: course.is_free ? "var(--accent)" : "var(--text-2)" }}>
                       {course.is_free ? "Gratis" : `$${Number(course.price).toLocaleString("es-CL")}`}
                     </span>

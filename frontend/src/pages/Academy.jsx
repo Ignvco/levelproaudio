@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query"
 import { getCourses } from "../api/academy.api"
 import { useScrollReveal } from "../hooks/useScrollReveal"
 import CourseCard from "../components/academy/CourseCard"
+import Seo from "../components/Seo"
 
 export default function Academy() {
   const [level, setLevel] = useState("")
@@ -24,6 +25,7 @@ export default function Academy() {
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
+      <Seo title="Academia" description="Cursos técnicos de audio en video con instructores del oficio: producción, mezcla, masterización y más. Certificaciones LevelPro." />
 
       {/* Header */}
       <div ref={headerRef} style={{

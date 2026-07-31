@@ -8,6 +8,7 @@ import { getProducts, getCategories, getBrands } from "../api/products.api"
 import ProductCard from "../components/product/ProductCard"
 import ProductRow from "../components/product/ProductRow"
 import ShopFilters, { money } from "../components/product/ShopFilters"
+import Seo from "../components/Seo"
 import { useScrollReveal } from "../hooks/useScrollReveal"
 import { useFavoritesStore } from "../store/favoritesStore"
 import { useAuthStore } from "../store/authStore"
@@ -110,6 +111,7 @@ export default function Shop() {
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
+      <Seo title="Tienda" description="Equipamiento de audio profesional de las mejores marcas, con stock real y envíos en Chile y Argentina." />
 
       {/* ── Header ── */}
       <div ref={headerRef} style={{ padding: "clamp(60px, 9vw, 100px) 0 0" }}>

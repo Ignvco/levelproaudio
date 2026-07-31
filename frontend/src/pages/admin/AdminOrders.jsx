@@ -175,7 +175,7 @@ function OrderPanel({ order, onClose }) {
               padding:"13px 16px", borderTop:"1px solid var(--border)",
               background:"var(--surface-3)" }}>
               <span style={{ fontSize:"14px", fontWeight:500 }}>Total</span>
-              <span style={{ fontFamily:"var(--font-serif)", fontSize:"1.4rem",
+              <span style={{ fontFamily:"var(--font-display)", fontSize:"1.4rem",
                 color:"var(--accent)" }}>
                 ${Number(order.total).toLocaleString("es-CL")}
               </span>
@@ -265,8 +265,8 @@ export default function AdminOrders() {
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end",
         marginBottom:"28px", flexWrap:"wrap", gap:"16px" }}>
         <div>
-          <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
-            fontWeight:300, letterSpacing:"-0.02em", marginBottom:"6px" }}>Órdenes</h1>
+          <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
+            fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>Órdenes</h1>
           <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
             {data?.count || 0} pedidos totales
           </p>

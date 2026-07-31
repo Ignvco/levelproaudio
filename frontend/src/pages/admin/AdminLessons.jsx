@@ -335,8 +335,8 @@ export default function AdminLessons() {
       <div style={{ display: "flex", justifyContent: "space-between",
         alignItems: "flex-start", marginBottom: "28px", gap: "16px" }}>
         <div>
-          <h1 style={{ fontFamily: "var(--font-serif)",
-            fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 300,
+          <h1 style={{ fontFamily: "var(--font-display)",
+            fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 800,
             letterSpacing: "-0.02em", marginBottom: "6px" }}>
             Lecciones
           </h1>

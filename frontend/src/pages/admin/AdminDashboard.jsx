@@ -139,8 +139,8 @@ export default function AdminDashboard() {
           letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"8px" }}>
           Panel de control
         </p>
-        <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"clamp(1.8rem, 3vw, 2.6rem)",
-          fontWeight:300, letterSpacing:"-0.02em", marginBottom:"6px" }}>
+        <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.6rem)",
+          fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>
           Bienvenido de vuelta
         </h1>
         <p style={{ fontSize:"13px", color:"var(--text-3)" }}>

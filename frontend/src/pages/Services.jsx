@@ -6,6 +6,7 @@ import { getServices, getServiceCategories } from "../api/services.api"
 import { useScrollReveal } from "../hooks/useScrollReveal"
 import ServiceCard from "../components/services/ServiceCard"
 import ServiceProcess from "../components/services/ServiceProcess"
+import Seo from "../components/Seo"
 
 export default function Services() {
   const headerRef = useScrollReveal()
@@ -49,6 +50,7 @@ export default function Services() {
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
+      <Seo title="Servicios" description="Mezcla, mastering, operación en vivo y asesoría técnica de audio profesional, a medida de tu proyecto." />
 
       {/* Hero */}
       <div ref={headerRef} style={{ padding: "clamp(60px, 9vw, 100px) 0 0" }}>

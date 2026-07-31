@@ -23,7 +23,7 @@ function KPI({ label, value, sub, icon, color="var(--text)" }) {
           textTransform:"uppercase", letterSpacing:"0.08em" }}>{label}</p>
         {icon && <span style={{ fontSize:"20px" }}>{icon}</span>}
       </div>
-      <p style={{ fontFamily:"var(--font-serif)", fontSize:"2rem",
+      <p style={{ fontFamily:"var(--font-display)", fontSize:"2rem",
         lineHeight:1, marginBottom:"4px", color }}>{value}</p>
       {sub && <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{sub}</p>}
     </div>
@@ -75,8 +75,8 @@ export default function AdminInventory() {
     <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
 
       <div style={{ marginBottom:"28px" }}>
-        <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
-          fontWeight:300, letterSpacing:"-0.02em", marginBottom:"6px" }}>
+        <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
+          fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>
           Inventario
         </h1>
         <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
@@ -218,7 +218,7 @@ export default function AdminInventory() {
             border:"1px solid rgba(26,255,110,0.2)",
             borderRadius:"var(--r-2xl)" }}>
             <p style={{ fontSize:"48px", marginBottom:"12px" }}>✅</p>
-            <h3 style={{ fontFamily:"var(--font-serif)", fontWeight:300,
+            <h3 style={{ fontFamily:"var(--font-display)", fontWeight:800,
               fontSize:"1.4rem", marginBottom:"8px", color:"var(--accent)" }}>
               Todo en orden
             </h3>
@@ -249,7 +249,7 @@ export default function AdminInventory() {
                     <p style={{ fontSize:"11px", color:"var(--text-3)",
                       textTransform:"uppercase", letterSpacing:"0.06em",
                       marginBottom:"2px" }}>Stock actual</p>
-                    <p style={{ fontFamily:"var(--font-serif)", fontSize:"2rem",
+                    <p style={{ fontFamily:"var(--font-display)", fontSize:"2rem",
                       color: p.stock===0 ? "var(--danger)" : "#facc15", lineHeight:1 }}>
                       {p.stock}
                     </p>
@@ -258,7 +258,7 @@ export default function AdminInventory() {
                     <p style={{ fontSize:"11px", color:"var(--text-3)",
                       textTransform:"uppercase", letterSpacing:"0.06em",
                       marginBottom:"2px" }}>Mínimo</p>
-                    <p style={{ fontFamily:"var(--font-serif)", fontSize:"2rem",
+                    <p style={{ fontFamily:"var(--font-display)", fontSize:"2rem",
                       color:"var(--text-3)", lineHeight:1 }}>{p.stock_min}</p>
                   </div>
                   <span style={{ padding:"4px 12px", borderRadius:"var(--r-full)",

@@ -81,8 +81,8 @@ export default function AdminBilling() {
     <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
 
       <div style={{ marginBottom:"28px" }}>
-        <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
-          fontWeight:300, letterSpacing:"-0.02em", marginBottom:"6px" }}>Facturación</h1>
+        <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
+          fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>Facturación</h1>
         <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
           Genera boletas y facturas PDF · Envío por email · Historial completo
         </p>
@@ -113,7 +113,7 @@ export default function AdminBilling() {
           <div style={{ padding:"60px", textAlign:"center", background:"var(--surface)",
             border:"1px solid var(--border)", borderRadius:"var(--r-2xl)" }}>
             <p style={{ fontSize:"40px", marginBottom:"12px" }}>🧾</p>
-            <h3 style={{ fontFamily:"var(--font-serif)", fontWeight:300, fontSize:"1.4rem", marginBottom:"8px" }}>
+            <h3 style={{ fontFamily:"var(--font-display)", fontWeight:800, fontSize:"1.4rem", marginBottom:"8px" }}>
               Sin documentos emitidos
             </h3>
             <p style={{ fontSize:"14px", color:"var(--text-3)", marginBottom:"20px" }}>
@@ -199,8 +199,8 @@ export default function AdminBilling() {
                 background:"rgba(26,255,110,0.1)", border:"2px solid rgba(26,255,110,0.3)",
                 display:"flex", alignItems:"center", justifyContent:"center",
                 margin:"0 auto 20px", fontSize:"32px", color:"var(--accent)" }}>✓</div>
-              <h2 style={{ fontFamily:"var(--font-serif)", fontSize:"1.8rem",
-                fontWeight:300, marginBottom:"6px" }}>Documento generado</h2>
+              <h2 style={{ fontFamily:"var(--font-display)", fontSize:"1.8rem",
+                fontWeight:800, marginBottom:"6px" }}>Documento generado</h2>
               <p style={{ fontFamily:"monospace", fontSize:"1.6rem",
                 color:"var(--accent)", fontWeight:700, marginBottom:"6px" }}>
                 {genResult.folio}

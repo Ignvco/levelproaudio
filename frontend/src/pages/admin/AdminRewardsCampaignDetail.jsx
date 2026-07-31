@@ -119,7 +119,7 @@ export default function AdminRewardsCampaignDetail() {
         <div>
           <div style={{ display:"flex", gap:"10px", alignItems:"center",
             marginBottom:"6px" }}>
-            <h1 style={{ fontFamily:"var(--font-serif)",
+            <h1 style={{ fontFamily:"var(--font-display)",
               fontSize:"26px", fontWeight:400,
               letterSpacing:"-0.01em" }}>
               {c.name}

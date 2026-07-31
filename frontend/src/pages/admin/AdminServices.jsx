@@ -72,8 +72,8 @@ export default function AdminServices() {
     <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
       {/* Header */}
       <div style={{ marginBottom: "28px" }}>
-        <h1 style={{ fontFamily: "var(--font-serif)",
-          fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 300,
+        <h1 style={{ fontFamily: "var(--font-display)",
+          fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 800,
           letterSpacing: "-0.02em", marginBottom: "6px" }}>
           Servicios
         </h1>
@@ -234,7 +234,7 @@ export default function AdminServices() {
                       {s.short_description}
                     </p>
                   )}
-                  <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.2rem",
+                  <p style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem",
                     color: "var(--accent)" }}>
                     {s.price_display}
                   </p>

@@ -13,6 +13,7 @@ import { useScrollReveal } from "../hooks/useScrollReveal"
 import { mediaUrl } from "../utils/mediaUrl"
 import { showToast } from "../components/ui/ToastNotification"
 import { RichText } from "../components/ui/RichText"
+import Seo from "../components/Seo"
 
 export default function ProductDetail() {
   const { slug }  = useParams()
@@ -77,6 +78,9 @@ export default function ProductDetail() {
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh", ...pageTop }}>
+      <Seo type="product" title={product.name}
+        description={product.short_description || product.description?.slice(0, 160)}
+        image={imgUrl} />
 
       {/* Breadcrumb */}
       <div className="lp-container" style={{ paddingTop: "20px",

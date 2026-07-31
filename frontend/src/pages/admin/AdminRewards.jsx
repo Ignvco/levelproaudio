@@ -117,8 +117,8 @@ export default function AdminRewards() {
                 fontWeight:700, marginBottom:"8px" }}>
                 Campaña activa
               </p>
-              <h2 style={{ fontFamily:"var(--font-serif)",
-                fontSize:"28px", fontWeight:300,
+              <h2 style={{ fontFamily:"var(--font-display)",
+                fontSize:"28px", fontWeight:800,
                 letterSpacing:"-0.01em", marginBottom:"6px" }}>
                 {data.current_campaign.name}
               </h2>

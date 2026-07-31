@@ -9,6 +9,7 @@ import { useAuthStore } from "../store/authStore"
 import { showToast } from "../components/ui/ToastNotification"
 import { mediaUrl } from "../utils/mediaUrl"
 import ProductCard from "../components/product/ProductCard"
+import Seo from "../components/Seo"
 
 const clp = (n) => new Intl.NumberFormat("es-CL", {
   style: "currency", currency: "CLP", maximumFractionDigits: 0,
@@ -295,6 +296,7 @@ export default function Rewards() {
         paddingTop:"clamp(96px, 12vw, 150px)",
         paddingBottom:"clamp(80px, 10vw, 120px)",
       }}>
+      <Seo title="Rewards" description="Participá en los sorteos de LevelPro Audio comprando stickers. Cada sticker es un ticket. ¡Ganá equipamiento profesional!" />
       <div className="lp-container lp-sections">
 
         {/* ═══════════ HERO ═══════════ */}

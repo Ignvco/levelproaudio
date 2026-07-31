@@ -370,7 +370,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                           marginBottom: "6px" }}>
                           {label}
                         </p>
-                        <p style={{ fontFamily: "var(--font-serif)", fontSize: "1.4rem",
+                        <p style={{ fontFamily: "var(--font-display)", fontSize: "1.4rem",
                           color, lineHeight: 1 }}>
                           {value}
                         </p>
@@ -634,8 +634,8 @@ export default function AdminProducts() {
         alignItems: "flex-start", marginBottom: "28px",
         flexWrap: "wrap", gap: "16px" }}>
         <div>
-          <h1 style={{ fontFamily: "var(--font-serif)",
-            fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 300,
+          <h1 style={{ fontFamily: "var(--font-display)",
+            fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 800,
             letterSpacing: "-0.02em", marginBottom: "6px" }}>
             Productos
           </h1>
@@ -704,7 +704,7 @@ export default function AdminProducts() {
           background: "var(--surface)", border: "1px solid var(--border)",
           borderRadius: "var(--r-2xl)" }}>
           <p style={{ fontSize: "40px", marginBottom: "12px" }}>📦</p>
-          <h3 style={{ fontFamily: "var(--font-serif)", fontWeight: 300,
+          <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 800,
             fontSize: "1.4rem", marginBottom: "8px" }}>
             Sin productos
           </h3>

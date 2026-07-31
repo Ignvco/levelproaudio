@@ -33,7 +33,7 @@ function KpiCard({ label, value, sub, accent }) {
       borderRadius:"var(--r-xl)", padding:"20px 22px" }}>
       <p style={{ fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
         letterSpacing:"0.08em", fontWeight:500, marginBottom:"10px" }}>{label}</p>
-      <p style={{ fontFamily:"var(--font-serif)", fontSize:"1.9rem", lineHeight:1,
+      <p style={{ fontFamily:"var(--font-display)", fontSize:"1.9rem", lineHeight:1,
         marginBottom:"6px", color: accent ? "var(--accent)" : "var(--text)" }}>{value}</p>
       {sub && <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{sub}</p>}
     </div>
@@ -92,8 +92,8 @@ export default function AdminAnalytics() {
 
       {/* Header */}
       <div style={{ marginBottom:"32px" }}>
-        <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
-          fontWeight:300, letterSpacing:"-0.02em", marginBottom:"6px" }}>Analytics</h1>
+        <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
+          fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>Analytics</h1>
         <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
           Últimos 12 meses · actualizado cada 2 minutos.
         </p>

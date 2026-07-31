@@ -48,7 +48,7 @@ function KPICard({ label, value, sub, sparkData, icon, color="var(--accent)", ba
           {icon && <span style={{ fontSize:"18px" }}>{icon}</span>}
         </div>
       </div>
-      <p style={{ fontFamily:"var(--font-serif)", fontSize:"2.2rem", color, lineHeight:1 }}>
+      <p style={{ fontFamily:"var(--font-display)", fontSize:"2.2rem", color, lineHeight:1 }}>
         {value}
       </p>
       {sparkData?.length > 0 && (
@@ -116,8 +116,8 @@ export default function ExecutiveDashboard() {
             letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"8px" }}>
             Vista ejecutiva
           </p>
-          <h1 style={{ fontFamily:"var(--font-serif)", fontSize:"clamp(1.8rem, 3vw, 2.6rem)",
-            fontWeight:300, letterSpacing:"-0.02em", marginBottom:"6px" }}>
+          <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.6rem)",
+            fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>
             Vista ejecutiva
           </h1>
           <p style={{ fontSize:"13px", color:"var(--text-3)" }}>{todayStr}</p>
@@ -348,7 +348,7 @@ export default function ExecutiveDashboard() {
                   borderRadius:"var(--r-lg)", background:"var(--surface-2)",
                   border:`1px solid ${color}20` }}>
                   <span style={{ fontSize:"13px", color:"var(--text-2)" }}>{label}</span>
-                  <span style={{ fontFamily:"var(--font-serif)", fontSize:"1.8rem", color }}>
+                  <span style={{ fontFamily:"var(--font-display)", fontSize:"1.8rem", color }}>
                     {value}
                   </span>
                 </div>

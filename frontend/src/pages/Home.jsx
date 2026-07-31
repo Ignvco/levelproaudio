@@ -11,6 +11,7 @@ import { mediaUrl } from "../utils/mediaUrl"
 import ProductCard from "../components/product/ProductCard"
 import CourseCard from "../components/academy/CourseCard"
 import ServiceCard from "../components/services/ServiceCard"
+import Seo from "../components/Seo"
 import logoImg from "../assets/logo.png"
 import {
   LED, VUMeter, DigitalReadout, Knob, Fader, AnimatedWaveform,
@@ -117,6 +118,7 @@ export default function Home() {
       background: "var(--bg)",
       display: "flex", flexDirection: "column",
     }} data-testid="home-page">
+      <Seo />
 
       {/* ═════════════════════════════════════════════════════════════
           HERO — split · left copy · right console-inspired glass
