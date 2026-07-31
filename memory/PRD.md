@@ -29,6 +29,16 @@ SaaS Chile/Argentina: e-commerce (Tienda), Academia y Servicios de audio. UI dar
 ## Backlog (orden: a✔ admin → b✔ legales → c✔ SEO → d✔ Resend → e✔ recuperar pass)
 - (backlog legal/auth completo)
 
+## Checkboxes de aceptación legal (2026-07-31) ✅
+- `components/legal/AcceptCheckbox.jsx`: checkbox reutilizable (no togglea al clickear enlaces internos).
+- Registro (`Register.jsx`): checkbox obligatorio Términos + Privacidad (bloquea submit, muestra error). Enlaces a /terminos y /privacidad (target=_blank).
+- Compra de stickers (`Rewards.jsx` StickerModal): checkbox obligatorio Bases del Sorteo (botones de pago disabled hasta aceptar). Enlace a /bases-sorteo.
+- Testeado con testing_agent: 5/5 flujos OK (iteration_5).
+
+## Deploy GCP — fix Resend secret (2026-07-31)
+- Error de deploy: secreto `RESEND_API_KEY` no existía en Secret Manager de GCP. Solución (usuario debe correr en su GCP): `gcloud secrets create RESEND_API_KEY` + `add-iam-policy-binding` al SA `levelproaudio-run@`. Usuario ya lanzó re-deploy.
+- `cloudbuild.yaml`: RESEND_FROM_EMAIL cambiado de onboarding@resend.dev → `LevelPro Audio <no-responder@levelproaudio.com>` (dominio verificado).
+
 ## Páginas legales (2026-07-31) ✅
 - `components/legal/LegalShell.jsx`: layout editorial reutilizable (hero + índice sticky con scroll-spy + secciones numeradas).
 - Páginas: `/terminos` (Terminos.jsx), `/privacidad` (Privacidad.jsx), `/bases-sorteo` (BasesSorteo.jsx). Contenido en español para CL/AR (compras, pagos, envíos, datos, sorteo Rewards). Cada una con `<Seo>`.
