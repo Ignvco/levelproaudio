@@ -6,7 +6,14 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User
-from .serializers import UserRegisterSerializer, UserProfileSerializer
+from .serializers import (
+    UserRegisterSerializer, UserProfileSerializer,
+    PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
+)
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.encoding import force_bytes, force_str
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from apps.emails import send_password_reset
 
 
 # ── Helpers de cookies HTTPOnly ───────────────────────────────
@@ -100,3 +107,57 @@ class ProfileView(generics.RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+
+# ── Recuperación de contraseña ────────────────────────────────
+_GENERIC_RESET_MSG = {
+    "detail": "Si el email está registrado, te enviamos un enlace para restablecer tu contraseña."
+}
+
+
+class PasswordResetRequestView(APIView):
+    """POST /api/v1/auth/password/reset/ — genera token y envía email (respuesta genérica)."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"].strip().lower()
+
+        user = User.objects.filter(email__iexact=email).first()
+        if user:
+            uid = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+            reset_url = f"{settings.FRONTEND_URL}/reset-password?uid={uid}&token={token}"
+            try:
+                send_password_reset(user.email, reset_url)
+            except Exception:
+                pass
+        # Respuesta idéntica exista o no el email (anti-enumeración).
+        return Response(_GENERIC_RESET_MSG)
+
+
+class PasswordResetConfirmView(APIView):
+    """POST /api/v1/auth/password/reset/confirm/ — valida token y setea nueva contraseña."""
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        serializer = PasswordResetConfirmSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        try:
+            uid = force_str(urlsafe_base64_decode(data["uid"]))
+            user = User.objects.get(pk=uid)
+        except (User.DoesNotExist, ValueError, TypeError, OverflowError):
+            user = None
+
+        if user is None or not default_token_generator.check_token(user, data["token"]):
+            return Response(
+                {"detail": "El enlace no es válido o expiró. Solicitá uno nuevo."},
+                status=400,
+            )
+
+        user.set_password(data["password"])
+        user.save(update_fields=["password"])
+        return Response({"detail": "Tu contraseña fue actualizada. Ya podés iniciar sesión."})

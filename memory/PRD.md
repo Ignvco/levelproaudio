@@ -19,12 +19,15 @@ SaaS Chile/Argentina: e-commerce (Tienda), Academia y Servicios de audio. UI dar
 - **Emails (Resend)**: `apps/emails.py` (plantilla marca) — confirmación de compra (webhook MP + captura PayPal), tickets del sorteo (al generar entries), password reset (fn lista, wiring en paso e). Settings RESEND_API_KEY/RESEND_FROM_EMAIL. Fallback a consola si no hay key. cloudbuild.yaml: binding secret RESEND_API_KEY + env RESEND_FROM_EMAIL.
 
 ## EN CURSO / bloqueos
-- **Resend**: API key cargada y funcionando (envío OK con onboarding@resend.dev). Remitente configurado `no-responder@levelproaudio.com`. **BLOQUEO**: el dominio levelproaudio.com AÚN no está verificado en Resend (usuario recién cargó los DNS; falta propagación + verify). Cuando Resend lo marque "Verified", los emails salen automáticamente. Key es send-only (no puede listar dominios).
-- PROD: crear secret `RESEND_API_KEY` en GCP (`echo -n "re_..." | gcloud secrets create RESEND_API_KEY --data-file=-`) y ajustar RESEND_FROM_EMAIL en cloudbuild si el remitente cambia.
+- (ninguno)
 
-## Backlog (orden: a✔ admin → b legales → c✔ SEO → d✔ Resend(pend. verify) → e recuperar pass)
+## Recuperar contraseña (2026-07-31) ✅
+- Backend `apps/users/`: `POST /auth/password/reset/` (respuesta genérica anti-enumeración, genera uid b64 + token nativo Django, envía email Resend) y `POST /auth/password/reset/confirm/` (uid+token+password/password2, valida con validators). `PASSWORD_RESET_TIMEOUT=3600` (1h). Token de un solo uso (se invalida al cambiar la pass).
+- Frontend: `/forgot-password` (ForgotPassword.jsx) y `/reset-password?uid=..&token=..` (ResetPassword.jsx), diseño AuthShell premium. Ruteo en App.jsx.
+- Verificado por curl end-to-end (todos los casos) + screenshots de ambas pantallas.
+
+## Backlog (orden: a✔ admin → b legales → c✔ SEO → d✔ Resend → e✔ recuperar pass)
 - b) Páginas legales: Términos, Privacidad, Bases del Sorteo (footer hoy <span> sin link).
-- e) Recuperar contraseña (endpoints + páginas /forgot-password y /reset-password; email ya listo).
 - P1: Validar PayPal + emails reales en prod. Editar prize_product en detalle admin.
 - P2: Automatizar USD_CLP_RATE. Reseñas. Cupones.
 

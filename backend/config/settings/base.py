@@ -198,6 +198,9 @@ GLOBAL66_EMAIL        = env("GLOBAL66_EMAIL",        default="")
 
 # ── URLs del sistema ─────────────────────────────────────────
 FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
+
+# Vencimiento del enlace de recuperación de contraseña (1 hora)
+PASSWORD_RESET_TIMEOUT = 3600
 BACKEND_URL  = env("BACKEND_URL",  default="http://localhost:8000")
 
 # ── Email ────────────────────────────────────────────────────

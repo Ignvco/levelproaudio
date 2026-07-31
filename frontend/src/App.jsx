@@ -27,6 +27,8 @@ import Academy from "./pages/Academy"
 import Services from "./pages/Services"
 import Cart from "./pages/Cart"
 import Register from "./pages/Register"
+import ForgotPassword from "./pages/ForgotPassword"
+import ResetPassword from "./pages/ResetPassword"
 
 // Páginas protegidas
 import Dashboard from "./pages/Dashboard"
@@ -165,6 +167,8 @@ function App() {
         {/* ── Auth ── */}
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* ── Protegidas ── */}
         <Route path="/dashboard" element={<ProtectedRoute>

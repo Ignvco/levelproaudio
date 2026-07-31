@@ -97,6 +97,24 @@ class UserSerializer(serializers.ModelSerializer):
         ]
 
 
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Solicitud de recuperación: recibe el email."""
+    email = serializers.EmailField()
+
+
+class PasswordResetConfirmSerializer(serializers.Serializer):
+    """Confirmación: recibe uid + token + nueva contraseña."""
+    uid = serializers.CharField()
+    token = serializers.CharField()
+    password = serializers.CharField(write_only=True, validators=[validate_password])
+    password2 = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs["password"] != attrs["password2"]:
+            raise serializers.ValidationError({"password": "Las contraseñas no coinciden."})
+        return attrs
+
+
 class CustomTokenSerializer(TokenObtainPairSerializer):
     """
     Serializer personalizado para JWT.
