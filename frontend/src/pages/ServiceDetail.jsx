@@ -330,14 +330,15 @@ export default function ServiceDetail() {
                 background: "linear-gradient(135deg, rgba(26,255,110,0.06), transparent)" }}>
                 <p style={EYEBROW}>{isFixed ? "· Contratar" : "· Solicitar"}</p>
                 <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between",
-                  gap: "10px", marginTop: "10px" }}>
-                  <p style={{ fontFamily: "var(--font-display)", fontSize: "1.9rem", fontWeight: 800,
-                    letterSpacing: "-0.02em", color: "var(--accent)", lineHeight: 1 }}>
+                  gap: "10px", marginTop: "12px" }}>
+                  <h2 className="display-bold" style={{ fontFamily: "var(--font-display)",
+                    fontSize: "clamp(1.8rem, 2.4vw, 2.2rem)", fontWeight: 800,
+                    letterSpacing: "-0.03em", color: "var(--text)", lineHeight: 1 }}>
                     {service.price_display}
-                  </p>
+                  </h2>
                   <span style={{ fontSize: "12px", color: "var(--text-3)" }}>{modalidad}</span>
                 </div>
-                <p style={{ fontSize: "12.5px", color: "var(--text-3)", marginTop: "8px" }}>
+                <p style={{ fontSize: "13px", color: "var(--text-2)", marginTop: "10px", lineHeight: 1.55 }}>
                   {isFixed
                     ? "Pagá online de forma segura y coordinamos la entrega del servicio."
                     : "Dejanos tus datos y te contactamos en menos de 24 hs."}
