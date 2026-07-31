@@ -9,6 +9,7 @@ import { useAuthStore } from "../store/authStore"
 import { showToast } from "../components/ui/ToastNotification"
 import { mediaUrl } from "../utils/mediaUrl"
 import ProductCard from "../components/product/ProductCard"
+import AcceptCheckbox from "../components/legal/AcceptCheckbox"
 import Seo from "../components/Seo"
 
 const clp = (n) => new Intl.NumberFormat("es-CL", {
@@ -122,6 +123,7 @@ function StickerModal({ campaign, onClose }) {
   const { isAuthenticated } = useAuthStore()
   const navigate = useNavigate()
   const [qty, setQty] = useState(1)
+  const [accepted, setAccepted] = useState(false)
   const [loading, setLoading] = useState(false)
   const price = Number(campaign.sticker_price || 0)
   const total = price * qty
@@ -132,6 +134,10 @@ function StickerModal({ campaign, onClose }) {
     if (!isAuthenticated) {
       showToast("Iniciá sesión para participar", "error")
       navigate("/login")
+      return
+    }
+    if (!accepted) {
+      showToast("Aceptá las Bases y Condiciones del Sorteo para continuar", "error")
       return
     }
     try {
@@ -229,14 +235,14 @@ function StickerModal({ campaign, onClose }) {
         </p>
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           {PROVIDERS.map(({ id, label, Icon, desc }) => (
-            <button key={id} data-testid={`sticker-pay-${id}`} disabled={loading}
+            <button key={id} data-testid={`sticker-pay-${id}`} disabled={loading || !accepted}
               onClick={() => handleBuy(id)}
               style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%",
-                padding: "14px 16px", borderRadius: "14px", cursor: loading ? "wait" : "pointer",
+                padding: "14px 16px", borderRadius: "14px", cursor: (loading || !accepted) ? "not-allowed" : "pointer",
                 background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
-                color: "#fff", textAlign: "left", opacity: loading ? 0.6 : 1,
-                transition: "border-color 160ms" }}
-              onMouseEnter={e => !loading && (e.currentTarget.style.borderColor = "rgba(26,255,110,0.4)")}
+                color: "#fff", textAlign: "left", opacity: (loading || !accepted) ? 0.5 : 1,
+                transition: "border-color 160ms, opacity 160ms" }}
+              onMouseEnter={e => !(loading || !accepted) && (e.currentTarget.style.borderColor = "rgba(26,255,110,0.4)")}
               onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}>
               <Icon size={20} style={{ color: "var(--accent)", flexShrink: 0 }} />
               <span style={{ flex: 1 }}>
@@ -246,6 +252,17 @@ function StickerModal({ campaign, onClose }) {
               <ArrowRight size={16} style={{ color: "var(--text-3)" }} />
             </button>
           ))}
+        </div>
+
+        {/* Aceptación de bases */}
+        <div style={{ marginTop: "16px", padding: "14px 16px", borderRadius: "14px",
+          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)" }}>
+          <AcceptCheckbox checked={accepted} onChange={setAccepted} testId="sticker-accept-terms">
+            Acepto las{" "}
+            <Link to="/bases-sorteo" target="_blank" style={{ color: "var(--accent)", fontWeight: 600 }}>
+              Bases y Condiciones del Sorteo
+            </Link>.
+          </AcceptCheckbox>
         </div>
 
         <p style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "center",

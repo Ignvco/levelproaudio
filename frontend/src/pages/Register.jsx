@@ -4,12 +4,14 @@ import { Link, useNavigate } from "react-router-dom"
 import { ArrowRight } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
 import AuthShell, { AuthField, AuthSubmit } from "../components/auth/AuthShell"
+import AcceptCheckbox from "../components/legal/AcceptCheckbox"
 
 export default function Register() {
   const [form, setForm]     = useState({
     first_name: "", last_name: "",
     email: "", password: "", password2: "",
   })
+  const [accepted, setAccepted] = useState(false)
   const [error, setError]   = useState("")
   const [loading, setLoading] = useState(false)
   const { register }        = useAuthStore()
@@ -17,6 +19,10 @@ export default function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!accepted) {
+      setError("Debés aceptar los Términos y la Política de Privacidad para continuar.")
+      return
+    }
     if (form.password !== form.password2) {
       setError("Las contraseñas no coinciden.")
       return
@@ -76,6 +82,19 @@ export default function Register() {
 
         <AuthField label="Repetir contraseña" testId="register-password2" type="password" value={form.password2}
           onChange={set("password2")} placeholder="••••••••" required autoComplete="new-password" />
+
+        <div style={{ marginTop: "4px" }}>
+          <AcceptCheckbox checked={accepted} onChange={setAccepted} testId="register-accept-terms">
+            Acepto los{" "}
+            <Link to="/terminos" target="_blank" style={{ color: "var(--accent)", fontWeight: 600 }}>
+              Términos y Condiciones
+            </Link>{" "}
+            y la{" "}
+            <Link to="/privacidad" target="_blank" style={{ color: "var(--accent)", fontWeight: 600 }}>
+              Política de Privacidad
+            </Link>.
+          </AcceptCheckbox>
+        </div>
 
         <AuthSubmit loading={loading}>
           {loading ? "Creando cuenta..." : "Crear cuenta gratis"}
