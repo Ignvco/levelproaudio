@@ -1,7 +1,7 @@
 // pages/ServiceDetail.jsx — Detalle premium basado en cards
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { useQuery, useMutation } from "@tanstack/react-query"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Check, Clock, ArrowRight, MessageCircle, SearchX,
   Tag, Layers, Zap, ShieldCheck, Sparkles, CreditCard, Globe,
@@ -48,6 +48,17 @@ export default function ServiceDetail() {
   const [error, setError] = useState("")
   const [payLoading, setPayLoading] = useState(false)
 
+  // Precargar datos del usuario logueado (cuando el store hidrata)
+  useEffect(() => {
+    if (!user) return
+    setForm(prev => ({
+      ...prev,
+      name:  prev.name  || (user.first_name ? `${user.first_name} ${user.last_name || ""}`.trim() : ""),
+      email: prev.email || user.email || "",
+      phone: prev.phone || user.phone || "",
+    }))
+  }, [user])
+
   const { data: service, isLoading, isError } = useQuery({
     queryKey: ["service", slug],
     queryFn:  () => getService(slug),
@@ -61,8 +72,12 @@ export default function ServiceDetail() {
   const mutation = useMutation({
     mutationFn: async () => {
       const budgetNum = form.budget ? Number(String(form.budget).replace(/[^\d]/g, "")) : null
+      const fallbackName = user?.first_name ? `${user.first_name} ${user.last_name || ""}`.trim() : ""
       await createServiceRequest({
-        service: service.id, name: form.name, email: form.email, phone: form.phone,
+        service: service.id,
+        name: form.name || fallbackName,
+        email: form.email || user?.email || "",
+        phone: form.phone,
         message: form.message,
         budget: budgetNum && budgetNum > 0 ? budgetNum : null,
         preferred_date: form.preferred_date || null,
@@ -364,18 +379,18 @@ export default function ServiceDetail() {
                     onClick={() => {
                       if (!isAuthenticated) {
                         showToast("Iniciá sesión para enviar tu solicitud", "error")
-                        navigate("/login")
+                        navigate(`/login?next=/services/${service.slug}`)
                         return
                       }
                       setError("")
                       mutation.mutate()
                     }}
-                    disabled={mutation.isPending || (isAuthenticated && (!form.name || !form.email || !form.message))}
+                    disabled={mutation.isPending || (isAuthenticated && !form.message.trim())}
                     style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "10px",
                       padding: "14px 14px 14px 24px", borderRadius: "9999px",
                       background: "var(--accent)", color: "#000", border: "none", fontSize: "14px",
                       fontWeight: 700, cursor: "pointer", marginTop: "4px",
-                      opacity: (mutation.isPending || (isAuthenticated && (!form.name || !form.email || !form.message))) ? 0.6 : 1,
+                      opacity: (mutation.isPending || (isAuthenticated && !form.message.trim())) ? 0.6 : 1,
                       boxShadow: "0 8px 30px rgba(26,255,110,0.25)" }}>
                     {mutation.isPending ? "Enviando..." : "Enviar solicitud"}
                     {!mutation.isPending && (
@@ -396,6 +411,12 @@ export default function ServiceDetail() {
                     <p style={{ fontSize: "11.5px", color: "var(--text-3)", textAlign: "center",
                       lineHeight: 1.5 }}>
                       Necesitás una cuenta para enviar la solicitud. También podés escribirnos por WhatsApp.
+                    </p>
+                  )}
+                  {isAuthenticated && !form.message.trim() && (
+                    <p style={{ fontSize: "11.5px", color: "var(--text-3)", textAlign: "center",
+                      lineHeight: 1.5 }}>
+                      Escribí un mensaje para habilitar el envío.
                     </p>
                   )}
                 </div>
