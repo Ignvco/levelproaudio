@@ -593,13 +593,18 @@ function Footer() {
           <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
             © 2026 LevelPro Audio. Todos los derechos reservados.
           </p>
-          <div style={{ display:"flex", gap:"20px", alignItems:"center" }}>
-            {["Términos","Privacidad"].map(item => (
-              <span key={item} style={{ fontSize:"13px", color:"var(--text-3)", cursor:"default", transition:"color 150ms" }}
+          <div style={{ display:"flex", gap:"20px", alignItems:"center", flexWrap:"wrap" }}>
+            {[
+              { label:"Términos",        to:"/terminos"     },
+              { label:"Privacidad",      to:"/privacidad"   },
+              { label:"Bases del Sorteo", to:"/bases-sorteo" },
+            ].map(item => (
+              <Link key={item.to} to={item.to} data-testid={`footer-legal-${item.to.replace("/","")}`}
+                style={{ fontSize:"13px", color:"var(--text-3)", textDecoration:"none", transition:"color 150ms" }}
                 onMouseEnter={e=>e.currentTarget.style.color="var(--text)"}
                 onMouseLeave={e=>e.currentTarget.style.color="var(--text-3)"}>
-                {item}
-              </span>
+                {item.label}
+              </Link>
             ))}
             <Link to="/admin/login" data-testid="footer-admin-link" style={{
               fontSize:"12px", color:"var(--text-3)",

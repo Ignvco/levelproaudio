@@ -29,6 +29,9 @@ import Cart from "./pages/Cart"
 import Register from "./pages/Register"
 import ForgotPassword from "./pages/ForgotPassword"
 import ResetPassword from "./pages/ResetPassword"
+import Terminos from "./pages/legal/Terminos"
+import Privacidad from "./pages/legal/Privacidad"
+import BasesSorteo from "./pages/legal/BasesSorteo"
 
 // Páginas protegidas
 import Dashboard from "./pages/Dashboard"
@@ -133,6 +136,11 @@ function App() {
 
         {/* Rewards público */}
         <Route path="/rewards" element={<MainLayout><Rewards /></MainLayout>} />
+
+        {/* Legales */}
+        <Route path="/terminos" element={<MainLayout><Terminos /></MainLayout>} />
+        <Route path="/privacidad" element={<MainLayout><Privacidad /></MainLayout>} />
+        <Route path="/bases-sorteo" element={<MainLayout><BasesSorteo /></MainLayout>} />
 
         <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
           <Route index element={<AdminDashboard />} />

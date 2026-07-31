@@ -26,8 +26,13 @@ SaaS Chile/Argentina: e-commerce (Tienda), Academia y Servicios de audio. UI dar
 - Frontend: `/forgot-password` (ForgotPassword.jsx) y `/reset-password?uid=..&token=..` (ResetPassword.jsx), diseño AuthShell premium. Ruteo en App.jsx.
 - Verificado por curl end-to-end (todos los casos) + screenshots de ambas pantallas.
 
-## Backlog (orden: a✔ admin → b legales → c✔ SEO → d✔ Resend → e✔ recuperar pass)
-- b) Páginas legales: Términos, Privacidad, Bases del Sorteo (footer hoy <span> sin link).
+## Backlog (orden: a✔ admin → b✔ legales → c✔ SEO → d✔ Resend → e✔ recuperar pass)
+- (backlog legal/auth completo)
+
+## Páginas legales (2026-07-31) ✅
+- `components/legal/LegalShell.jsx`: layout editorial reutilizable (hero + índice sticky con scroll-spy + secciones numeradas).
+- Páginas: `/terminos` (Terminos.jsx), `/privacidad` (Privacidad.jsx), `/bases-sorteo` (BasesSorteo.jsx). Contenido en español para CL/AR (compras, pagos, envíos, datos, sorteo Rewards). Cada una con `<Seo>`.
+- Rutas en App.jsx dentro de MainLayout. Footer: reemplazados los `<span>` sin link por Links reales + agregado "Bases del Sorteo".
 - P1: Validar PayPal + emails reales en prod. Editar prize_product en detalle admin.
 - P2: Automatizar USD_CLP_RATE. Reseñas. Cupones.
 
