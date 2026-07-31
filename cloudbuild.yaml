@@ -85,8 +85,8 @@ steps:
       - --update-secrets=MP_CL_PUBLIC_KEY=MP_CL_PUBLIC_KEY:latest
       - --update-secrets=PAYPAL_CLIENT_ID=PAYPAL_CLIENT_ID:latest
       - --update-secrets=PAYPAL_CLIENT_SECRET=PAYPAL_CLIENT_SECRET:latest
-      # Resend (emails). Cambiá RESEND_FROM_EMAIL por tu remitente verificado cuando verifiques el dominio.
-      - --set-env-vars=RESEND_FROM_EMAIL=onboarding@resend.dev
+      # Resend (emails). Remitente de marca con dominio verificado.
+      - --set-env-vars=RESEND_FROM_EMAIL=LevelPro Audio <no-responder@levelproaudio.com>
       - --update-secrets=RESEND_API_KEY=RESEND_API_KEY:latest
 
   # ── 6. Deploy Frontend ───────────────────────────────────────
