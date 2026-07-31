@@ -122,17 +122,17 @@ export default function ServiceDetail() {
   )
 
   const inputSt = {
-    width: "100%", padding: "11px 2px 10px",
-    background: "transparent", border: "none",
-    borderBottom: "1.5px solid var(--border)", borderRadius: 0,
-    color: "var(--text)", fontSize: "15px", outline: "none",
-    transition: "border-color 220ms var(--ease)",
+    width: "100%", padding: "14px 16px",
+    background: "rgba(255,255,255,0.04)",
+    border: "1px solid rgba(255,255,255,0.06)",
+    borderRadius: "16px", color: "var(--text)",
+    fontSize: "15px", outline: "none",
+    transition: "border-color 220ms var(--ease), background 220ms var(--ease)",
   }
-  const labelSt = { display: "block", fontSize: "11px", fontWeight: 700,
-    letterSpacing: "0.1em", textTransform: "uppercase",
-    color: "var(--text-3)", marginBottom: "4px" }
-  const onFocus = e => e.target.style.borderBottomColor = "var(--accent)"
-  const onBlur  = e => e.target.style.borderBottomColor = "rgba(255,255,255,0.1)"
+  const labelSt = { display: "block", fontSize: "13px", fontWeight: 600,
+    color: "var(--text)", marginBottom: "9px" }
+  const onFocus = e => { e.target.style.borderColor = "rgba(26,255,110,0.5)"; e.target.style.background = "rgba(255,255,255,0.06)" }
+  const onBlur  = e => { e.target.style.borderColor = "rgba(255,255,255,0.06)"; e.target.style.background = "rgba(255,255,255,0.04)" }
 
   const cover = serviceCover(service)
   const related = (allData?.results || allData || [])
@@ -420,7 +420,7 @@ export default function ServiceDetail() {
                   ))}
                   <div>
                     <label style={labelSt}>Mensaje</label>
-                    <textarea value={form.message} rows={3} placeholder="Contanos sobre tu proyecto..."
+                    <textarea value={form.message} rows={4} placeholder="Contanos sobre tu proyecto..."
                       data-testid="service-input-message"
                       onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
                       style={{ ...inputSt, resize: "vertical" }} onFocus={onFocus} onBlur={onBlur} />
