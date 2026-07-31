@@ -5,7 +5,10 @@
 import { useEffect, useRef } from "react"
 import { useLocation } from "react-router-dom"
 
-const GA_ID = import.meta.env.VITE_GA4_ID
+// El Measurement ID de GA4 es público (visible en el HTML). Se usa import.meta.env
+// si está disponible, con fallback hardcodeado para que funcione aunque el build
+// de producción no tenga el archivo .env (Cloud Build).
+const GA_ID = import.meta.env.VITE_GA4_ID || "G-34L6J30WM5"
 
 export default function Analytics() {
   const location = useLocation()
