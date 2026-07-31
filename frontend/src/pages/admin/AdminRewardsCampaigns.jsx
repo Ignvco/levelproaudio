@@ -9,6 +9,8 @@ import {
   adminDuplicateCampaign,
 } from "../../api/rewards.api"
 import { showToast } from "../../components/ui/ToastNotification"
+import { getProducts } from "../../api/products.api"
+import { mediaUrl } from "../../utils/mediaUrl"
 
 const STATUS_STYLES = {
   draft:    { bg:"rgba(255,255,255,0.05)", color:"var(--text-3)", label:"Borrador"    },
@@ -108,13 +110,26 @@ function NewCampaignModal({ open, onClose }) {
     description:"", legal_terms:"",
     backup_winners_count: 2,
     sticker_price: 1000,
+    prize_product: "",
     status:"draft",
   })
+
+  const [prodSearch, setProdSearch] = useState("")
+  const { data: prodData } = useQuery({
+    queryKey: ["admin-picker-products", prodSearch],
+    queryFn:  () => getProducts({ search: prodSearch, page_size: 20 }),
+    enabled:  open,
+  })
+  const products = prodData?.results || prodData || []
+  const selectedProduct = products.find(p => String(p.id) === String(form.prize_product))
 
   const create = useMutation({
     mutationFn: async () => {
       const fd = new FormData()
-      Object.entries(form).forEach(([k,v]) => fd.append(k, v))
+      Object.entries(form).forEach(([k,v]) => {
+        if (k === "prize_product" && !v) return
+        fd.append(k, v)
+      })
       return adminCreateCampaign(fd)
     },
     onSuccess: (data) => {
@@ -172,6 +187,73 @@ function NewCampaignModal({ open, onClose }) {
               value={form.main_prize}
               onChange={e => setForm(p => ({...p, main_prize:e.target.value}))}
               placeholder="Neumann TLM 103 + Focusrite Scarlett 2i2" style={input} />
+          </div>
+
+          {/* Producto a sortear (del catálogo) */}
+          <div>
+            {label("Producto a sortear (del catálogo)")}
+            {selectedProduct ? (
+              <div data-testid="selected-prize-product" style={{ display:"flex", alignItems:"center", gap:"12px",
+                padding:"10px 12px", borderRadius:"var(--r-md)",
+                background:"rgba(26,255,110,0.06)", border:"1px solid rgba(26,255,110,0.3)" }}>
+                <img src={mediaUrl(selectedProduct.primary_image)} alt=""
+                  style={{ width:"44px", height:"44px", borderRadius:"10px",
+                    objectFit:"cover", background:"var(--surface-3)" }} />
+                <div style={{ flex:1, minWidth:0 }}>
+                  <p style={{ fontSize:"14px", fontWeight:600, color:"var(--text)",
+                    whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
+                    {selectedProduct.name}
+                  </p>
+                  <p style={{ fontSize:"12px", color:"var(--accent)" }}>
+                    ${Number(selectedProduct.price).toLocaleString("es-CL")}
+                  </p>
+                </div>
+                <button type="button" onClick={() => setForm(p => ({...p, prize_product:""}))}
+                  style={{ padding:"6px 12px", fontSize:"12px", cursor:"pointer",
+                    borderRadius:"var(--r-full)", border:"1px solid var(--border)",
+                    background:"transparent", color:"var(--text-3)" }}>
+                  Quitar
+                </button>
+              </div>
+            ) : (
+              <>
+                <input data-testid="prize-product-search"
+                  value={prodSearch}
+                  onChange={e => setProdSearch(e.target.value)}
+                  placeholder="Buscar producto del catálogo..." style={input} />
+                <div style={{ marginTop:"8px", maxHeight:"180px", overflowY:"auto",
+                  display:"flex", flexDirection:"column", gap:"6px",
+                  border:"1px solid var(--border)", borderRadius:"var(--r-md)", padding:"6px" }}>
+                  {products.length === 0 && (
+                    <p style={{ fontSize:"12px", color:"var(--text-3)", padding:"10px", textAlign:"center" }}>
+                      No hay productos. Escribí para buscar.
+                    </p>
+                  )}
+                  {products.map(p => (
+                    <button key={p.id} type="button"
+                      data-testid={`pick-product-${p.slug}`}
+                      onClick={() => setForm(f => ({...f, prize_product:p.id}))}
+                      style={{ display:"flex", alignItems:"center", gap:"10px",
+                        padding:"8px", borderRadius:"10px", cursor:"pointer",
+                        background:"transparent", border:"1px solid transparent",
+                        textAlign:"left", width:"100%" }}
+                      onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2)"}
+                      onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
+                      <img src={mediaUrl(p.primary_image)} alt=""
+                        style={{ width:"36px", height:"36px", borderRadius:"8px",
+                          objectFit:"cover", background:"var(--surface-3)", flexShrink:0 }} />
+                      <span style={{ flex:1, minWidth:0 }}>
+                        <span style={{ display:"block", fontSize:"13px", color:"var(--text)",
+                          whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{p.name}</span>
+                        <span style={{ display:"block", fontSize:"12px", color:"var(--text-3)" }}>
+                          ${Number(p.price).toLocaleString("es-CL")}
+                        </span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
           </div>
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
             <div>

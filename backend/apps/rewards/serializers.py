@@ -4,6 +4,7 @@ apps/rewards/serializers.py — DRF serializers.
 from rest_framework import serializers
 
 from apps.products.models import Product
+from apps.products.serializers import ProductListSerializer
 from .models import Campaign, RewardProduct, Entry, Winner
 
 
@@ -48,6 +49,7 @@ class WinnerPublicSerializer(serializers.ModelSerializer):
 
 class CampaignPublicSerializer(serializers.ModelSerializer):
     products    = serializers.SerializerMethodField()
+    prize_product = ProductListSerializer(read_only=True)
     winners     = serializers.SerializerMethodField()
     total_entries      = serializers.IntegerField(read_only=True)
     total_participants = serializers.IntegerField(read_only=True)
@@ -58,7 +60,7 @@ class CampaignPublicSerializer(serializers.ModelSerializer):
         model  = Campaign
         fields = [
             "id", "name", "slug", "description", "main_prize",
-            "sticker_price",
+            "sticker_price", "prize_product",
             "start_date", "end_date", "draw_date", "status",
             "legal_terms", "show_counter",
             "image", "banner",
@@ -158,13 +160,14 @@ class AdminCampaignSerializer(serializers.ModelSerializer):
     image_url          = serializers.SerializerMethodField()
     banner_url         = serializers.SerializerMethodField()
     reward_products    = AdminRewardProductSerializer(many=True, read_only=True)
+    prize_product_detail = ProductListSerializer(source="prize_product", read_only=True)
     is_drawn           = serializers.BooleanField(read_only=True)
 
     class Meta:
         model  = Campaign
         fields = [
             "id", "name", "slug", "description", "main_prize",
-            "sticker_price",
+            "sticker_price", "prize_product", "prize_product_detail",
             "start_date", "end_date", "draw_date",
             "status", "legal_terms", "show_counter",
             "backup_winners_count",
@@ -179,6 +182,7 @@ class AdminCampaignSerializer(serializers.ModelSerializer):
             "slug":   {"required": False, "allow_blank": True},
             "image":  {"write_only": True, "required": False},
             "banner": {"write_only": True, "required": False},
+            "prize_product": {"required": False, "allow_null": True},
         }
 
     def get_image_url(self, obj):

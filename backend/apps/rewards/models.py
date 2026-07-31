@@ -56,6 +56,15 @@ class Campaign(TimeStampedModel):
         help_text="Precio de cada sticker/ticket para participar (CLP). Cada sticker = 1 participación.",
     )
 
+    prize_product = models.ForeignKey(
+        "products.Product",
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name="+",
+        verbose_name="Producto a sortear",
+        help_text="Producto del catálogo que se sorteará en esta campaña.",
+    )
+
     start_date    = models.DateTimeField(verbose_name="Fecha de inicio")
     end_date      = models.DateTimeField(verbose_name="Fecha de cierre")
     draw_date     = models.DateTimeField(verbose_name="Fecha del sorteo")

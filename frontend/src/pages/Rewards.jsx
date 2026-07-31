@@ -8,6 +8,7 @@ import { createPayment } from "../api/payments.api"
 import { useAuthStore } from "../store/authStore"
 import { showToast } from "../components/ui/ToastNotification"
 import { mediaUrl } from "../utils/mediaUrl"
+import ProductCard from "../components/product/ProductCard"
 
 const clp = (n) => new Intl.NumberFormat("es-CL", {
   style: "currency", currency: "CLP", maximumFractionDigits: 0,
@@ -448,7 +449,47 @@ export default function Rewards() {
               </div>
             </div>
 
-            {/* Cómo funciona */}
+            {/* El premio (ProductCard del producto a sortear) */}
+            {featured.prize_product && (
+              <div data-testid="rewards-prize-product" style={{ marginTop:"clamp(48px, 6vw, 80px)" }}>
+                <div style={{ display:"grid",
+                  gridTemplateColumns:"minmax(0, 1fr) minmax(300px, 380px)",
+                  gap:"clamp(28px, 4vw, 56px)", alignItems:"center" }}
+                  className="rewards-prize-grid">
+                  <div>
+                    <SectionEyebrow>· El premio</SectionEyebrow>
+                    <h3 className="display-bold" style={{ fontFamily:"var(--font-display)",
+                      fontSize:"clamp(1.8rem, 3.2vw, 2.8rem)", fontWeight:800,
+                      letterSpacing:"-0.03em", lineHeight:1.02, color:"var(--text)",
+                      marginBottom:"16px" }}>
+                      Esto es lo que te podés ganar
+                    </h3>
+                    <p style={{ fontSize:"15px", color:"var(--text-2)", lineHeight:1.7,
+                      maxWidth:"460px", marginBottom:"24px" }}>
+                      {featured.prize_product.name} — el mismo producto de nuestro catálogo.
+                      Comprá tus stickers y participá por él.
+                    </p>
+                    <button onClick={() => setModalCampaign(featured)}
+                      data-testid="rewards-prize-cta"
+                      style={{ display:"inline-flex", alignItems:"center", gap:"10px",
+                        padding:"13px 12px 13px 22px", borderRadius:"var(--r-full)",
+                        background:"var(--accent)", color:"#000", border:"none", cursor:"pointer",
+                        fontSize:"14px", fontWeight:700,
+                        boxShadow:"0 8px 30px rgba(26,255,110,0.28)" }}>
+                      Participar por este premio
+                      <span style={{ width:"26px", height:"26px", borderRadius:"50%",
+                        background:"#000", color:"var(--accent)", display:"flex",
+                        alignItems:"center", justifyContent:"center" }}>
+                        <ArrowRight size={14} />
+                      </span>
+                    </button>
+                  </div>
+                  <div>
+                    <ProductCard product={featured.prize_product} />
+                  </div>
+                </div>
+              </div>
+            )}
             <div style={{ marginTop:"clamp(48px, 6vw, 80px)" }}>
               <div style={{ marginBottom:"var(--content-gap)" }}>
                 <SectionEyebrow>· Cómo funciona</SectionEyebrow>
@@ -623,6 +664,12 @@ export default function Rewards() {
       {modalCampaign && (
         <StickerModal campaign={modalCampaign} onClose={() => setModalCampaign(null)} />
       )}
+      <style>{`
+        @media (max-width: 820px) {
+          .rewards-prize-grid { grid-template-columns: 1fr !important; }
+          .rewards-prize-grid > div:last-child { max-width: 380px; }
+        }
+      `}</style>
     </div>
   )
 }

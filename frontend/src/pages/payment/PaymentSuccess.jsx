@@ -2,9 +2,10 @@
 /* eslint-disable react-hooks/purity */
 import { useEffect, useState } from "react"
 import { useSearchParams, Link, useNavigate } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { Check, Clock, Mail, Package, GraduationCap, MessageCircle } from "lucide-react"
 import { getOrder } from "../../api/orders.api"
+import { capturePayPal } from "../../api/payments.api"
 import { useCartStore } from "../../store/cartStore"
 
 function Confetti() {
@@ -42,8 +43,26 @@ export default function PaymentSuccess() {
   const [searchParams]    = useSearchParams()
   const navigate          = useNavigate()
   const orderId           = searchParams.get("order")
+  const paypalPaymentId   = searchParams.get("paymentId")
+  const payerId           = searchParams.get("PayerID")
   const [confetti, setConfetti] = useState(true)
+  const [capturing, setCapturing] = useState(!!(paypalPaymentId && payerId))
   const { clearCart }     = useCartStore()
+  const queryClient       = useQueryClient()
+
+  // Capturar el pago de PayPal al volver desde su checkout (ejecuta el cobro real)
+  useEffect(() => {
+    if (!paypalPaymentId || !payerId) return
+    let active = true
+    capturePayPal(paypalPaymentId, payerId)
+      .catch(() => {})
+      .finally(() => {
+        if (!active) return
+        setCapturing(false)
+        if (orderId) queryClient.invalidateQueries({ queryKey: ["order", orderId] })
+      })
+    return () => { active = false }
+  }, [paypalPaymentId, payerId, orderId, queryClient])
 
   useEffect(() => {
     clearCart()
@@ -109,7 +128,9 @@ export default function PaymentSuccess() {
           </h1>
 
           <p style={{ fontSize: "15px", color: "var(--text-2)", lineHeight: 1.7, marginBottom: "20px" }}>
-            {order?.status === "pending"
+            {capturing
+              ? "Estamos confirmando tu pago con PayPal..."
+              : order?.status === "pending"
               ? "Estamos procesando tu pago. Recibirás una confirmación pronto."
               : "Tu pago fue confirmado. ¡Gracias por tu compra en LevelPro Audio!"}
           </p>
