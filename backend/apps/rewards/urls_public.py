@@ -8,6 +8,7 @@ from .views import (
     CampaignPublicViewSet,
     CartPreviewView,
     MyEntriesView,
+    BuyStickersView,
     WinnersPublicView,
     ProductParticipationView,
 )
@@ -19,6 +20,7 @@ router.register(r"campaigns", CampaignPublicViewSet, basename="rewards-public-ca
 urlpatterns = [
     path("preview/",           CartPreviewView.as_view(),        name="rewards-preview"),
     path("my-entries/",        MyEntriesView.as_view(),          name="rewards-my-entries"),
+    path("campaigns/<slug:slug>/buy/", BuyStickersView.as_view(), name="rewards-buy-stickers"),
     path("winners/",           WinnersPublicView.as_view(),      name="rewards-winners"),
     path("product/<slug:slug>/", ProductParticipationView.as_view(), name="rewards-product"),
     path("", include(router.urls)),

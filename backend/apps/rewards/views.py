@@ -99,6 +99,74 @@ class MyEntriesView(views.APIView):
         return Response({"results": ser.data})
 
 
+class BuyStickersView(views.APIView):
+    """
+    POST /api/v1/rewards/campaigns/{slug}/buy/
+    body: { "quantity": N }
+    Crea una orden de compra de stickers (pendiente). El frontend luego
+    llama a /payments/create/ con el order_id para pagar. Al pagarse,
+    se generan N Entries (tickets) automáticamente.
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, slug):
+        from decimal import Decimal
+        from apps.orders.models import Order, OrderItem
+        from .models import StickerPurchase
+
+        try:
+            campaign = get_active_campaigns().get(slug=slug)
+        except Campaign.DoesNotExist:
+            return Response(
+                {"error": "Campaña no disponible o cerrada."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            quantity = int(request.data.get("quantity", 0))
+        except (TypeError, ValueError):
+            quantity = 0
+
+        if quantity < 1:
+            return Response({"error": "Elegí al menos 1 sticker."},
+                            status=status.HTTP_400_BAD_REQUEST)
+        if quantity > 1000:
+            return Response({"error": "Máximo 1000 stickers por compra."},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+        price = campaign.sticker_price or Decimal("0")
+        total = price * quantity
+
+        order = Order.objects.create(
+            user             = request.user,
+            status           = "pending",
+            total            = total,
+            email            = request.user.email,
+            shipping_address = "Stickers digitales — LevelPro Rewards",
+            notes            = f"Compra de {quantity} sticker(s) para el sorteo: {campaign.name}",
+        )
+        OrderItem.objects.create(
+            order        = order,
+            product      = None,
+            product_name = f"Sticker Rewards · {campaign.name}",
+            price        = price,
+            quantity     = quantity,
+        )
+        StickerPurchase.objects.create(
+            order=order, campaign=campaign, quantity=quantity,
+        )
+
+        return Response(
+            {
+                "order_id":   str(order.id),
+                "quantity":   quantity,
+                "unit_price": float(price),
+                "total":      float(total),
+            },
+            status=status.HTTP_201_CREATED,
+        )
+
+
 class WinnersPublicView(views.APIView):
     """
     GET /api/v1/rewards/winners/  → todos los ganadores (histórico público)

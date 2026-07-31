@@ -58,6 +58,7 @@ class CampaignPublicSerializer(serializers.ModelSerializer):
         model  = Campaign
         fields = [
             "id", "name", "slug", "description", "main_prize",
+            "sticker_price",
             "start_date", "end_date", "draw_date", "status",
             "legal_terms", "show_counter",
             "image", "banner",
@@ -97,7 +98,22 @@ class UserEntriesGroupedSerializer(serializers.Serializer):
     status       = serializers.CharField()
     is_drawn     = serializers.BooleanField()
     entries_count = serializers.IntegerField(source="user_entries_count")
+    image        = serializers.SerializerMethodField()
+    codes        = serializers.SerializerMethodField()
     won          = serializers.SerializerMethodField()
+
+    def get_image(self, obj):
+        return f"/media/{obj.image.name}" if obj.image and obj.image.name else None
+
+    def get_codes(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return []
+        return list(
+            obj.entries.filter(user=request.user)
+            .order_by("created_at")
+            .values_list("unique_code", flat=True)
+        )
 
     def get_won(self, obj):
         request = self.context.get("request")
@@ -148,6 +164,7 @@ class AdminCampaignSerializer(serializers.ModelSerializer):
         model  = Campaign
         fields = [
             "id", "name", "slug", "description", "main_prize",
+            "sticker_price",
             "start_date", "end_date", "draw_date",
             "status", "legal_terms", "show_counter",
             "backup_winners_count",

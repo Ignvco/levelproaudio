@@ -107,6 +107,7 @@ function NewCampaignModal({ open, onClose }) {
     draw_date:  toLocalInput(in31),
     description:"", legal_terms:"",
     backup_winners_count: 2,
+    sticker_price: 1000,
     status:"draft",
   })
 
@@ -191,6 +192,16 @@ function NewCampaignModal({ open, onClose }) {
             <input type="datetime-local" value={form.draw_date}
               onChange={e => setForm(p => ({...p, draw_date:e.target.value}))}
               style={input} />
+          </div>
+          <div>
+            {label("Precio por sticker (CLP)")}
+            <input type="number" min="0" step="100" data-testid="input-campaign-sticker-price"
+              value={form.sticker_price}
+              onChange={e => setForm(p => ({...p, sticker_price:e.target.value}))}
+              placeholder="1000" style={input} />
+            <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"6px" }}>
+              Cada sticker equivale a 1 ticket de participación.
+            </p>
           </div>
           <div>
             {label("Descripción")}

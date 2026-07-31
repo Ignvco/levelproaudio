@@ -1,11 +1,17 @@
 // pages/Rewards.jsx — Página pública del módulo LevelPro Rewards
 import { useEffect, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useNavigate } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Trophy, Users, Ticket, ArrowRight } from "lucide-react"
-import { getActiveCampaigns, getPublicWinners } from "../api/rewards.api"
+import { Trophy, Users, Ticket, ArrowRight, X, Plus, Minus, CreditCard, Globe, ShieldCheck } from "lucide-react"
+import { getActiveCampaigns, getPublicWinners, buyStickers } from "../api/rewards.api"
+import { createPayment } from "../api/payments.api"
+import { useAuthStore } from "../store/authStore"
+import { showToast } from "../components/ui/ToastNotification"
 import { mediaUrl } from "../utils/mediaUrl"
-import ProductCard from "../components/product/ProductCard"
+
+const clp = (n) => new Intl.NumberFormat("es-CL", {
+  style: "currency", currency: "CLP", maximumFractionDigits: 0,
+}).format(Number(n || 0))
 
 // ─────────────────────────────────────────────────────────────
 // Section eyebrow + title (mismo patrón editorial que Home)
@@ -103,36 +109,164 @@ function Countdown({ target }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Product card en campaña — usa el ProductCard compartido
-// + badge de tickets (info propia de Rewards)
+// Modal de compra de stickers
 // ─────────────────────────────────────────────────────────────
-function RewardProductCard({ product }) {
-  const mapped = { ...product, primary_image: product.image }
+const PROVIDERS = [
+  { id: "mercadopago_cl", label: "MercadoPago", Icon: CreditCard, desc: "Tarjetas, Khipu, efectivo" },
+  { id: "paypal",         label: "PayPal",      Icon: Globe,      desc: "Tarjetas internacionales" },
+]
+
+function StickerModal({ campaign, onClose }) {
+  const { isAuthenticated } = useAuthStore()
+  const navigate = useNavigate()
+  const [qty, setQty] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const price = Number(campaign.sticker_price || 0)
+  const total = price * qty
+
+  const setQtySafe = (v) => setQty(Math.max(1, Math.min(1000, v || 1)))
+
+  const handleBuy = async (provider) => {
+    if (!isAuthenticated) {
+      showToast("Iniciá sesión para participar", "error")
+      navigate("/login")
+      return
+    }
+    try {
+      setLoading(true)
+      const res = await buyStickers(campaign.slug, qty)
+      const pay = await createPayment(res.order_id, provider)
+      const url = pay.init_point || pay.approve_url
+      if (url) { window.location.href = url; return }
+      showToast("No se pudo iniciar el pago. Intentá de nuevo.", "error")
+      setLoading(false)
+    } catch (err) {
+      const msg = err?.response?.data?.error || err?.response?.data?.detail || "Error al iniciar la compra."
+      showToast(msg, "error")
+      setLoading(false)
+    }
+  }
+
   return (
-    <div style={{ position:"relative" }}>
-      <ProductCard product={mapped} />
-      {product.entries_per_purchase != null && (
-        <span
-          data-testid={`reward-tickets-${product.slug}`}
-          style={{
-            position:"absolute", top:"24px", right:"24px", zIndex:5,
-            display:"inline-flex", alignItems:"center", gap:"5px",
-            fontSize:"12px", padding:"6px 12px", borderRadius:"9999px",
-            background:"var(--accent)", color:"#000", fontWeight:700,
-            boxShadow:"0 4px 14px rgba(26,255,110,0.35)",
-          }}>
-          <Ticket size={13} strokeWidth={2.5} />
-          +{product.entries_per_purchase} tickets
-        </span>
-      )}
+    <div data-testid="sticker-modal" onClick={onClose} style={{
+      position: "fixed", inset: 0, zIndex: 300,
+      background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: "#111", border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "24px", padding: "28px", width: "100%", maxWidth: "440px",
+        maxHeight: "88vh", overflowY: "auto", position: "relative",
+      }}>
+        <button data-testid="sticker-modal-close" onClick={onClose} aria-label="Cerrar" style={{
+          position: "absolute", top: "18px", right: "18px", width: "34px", height: "34px",
+          borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "none",
+          color: "var(--text-2)", cursor: "pointer", display: "flex",
+          alignItems: "center", justifyContent: "center",
+        }}><X size={17} /></button>
+
+        <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent)",
+          textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "8px" }}>
+          Comprar stickers
+        </p>
+        <h3 className="display-bold" style={{ fontFamily: "var(--font-display)",
+          fontSize: "1.5rem", fontWeight: 800, letterSpacing: "-0.02em",
+          color: "#fff", marginBottom: "4px" }}>
+          {campaign.name}
+        </h3>
+        <p style={{ fontSize: "13px", color: "var(--text-3)", marginBottom: "22px" }}>
+          Cada sticker = 1 ticket para el sorteo. {clp(price)} c/u
+        </p>
+
+        {/* Stepper */}
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+          padding: "14px 18px", borderRadius: "16px", background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.08)", marginBottom: "10px" }}>
+          <span style={{ fontSize: "14px", color: "var(--text-2)", fontWeight: 600 }}>Cantidad</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
+            <button data-testid="sticker-minus" onClick={() => setQtySafe(qty - 1)} style={stepBtn}>
+              <Minus size={16} />
+            </button>
+            <input data-testid="sticker-qty" type="number" min={1} max={1000} value={qty}
+              onChange={e => setQtySafe(parseInt(e.target.value || "1", 10))}
+              style={{ width: "56px", textAlign: "center", background: "transparent",
+                border: "none", color: "#fff", fontSize: "20px", fontWeight: 800,
+                outline: "none", fontFamily: "var(--font-display)" }} />
+            <button data-testid="sticker-plus" onClick={() => setQtySafe(qty + 1)} style={stepBtn}>
+              <Plus size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Quick picks */}
+        <div style={{ display: "flex", gap: "8px", marginBottom: "18px" }}>
+          {[1, 3, 5, 10].map(n => (
+            <button key={n} onClick={() => setQtySafe(n)} style={{
+              flex: 1, padding: "8px", borderRadius: "10px", cursor: "pointer",
+              background: qty === n ? "rgba(26,255,110,0.12)" : "rgba(255,255,255,0.04)",
+              border: qty === n ? "1px solid rgba(26,255,110,0.4)" : "1px solid rgba(255,255,255,0.08)",
+              color: qty === n ? "var(--accent)" : "var(--text-2)", fontSize: "13px", fontWeight: 700,
+            }}>+{n}</button>
+          ))}
+        </div>
+
+        {/* Total */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline",
+          padding: "16px 0", borderTop: "1px solid rgba(255,255,255,0.08)",
+          borderBottom: "1px solid rgba(255,255,255,0.08)", marginBottom: "20px" }}>
+          <span style={{ fontSize: "13px", color: "var(--text-3)" }}>{qty} ticket{qty > 1 ? "s" : ""}</span>
+          <span data-testid="sticker-total" style={{ fontFamily: "var(--font-display)",
+            fontSize: "1.8rem", fontWeight: 800, color: "var(--accent)", letterSpacing: "-0.02em" }}>
+            {clp(total)}
+          </span>
+        </div>
+
+        {/* Providers */}
+        <p style={{ fontSize: "12px", color: "var(--text-3)", marginBottom: "10px", fontWeight: 600 }}>
+          Elegí cómo pagar:
+        </p>
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {PROVIDERS.map(({ id, label, Icon, desc }) => (
+            <button key={id} data-testid={`sticker-pay-${id}`} disabled={loading}
+              onClick={() => handleBuy(id)}
+              style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%",
+                padding: "14px 16px", borderRadius: "14px", cursor: loading ? "wait" : "pointer",
+                background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.1)",
+                color: "#fff", textAlign: "left", opacity: loading ? 0.6 : 1,
+                transition: "border-color 160ms" }}
+              onMouseEnter={e => !loading && (e.currentTarget.style.borderColor = "rgba(26,255,110,0.4)")}
+              onMouseLeave={e => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)")}>
+              <Icon size={20} style={{ color: "var(--accent)", flexShrink: 0 }} />
+              <span style={{ flex: 1 }}>
+                <span style={{ display: "block", fontSize: "14px", fontWeight: 700 }}>{label}</span>
+                <span style={{ display: "block", fontSize: "12px", color: "var(--text-3)" }}>{desc}</span>
+              </span>
+              <ArrowRight size={16} style={{ color: "var(--text-3)" }} />
+            </button>
+          ))}
+        </div>
+
+        <p style={{ display: "flex", alignItems: "center", gap: "8px", justifyContent: "center",
+          fontSize: "12px", color: "var(--text-3)", marginTop: "18px" }}>
+          <ShieldCheck size={14} style={{ color: "var(--accent)" }} />
+          {loading ? "Redirigiendo al pago…" : "Los tickets aparecen en tu cuenta al confirmarse el pago."}
+        </p>
+      </div>
     </div>
   )
+}
+
+const stepBtn = {
+  width: "34px", height: "34px", borderRadius: "10px", cursor: "pointer",
+  background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.1)",
+  color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
 }
 
 // ─────────────────────────────────────────────────────────────
 // Página principal
 // ─────────────────────────────────────────────────────────────
 export default function Rewards() {
+  const [modalCampaign, setModalCampaign] = useState(null)
   const { data: campaigns = [], isLoading } = useQuery({
     queryKey: ["rewards", "campaigns"],
     queryFn:  getActiveCampaigns,
@@ -197,8 +331,9 @@ export default function Rewards() {
           <p style={{ fontFamily:"var(--font-sans)",
             fontSize:"clamp(15px, 2vw, 18px)",
             color:"var(--text-2)", lineHeight:1.6, maxWidth:"600px" }}>
-            Cada compra suma participaciones para nuestros sorteos mensuales.
-            Sin cargos extra. Sin trampas. Solo comprá lo que te sirve y sumás.
+            Comprá stickers para participar en nuestros sorteos. Cada sticker es
+            un ticket con código único que sumás a tu cuenta. Mientras más
+            stickers, más chances de ganar.
           </p>
 
           {!featured && (
@@ -281,68 +416,89 @@ export default function Rewards() {
 
                 <div style={{ display:"flex", gap:"20px",
                   alignItems:"center", flexWrap:"wrap" }}>
-                  <Link to="/shop" data-testid="rewards-cta-shop"
+                  <button onClick={() => setModalCampaign(featured)} data-testid="rewards-cta-buy"
                     style={{
                       display:"inline-flex", alignItems:"center", gap:"10px",
                       padding:"14px 12px 14px 24px", borderRadius:"var(--r-full)",
-                      background:"var(--accent)", color:"#000",
-                      fontSize:"14px", fontWeight:700, textDecoration:"none",
+                      background:"var(--accent)", color:"#000", border:"none", cursor:"pointer",
+                      fontSize:"14px", fontWeight:700,
                       fontFamily:"var(--font-sans)",
                       boxShadow:"0 8px 30px rgba(26,255,110,0.3)",
                       transition:"transform 200ms var(--ease)",
                     }}
                     onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)" }}
                     onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)" }}>
-                    Comprar y participar
+                    Comprar y participar · {clp(featured.sticker_price)} c/u
                     <span style={{ width:"26px", height:"26px", borderRadius:"50%",
                       background:"#000", color:"var(--accent)", display:"flex",
                       alignItems:"center", justifyContent:"center" }}>
                       <ArrowRight size={14} />
                     </span>
-                  </Link>
+                  </button>
                   <div style={{ display:"flex", gap:"18px",
                     fontSize:"13px", color:"var(--text-3)" }}>
                     <span style={{ display:"inline-flex", alignItems:"center", gap:"6px" }}>
                       <Users size={15} /> {featured.total_participants} participantes
                     </span>
                     <span style={{ display:"inline-flex", alignItems:"center", gap:"6px" }}>
-                      <Ticket size={15} /> {featured.total_entries} participaciones
+                      <Ticket size={15} /> {featured.total_entries} tickets vendidos
                     </span>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Productos participantes */}
-            {featured.products?.length > 0 && (
-              <div style={{ marginTop:"clamp(48px, 6vw, 80px)" }}>
-                <div className="section-header-flex" style={{
-                  display:"flex", justifyContent:"space-between",
-                  alignItems:"flex-end", marginBottom:"var(--content-gap)",
-                  flexWrap:"wrap", gap:"16px" }}>
-                  <div>
-                    <SectionEyebrow>· Participantes</SectionEyebrow>
-                    <h3 className="display-bold" style={{ fontFamily:"var(--font-display)",
-                      fontSize:"clamp(1.6rem, 2.4vw, 2.2rem)",
-                      fontWeight:800, letterSpacing:"-0.03em",
-                      lineHeight:1, color:"var(--text)" }}>
-                      Productos participantes
-                    </h3>
-                  </div>
-                  <p style={{ fontSize:"13px", color:"var(--text-3)", maxWidth:"320px" }}>
-                    Comprá cualquiera y sumás tickets automáticamente.
-                  </p>
-                </div>
-                <div style={{
-                  display:"grid",
-                  gridTemplateColumns:"repeat(auto-fill, minmax(280px, 340px))",
-                  gap:"var(--card-gap)",
-                  justifyContent:"start",
-                }} className="rewards-products-grid">
-                  {featured.products.map(p => <RewardProductCard key={p.id} product={p} />)}
-                </div>
+            {/* Cómo funciona */}
+            <div style={{ marginTop:"clamp(48px, 6vw, 80px)" }}>
+              <div style={{ marginBottom:"var(--content-gap)" }}>
+                <SectionEyebrow>· Cómo funciona</SectionEyebrow>
+                <h3 className="display-bold" style={{ fontFamily:"var(--font-display)",
+                  fontSize:"clamp(1.6rem, 2.4vw, 2.2rem)", fontWeight:800,
+                  letterSpacing:"-0.03em", lineHeight:1, color:"var(--text)" }}>
+                  Participar es simple
+                </h3>
               </div>
-            )}
+              <div style={{ display:"grid",
+                gridTemplateColumns:"repeat(auto-fit, minmax(240px, 1fr))",
+                gap:"var(--card-gap)" }}>
+                {[
+                  { n:"1", t:"Comprá tus stickers", d:`Elegí cuántos stickers querés. Cada uno cuesta ${clp(featured.sticker_price)} y equivale a 1 ticket.` },
+                  { n:"2", t:"Recibí tus tickets", d:"Al confirmarse el pago, tus tickets con código único aparecen en tu cuenta." },
+                  { n:"3", t:"Participá del sorteo", d:`El ${new Date(featured.draw_date).toLocaleDateString("es-CL",{day:"numeric",month:"long"})} sorteamos: ${featured.main_prize}.` },
+                ].map(step => (
+                  <div key={step.n} style={{ padding:"24px",
+                    background:"var(--surface)", border:"1px solid var(--border)",
+                    borderRadius:"var(--r-xl)" }}>
+                    <span style={{ display:"inline-flex", alignItems:"center",
+                      justifyContent:"center", width:"38px", height:"38px",
+                      borderRadius:"50%", background:"rgba(26,255,110,0.12)",
+                      border:"1px solid rgba(26,255,110,0.3)", color:"var(--accent)",
+                      fontFamily:"var(--font-display)", fontWeight:800, fontSize:"17px",
+                      marginBottom:"16px" }}>{step.n}</span>
+                    <p style={{ fontSize:"16px", fontWeight:700, color:"var(--text)",
+                      marginBottom:"8px" }}>{step.t}</p>
+                    <p style={{ fontSize:"13.5px", color:"var(--text-2)", lineHeight:1.6 }}>
+                      {step.d}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div style={{ marginTop:"28px" }}>
+                <button onClick={() => setModalCampaign(featured)} data-testid="rewards-cta-buy-2"
+                  style={{ display:"inline-flex", alignItems:"center", gap:"10px",
+                    padding:"14px 12px 14px 24px", borderRadius:"var(--r-full)",
+                    background:"var(--accent)", color:"#000", border:"none", cursor:"pointer",
+                    fontSize:"14px", fontWeight:700,
+                    boxShadow:"0 8px 30px rgba(26,255,110,0.3)" }}>
+                  Comprar stickers
+                  <span style={{ width:"26px", height:"26px", borderRadius:"50%",
+                    background:"#000", color:"var(--accent)", display:"flex",
+                    alignItems:"center", justifyContent:"center" }}>
+                    <ArrowRight size={14} />
+                  </span>
+                </button>
+              </div>
+            </div>
 
             {/* Bases legales */}
             {featured.legal_terms && (
@@ -464,6 +620,9 @@ export default function Rewards() {
         )}
 
       </div>
+      {modalCampaign && (
+        <StickerModal campaign={modalCampaign} onClose={() => setModalCampaign(null)} />
+      )}
     </div>
   )
 }

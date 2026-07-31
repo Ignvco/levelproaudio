@@ -282,6 +282,33 @@ export default function AdminRewardsCampaignDetail() {
         </p>
       </div>
 
+      {/* Precio por sticker */}
+      <div style={{ marginBottom:"32px", padding:"20px",
+        background:"var(--surface)", border:"1px solid var(--border)",
+        borderRadius:"var(--r-lg)" }}>
+        <h3 style={{ fontSize:"14px", fontWeight:600, color:"var(--text-2)",
+          letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"12px" }}>
+          Precio por sticker
+        </h3>
+        <div style={{ display:"flex", alignItems:"center", gap:"12px", flexWrap:"wrap" }}>
+          <input type="number" min="0" step="100"
+            data-testid="edit-sticker-price"
+            defaultValue={c.sticker_price}
+            onBlur={e => {
+              if (e.target.value && String(e.target.value) !== String(c.sticker_price)) {
+                update.mutate({ sticker_price: e.target.value })
+              }
+            }}
+            style={{ width:"180px", padding:"9px 12px",
+              background:"var(--surface-2)", border:"1px solid var(--border)",
+              borderRadius:"var(--r-md)", color:"var(--text)", fontSize:"14px",
+              outline:"none", fontFamily:"var(--font-sans)" }} />
+          <span style={{ fontSize:"12px", color:"var(--text-3)" }}>
+            CLP · cada sticker = 1 ticket de participación
+          </span>
+        </div>
+      </div>
+
       {/* KPIs */}
       <div style={{
         display:"grid",

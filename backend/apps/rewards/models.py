@@ -50,6 +50,12 @@ class Campaign(TimeStampedModel):
         help_text="Ej: 'Neumann TLM 103 + Focusrite Scarlett 2i2'",
     )
 
+    sticker_price = models.DecimalField(
+        max_digits=10, decimal_places=2, default=1000,
+        verbose_name="Precio por sticker",
+        help_text="Precio de cada sticker/ticket para participar (CLP). Cada sticker = 1 participación.",
+    )
+
     start_date    = models.DateTimeField(verbose_name="Fecha de inicio")
     end_date      = models.DateTimeField(verbose_name="Fecha de cierre")
     draw_date     = models.DateTimeField(verbose_name="Fecha del sorteo")
@@ -232,3 +238,30 @@ class Winner(TimeStampedModel):
     def __str__(self):
         role = f"Suplente #{self.backup_position}" if self.is_backup else "Ganador"
         return f"{role} · {self.user_email or 'anónimo'} · {self.campaign.name}"
+
+
+# ═══════════════════════════════════════════════════════════════
+# STICKER PURCHASE (compra de stickers → genera Entries al pagar)
+# ═══════════════════════════════════════════════════════════════
+
+class StickerPurchase(TimeStampedModel):
+    """
+    Compra de stickers para participar en una campaña.
+    Cada sticker = 1 ticket (Entry). Las Entries se generan cuando
+    la orden asociada pasa a estado 'paid'.
+    """
+    order    = models.OneToOneField(
+        Order, on_delete=models.CASCADE, related_name="sticker_purchase"
+    )
+    campaign = models.ForeignKey(
+        Campaign, on_delete=models.CASCADE, related_name="sticker_purchases"
+    )
+    quantity = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        verbose_name        = "Compra de stickers"
+        verbose_name_plural = "Compras de stickers"
+        ordering            = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.quantity} stickers · {self.campaign.name}"

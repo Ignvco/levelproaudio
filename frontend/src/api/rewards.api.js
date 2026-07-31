@@ -32,6 +32,11 @@ export const getMyEntries = async () => {
   return data.results || []
 }
 
+export const buyStickers = async (slug, quantity) => {
+  const { data } = await api.post(`/rewards/campaigns/${slug}/buy/`, { quantity })
+  return data
+}
+
 export const getPublicWinners = async () => {
   const { data } = await api.get("/rewards/winners/")
   return data.results || []

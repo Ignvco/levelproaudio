@@ -1,5 +1,12 @@
 from django.contrib import admin
-from .models import Campaign, RewardProduct, Entry, Winner
+from .models import Campaign, RewardProduct, Entry, Winner, StickerPurchase
+
+
+@admin.register(StickerPurchase)
+class StickerPurchaseAdmin(admin.ModelAdmin):
+    list_display  = ("id", "campaign", "quantity", "order", "created_at")
+    list_filter   = ("campaign",)
+    search_fields = ("campaign__name", "order__id")
 
 
 class RewardProductInline(admin.TabularInline):

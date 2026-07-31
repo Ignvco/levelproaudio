@@ -37,68 +37,33 @@ def _gen_unique_code(length: int = 8) -> str:
 @transaction.atomic
 def generate_entries_for_order(order):
     """
-    Recorre los items de una orden y genera Entries por cada producto
-    que participe en una campaña activa. Idempotente: si ya se generaron
-    entries para esta orden en la misma campaña, no se duplican.
+    Genera las Entries (tickets) de una orden de compra de stickers.
+    Cada sticker comprado = 1 Entry con código único.
+    Idempotente: si ya se generaron entries para esta orden/campaña, no duplica.
 
     Retorna una lista de Entries creadas.
     """
     if not order.user_id:
         return []
 
-    active_ids = list(get_active_campaigns().values_list("id", flat=True))
-    if not active_ids:
+    sp = getattr(order, "sticker_purchase", None)
+    if not sp:
         return []
 
-    # Product IDs de la orden
-    order_items = list(order.items.select_related("product").all())
-    product_ids = [it.product_id for it in order_items if it.product_id]
-    if not product_ids:
+    # Idempotencia
+    if Entry.objects.filter(order=order, campaign=sp.campaign).exists():
         return []
-
-    reward_products = (
-        RewardProduct.objects
-        .filter(
-            campaign_id__in=active_ids,
-            product_id__in=product_ids,
-            is_active=True,
-        )
-        .select_related("campaign")
-    )
-    if not reward_products.exists():
-        return []
-
-    # Idempotencia: (order, campaign) ya procesada?
-    already = set(
-        Entry.objects
-        .filter(order=order, campaign_id__in=active_ids)
-        .values_list("campaign_id", flat=True)
-        .distinct()
-    )
 
     created = []
-    for rp in reward_products:
-        if rp.campaign_id in already:
-            continue
-
-        # Buscar la cantidad comprada de este producto
-        qty = sum(
-            it.quantity for it in order_items
-            if it.product_id == rp.product_id
+    for _ in range(sp.quantity):
+        entry = Entry.objects.create(
+            campaign     = sp.campaign,
+            user         = order.user,
+            order        = order,
+            product      = None,
+            unique_code  = _gen_unique_code(),
         )
-        if qty <= 0:
-            continue
-
-        total_entries = rp.entries_per_purchase * qty
-        for _ in range(total_entries):
-            entry = Entry.objects.create(
-                campaign     = rp.campaign,
-                user         = order.user,
-                order        = order,
-                product      = rp.product,
-                unique_code  = _gen_unique_code(),
-            )
-            created.append(entry)
+        created.append(entry)
 
     return created
 
