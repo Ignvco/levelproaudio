@@ -201,7 +201,9 @@ FRONTEND_URL = env("FRONTEND_URL", default="http://localhost:5173")
 BACKEND_URL  = env("BACKEND_URL",  default="http://localhost:8000")
 
 # ── Email ────────────────────────────────────────────────────
-DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default="ventas@levelproaudio.com")
+RESEND_API_KEY     = env("RESEND_API_KEY", default="")
+RESEND_FROM_EMAIL  = env("RESEND_FROM_EMAIL", default="onboarding@resend.dev")
+DEFAULT_FROM_EMAIL = env("DEFAULT_FROM_EMAIL", default=RESEND_FROM_EMAIL)
 EMAIL_BACKEND      = "django.core.mail.backends.console.EmailBackend"
 
 # ── Upload limits (video de Academia hasta 500 MB) ───────────

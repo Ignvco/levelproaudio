@@ -65,6 +65,14 @@ def generate_entries_for_order(order):
         )
         created.append(entry)
 
+    # Email con los tickets al usuario
+    if created:
+        try:
+            from apps.emails import send_ticket_email
+            send_ticket_email(order.email, sp.campaign, [e.unique_code for e in created])
+        except Exception:
+            pass
+
     return created
 
 

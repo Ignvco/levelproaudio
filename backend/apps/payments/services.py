@@ -290,23 +290,5 @@ def get_global66_info(order: Order) -> dict:
 # ── Emails ────────────────────────────────────────────────────
 
 def send_payment_confirmation_email(order: Order) -> None:
-    from django.core.mail import send_mail
-    from django.conf import settings as conf
-
-    try:
-        send_mail(
-            subject=f"✅ Pago confirmado — Orden #{str(order.id)[:8].upper()}",
-            message=(
-                f"Hola {order.email},\n\n"
-                f"Tu pago fue confirmado exitosamente.\n\n"
-                f"Orden: #{str(order.id)[:8].upper()}\n"
-                f"Total: ${float(order.total):,.0f}\n\n"
-                f"Nos pondremos en contacto para coordinar el envío.\n\n"
-                f"Equipo LevelPro Audio"
-            ),
-            from_email=conf.DEFAULT_FROM_EMAIL,
-            recipient_list=[order.email],
-            fail_silently=True,
-        )
-    except Exception:
-        pass
+    from apps.emails import send_order_confirmation
+    send_order_confirmation(order)
