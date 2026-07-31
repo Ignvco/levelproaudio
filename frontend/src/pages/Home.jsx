@@ -777,27 +777,33 @@ export default function Home() {
           .brands-strip-grid { grid-template-columns: 1fr !important; gap: 16px !important; }
         }
         @media (max-width: 768px) {
+          .hero-grid {
+            padding: 64px 24px 32px !important;
+            align-items: start !important;
+          }
           .hero-logo-mobile {
             display: block !important;
-            height: 26px;
+            height: 30px;
             width: auto;
-            margin: 0 auto 22px;
+            margin: 0 0 30px;
             filter: brightness(0) invert(1);
           }
           .hero-left {
-            text-align: center !important;
+            text-align: left !important;
             display: flex !important;
             flex-direction: column !important;
-            align-items: center !important;
+            align-items: flex-start !important;
           }
-          .hero-left [data-testid="hero-tags"] { justify-content: center !important; }
+          .hero-left [data-testid="hero-tags"] { justify-content: flex-start !important; }
           .hero-right {
-            justify-self: center !important;
-            align-self: center !important;
+            justify-self: start !important;
+            align-self: start !important;
             max-width: 100% !important;
-            text-align: center !important;
+            text-align: left !important;
+            margin-top: 32px;
           }
-          .hero-cta-row { justify-content: center !important; }
+          .hero-right p { display: none !important; }
+          .hero-cta-row { justify-content: flex-start !important; }
         }
         @media (max-width: 640px) {
           .trust-grid      { grid-template-columns: repeat(2, 1fr) !important; }

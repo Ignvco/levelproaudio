@@ -400,7 +400,8 @@ function MobileDock() {
 
   return createPortal(
     <>
-    {/* Logo fijo arriba al centro — siempre visible en mobile */}
+    {/* Logo fijo arriba al centro — visible en mobile excepto en Home (Home tiene su logo en el hero) */}
+    {location.pathname !== "/" && (
     <Link to="/" data-testid="mobile-logo-top" aria-label="Inicio"
       style={{
         position: "fixed", top: "18px", left: "50%",
@@ -412,6 +413,7 @@ function MobileDock() {
         filter: "brightness(0) invert(1)", maxWidth: "150px",
       }} />
     </Link>
+    )}
     <div
       className="lp-mobile-dock"
       style={{
