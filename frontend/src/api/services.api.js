@@ -43,3 +43,8 @@ export const createServiceRequest = async (payload) => {
   const response = await api.post("/service-requests/", payload)
   return response.data
 }
+
+export const checkoutService = async (slug) => {
+  const response = await api.post(`/services/${slug}/checkout/`)
+  return response.data
+}

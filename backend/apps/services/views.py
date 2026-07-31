@@ -1,6 +1,7 @@
 # apps/services/views.py
 
 from rest_framework import viewsets, filters, status
+from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
@@ -79,3 +80,48 @@ class ServiceRequestViewSet(viewsets.ModelViewSet):
         return ServiceRequest.objects.filter(
             user=self.request.user
         ).select_related("service").order_by("-created_at")
+
+
+class ServiceCheckoutView(APIView):
+    """
+    POST /api/v1/services/{slug}/checkout/
+    Crea una orden pendiente para pagar un servicio de PRECIO FIJO.
+    El frontend luego llama a /payments/create/ con el order_id.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, slug):
+        from apps.orders.models import Order, OrderItem
+
+        try:
+            service = Service.objects.get(slug=slug, is_active=True)
+        except Service.DoesNotExist:
+            return Response({"error": "Servicio no encontrado."},
+                            status=status.HTTP_404_NOT_FOUND)
+
+        if service.price_type != Service.PriceType.FIXED or not service.price:
+            return Response(
+                {"error": "Este servicio no tiene precio fijo. Enviá una solicitud para cotizar."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        order = Order.objects.create(
+            user             = request.user,
+            status           = "pending",
+            total            = service.price,
+            email            = request.user.email,
+            shipping_address = "Servicio profesional — LevelPro Audio",
+            notes            = f"Servicio contratado: {service.name}",
+        )
+        OrderItem.objects.create(
+            order        = order,
+            product      = None,
+            product_name = f"Servicio · {service.name}",
+            price        = service.price,
+            quantity     = 1,
+        )
+
+        return Response(
+            {"order_id": str(order.id), "total": float(service.price)},
+            status=status.HTTP_201_CREATED,
+        )
