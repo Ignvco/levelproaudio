@@ -800,7 +800,7 @@ export default function Home() {
             align-self: start !important;
             max-width: 100% !important;
             text-align: left !important;
-            margin-top: 32px;
+            margin-top: 18px;
           }
           .hero-right p { display: none !important; }
           .hero-cta-row { justify-content: flex-start !important; }
