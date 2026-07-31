@@ -58,14 +58,22 @@ export default function ServiceDetail() {
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const budgetNum = form.budget ? Number(String(form.budget).replace(/[^\d]/g, "")) : null
       await createServiceRequest({
         service: service.id, name: form.name, email: form.email, phone: form.phone,
-        message: form.message, budget: form.budget || null,
+        message: form.message,
+        budget: budgetNum && budgetNum > 0 ? budgetNum : null,
         preferred_date: form.preferred_date || null,
       })
     },
     onSuccess: () => setSent(true),
-    onError:   () => setError("Error al enviar. Intenta de nuevo."),
+    onError:   (err) => {
+      const data = err?.response?.data
+      const msg = data
+        ? (typeof data === "string" ? data : Object.values(data).flat().join(" "))
+        : "Error al enviar. Intenta de nuevo."
+      setError(msg)
+    },
   })
 
   if (isLoading) return (
@@ -278,7 +286,8 @@ export default function ServiceDetail() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                     <div>
                       <label style={labelSt}>Presupuesto</label>
-                      <input type="text" value={form.budget} placeholder="Ej: $500.000"
+                      <input type="text" value={form.budget} placeholder="Ej: 500000"
+                        inputMode="numeric"
                         onChange={e => setForm(p => ({ ...p, budget: e.target.value }))}
                         style={inputSt} onFocus={onFocus} onBlur={onBlur} />
                     </div>
@@ -296,6 +305,7 @@ export default function ServiceDetail() {
                         navigate("/login")
                         return
                       }
+                      setError("")
                       mutation.mutate()
                     }}
                     disabled={mutation.isPending || !form.name || !form.email || !form.message}
