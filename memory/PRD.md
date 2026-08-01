@@ -166,5 +166,12 @@ Verificado (curl + playwright): sitemap XML válido con 28+ URLs, canonical/robo
 - Verificado por screenshots (Productos con 6 items, Facturación empty state). Con esto queda cerrada la migración de todas las tablas admin al `DataTable`.
 - Observación pendiente (fuera de scope de esta migración): en Productos todos los items aparecen con badge "Inactivo" bajo el filtro "Activos" — a revisar en backend/serializer (lógica de render idéntica a la versión previa).
 
+## Admin — Responsive total + Donut ventas por categoría (2026-08-01) ✅
+- **Recharts**: agregado `min-width:0` a los hijos de `.au-grid` (evita overflow y mitiga los warnings `width(-1)` al medir contenedores). Todos los gráficos ya usaban ResponsiveContainer.
+- **Donut "Ventas por categoría"** en el Dashboard: `AdminDashboard` ahora consume `revenue_by_category` de `getAnalytics` y lo muestra en un `RadialStatCard` (nuevo prop `valueFormatter` para montos CLP). Reestructurada la Fila 2: gráfico de ventas full-width + fila de dos donuts (ventas por categoría + distribución de productos). El donut muestra empty state hasta que haya ventas con categoría (fórmula backend correcta: OrderItems de órdenes paid/shipped/completed).
+- **Responsive integral** (`admin-ui.css`): bloque para tablet (≤1024) y móvil (≤640): header apilado con botones full-width tipo app, grids a 1 columna, tablas compactas, paneles/cards con menos padding, modales tipo bottom-sheet, tabs con scroll horizontal (`.hide-scroll`). `AdminAnalytics` grids convertidos a `auto-fit minmax(300px,1fr)`; tabs de Finanzas/Facturación con scroll horizontal.
+- El `AdminLayout` ya tenía sidebar oscuro colapsable + drawer móvil con hamburguesa (≤1024).
+- Verificado por screenshots en desktop/tablet/móvil (Dashboard, Analytics, Finanzas, Productos, Órdenes): todo se ve como aplicación móvil, sin overflow.
+
 ## Credenciales de prueba
 Ver `/app/memory/test_credentials.md`.

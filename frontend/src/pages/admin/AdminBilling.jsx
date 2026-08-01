@@ -86,7 +86,8 @@ export default function AdminBilling() {
         description="Genera boletas y facturas PDF · Envío por email · Historial completo" />
 
       {/* Tabs */}
-      <div style={{ display:"flex", gap:"0", marginBottom:"28px", borderBottom:"1px solid var(--border)" }}>
+      <div style={{ display:"flex", gap:"0", marginBottom:"28px", borderBottom:"1px solid var(--border)",
+        overflowX:"auto", WebkitOverflowScrolling:"touch" }} className="hide-scroll">
         {TABS.map((t,i) => (
           <button key={t} type="button" onClick={() => setTab(i)} style={{
             padding:"9px 20px", fontSize:"13px", cursor:"pointer",

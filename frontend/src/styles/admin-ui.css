@@ -187,9 +187,55 @@
 .admin-root .au-modal__actions { display:flex; justify-content:flex-end; gap:10px; }
 
 /* ── Responsive ── */
+/* Utilidad: ocultar scrollbar (tabs con scroll horizontal en móvil) */
+.admin-root .hide-scroll { scrollbar-width:none; -ms-overflow-style:none; }
+.admin-root .hide-scroll::-webkit-scrollbar { display:none; }
+.admin-root .hide-scroll > button { flex-shrink:0; white-space:nowrap; }
+/* Los hijos de grid pueden encogerse (evita overflow y warnings de Recharts width(-1)) */
+.admin-root .au-grid > * { min-width: 0; }
+
+/* Tablet */
+@media (max-width:1024px) {
+  .admin-root .au-grid { gap: 14px; }
+}
+
+/* Móvil */
 @media (max-width:900px) {
   .admin-root .au-toolbar { flex-direction:column; align-items:stretch; }
+  .admin-root .au-toolbar__right { justify-content:stretch; }
+  .admin-root .au-toolbar__right > * { flex:1; }
   .admin-root .au-search input { width:100%; }
+}
+
+@media (max-width:640px) {
+  /* Header apilado + botones full-width tipo app móvil */
+  .admin-root .au-header { align-items:flex-start; gap:14px; }
+  .admin-root .au-header > div:first-child { width:100%; }
+  .admin-root .au-header__actions { width:100%; }
+  .admin-root .au-header__actions > * { flex:1; }
+  .admin-root .au-title { font-size:1.55rem; }
+
+  /* Grids a una columna */
+  .admin-root .au-grid { grid-template-columns:1fr !important; gap:12px; }
+
+  /* Tablas más compactas */
+  .admin-root .au-table thead th { padding:10px 12px; font-size:10px; }
+  .admin-root .au-table tbody td { padding:12px; font-size:12.5px; }
+  .admin-root .au-toolbar { padding:12px 14px; }
+  .admin-root .au-table__foot { padding:12px 14px; gap:10px; }
+
+  /* Cards y paneles con menos padding */
+  .admin-root .au-panel { padding:18px; }
+  .admin-root .au-lp, .admin-root .au-acard, .admin-root .au-pcard { padding:16px; }
+  .admin-root .au-lp__value { font-size:26px; }
+
+  /* Modales full-screen-ish */
+  .admin-root .au-modal__backdrop { padding:0; align-items:flex-end; }
+  .admin-root .au-modal { max-width:100%; border-radius:20px 20px 0 0; padding:22px; }
+
+  /* Tabs con scroll horizontal */
+  .admin-root .au-tabs { overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .admin-root .au-tabs::-webkit-scrollbar { display:none; }
 }
 
 /* ═══════════════════════════════════════════════════════════════

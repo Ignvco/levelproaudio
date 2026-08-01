@@ -59,10 +59,10 @@ export default function AdminAnalytics() {
         <div className="skeleton" style={{ height:"36px", width:"200px", marginBottom:"8px" }} />
         <div className="skeleton" style={{ height:"16px", width:"300px" }} />
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:"12px", marginBottom:"24px" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))", gap:"12px", marginBottom:"24px" }}>
         {[...Array(4)].map((_,i) => <div key={i} className="skeleton" style={{ height:"100px" }} />)}
       </div>
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(300px, 1fr))", gap:"16px" }}>
         {[...Array(4)].map((_,i) => <div key={i} className="skeleton" style={{ height:"280px" }} />)}
       </div>
     </div>
@@ -107,7 +107,7 @@ export default function AdminAnalytics() {
       </div>
 
       {/* Fila 1 */}
-      <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr", gap:"16px", marginBottom:"16px" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(300px, 1fr))", gap:"16px", marginBottom:"16px" }}>
         <ChartCard title="Ventas por mes"
           subtitle={`${sales_by_month.length} meses · últimos 12 meses`}>
           {sales_by_month.length === 0
@@ -156,7 +156,7 @@ export default function AdminAnalytics() {
       </div>
 
       {/* Fila 2 */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px", marginBottom:"16px" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(300px, 1fr))", gap:"16px", marginBottom:"16px" }}>
         <ChartCard title="Nuevos usuarios por mes" subtitle="Últimos 12 meses">
           {users_by_month.length === 0
             ? <p style={{ color:"var(--text-3)", fontSize:"13px", textAlign:"center", padding:"40px 0" }}>Sin datos todavía.</p>
@@ -204,7 +204,7 @@ export default function AdminAnalytics() {
       </div>
 
       {/* Fila 3 */}
-      <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"16px", marginBottom:"16px" }}>
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(300px, 1fr))", gap:"16px", marginBottom:"16px" }}>
         <ChartCard title="Ingresos por categoría" subtitle="Basado en ítems vendidos">
           {revenue_by_category.length === 0
             ? <p style={{ color:"var(--text-3)", fontSize:"13px", textAlign:"center", padding:"40px 0" }}>Sin ventas todavía.</p>

@@ -453,7 +453,8 @@ export default function AdminFinance() {
 
       {/* Tabs */}
       <div style={{ display:"flex", gap:"0", marginBottom:"24px",
-        borderBottom:"1px solid var(--border)" }}>
+        borderBottom:"1px solid var(--border)", overflowX:"auto",
+        WebkitOverflowScrolling:"touch" }} className="hide-scroll">
         {TABS.map(({ key, label }) => (
           <button key={key} type="button" onClick={() => setTab(key)} style={{
             padding:"9px 18px", fontSize:"13px", cursor:"pointer",

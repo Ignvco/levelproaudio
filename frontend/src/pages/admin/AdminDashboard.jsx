@@ -8,7 +8,7 @@ import {
   DollarSign, ShoppingBag, Users, Package, Boxes, Clock,
   MessageSquare, AlertTriangle, ArrowRight, RefreshCw, Eye,
 } from "lucide-react"
-import { getAdminDashboard } from "../../api/admin.api"
+import { getAdminDashboard, getAnalytics } from "../../api/admin.api"
 import {
   AdminPageHeader, StatCard, ChartCard, RadialStatCard, SectionCard,
   DataTable, StatusBadge, SecondaryButton, EmptyState,
@@ -82,6 +82,11 @@ export default function AdminDashboard() {
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["admin-dashboard"], queryFn: getAdminDashboard, refetchInterval: 60000,
   })
+  const { data: analytics, isLoading: loadingAnalytics } = useQuery({
+    queryKey: ["admin-analytics"], queryFn: getAnalytics, refetchInterval: 120000,
+  })
+  const salesByCategory = (analytics?.revenue_by_category || [])
+    .map((c) => ({ name: c.category, value: c.total || 0 }))
 
   const rev = data?.revenue || {}, orders = data?.orders || {}, users = data?.users || {}
   const products = data?.products || {}, academy = data?.academy || {}, chart = data?.sales_chart || []
@@ -137,14 +142,20 @@ export default function AdminDashboard() {
           to="/admin/products" loading={isLoading} testId="kpi-products" />
       </div>
 
-      {/* Fila 2 — gráfico + radial */}
-      <div className="au-grid admin-grid-2" style={{ gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr)" }}>
-        <ChartCard title="Ventas recientes" description="Últimos días con actividad"
-          loading={isLoading} isEmpty={chart.length === 0} emptyDesc="Cuando registres ventas las verás acá."
-          action={<span style={{ fontSize: 22, fontWeight: 800, color: "var(--admin-primary-text)" }}>{clp(rev.last_30_days)}</span>}
-          testId="admin-sales-chart">
-          <SalesChart data={chart} />
-        </ChartCard>
+      {/* Fila 2 — gráfico de ventas (ancho completo) */}
+      <ChartCard title="Ventas recientes" description="Últimos días con actividad"
+        loading={isLoading} isEmpty={chart.length === 0} emptyDesc="Cuando registres ventas las verás acá."
+        action={<span style={{ fontSize: 22, fontWeight: 800, color: "var(--admin-primary-text)" }}>{clp(rev.last_30_days)}</span>}
+        testId="admin-sales-chart">
+        <SalesChart data={chart} />
+      </ChartCard>
+
+      {/* Fila 2b — dos donuts: ventas por categoría + distribución de productos */}
+      <div className="au-grid admin-grid-2" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
+        <RadialStatCard title="Ventas por categoría" description="Ingresos por categoría de producto"
+          total={salesByCategory.reduce((a, b) => a + b.value, 0)} totalLabel="Total"
+          loading={loadingAnalytics} data={salesByCategory} valueFormatter={clp}
+          testId="admin-sales-category-radial" />
 
         <RadialStatCard title="Estadística de productos" description="Distribución del catálogo"
           total={products.total || 0} totalLabel="Productos" loading={isLoading}

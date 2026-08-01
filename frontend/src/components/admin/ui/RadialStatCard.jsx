@@ -8,7 +8,7 @@ export const BRAND_CHART_COLORS = ["#1AFF6E", "#0F9940", "#14B8A6", "#5EEAD4", "
 
 export function RadialStatCard({
   title, description, total, totalLabel = "Total", delta,
-  data = [], loading = false, testId,
+  data = [], loading = false, testId, valueFormatter = (v) => v,
 }) {
   if (loading) return <div className="au-card au-skel" style={{ height: 280 }} data-testid={testId ? `${testId}-loading` : undefined} />
 
@@ -39,8 +39,8 @@ export function RadialStatCard({
                 </Pie>
               </PieChart>
             </ResponsiveContainer>
-            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
-              <span style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-.02em", color: "var(--admin-text)", lineHeight: 1 }}>{total ?? sum}</span>
+            <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", pointerEvents: "none", padding: "0 8px", textAlign: "center" }}>
+              <span style={{ fontSize: 22, fontWeight: 800, letterSpacing: "-.02em", color: "var(--admin-text)", lineHeight: 1.05 }}>{total != null ? valueFormatter(total) : valueFormatter(sum)}</span>
               <span style={{ fontSize: 11, color: "var(--admin-text-muted)", marginTop: 3 }}>{totalLabel}</span>
             </div>
           </div>
@@ -53,7 +53,7 @@ export function RadialStatCard({
                     <span className="au-legend__dot" style={{ background: it.color }} />{it.name}
                   </span>
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--admin-text)" }}>
-                    {it.value} <span style={{ fontSize: 11, color: "var(--admin-text-muted)", fontWeight: 500 }}>· {pct}%</span>
+                    {valueFormatter(it.value)} <span style={{ fontSize: 11, color: "var(--admin-text-muted)", fontWeight: 500 }}>· {pct}%</span>
                   </span>
                 </div>
               )
