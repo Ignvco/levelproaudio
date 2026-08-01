@@ -6,6 +6,7 @@ import {
 } from "../../api/admin.api"
 import { getAdminProducts } from "../../api/admin.api"
 import { Coins, Tag, TrendingUp, Boxes, Ban, AlertTriangle } from "lucide-react"
+import { StatCard, AdminPageHeader } from "../../components/admin/ui"
 
 const TABS = ["Resumen","Alertas","Rotación","Por categoría"]
 const fmt  = n => `$${Number(n||0).toLocaleString("es-CL")}`
@@ -15,17 +16,7 @@ const fmt  = n => `$${Number(n||0).toLocaleString("es-CL")}`
 // total_productos, sin_stock, stock_critico, stock_ok
 
 function KPI({ label, value, sub, Icon, color="var(--text)" }) {
-  return (
-    <div className="a-kpi-hover" style={{ background:"var(--surface)", border:"1px solid var(--border)",
-      borderRadius:"var(--r-xl)", padding:"20px 24px" }}>
-      {Icon && <span className="a-kpi-tile" style={{ marginBottom:"14px" }}><Icon size={20} strokeWidth={2} /></span>}
-      <p style={{ fontSize:"11px", color:"var(--text-3)", fontWeight:500,
-        textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"10px" }}>{label}</p>
-      <p style={{ fontFamily:"var(--font-display)", fontSize:"2rem",
-        lineHeight:1, marginBottom:"4px", color }}>{value}</p>
-      {sub && <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{sub}</p>}
-    </div>
-  )
+  return <StatCard variant={color === "var(--accent-text)" ? "primary" : "dark"} Icon={Icon} label={label} value={value} sub={sub} />
 }
 
 export default function AdminInventory() {
@@ -73,13 +64,8 @@ export default function AdminInventory() {
     <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
 
       <div style={{ marginBottom:"28px" }}>
-        <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
-          fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>
-          Inventario
-        </h1>
-        <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
-          Control de stock, alertas y rotación de productos
-        </p>
+        <AdminPageHeader eyebrow="Catálogo" title="Inventario"
+          description="Control de stock, alertas y rotación de productos" />
       </div>
 
       {/* Tabs */}

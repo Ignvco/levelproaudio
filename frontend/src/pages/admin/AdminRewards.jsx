@@ -4,33 +4,10 @@ import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Gift, Ticket, Users, DollarSign } from "lucide-react"
 import { adminGetRewardsDashboard } from "../../api/rewards.api"
+import { StatCard, AdminPageHeader } from "../../components/admin/ui"
 
 function KpiCard({ label, value, subtitle, accent, testId, Icon }) {
-  return (
-    <div data-testid={testId} className="a-kpi-hover" style={{
-      padding:"22px 24px", background:"var(--surface)",
-      border:"1px solid var(--border)", borderRadius:"var(--r-xl)",
-    }}>
-      {Icon && <span className="a-kpi-tile" style={{ marginBottom:"14px" }}><Icon size={20} strokeWidth={2} /></span>}
-      <p style={{ fontSize:"11px", color:"var(--text-3)",
-        letterSpacing:"0.1em", textTransform:"uppercase",
-        fontWeight:600, marginBottom:"10px" }}>
-        {label}
-      </p>
-      <p style={{
-        fontSize:"32px", fontWeight:600,
-        color: accent ? "var(--accent-text)" : "var(--text)",
-        fontVariantNumeric:"tabular-nums", lineHeight:1,
-      }}>
-        {value}
-      </p>
-      {subtitle && (
-        <p style={{ fontSize:"12px", color:"var(--text-3)", marginTop:"8px" }}>
-          {subtitle}
-        </p>
-      )}
-    </div>
-  )
+  return <StatCard variant={accent ? "primary" : "dark"} Icon={Icon} label={label} value={value} sub={subtitle} testId={testId} />
 }
 
 function useCountdownDisplay(seconds) {
@@ -66,26 +43,14 @@ export default function AdminRewards() {
   return (
     <div style={{ padding:"clamp(28px, 4vw, 40px)" }}>
       {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between",
-        alignItems:"start", marginBottom:"32px", flexWrap:"wrap", gap:"12px" }}>
-        <div>
-          <p style={{ fontSize:"12px", color:"var(--accent-text)",
-            letterSpacing:"0.1em", textTransform:"uppercase",
-            fontWeight:600, marginBottom:"6px" }}>
-            LevelPro Rewards
-          </p>
-          <h1 style={{ fontSize:"28px", fontWeight:500, letterSpacing:"-0.01em" }}>
-            Dashboard de campañas
-          </h1>
-        </div>
-        <div style={{ display:"flex", gap:"8px" }}>
-          <Link to="/admin/rewards/campaigns"
-            data-testid="btn-manage-campaigns"
-            className="btn btn-accent"
-            style={{ padding:"10px 20px", fontSize:"13px" }}>
-            + Nueva campaña
-          </Link>
-        </div>
+      <div style={{ marginBottom:"32px" }}>
+        <AdminPageHeader eyebrow="LevelPro Rewards" title="Dashboard de campañas"
+          actions={
+            <Link to="/admin/rewards/campaigns" data-testid="btn-manage-campaigns"
+              className="au-btn au-btn--primary" style={{ textDecoration:"none" }}>
+              + Nueva campaña
+            </Link>
+          } />
       </div>
 
       {/* KPIs globales */}

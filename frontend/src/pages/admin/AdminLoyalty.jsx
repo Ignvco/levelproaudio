@@ -6,6 +6,7 @@ import {
   updateLoyaltyConfig, adjustLoyaltyPoints,
 } from "../../api/admin.api"
 import { Users, Star, Sparkles, Gift, Medal, Award, Gem } from "lucide-react"
+import { StatCard, AdminPageHeader } from "../../components/admin/ui"
 
 const TABS   = ["Resumen","Top clientes","Configuración"]
 const NIVELES = {
@@ -157,11 +158,8 @@ export default function AdminLoyalty() {
       {modal && <AdjustModal account={modal} onClose={() => setModal(null)} />}
 
       <div style={{ marginBottom:"28px" }}>
-        <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
-          fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>Fidelización</h1>
-        <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
-          Sistema de puntos y niveles para clientes
-        </p>
+        <AdminPageHeader eyebrow="Fidelización" title="Fidelización"
+          description="Sistema de puntos y niveles para clientes" />
       </div>
 
       {/* Tabs */}
@@ -195,14 +193,7 @@ export default function AdminLoyalty() {
                 { label:"Puntos activos",   value: (kpis.total_points_available||0).toLocaleString("es-CL"),Icon: Sparkles, accent:true },
                 { label:"Puntos canjeados", value: (kpis.total_points_redeemed||0).toLocaleString("es-CL"),Icon: Gift },
               ].map(({ label, value, Icon, accent }) => (
-                <div key={label} className="a-kpi-hover" style={{ background:"var(--surface)", border:"1px solid var(--border)",
-                  borderRadius:"var(--r-xl)", padding:"18px 20px" }}>
-                  <span className="a-kpi-tile" style={{ marginBottom:"12px" }}><Icon size={20} strokeWidth={2} /></span>
-                  <p style={{ fontSize:"11px", color:"var(--text-3)", fontWeight:500,
-                    textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:"10px" }}>{label}</p>
-                  <p style={{ fontFamily:"var(--font-display)", fontSize:"1.8rem",
-                    color: accent ? "var(--accent-text)" : "var(--text)", lineHeight:1 }}>{value}</p>
-                </div>
+                <StatCard key={label} variant={accent ? "primary" : "dark"} Icon={Icon} label={label} value={value} />
               ))}
             </div>
 

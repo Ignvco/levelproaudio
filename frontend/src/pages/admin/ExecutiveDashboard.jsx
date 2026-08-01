@@ -1,8 +1,9 @@
 // pages/admin/ExecutiveDashboard.jsx
 import { useQuery } from "@tanstack/react-query"
 import { Link }     from "react-router-dom"
-import { Calendar, BarChart3, CalendarDays, Briefcase } from "lucide-react"
+import { Calendar, BarChart3, CalendarDays, Briefcase, RefreshCw } from "lucide-react"
 import { getExecutiveDashboard } from "../../api/admin.api"
+import { StatCard, AdminPageHeader, SecondaryButton } from "../../components/admin/ui"
 
 const fmt = n => `$${Number(n||0).toLocaleString("es-CL")}`
 
@@ -28,34 +29,10 @@ function Sparkline({ data=[], color="var(--accent-text)", height=40 }) {
   )
 }
 
-function KPICard({ label, value, sub, sparkData, Icon, color="var(--accent-text)", badge }) {
+function KPICard({ label, value, sub, Icon, badge, variant="dark" }) {
   return (
-    <div className="a-kpi-hover" style={{ background:"var(--surface)", border:"1px solid var(--border)",
-      borderRadius:"var(--r-xl)", padding:"20px 24px",
-      display:"flex", flexDirection:"column", gap:"8px" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-        {Icon && <span className="a-kpi-tile"><Icon size={20} strokeWidth={2} /></span>}
-        {badge !== undefined && badge !== null && (
-          <span style={{ fontSize:"11px", fontWeight:600, padding:"2px 8px",
-            borderRadius:"var(--r-full)",
-            color:      badge >= 0 ? "#0F9940" : "#EF4444",
-            background: badge >= 0 ? "rgba(26,255,110,0.15)" : "rgba(239,68,68,0.1)" }}>
-            {badge >= 0 ? "↑" : "↓"} {Math.abs(badge)}%
-          </span>
-        )}
-      </div>
-      <p style={{ fontSize:"11px", color:"var(--text-3)", fontWeight:500,
-        textTransform:"uppercase", letterSpacing:"0.08em", marginTop:"2px" }}>{label}</p>
-      <p style={{ fontFamily:"var(--font-display)", fontSize:"2.2rem", color, lineHeight:1 }}>
-        {value}
-      </p>
-      {sparkData?.length > 0 && (
-        <div style={{ marginTop:"4px" }}>
-          <Sparkline data={sparkData} color={color} />
-        </div>
-      )}
-      {sub && <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{sub}</p>}
-    </div>
+    <StatCard variant={variant} Icon={Icon} label={label} value={value} sub={sub}
+      delta={typeof badge === "number" ? badge : undefined} />
   )
 }
 
@@ -107,19 +84,9 @@ export default function ExecutiveDashboard() {
     <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
 
       {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between",
-        alignItems:"flex-end", marginBottom:"32px", flexWrap:"wrap", gap:"16px" }}>
-        <div>
-          <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.6rem)",
-            fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>
-            Vista ejecutiva
-          </h1>
-          <p style={{ fontSize:"13px", color:"var(--text-3)" }}>{todayStr}</p>
-        </div>
-        <button onClick={() => refetch()} className="btn btn-ghost"
-          style={{ padding:"9px 18px", fontSize:"13px" }}>
-          ↻ Actualizar
-        </button>
+      <div style={{ marginBottom:"28px" }}>
+        <AdminPageHeader eyebrow="Panel" title="Vista ejecutiva" description={todayStr}
+          actions={<SecondaryButton onClick={() => refetch()} testId="exec-refresh"><RefreshCw size={14} /> Actualizar</SecondaryButton>} />
       </div>
 
       {/* KPIs */}
@@ -129,9 +96,9 @@ export default function ExecutiveDashboard() {
         <KPICard label="Ventas hoy"
           value={fmt(ventas.hoy)}
           sub={`${ventas.hoy_count||0} órdenes`}
-          sparkData={chart7}
           badge={ventas.var_dia}
-          Icon={Calendar} color="var(--accent-text)" />
+          variant="primary"
+          Icon={Calendar} />
         <KPICard label="Ventas esta semana"
           value={fmt(ventas.semana)}
           sub="Últimos 7 días"

@@ -2,6 +2,7 @@
 import { useQuery } from "@tanstack/react-query"
 import { getAnalytics } from "../../api/admin.api"
 import { DollarSign, Receipt, Users, Repeat } from "lucide-react"
+import { StatCard } from "../../components/admin/ui"
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -29,17 +30,7 @@ const CustomTooltip = ({ active, payload, label, currency }) => {
 }
 
 function KpiCard({ label, value, sub, accent, Icon }) {
-  return (
-    <div className="a-kpi-hover" style={{ background:"var(--surface)", border:"1px solid var(--border)",
-      borderRadius:"var(--r-xl)", padding:"20px 22px" }}>
-      {Icon && <span className="a-kpi-tile" style={{ marginBottom:"14px" }}><Icon size={20} strokeWidth={2} /></span>}
-      <p style={{ fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
-        letterSpacing:"0.08em", fontWeight:500, marginBottom:"10px" }}>{label}</p>
-      <p style={{ fontFamily:"var(--font-display)", fontSize:"1.9rem", lineHeight:1,
-        marginBottom:"6px", color: accent ? "var(--accent-text)" : "var(--text)" }}>{value}</p>
-      {sub && <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{sub}</p>}
-    </div>
-  )
+  return <StatCard variant={accent ? "primary" : "dark"} Icon={Icon} label={label} value={value} sub={sub} />
 }
 
 function ChartCard({ title, subtitle, children, span }) {

@@ -82,6 +82,13 @@ El usuario aclaró que la referencia NO era el "Job Portal", sino sus propias ca
 - Dashboard: fila de KPIs migrada al nuevo StatCard. Paneles de gráfico/tabla se mantienen claros para densidad/legibilidad de datos (mismo contraste dark-card/light-bg que la tienda).
 - Verificado por screenshot. Pendiente confirmar dirección antes de migrar el resto.
 
+## Admin — Migración batch 1 (páginas KPI) al StatCard del front (2026-08-01) ✅
+Patrón DRY: cada componente KPI local delega en el `StatCard` de la biblioteca (mismo dato/lógica, look nuevo) + headers a `AdminPageHeader`.
+- Migradas y verificadas por screenshot: **Vista Ejecutiva, Analytics, Finanzas, Inventario, Rewards, Fidelización**. Todas con las cards oscuras estilo front (pill de etiqueta, ícono en círculo, valor bold, sub en pill, verde estratégico) + headers `AdminPageHeader` (eyebrow/title/description/actions).
+- Paneles de gráfico/tabla se mantienen claros (decisión del usuario: mejor para leer datos).
+- Sin errores JS reales (los 429/blancos en screenshots fueron rate-limit de Cloudflare al navegador headless).
+- **Pendiente batch 2 (páginas con tablas)**: Productos, Categorías, Marcas, Facturación, Órdenes, Pagos, Servicios, Usuarios → convertir tablas al `DataTable` + headers `AdminPageHeader`. Requiere cablear columnas/acciones a los handlers CRUD existentes con cuidado (sin romper funcionalidad).
+
 
 
 Decisiones del usuario: prerendering en build (Fase 2, pendiente), mantener URLs actuales (/shop/:slug, ?category=), dominio dual (canónico primario: https://levelproaudio.com), arrancar por Fase 1.
