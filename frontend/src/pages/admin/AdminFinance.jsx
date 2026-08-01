@@ -37,8 +37,9 @@ function DistributionBar({ categories }) {
   if (!categories?.length) return null
   return (
     <div>
-      <div style={{ display:"flex", height:"12px", borderRadius:"100px",
-        overflow:"hidden", gap:"2px", marginBottom:"14px" }}>
+      <div style={{ display:"flex", height:"14px", borderRadius:"100px",
+        overflow:"hidden", gap:"3px", marginBottom:"18px",
+        background:"rgba(255,255,255,.05)" }}>
         {categories.map(c => (
           <div key={c.id} style={{ flex:Math.max(c.balance, 0),
             background:c.color, transition:"flex 0.5s ease",
@@ -46,15 +47,17 @@ function DistributionBar({ categories }) {
             title={`${c.name}: ${fmt(c.balance)}`} />
         ))}
       </div>
-      <div style={{ display:"flex", flexWrap:"wrap", gap:"10px" }}>
+      <div style={{ display:"flex", flexWrap:"wrap", gap:"8px" }}>
         {categories.map(c => (
-          <div key={c.id} style={{ display:"flex", alignItems:"center", gap:"6px" }}>
+          <div key={c.id} style={{ display:"flex", alignItems:"center", gap:"7px",
+            background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)",
+            borderRadius:"9999px", padding:"7px 14px" }}>
             <div style={{ width:"8px", height:"8px", borderRadius:"50%",
-              background:c.color, flexShrink:0 }} />
-            <span style={{ fontSize:"12px", color:"var(--text-2)" }}>
+              background:c.color, flexShrink:0, boxShadow:`0 0 8px ${c.color}` }} />
+            <span style={{ fontSize:"12px", color:"#cfcfcf" }}>
               {c.icon} {c.name}
             </span>
-            <span style={{ fontSize:"12px", fontWeight:500 }}>{fmt(c.balance)}</span>
+            <span style={{ fontSize:"12px", fontWeight:700, color:"#fff" }}>{fmt(c.balance)}</span>
           </div>
         ))}
       </div>
@@ -437,9 +440,11 @@ export default function AdminFinance() {
 
       {/* Barra distribución */}
       {summaryCategories.length > 0 && (
-        <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-          borderRadius:"var(--r-xl)", padding:"24px", marginBottom:"24px" }}>
-          <p style={{ fontSize:"13px", fontWeight:500, marginBottom:"16px" }}>
+        <div style={{ background:"#121212", border:"1px solid rgba(255,255,255,.06)",
+          borderRadius:"24px", padding:"24px", marginBottom:"24px",
+          boxShadow:"0 18px 50px -20px rgba(0,0,0,.5)" }}>
+          <p style={{ fontSize:"11px", fontWeight:700, letterSpacing:".08em",
+            textTransform:"uppercase", color:"#8c8c8c", marginBottom:"18px" }}>
             Distribución de fondos disponibles
           </p>
           <DistributionBar categories={summaryCategories} />
