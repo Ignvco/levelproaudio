@@ -1,9 +1,10 @@
 // App.jsx
 // Definición de todas las rutas de la aplicación
 // ProtectedRoute redirige al login si el usuario no está autenticado
+// components/ui/PageTransition"
 import PageTransition from "./components/ui/PageTransition"
 import { Routes, Route, Navigate } from "react-router-dom"
-import { useEffect } from "react"
+import { useEffect, Suspense, lazy } from "react"
 import { useAuthStore } from "./store/authStore"
 import SeoGlobal from "./components/SeoGlobal"
 import Analytics from "./components/Analytics"
@@ -57,27 +58,29 @@ import NotFound from "./pages/NotFound"
 
 
 
-import AdminLayout from "./layouts/AdminLayout"
-import AdminDashboard from "./pages/admin/AdminDashboard"
-import AdminOrders from "./pages/admin/AdminOrders"
-import AdminProducts from "./pages/admin/AdminProducts"
-import AdminUsers from "./pages/admin/AdminUsers"
-import AdminPayments from "./pages/admin/AdminPayments"
-import AdminAcademy from "./pages/admin/AdminAcademy"
-import AdminServices from "./pages/admin/AdminServices"
-import AdminAnalytics from "./pages/admin/AdminAnalytics"
-import AdminCategories from "./pages/admin/AdminCategories"
-import AdminBrands from "./pages/admin/AdminBrands"
-import AdminSettings from "./pages/admin/AdminSettings"
-import AdminModules from "./pages/admin/AdminModules"
-import AdminLessons from "./pages/admin/AdminLessons"
-import AdminEnrollments from "./pages/admin/AdminEnrollments"
-import AdminProductImport from "./pages/admin/AdminProductImport"
-import AdminFinance from "./pages/admin/AdminFinance"
-import AdminInventory from "./pages/admin/AdminInventory"
-import ExecutiveDashboard from "./pages/admin/ExecutiveDashboard"
-import AdminLoyalty from "./pages/admin/AdminLoyalty"
-import AdminBilling from "./pages/admin/AdminBilling"
+// Panel de admin: code-splitting — solo lo descarga quien entra a /admin,
+// los visitantes de la tienda pública nunca bajan este código.
+const AdminLayout                  = lazy(() => import("./layouts/AdminLayout"))
+const AdminDashboard               = lazy(() => import("./pages/admin/AdminDashboard"))
+const AdminOrders                  = lazy(() => import("./pages/admin/AdminOrders"))
+const AdminProducts                = lazy(() => import("./pages/admin/AdminProducts"))
+const AdminUsers                   = lazy(() => import("./pages/admin/AdminUsers"))
+const AdminPayments                = lazy(() => import("./pages/admin/AdminPayments"))
+const AdminAcademy                 = lazy(() => import("./pages/admin/AdminAcademy"))
+const AdminServices                = lazy(() => import("./pages/admin/AdminServices"))
+const AdminAnalytics               = lazy(() => import("./pages/admin/AdminAnalytics"))
+const AdminCategories              = lazy(() => import("./pages/admin/AdminCategories"))
+const AdminBrands                  = lazy(() => import("./pages/admin/AdminBrands"))
+const AdminSettings                = lazy(() => import("./pages/admin/AdminSettings"))
+const AdminModules                 = lazy(() => import("./pages/admin/AdminModules"))
+const AdminLessons                 = lazy(() => import("./pages/admin/AdminLessons"))
+const AdminEnrollments             = lazy(() => import("./pages/admin/AdminEnrollments"))
+const AdminProductImport           = lazy(() => import("./pages/admin/AdminProductImport"))
+const AdminFinance                 = lazy(() => import("./pages/admin/AdminFinance"))
+const AdminInventory               = lazy(() => import("./pages/admin/AdminInventory"))
+const ExecutiveDashboard           = lazy(() => import("./pages/admin/ExecutiveDashboard"))
+const AdminLoyalty                 = lazy(() => import("./pages/admin/AdminLoyalty"))
+const AdminBilling                 = lazy(() => import("./pages/admin/AdminBilling"))
 
 // Rewards
 import Rewards from "./pages/Rewards"
@@ -85,11 +88,23 @@ import MyEntries from "./pages/dashboard/MyEntries"
 import MyLoyalty from "./pages/dashboard/MyLoyalty"
 import MyDocuments from "./pages/dashboard/MyDocuments"
 import MyFavorites from "./pages/dashboard/MyFavorites"
-import AdminRewards from "./pages/admin/AdminRewards"
-import AdminRewardsCampaigns from "./pages/admin/AdminRewardsCampaigns"
-import AdminRewardsCampaignDetail from "./pages/admin/AdminRewardsCampaignDetail"
-import AdminRewardsEntries from "./pages/admin/AdminRewardsEntries"
-import AdminRewardsWinners from "./pages/admin/AdminRewardsWinners"
+const AdminRewards                 = lazy(() => import("./pages/admin/AdminRewards"))
+const AdminRewardsCampaigns        = lazy(() => import("./pages/admin/AdminRewardsCampaigns"))
+const AdminRewardsCampaignDetail   = lazy(() => import("./pages/admin/AdminRewardsCampaignDetail"))
+const AdminRewardsEntries          = lazy(() => import("./pages/admin/AdminRewardsEntries"))
+const AdminRewardsWinners          = lazy(() => import("./pages/admin/AdminRewardsWinners"))
+
+// Fallback simple mientras carga el chunk del panel de admin
+function AdminLoading() {
+  return (
+    <div style={{
+      minHeight: "60vh", display: "flex", alignItems: "center",
+      justifyContent: "center", color: "var(--text-2)", fontSize: "14px",
+    }}>
+      Cargando panel…
+    </div>
+  )
+}
 
 // ── Rutas protegidas ────────────────────────────────────────
 function ProtectedRoute({ children }) {
@@ -143,34 +158,34 @@ function App() {
         <Route path="/privacidad" element={<MainLayout><Privacidad /></MainLayout>} />
         <Route path="/bases-sorteo" element={<MainLayout><BasesSorteo /></MainLayout>} />
 
-        <Route path="/admin" element={<AdminRoute><AdminLayout /></AdminRoute>}>
-          <Route index element={<AdminDashboard />} />
-          <Route path="analytics" element={<AdminAnalytics />} />
-          <Route path="/admin/executive" element={<ExecutiveDashboard />} />
-          <Route path="/admin/finance" element={<AdminFinance />} />
-          <Route path="/admin/billing" element={<AdminBilling />} />
-          <Route path="/admin/loyalty" element={<AdminLoyalty />} />
-          <Route path="orders" element={<AdminOrders />} />
-          <Route path="products" element={<AdminProducts />} />
-          <Route path="products/import" element={<AdminProductImport />} />
-          <Route path="/admin/inventory" element={<AdminInventory />} />
-          <Route path="brands"     element={<AdminBrands />} />
-          <Route path="categories" element={<AdminCategories />} />
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="payments" element={<AdminPayments />} />
-          <Route path="academy" element={<AdminAcademy />} />
-          <Route path="academy/modules"     element={<AdminModules />} />
-          <Route path="academy/lessons"     element={<AdminLessons />} />
-          <Route path="services" element={<AdminServices />} />
-          <Route path="academy/enrollments" element={<AdminEnrollments />} />
-          <Route path="settings" element={<AdminSettings />} />
+        <Route path="/admin" element={<AdminRoute><Suspense fallback={<AdminLoading />}><AdminLayout /></Suspense></AdminRoute>}>
+          <Route index element={<Suspense fallback={<AdminLoading />}><AdminDashboard /></Suspense>} />
+          <Route path="analytics" element={<Suspense fallback={<AdminLoading />}><AdminAnalytics /></Suspense>} />
+          <Route path="/admin/executive" element={<Suspense fallback={<AdminLoading />}><ExecutiveDashboard /></Suspense>} />
+          <Route path="/admin/finance" element={<Suspense fallback={<AdminLoading />}><AdminFinance /></Suspense>} />
+          <Route path="/admin/billing" element={<Suspense fallback={<AdminLoading />}><AdminBilling /></Suspense>} />
+          <Route path="/admin/loyalty" element={<Suspense fallback={<AdminLoading />}><AdminLoyalty /></Suspense>} />
+          <Route path="orders" element={<Suspense fallback={<AdminLoading />}><AdminOrders /></Suspense>} />
+          <Route path="products" element={<Suspense fallback={<AdminLoading />}><AdminProducts /></Suspense>} />
+          <Route path="products/import" element={<Suspense fallback={<AdminLoading />}><AdminProductImport /></Suspense>} />
+          <Route path="/admin/inventory" element={<Suspense fallback={<AdminLoading />}><AdminInventory /></Suspense>} />
+          <Route path="brands"     element={<Suspense fallback={<AdminLoading />}><AdminBrands /></Suspense>} />
+          <Route path="categories" element={<Suspense fallback={<AdminLoading />}><AdminCategories /></Suspense>} />
+          <Route path="users" element={<Suspense fallback={<AdminLoading />}><AdminUsers /></Suspense>} />
+          <Route path="payments" element={<Suspense fallback={<AdminLoading />}><AdminPayments /></Suspense>} />
+          <Route path="academy" element={<Suspense fallback={<AdminLoading />}><AdminAcademy /></Suspense>} />
+          <Route path="academy/modules"     element={<Suspense fallback={<AdminLoading />}><AdminModules /></Suspense>} />
+          <Route path="academy/lessons"     element={<Suspense fallback={<AdminLoading />}><AdminLessons /></Suspense>} />
+          <Route path="services" element={<Suspense fallback={<AdminLoading />}><AdminServices /></Suspense>} />
+          <Route path="academy/enrollments" element={<Suspense fallback={<AdminLoading />}><AdminEnrollments /></Suspense>} />
+          <Route path="settings" element={<Suspense fallback={<AdminLoading />}><AdminSettings /></Suspense>} />
 
           {/* Rewards */}
-          <Route path="rewards"                       element={<AdminRewards />} />
-          <Route path="rewards/campaigns"             element={<AdminRewardsCampaigns />} />
-          <Route path="rewards/campaigns/:id"         element={<AdminRewardsCampaignDetail />} />
-          <Route path="rewards/entries"               element={<AdminRewardsEntries />} />
-          <Route path="rewards/winners"               element={<AdminRewardsWinners />} />
+          <Route path="rewards"                       element={<Suspense fallback={<AdminLoading />}><AdminRewards /></Suspense>} />
+          <Route path="rewards/campaigns"             element={<Suspense fallback={<AdminLoading />}><AdminRewardsCampaigns /></Suspense>} />
+          <Route path="rewards/campaigns/:id"         element={<Suspense fallback={<AdminLoading />}><AdminRewardsCampaignDetail /></Suspense>} />
+          <Route path="rewards/entries"               element={<Suspense fallback={<AdminLoading />}><AdminRewardsEntries /></Suspense>} />
+          <Route path="rewards/winners"               element={<Suspense fallback={<AdminLoading />}><AdminRewardsWinners /></Suspense>} />
         </Route>
 
         {/* ── Auth ── */}

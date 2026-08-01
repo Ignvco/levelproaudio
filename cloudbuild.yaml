@@ -11,9 +11,30 @@ substitutions:
 
 steps:
 
+  # ── 0. Tests backend (bloquea el deploy si algo falla) ─────────
+  # Corre el subset de tests que son unitarios reales de Django (DB en
+  # memoria, sin dependencias externas). Los tests de integración HTTP
+  # (test_loyalty.py, test_rewards.py, etc.) requieren un backend real
+  # corriendo + datos sembrados, y quedan fuera de este paso rápido de CI;
+  # se siguen corriendo manualmente contra staging/producción como hasta
+  # ahora.
+  - name: "python:3.12-slim"
+    id: "backend-tests"
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -e
+        cd backend
+        pip install --quiet --no-cache-dir -r requirements/base.txt -r requirements/development.txt
+        DJANGO_SECRET_KEY=ci-dummy-key DB_NAME=x DB_USER=x DB_PASSWORD=x \
+          DJANGO_SETTINGS_MODULE=config.settings.test \
+          python -m pytest tests/test_orders_price_integrity.py tests/test_academy_paywall.py -v
+
   # ── 1. Build Backend ─────────────────────────────────────────
   - name: "gcr.io/cloud-builders/docker"
     id: "build-backend"
+    waitFor: ["backend-tests"]
     args:
       - build
       - -t
@@ -86,6 +107,16 @@ steps:
       - --update-secrets=MP_CL_PUBLIC_KEY=MP_CL_PUBLIC_KEY:latest
       - --update-secrets=PAYPAL_CLIENT_ID=PAYPAL_CLIENT_ID:latest
       - --update-secrets=PAYPAL_CLIENT_SECRET=PAYPAL_CLIENT_SECRET:latest
+      # NOTA: para activar la validación de firma de los webhooks de MP
+      # (ver apps/payments/services.py::verify_mp_webhook_signature),
+      # crea estos secrets en Secret Manager con el valor de "Firma secreta"
+      # del panel de MP (Tus integraciones > Webhooks), y descomenta:
+      #   gcloud secrets create MP_CL_WEBHOOK_SECRET --data-file=-
+      #   gcloud secrets create MP_AR_WEBHOOK_SECRET --data-file=-
+      # - --update-secrets=MP_CL_WEBHOOK_SECRET=MP_CL_WEBHOOK_SECRET:latest
+      # - --update-secrets=MP_AR_WEBHOOK_SECRET=MP_AR_WEBHOOK_SECRET:latest
+      # Sin esto configurado, el webhook sigue funcionando igual que antes
+      # (solo loguea una advertencia), no se rompe nada mientras tanto.
       # Resend (emails). Remitente de marca con dominio verificado.
       - --set-env-vars=RESEND_FROM_EMAIL=LevelPro Audio <no-responder@levelproaudio.com>
       - --update-secrets=RESEND_API_KEY=RESEND_API_KEY:latest

@@ -16,6 +16,7 @@ from .models import PaymentProvider
 from .services import (
     create_mercadopago_preference,
     process_mercadopago_webhook,
+    verify_mp_webhook_signature,
     create_paypal_order,
     capture_paypal_payment,
     get_global66_info,
@@ -123,8 +124,12 @@ def webhook_mercadopago_cl(request):
     """
     POST /api/v1/payments/webhook/mercadopago/cl/
     Webhook de MercadoPago Chile — recibe notificaciones IPN.
-    AllowAny porque MP no se puede autenticar con JWT.
+    AllowAny porque MP no se puede autenticar con JWT; en su lugar
+    se valida la firma HMAC del header x-signature.
     """
+    if not verify_mp_webhook_signature(request, PaymentProvider.MERCADOPAGO_CL):
+        logger.warning("Firma inválida en webhook MP CL, request rechazado.")
+        return Response({"status": "invalid signature"}, status=401)
     try:
         data = request.data
         process_mercadopago_webhook(data, PaymentProvider.MERCADOPAGO_CL)
@@ -142,6 +147,9 @@ def webhook_mercadopago_ar(request):
     POST /api/v1/payments/webhook/mercadopago/ar/
     Webhook de MercadoPago Argentina.
     """
+    if not verify_mp_webhook_signature(request, PaymentProvider.MERCADOPAGO_AR):
+        logger.warning("Firma inválida en webhook MP AR, request rechazado.")
+        return Response({"status": "invalid signature"}, status=401)
     try:
         data = request.data
         process_mercadopago_webhook(data, PaymentProvider.MERCADOPAGO_AR)

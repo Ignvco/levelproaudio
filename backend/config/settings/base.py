@@ -189,6 +189,12 @@ MP_CL_PUBLIC_KEY    = env("MP_CL_PUBLIC_KEY",    default="")
 MP_AR_ACCESS_TOKEN  = env("MP_AR_ACCESS_TOKEN",  default="")
 MP_AR_PUBLIC_KEY    = env("MP_AR_PUBLIC_KEY",    default="")
 
+# Secret para validar la firma (header x-signature) de los webhooks de MP.
+# Se obtiene en: Panel de MercadoPago > Tus integraciones > Webhooks > Firma secreta.
+# Uno por cuenta/país si usas credenciales separadas para CL y AR.
+MP_CL_WEBHOOK_SECRET = env("MP_CL_WEBHOOK_SECRET", default="")
+MP_AR_WEBHOOK_SECRET = env("MP_AR_WEBHOOK_SECRET", default="")
+
 PAYPAL_CLIENT_ID     = env("PAYPAL_CLIENT_ID",     default="")
 PAYPAL_CLIENT_SECRET = env("PAYPAL_CLIENT_SECRET", default="")
 PAYPAL_MODE          = env("PAYPAL_MODE",          default="sandbox")

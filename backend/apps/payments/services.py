@@ -1,5 +1,7 @@
 # apps/payments/services.py
 
+import hashlib
+import hmac
 import mercadopago
 import paypalrestsdk
 from django.conf import settings
@@ -15,6 +17,52 @@ def get_mp_sdk(provider: str):
     else:
         token = settings.MP_CL_ACCESS_TOKEN
     return mercadopago.SDK(token)
+
+
+def verify_mp_webhook_signature(request, provider: str) -> bool:
+    """
+    Valida el header x-signature de MercadoPago (esquema oficial HMAC-SHA256).
+    Ver: https://www.mercadopago.cl/developers/es/docs/checkout-api/additional-content/notifications/webhooks
+
+    Si no hay secret configurado (MP_*_WEBHOOK_SECRET vacío), no bloquea —
+    solo loguea una advertencia, para no romper ambientes donde todavía no
+    se configuró el secret en el panel de MP. Una vez configurado, esta
+    función SIEMPRE debe pasar o el webhook se rechaza.
+    """
+    import logging
+    logger = logging.getLogger(__name__)
+
+    secret = (
+        settings.MP_AR_WEBHOOK_SECRET
+        if provider == PaymentProvider.MERCADOPAGO_AR
+        else settings.MP_CL_WEBHOOK_SECRET
+    )
+    if not secret:
+        logger.warning(
+            "MP webhook secret no configurado para %s — firma no validada.", provider
+        )
+        return True
+
+    x_signature = request.headers.get("x-signature", "")
+    x_request_id = request.headers.get("x-request-id", "")
+    if not x_signature:
+        return False
+
+    # x-signature viene como "ts=163...,v1=abcdef..."
+    parts = dict(p.split("=", 1) for p in x_signature.split(",") if "=" in p)
+    ts = parts.get("ts")
+    v1 = parts.get("v1")
+    if not ts or not v1:
+        return False
+
+    data_id = request.query_params.get("data.id") or request.data.get("data", {}).get("id", "")
+
+    manifest = f"id:{data_id};request-id:{x_request_id};ts:{ts};"
+    computed = hmac.new(
+        secret.encode(), manifest.encode(), hashlib.sha256
+    ).hexdigest()
+
+    return hmac.compare_digest(computed, v1)
 
 
 def create_enrollment_if_course(order: Order) -> None:
