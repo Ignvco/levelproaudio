@@ -54,3 +54,4 @@ credentials.json
 
 # Credenciales de prueba — nunca deben versionarse en texto plano
 memory/test_credentials.md
+*.patch
