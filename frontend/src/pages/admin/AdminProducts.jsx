@@ -624,15 +624,15 @@ export default function AdminProducts() {
       return (
         <div style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
           <div style={{ width:"40px", height:"40px", borderRadius:"var(--r-md)",
-            overflow:"hidden", background:"var(--admin-surface-alt, #f1f1f1)",
+            overflow:"hidden", background:"var(--admin-primary-soft, #e9fff2)",
             border:"1px solid var(--admin-border, #e5e5e5)", flexShrink:0,
             display:"flex", alignItems:"center", justifyContent:"center" }}>
             {img
               ? <img src={img} alt={p.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-              : <Package size={16} style={{ opacity:.4 }} />}
+              : <Package size={16} style={{ color:"var(--admin-primary-text, #0F9940)", opacity:.7 }} />}
           </div>
           <div style={{ minWidth:0 }}>
-            <p style={{ fontSize:"13px", fontWeight:600, overflow:"hidden",
+            <p style={{ fontSize:"13.5px", fontWeight:700, color:"var(--admin-text)", overflow:"hidden",
               textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</p>
             {p.sku && <p style={{ fontSize:"11px", color:"var(--admin-text-muted)",
               fontFamily:"monospace" }}>{p.sku}</p>}

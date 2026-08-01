@@ -54,8 +54,9 @@
   box-shadow:var(--admin-shadow-sm); transition: color .18s, box-shadow .18s, transform .18s, background .18s;
 }
 .admin-root .au-iconbtn:hover { color:var(--admin-text); transform:translateY(-1px); box-shadow:0 6px 18px rgba(20,30,24,.1); }
-.admin-root .au-iconbtn--ghost { background:transparent; border-color:transparent; box-shadow:none; }
-.admin-root .au-iconbtn--ghost:hover { background:var(--admin-surface-secondary); transform:none; box-shadow:none; }
+.admin-root .au-iconbtn--ghost { background:transparent; border-color:transparent; box-shadow:none; color:var(--admin-text-muted); }
+.admin-root .au-iconbtn--ghost:hover { background:var(--admin-surface); border-color:var(--admin-border); color:var(--admin-primary-text); transform:none; box-shadow:var(--admin-shadow-sm); }
+.admin-root .au-table tbody tr:hover .au-iconbtn--ghost { background:var(--admin-surface); border-color:var(--admin-border); }
 
 /* ── StatCard ── */
 .admin-root .au-stat { padding:20px; display:flex; flex-direction:column; gap:14px; height:100%; }
@@ -140,14 +141,19 @@
 .admin-root .au-tscroll { width:100%; overflow-x:auto; }
 .admin-root .au-table { width:100%; border-collapse:collapse; }
 .admin-root .au-table thead th {
-  text-align:left; padding:11px 20px; font-size:11px; font-weight:600; text-transform:uppercase;
-  letter-spacing:.06em; color:var(--admin-text-muted); border-bottom:1px solid var(--admin-border); white-space:nowrap;
+  text-align:left; padding:12px 20px; font-size:11px; font-weight:700; text-transform:uppercase;
+  letter-spacing:.07em; color:var(--admin-text); border-bottom:1.5px solid var(--admin-border); white-space:nowrap;
+  background:var(--admin-surface-secondary); position:sticky; top:0; z-index:2;
 }
 .admin-root .au-table thead th.is-sortable { cursor:pointer; user-select:none; }
-.admin-root .au-table tbody td { padding:13px 20px; font-size:13px; color:var(--admin-text); border-bottom:1px solid var(--admin-border); vertical-align:middle; }
+.admin-root .au-table thead th.is-sortable:hover { color:var(--admin-primary-text); }
+.admin-root .au-table tbody td { padding:14px 20px; font-size:13px; color:var(--admin-text-muted); border-bottom:1px solid var(--admin-border); vertical-align:middle; }
+.admin-root .au-table tbody td:first-child { color:var(--admin-text); }
 .admin-root .au-table tbody tr:last-child td { border-bottom:none; }
-.admin-root .au-table tbody tr { transition:background .16s var(--ease); }
-.admin-root .au-table tbody tr:hover { background:var(--admin-surface-secondary); }
+/* Zebra striping sutil para guiar el ojo horizontalmente */
+.admin-root .au-table tbody tr:nth-child(even) { background:rgba(20,30,24,.022); }
+.admin-root .au-table tbody tr { transition:background .16s var(--ease), box-shadow .16s var(--ease); }
+.admin-root .au-table tbody tr:hover { background:var(--admin-primary-soft); box-shadow:inset 3px 0 0 var(--admin-primary); }
 .admin-root .au-table__foot { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:14px 20px; border-top:1px solid var(--admin-border); }
 .admin-root .au-pageinfo { font-size:12.5px; color:var(--admin-text-muted); }
 .admin-root .au-pagination { display:flex; align-items:center; gap:4px; }
