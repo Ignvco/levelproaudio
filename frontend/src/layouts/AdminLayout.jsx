@@ -1,14 +1,16 @@
 // layouts/AdminLayout.jsx — Rediseño estilo "DealDeck": sidebar oscuro flotante + topbar claro
-import { useState, useEffect }                             from "react"
+import { useState, useEffect, useRef }                      from "react"
 import { NavLink, Link, useNavigate, useLocation, Outlet }  from "react-router-dom"
+import { useQuery }                                          from "@tanstack/react-query"
 import { useAuthStore }                                      from "../store/authStore"
+import { getAdminDashboard }                                 from "../api/admin.api"
 import AdminSearch                                           from "../components/admin/AdminSearch"
 import logoImg                                               from "../assets/logo.png"
 import {
   LayoutDashboard, LineChart, BarChart3, ChevronRight, ChevronsLeft,
   ShoppingBag, CreditCard, Users, Package, Boxes, GraduationCap,
   Wrench, Gift, Wallet, Receipt, Star, Palette, ExternalLink, LogOut,
-  Search, Bell, Menu, X,
+  Search, Bell, Menu, X, Clock, AlertTriangle, MessageSquare, CheckCircle2,
 } from "lucide-react"
 
 // ── Mapa de navegación (conserva TODAS las rutas actuales) ──
@@ -70,6 +72,156 @@ const ROUTE_TITLES = {
   "/admin/products":  ["Productos",       "Catálogo de la tienda"],
   "/admin/inventory": ["Inventario",      "Stock y disponibilidad"],
   "/admin/settings":  ["Personalización", "Configuración del sitio"],
+}
+
+const clpN = (n) => `$${Math.round(n || 0).toLocaleString("es-CL")}`
+
+function NotificationsBell() {
+  const navigate = useNavigate()
+  const [open, setOpen] = useState(false)
+  const ref = useRef(null)
+
+  const { data } = useQuery({
+    queryKey: ["admin-dashboard"], queryFn: getAdminDashboard, refetchInterval: 60000,
+  })
+
+  useEffect(() => {
+    const h = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false)
+    document.addEventListener("mousedown", h)
+    return () => document.removeEventListener("mousedown", h)
+  }, [])
+
+  const actions = data?.actions || {}
+  const products = data?.products || {}
+  const pending  = actions.pending_orders || []
+  const lowStock = actions.low_stock || []
+  const unread   = actions.unread_service_requests || 0
+  const count    = pending.length + lowStock.length + unread
+
+  const go = (to) => { setOpen(false); navigate(to) }
+
+  return (
+    <div style={{ position: "relative" }} ref={ref}>
+      <button className="a-icon-btn" aria-label="Notificaciones" data-testid="admin-notifications-btn"
+        onClick={() => setOpen((o) => !o)} style={{ position: "relative" }}>
+        <Bell size={18} />
+        {count > 0 && (
+          <span data-testid="admin-notifications-badge" style={{
+            position: "absolute", top: -3, right: -3, minWidth: 18, height: 18, padding: "0 5px",
+            borderRadius: 9, background: "#EF4444", color: "#fff", fontSize: 10, fontWeight: 800,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            border: "2px solid #fff", lineHeight: 1,
+          }}>{count > 9 ? "9+" : count}</span>
+        )}
+      </button>
+
+      {open && (
+        <div data-testid="admin-notifications-panel" className="a-notif-panel" style={{
+          position: "absolute", top: "calc(100% + 10px)", right: 0, zIndex: 80,
+          width: 340, maxWidth: "calc(100vw - 32px)", background: "#fff",
+          border: "1px solid var(--border)", borderRadius: 18,
+          boxShadow: "0 24px 60px rgba(20,30,24,.18)", overflow: "hidden",
+          animation: "scaleIn 160ms var(--ease)",
+        }}>
+          <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)",
+            display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <p style={{ fontSize: 14, fontWeight: 700, color: "var(--text)" }}>Notificaciones</p>
+            {count > 0 && <span style={{ fontSize: 11, fontWeight: 700, color: "#EF4444",
+              background: "rgba(239,68,68,.1)", padding: "2px 8px", borderRadius: 100 }}>{count} nuevas</span>}
+          </div>
+
+          <div style={{ maxHeight: 400, overflowY: "auto" }}>
+            {count === 0 ? (
+              <div style={{ padding: "36px 18px", textAlign: "center", color: "var(--text-3)" }}>
+                <CheckCircle2 size={30} style={{ color: "#0F9940", marginBottom: 8 }} />
+                <p style={{ fontSize: 13 }}>Todo al día ✓</p>
+                <p style={{ fontSize: 12, marginTop: 2 }}>No tenés alertas pendientes.</p>
+              </div>
+            ) : (
+              <>
+                {pending.length > 0 && (
+                  <NotifSection title="Pedidos por confirmar" Icon={Clock} tone="#D97706"
+                    count={pending.length} onSeeAll={() => go("/admin/orders")}>
+                    {pending.slice(0, 4).map((o) => (
+                      <NotifRow key={o.id} onClick={() => go(`/admin/orders?id=${o.id}`)}
+                        title={`#${o.short_id}`} sub={`${o.user_name || "Cliente"} · ${o.items_count} items`}
+                        right={clpN(o.total)} />
+                    ))}
+                  </NotifSection>
+                )}
+
+                {lowStock.length > 0 && (
+                  <NotifSection title="Stock bajo o agotado" Icon={AlertTriangle} tone="#EF4444"
+                    count={lowStock.length} onSeeAll={() => go("/admin/inventory")}>
+                    {lowStock.slice(0, 4).map((p) => (
+                      <NotifRow key={p.id} onClick={() => go(`/admin/products?highlight=${p.id}`)}
+                        title={p.name} sub={p.stock === 0 ? "Agotado" : `Quedan ${p.stock} u.`}
+                        right={p.stock === 0 ? "0" : `${p.stock} u.`}
+                        rightColor={p.stock === 0 ? "#EF4444" : "#D97706"} />
+                    ))}
+                  </NotifSection>
+                )}
+
+                {unread > 0 && (
+                  <NotifSection title="Solicitudes de servicio" Icon={MessageSquare} tone="#0F9940"
+                    count={unread} onSeeAll={() => go("/admin/services")}>
+                    <div onClick={() => go("/admin/services")} className="a-notif-row"
+                      style={{ padding: "11px 18px", cursor: "pointer" }}>
+                      <p style={{ fontSize: 13, color: "var(--text-2)" }}>
+                        Tenés <strong style={{ color: "#0F9940" }}>{unread}</strong> cotizaciones esperando respuesta.
+                      </p>
+                    </div>
+                  </NotifSection>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+      <style>{`
+        .admin-root .a-notif-row { transition: background .15s var(--ease); }
+        .admin-root .a-notif-row:hover { background: var(--admin-surface-secondary); }
+        @media (max-width: 640px) {
+          .admin-root .a-notif-panel { position: fixed !important; top: 66px !important;
+            left: 12px !important; right: 12px !important; width: auto !important; max-width: none !important; }
+        }
+      `}</style>
+    </div>
+  )
+}
+
+function NotifSection({ title, Icon, tone, count, onSeeAll, children }) {
+  return (
+    <div style={{ borderBottom: "1px solid var(--border)" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+        padding: "10px 18px 6px" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11, fontWeight: 700,
+          textTransform: "uppercase", letterSpacing: ".05em", color: "var(--text-3)" }}>
+          <Icon size={13} style={{ color: tone }} /> {title}
+        </span>
+        <button onClick={onSeeAll} style={{ background: "none", border: "none", cursor: "pointer",
+          fontSize: 11, fontWeight: 700, color: "#0F9940" }}>Ver todo</button>
+      </div>
+      {children}
+    </div>
+  )
+}
+
+function NotifRow({ title, sub, right, rightColor, onClick }) {
+  return (
+    <div onClick={onClick} className="a-notif-row"
+      style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10,
+        padding: "10px 18px", cursor: "pointer" }}>
+      <div style={{ minWidth: 0 }}>
+        <p style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", overflow: "hidden",
+          textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</p>
+        <p style={{ fontSize: 11.5, color: "var(--text-3)", overflow: "hidden",
+          textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{sub}</p>
+      </div>
+      <span style={{ fontSize: 12.5, fontWeight: 700, flexShrink: 0,
+        color: rightColor || "var(--text-2)" }}>{right}</span>
+    </div>
+  )
 }
 
 function NavGroup({ item, collapsed }) {
@@ -224,7 +376,7 @@ export default function AdminLayout() {
           <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
             <button className="a-icon-btn" aria-label="Buscar" onClick={() => setSearchOpen(true)}
               data-testid="admin-search-btn"><Search size={18} /></button>
-            <button className="a-icon-btn" aria-label="Notificaciones" data-testid="admin-notifications-btn"><Bell size={18} /></button>
+            <NotificationsBell />
             <div style={{ display:"flex", alignItems:"center", gap:"10px", background:"#fff",
               padding:"6px 14px 6px 6px", borderRadius:"100px", border:"1px solid var(--border)",
               boxShadow:"0 4px 12px rgba(20,30,24,0.05)" }} data-testid="admin-user-chip">
