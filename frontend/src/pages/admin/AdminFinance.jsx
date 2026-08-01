@@ -468,38 +468,45 @@ export default function AdminFinance() {
 
           {/* Cards por categoría */}
           <div style={{ display:"grid",
-            gridTemplateColumns:"repeat(auto-fill, minmax(240px, 1fr))", gap:"12px" }}>
+            gridTemplateColumns:"repeat(auto-fill, minmax(240px, 1fr))", gap:"14px" }}>
             {summaryCategories.map(cat => (
-              <div key={cat.id} style={{ background:"var(--surface)",
-                border:"1px solid var(--border)", borderRadius:"var(--r-xl)",
-                padding:"20px", borderLeft:`3px solid ${cat.color}` }}>
+              <div key={cat.id} className="au-card au-card--interactive"
+                style={{ position:"relative", overflow:"hidden", padding:"20px" }}>
+                {/* Tira de color superior */}
+                <div style={{ position:"absolute", top:0, left:0, right:0, height:"4px",
+                  background:cat.color }} />
                 <div style={{ display:"flex", alignItems:"center",
-                  gap:"10px", marginBottom:"14px" }}>
-                  <span style={{ fontSize:"22px" }}>{cat.icon}</span>
-                  <div>
-                    <p style={{ fontSize:"13px", fontWeight:500 }}>{cat.name}</p>
-                    <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
+                  gap:"12px", marginBottom:"16px" }}>
+                  <span style={{ width:"38px", height:"38px", borderRadius:"11px",
+                    display:"flex", alignItems:"center", justifyContent:"center",
+                    fontSize:"19px", flexShrink:0,
+                    background:`${cat.color}1f`, border:`1px solid ${cat.color}3a` }}>
+                    {cat.icon}
+                  </span>
+                  <div style={{ minWidth:0 }}>
+                    <p style={{ fontSize:"14px", fontWeight:700, color:"var(--admin-text)" }}>{cat.name}</p>
+                    <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>
                       {cat.percentage}% de cada ingreso
                     </p>
                   </div>
                 </div>
                 {[
-                  { label:"Ingresado",  value: fmt(cat.total_in),   color:"#0F9940" },
-                  { label:"Retirado",   value: `−${fmt(cat.total_out)}`, color:"#EF4444" },
+                  { label:"Ingresado",  value: fmt(cat.total_in),        color:"var(--admin-primary-text)" },
+                  { label:"Retirado",   value: `−${fmt(cat.total_out)}`, color:"var(--admin-danger)" },
                 ].map(({ label, value, color }) => (
                   <div key={label} style={{ display:"flex", justifyContent:"space-between",
-                    fontSize:"12px", marginBottom:"6px" }}>
-                    <span style={{ color:"var(--text-3)" }}>{label}</span>
-                    <span style={{ color }}>{value}</span>
+                    fontSize:"12.5px", marginBottom:"7px" }}>
+                    <span style={{ color:"var(--admin-text-muted)" }}>{label}</span>
+                    <span style={{ color, fontWeight:600 }}>{value}</span>
                   </div>
                 ))}
-                <div style={{ height:"1px", background:"var(--border)", margin:"8px 0" }} />
+                <div style={{ height:"1px", background:"var(--admin-border)", margin:"12px 0" }} />
                 <div style={{ display:"flex", justifyContent:"space-between",
                   alignItems:"baseline" }}>
-                  <span style={{ fontSize:"12px", color:"var(--text-3)" }}>Disponible</span>
-                  <span style={{ fontFamily:"var(--font-display)", fontSize:"1.3rem",
-                    fontWeight:600,
-                    color: cat.balance >= 0 ? "var(--accent)" : "var(--danger)" }}>
+                  <span style={{ fontSize:"12px", color:"var(--admin-text-muted)" }}>Disponible</span>
+                  <span style={{ fontFamily:"var(--font-display)", fontSize:"1.35rem",
+                    fontWeight:700,
+                    color: cat.balance >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>
                     {fmt(cat.balance)}
                   </span>
                 </div>
@@ -509,29 +516,28 @@ export default function AdminFinance() {
 
           {/* Últimos retiros */}
           {withdrawals.length > 0 && (
-            <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-              borderRadius:"var(--r-xl)", overflow:"hidden" }}>
-              <p style={{ padding:"14px 20px", borderBottom:"1px solid var(--border)",
-                fontSize:"13px", fontWeight:500 }}>Últimos retiros</p>
+            <div className="au-card" style={{ overflow:"hidden" }}>
+              <p style={{ padding:"16px 20px", borderBottom:"1px solid var(--admin-border)",
+                fontSize:"13px", fontWeight:700, color:"var(--admin-text)" }}>Últimos retiros</p>
               {withdrawals.slice(0,5).map((w,i) => (
                 <div key={w.id} style={{ display:"flex", justifyContent:"space-between",
-                  alignItems:"center", padding:"12px 20px",
-                  borderTop: i>0 ? "1px solid var(--border)" : "none",
+                  alignItems:"center", padding:"13px 20px",
+                  borderTop: i>0 ? "1px solid var(--admin-border)" : "none",
                   gap:"12px", flexWrap:"wrap",
                   transition:"background var(--dur) var(--ease)" }}
-                  onMouseEnter={e => e.currentTarget.style.background="var(--surface-2)"}
+                  onMouseEnter={e => e.currentTarget.style.background="var(--admin-surface-secondary)"}
                   onMouseLeave={e => e.currentTarget.style.background="transparent"}>
                   <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
                     <span style={{ fontSize:"16px" }}>{w.category_icon}</span>
                     <div>
-                      <p style={{ fontSize:"13px" }}>{w.destination}</p>
-                      <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
+                      <p style={{ fontSize:"13px", fontWeight:600, color:"var(--admin-text)" }}>{w.destination}</p>
+                      <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>
                         {w.category_name} · {w.created_at}
                       </p>
                     </div>
                   </div>
-                  <span style={{ fontSize:"14px", fontWeight:600,
-                    color:"var(--danger)", flexShrink:0 }}>
+                  <span style={{ fontSize:"14px", fontWeight:700,
+                    color:"var(--admin-danger)", flexShrink:0 }}>
                     −{fmt(w.amount)}
                   </span>
                 </div>
