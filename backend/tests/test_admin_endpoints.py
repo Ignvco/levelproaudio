@@ -10,8 +10,14 @@ import requests
 BASE = os.environ.get("REACT_APP_BACKEND_URL", "https://lpa-preview.preview.emergentagent.com").rstrip("/")
 API = f"{BASE}/api/v1"
 
-ADMIN_EMAIL = "ventas@levelproaudio.com"
-ADMIN_PASS = "[REDACTED]"
+ADMIN_EMAIL = os.environ.get("TEST_ADMIN_EMAIL") or os.environ.get("SEED_ADMIN_EMAIL")
+ADMIN_PASS = os.environ.get("TEST_ADMIN_PASSWORD") or os.environ.get("SEED_ADMIN_PASSWORD")
+
+if not ADMIN_EMAIL or not ADMIN_PASS:
+    pytest.skip(
+        "TEST_ADMIN_EMAIL / TEST_ADMIN_PASSWORD (o SEED_*) requeridos para tests admin.",
+        allow_module_level=True,
+    )
 
 
 @pytest.fixture(scope="session")

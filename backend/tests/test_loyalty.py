@@ -13,8 +13,17 @@ import pytest
 import requests
 
 BASE_URL = os.environ.get("REACT_APP_BACKEND_URL").rstrip("/")
-ADMIN_EMAIL, ADMIN_PASS = "ventas@levelproaudio.com", "[REDACTED]"
-CLIENT_EMAIL, CLIENT_PASS = "cliente@test.com", "[REDACTED]"
+ADMIN_EMAIL = os.environ.get("TEST_ADMIN_EMAIL") or os.environ.get("SEED_ADMIN_EMAIL")
+ADMIN_PASS = os.environ.get("TEST_ADMIN_PASSWORD") or os.environ.get("SEED_ADMIN_PASSWORD")
+CLIENT_EMAIL = os.environ.get("TEST_CLIENT_EMAIL") or os.environ.get("SEED_CLIENT_EMAIL")
+CLIENT_PASS = os.environ.get("TEST_CLIENT_PASSWORD") or os.environ.get("SEED_CLIENT_PASSWORD")
+
+if not all([ADMIN_EMAIL, ADMIN_PASS, CLIENT_EMAIL, CLIENT_PASS]):
+    pytest.skip(
+        "TEST_ADMIN_EMAIL/TEST_ADMIN_PASSWORD/TEST_CLIENT_EMAIL/TEST_CLIENT_PASSWORD "
+        "(o SEED_*) requeridos para tests de loyalty.",
+        allow_module_level=True,
+    )
 
 
 # ── Auth ─────────────────────────────────────────
