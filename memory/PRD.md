@@ -29,7 +29,16 @@ SaaS Chile/Argentina: e-commerce (Tienda), Academia y Servicios de audio. UI dar
 ## Backlog (orden: a✔ admin → b✔ legales → c✔ SEO → d✔ Resend → e✔ recuperar pass)
 - (backlog legal/auth completo)
 
-## SEO — FASE 1: Indexación (2026-07-31) ✅
+## Rediseño Admin — estilo "DealDeck" (2026-08-01) ✅
+Basado en mockup del usuario (admin.png): sidebar oscuro flotante + área clara + cards blancas redondeadas + acento verde LevelPro.
+- **Tema claro scopeado** en `.admin-root` (index.css): sobreescribe variables globales (--bg/--surface/--text/--border...) a valores claros SOLO dentro del admin. El sitio público sigue OSCURO (scoping no filtra).
+- **Overrides de componentes** (`.admin-root .card/.input/.btn-accent/table/...`): todas las páginas heredadas adoptan cards blancas redondeadas (radio 20px, sombra suave `0 10px 30px rgba(20,30,24,.07)`), inputs claros con foco verde, botones primarios pill verde, tablas con separadores suaves — sin editar página por página.
+- **`AdminLayout.jsx` reescrito**: sidebar oscuro flotante COLAPSABLE (a íconos) + drawer móvil, nav con TODAS las rutas + grupos desplegables (Productos/Academia/Rewards), topbar (título por ruta + fecha + search/bell/user chip), footer con user + Ver sitio + Cerrar sesión.
+- **`AdminDashboard.jsx` reescrito**: card destacada verde (Ingresos), KPIs (Pedidos/Usuarios/Productos con badges REALES, sin % inventados), gráfico de barras de ventas reales, card Resumen, cards de acción (pendientes/stock/servicios). Datos reales de getAdminDashboard.
+- Verificado: login, dashboard con datos reales, colapsar sidebar, navegación completa (testing_agent iteration_6, 7 rutas OK antes de rate-limit de Vite) + screenshots de Dashboard/Órdenes/Productos/Personalización/Finanzas. Funcionalidad/datos/rutas intactos.
+- Nota: el rediseño se logra por scoping (no se reescribió cada página); las páginas con estilos inline usan variables CSS y quedaron claras automáticamente.
+
+
 Decisiones del usuario: prerendering en build (Fase 2, pendiente), mantener URLs actuales (/shop/:slug, ?category=), dominio dual (canónico primario: https://levelproaudio.com), arrancar por Fase 1.
 
 **Backend:**

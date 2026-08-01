@@ -867,3 +867,99 @@ h1 em, h2 em, h3 em {
   .a-sidebar-wrap.open { transform: translateX(0); }
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN — Override de componentes globales dentro del panel claro
+   Hace que cards/botones/inputs/tablas heredadas sigan el mockup.
+   ═══════════════════════════════════════════════════════════════ */
+/* Cards → blancas, redondeadas, sombra suave (no oscura) */
+.admin-root .card {
+  background: #fff;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  box-shadow: var(--card-shadow);
+}
+.admin-root .card:hover {
+  border-color: var(--border);
+  transform: translateY(-3px);
+  box-shadow: 0 16px 36px rgba(20,30,24,0.10);
+}
+.admin-root .card-glow:hover {
+  box-shadow: 0 16px 36px rgba(20,30,24,0.10), 0 0 0 1px rgba(26,255,110,0.25);
+}
+
+/* Inputs / selects / textarea → fondo claro, foco verde */
+.admin-root .input,
+.admin-root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.admin-root select,
+.admin-root textarea {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text);
+}
+.admin-root .input:focus,
+.admin-root input:focus,
+.admin-root select:focus,
+.admin-root textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(26,255,110,0.14);
+  outline: none;
+}
+.admin-root ::placeholder { color: var(--text-3); }
+
+/* Botón primario → pill verde sólido (mockup) */
+.admin-root .btn-accent {
+  background: var(--accent);
+  color: #00160b;
+  padding-right: 22px;
+  box-shadow: 0 8px 20px rgba(26,255,110,0.28);
+}
+.admin-root .btn-accent::after { display: none; }
+.admin-root .btn-accent:hover { background: var(--accent-hover); transform: translateY(-1px); }
+.admin-root .btn-accent-solid { background: var(--accent); color: #00160b; }
+
+/* Botones secundarios → claros con borde suave */
+.admin-root .btn-ghost,
+.admin-root .btn-dark {
+  background: #fff;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+.admin-root .btn-ghost:hover,
+.admin-root .btn-dark:hover {
+  background: var(--surface-2);
+  border-color: var(--border-hover);
+  color: var(--text);
+}
+
+/* Skeleton claro */
+.admin-root .skeleton {
+  background: linear-gradient(90deg, #EEF0F3 25%, #F6F7F9 50%, #EEF0F3 75%);
+  background-size: 200% 100%;
+  border-radius: 16px;
+}
+
+/* Tablas → separadores suaves, header en gris */
+.admin-root table { border-color: var(--border); }
+.admin-root thead th {
+  color: var(--text-3); font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.06em; font-size: 11px;
+}
+.admin-root tbody tr { border-color: var(--border); }
+.admin-root tbody tr:hover { background: var(--surface-2); }
+
+/* Badges genéricos que usaban fondo oscuro translúcido */
+.admin-root .badge-accent {
+  background: rgba(26,255,110,0.12);
+  color: #0F9940;
+  border: 1px solid rgba(26,255,110,0.28);
+  backdrop-filter: none;
+}
+
+/* Títulos con la tipografía display consistente */
+.admin-root h1, .admin-root h2, .admin-root h3 { color: var(--text); letter-spacing: -0.02em; }
+
+/* Divisores y bordes translúcidos claros heredados */
+.admin-root [style*="rgba(255,255,255"] { }
+
+
