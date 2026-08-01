@@ -123,17 +123,18 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* Fila 1 — KPIs */}
+      {/* Fila 1 — KPIs (lenguaje de cards del front LevelPro) */}
       <div className="au-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px,1fr))" }}>
-        <StatCard variant="primary" Icon={DollarSign} label="Ingresos totales" value={clp(rev.total)}
-          sub={`Este mes: ${clp(rev.this_month)}`} loading={isLoading} testId="kpi-revenue" />
-        <StatCard Icon={ShoppingBag} label="Pedidos" value={orders.total || 0} sub="totales" to="/admin/orders"
-          delta={orders.today > 0 ? orders.today : undefined} loading={isLoading} testId="kpi-orders" />
-        <StatCard Icon={Users} label="Usuarios" value={users.total || 0} sub="registrados" to="/admin/users"
-          delta={users.new_week > 0 ? users.new_week : undefined} loading={isLoading} testId="kpi-users" />
-        <StatCard Icon={Package} label="Productos activos" value={products.total || 0} sub="en catálogo" to="/admin/products"
-          badge={products.out_of_stock > 0 ? <StatusBadge tone="danger">{products.out_of_stock} agotados</StatusBadge> : null}
-          loading={isLoading} testId="kpi-products" />
+        <StatCard variant="primary" Icon={DollarSign} label="INGRESOS TOTALES" value={clp(rev.total)}
+          sub={`Este mes ${clp(rev.this_month)}`} loading={isLoading} testId="kpi-revenue" />
+        <StatCard Icon={ShoppingBag} label="PEDIDOS" value={orders.total || 0}
+          sub={`${orders.today || 0} hoy`} to="/admin/orders" loading={isLoading} testId="kpi-orders" />
+        <StatCard Icon={Users} label="USUARIOS" value={users.total || 0}
+          sub={`+${users.new_week || 0} esta semana`} to="/admin/users" loading={isLoading} testId="kpi-users" />
+        <StatCard Icon={Package} label="PRODUCTOS" value={products.total || 0}
+          sub={`${activeProducts} activos`}
+          badge={products.out_of_stock > 0 ? <span className="au-lp__delta au-lp__delta--neg">{products.out_of_stock} agotados</span> : null}
+          to="/admin/products" loading={isLoading} testId="kpi-products" />
       </div>
 
       {/* Fila 2 — gráfico + radial */}

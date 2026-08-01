@@ -1,48 +1,54 @@
 // components/admin/ui/StatCard.jsx
 import { Link } from "react-router-dom"
-import { ArrowUpRight, TrendingUp, TrendingDown } from "lucide-react"
+import { TrendingUp, TrendingDown } from "lucide-react"
 
 export function MetricBadge({ delta, className = "" }) {
   if (delta === undefined || delta === null) return null
   const pos = delta >= 0
   return (
-    <span className={`au-metric ${pos ? "au-metric--pos" : "au-metric--neg"} ${className}`} data-testid="metric-badge">
+    <span className={`au-lp__delta ${pos ? "au-lp__delta--pos" : "au-lp__delta--neg"} ${className}`} data-testid="metric-badge">
       {pos ? <TrendingUp size={13} strokeWidth={2.4} /> : <TrendingDown size={13} strokeWidth={2.4} />}
-      {Math.abs(delta)}%
+      {Math.abs(delta)}{typeof delta === "number" ? "%" : ""}
     </span>
   )
 }
 
+/**
+ * StatCard — lenguaje de las cards del front LevelPro (ProductCard / CourseCard).
+ * variant: "dark" (default) | "primary" (glow verde) | "light" | "compact"
+ */
 export function StatCard({
-  Icon, label, value, sub, delta, badge,
-  variant = "default", action, to, onClick, loading = false,
-  interactive, testId,
+  Icon, label, value, sub, delta, deltaSuffix = "%", badge,
+  variant = "dark", to, onClick, loading = false, interactive, testId,
 }) {
-  if (loading) return <div className="au-card au-skel" style={{ height: 148 }} data-testid={testId ? `${testId}-loading` : undefined} />
+  if (loading) return <div className="au-lp au-skel" style={{ height: 152, background: undefined }} data-testid={testId ? `${testId}-loading` : undefined} />
 
   const isInteractive = interactive ?? Boolean(to || onClick)
-  const cls = `au-card au-stat au-stat--${variant} ${isInteractive ? "au-card--interactive" : ""}`
+  const cls = `au-lp au-lp--${variant} ${isInteractive ? "au-lp--interactive" : ""}`.trim()
+  const hasFoot = sub != null || delta != null || badge
 
   const inner = (
     <>
-      <div className="au-stat__top">
-        {Icon && <span className="au-stat__icon"><Icon size={variant === "compact" ? 18 : 20} strokeWidth={2} /></span>}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <MetricBadge delta={delta} />
+      <div className="au-lp__top">
+        {label && <span className="au-lp__tag">{label}</span>}
+        {Icon && <span className="au-lp__icon"><Icon size={variant === "compact" ? 17 : 20} strokeWidth={2} /></span>}
+      </div>
+      <div className="au-lp__value">{value}</div>
+      {hasFoot && (
+        <div className="au-lp__foot">
+          {sub != null && <span className="au-lp__pill">{sub}</span>}
+          {delta != null && (
+            <span className={`au-lp__delta ${delta >= 0 ? "au-lp__delta--pos" : "au-lp__delta--neg"}`}>
+              {delta >= 0 ? <TrendingUp size={13} strokeWidth={2.4} /> : <TrendingDown size={13} strokeWidth={2.4} />}
+              {Math.abs(delta)}{deltaSuffix}
+            </span>
+          )}
           {badge}
-          {isInteractive && <ArrowUpRight size={16} style={{ color: "var(--admin-text-muted)" }} />}
         </div>
-      </div>
-      <div className="au-stat__body">
-        <p className="au-stat__label">{label}</p>
-        <div className="au-stat__row">
-          <p className="au-stat__value">{value}</p>
-          {sub && <p className="au-stat__sub">{sub}</p>}
-        </div>
-      </div>
+      )}
     </>
   )
 
-  if (to) return <Link to={to} className={cls} style={{ textDecoration: "none" }} data-testid={testId}>{inner}</Link>
+  if (to) return <Link to={to} className={cls} data-testid={testId}>{inner}</Link>
   return <div className={cls} onClick={onClick} data-testid={testId}>{inner}</div>
 }

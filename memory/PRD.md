@@ -76,6 +76,12 @@ Rediseño SaaS premium basado en referencia "Job Portal Admin Dashboard" adaptad
 - **AdminDashboard.jsx reescrito** como piloto (4 filas: KPIs → gráfico+radial → tabla órdenes+resumen → acciones). Datos reales de `getAdminDashboard`, rutas/acciones intactas.
 - Verificado por screenshots (desktop). Sin errores de compilación. **Pendiente de aprobación del usuario** antes de migrar las demás pantallas.
 
+## Admin — Corrección del lenguaje de cards al estilo del front (2026-08-01) ✅
+El usuario aclaró que la referencia NO era el "Job Portal", sino sus propias cards del front (ProductCard/CourseCard/ServiceCard) SIN imagen de fondo.
+- `StatCard` reescrito con el lenguaje LevelPro: card oscura #121212, radio 24px, pill de etiqueta, ícono en círculo, valor Geist bold blanco, sub en pill gris translúcido, delta en pill; variante `primary` con glow verde en esquina (como CourseCard de Academia); variantes `light` y `compact` disponibles. Estilos en `admin-ui.css` (`.au-lp*`).
+- Dashboard: fila de KPIs migrada al nuevo StatCard. Paneles de gráfico/tabla se mantienen claros para densidad/legibilidad de datos (mismo contraste dark-card/light-bg que la tienda).
+- Verificado por screenshot. Pendiente confirmar dirección antes de migrar el resto.
+
 
 
 Decisiones del usuario: prerendering en build (Fase 2, pendiente), mantener URLs actuales (/shop/:slug, ?category=), dominio dual (canónico primario: https://levelproaudio.com), arrancar por Fase 1.
