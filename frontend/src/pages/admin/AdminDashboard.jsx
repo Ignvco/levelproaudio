@@ -1,350 +1,264 @@
-// pages/admin/AdminDashboard.jsx — Dashboard rediseñado con acciones reales
+// pages/admin/AdminDashboard.jsx — Rediseño estilo "DealDeck" con datos reales
 import { useQuery }  from "@tanstack/react-query"
 import { Link }      from "react-router-dom"
 import { getAdminDashboard } from "../../api/admin.api"
 import {
   DollarSign, ShoppingBag, Users, Package,
-  GraduationCap, TrendingUp, AlertTriangle, ArrowRight,
-  Clock, Boxes, MessageSquare,
+  GraduationCap, ArrowRight, Clock, Boxes, MessageSquare, AlertTriangle,
 } from "lucide-react"
 
-// ═══════════════════════════════════════════════════════════════
-// Sparkbar
-// ═══════════════════════════════════════════════════════════════
-function SparkBar({ data }) {
-  if (!data?.length) return null
-  const max = Math.max(...data.map(d => d.total || 0), 1)
-  return (
-    <div style={{ display:"flex", alignItems:"flex-end", gap:"3px", height:"56px" }}>
-      {data.slice(-30).map((d, i) => (
-        <div key={i} style={{
-          flex:1, borderRadius:"2px",
-          background:`rgba(26,255,110,${0.15 + ((d.total||0)/max)*0.85})`,
-          height:`${Math.max(4, ((d.total||0)/max)*56)}px`,
-          transition:"all 300ms",
-        }} />
-      ))}
-    </div>
-  )
-}
+const clp = n => `$${Math.round(n||0).toLocaleString("es-CL")}`
 
-// ═══════════════════════════════════════════════════════════════
-// KPI Card
-// ═══════════════════════════════════════════════════════════════
-function KPI({ label, value, sub, color="#fff", Icon, to, testId }) {
-  const content = (
-    <div data-testid={testId} style={{
-      background:"var(--surface)", border:"1px solid var(--border)",
-      borderRadius:"var(--r-xl)", padding:"18px 22px",
-      transition:"all var(--dur-slow) var(--ease)", height:"100%",
-    }} className={to ? "card card-glow" : ""}>
-      <div style={{ display:"flex", justifyContent:"space-between",
-        alignItems:"flex-start", marginBottom:"14px" }}>
-        <p style={{ fontSize:"11px", color:"var(--text-3)", fontWeight:600,
-          textTransform:"uppercase", letterSpacing:"0.08em" }}>{label}</p>
-        {Icon && <Icon size={16} strokeWidth={1.6}
-          style={{ color:"var(--text-3)", opacity:0.8 }} />}
+// ── KPI card ──
+function MetricCard({ Icon, label, value, note, badge, to, testId }) {
+  const body = (
+    <div className="a-card a-kpi-hover" data-testid={testId}
+      style={{ padding:"22px", display:"flex", flexDirection:"column", gap:"14px", height:"100%" }}>
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+        <span className="a-kpi-tile"><Icon size={20} strokeWidth={2} /></span>
+        {badge && <span className={`a-badge ${badge.positive ? "pos" : "neg"}`}>{badge.text}</span>}
       </div>
-      <p style={{ fontSize:"28px", fontWeight:600, color, lineHeight:1,
-        marginBottom:"6px", fontVariantNumeric:"tabular-nums" }}>
-        {value}
-      </p>
-      {sub && <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{sub}</p>}
-    </div>
-  )
-  return to
-    ? <Link to={to} style={{ textDecoration:"none" }}>{content}</Link>
-    : content
-}
-
-// ═══════════════════════════════════════════════════════════════
-// Action Card (órdenes pendientes, stock bajo)
-// ═══════════════════════════════════════════════════════════════
-function ActionCard({ title, icon:Icon, count, viewAllTo, viewAllLabel,
-                       children, emptyMessage, accent="var(--accent)", testId }) {
-  return (
-    <div data-testid={testId} style={{
-      background:"var(--surface)", border:"1px solid var(--border)",
-      borderRadius:"var(--r-xl)", padding:"20px 22px",
-    }}>
-      <div style={{ display:"flex", justifyContent:"space-between",
-        alignItems:"center", marginBottom:"16px" }}>
-        <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
-          <div style={{
-            padding:"7px", borderRadius:"var(--r-md)",
-            background:`${accent}15`, color:accent,
-            display:"flex", alignItems:"center", justifyContent:"center",
-          }}>
-            <Icon size={15} strokeWidth={1.8} />
-          </div>
-          <div>
-            <p style={{ fontSize:"13px", fontWeight:500, color:"var(--text)" }}>
-              {title}
-            </p>
-            {count !== undefined && (
-              <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
-                {count} pendientes
-              </p>
-            )}
-          </div>
+      <div>
+        <p style={{ fontSize:"13.5px", color:"var(--text-2)", fontWeight:500, marginBottom:"4px" }}>{label}</p>
+        <div style={{ display:"flex", alignItems:"baseline", gap:"10px", flexWrap:"wrap" }}>
+          <p style={{ fontSize:"30px", fontWeight:800, color:"var(--text)", letterSpacing:"-0.02em",
+            lineHeight:1, fontVariantNumeric:"tabular-nums" }}>{value}</p>
+          {note && <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{note}</p>}
         </div>
-        {viewAllTo && (
-          <Link to={viewAllTo} style={{
-            fontSize:"11px", color:"var(--text-3)",
-            textDecoration:"none", display:"inline-flex",
-            alignItems:"center", gap:"3px",
-          }}>
-            {viewAllLabel || "Ver todo"}
-            <ArrowRight size={11} strokeWidth={2} />
-          </Link>
-        )}
       </div>
-      {children || (
-        <p style={{ fontSize:"12px", color:"var(--text-3)",
-          padding:"20px 0", textAlign:"center" }}>
-          {emptyMessage}
-        </p>
-      )}
+    </div>
+  )
+  return to ? <Link to={to} style={{ textDecoration:"none" }}>{body}</Link> : body
+}
+
+// ── Card destacada (ingresos) ──
+function FeaturedCard({ value, note, badge }) {
+  return (
+    <div data-testid="kpi-revenue" style={{ background:"#1AFF6E", borderRadius:"20px", padding:"22px",
+      display:"flex", flexDirection:"column", gap:"14px", height:"100%",
+      boxShadow:"0 14px 34px rgba(26,255,110,0.35)" }} className="a-kpi-hover">
+      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
+        <span style={{ width:"46px", height:"46px", borderRadius:"14px", background:"rgba(0,0,0,0.12)",
+          color:"#00120a", display:"flex", alignItems:"center", justifyContent:"center" }}>
+          <DollarSign size={20} strokeWidth={2.2} /></span>
+        {badge && <span style={{ padding:"4px 10px", borderRadius:"100px", fontSize:"12px",
+          fontWeight:700, background:"rgba(0,0,0,0.15)", color:"#00160b" }}>{badge}</span>}
+      </div>
+      <div>
+        <p style={{ fontSize:"13.5px", color:"rgba(0,20,8,0.7)", fontWeight:600, marginBottom:"4px" }}>Ingresos totales</p>
+        <p style={{ fontSize:"32px", fontWeight:800, color:"#00160b", letterSpacing:"-0.02em",
+          lineHeight:1, fontVariantNumeric:"tabular-nums" }}>{value}</p>
+        {note && <p style={{ fontSize:"12px", color:"rgba(0,20,8,0.65)", marginTop:"6px" }}>{note}</p>}
+      </div>
     </div>
   )
 }
 
-// ═══════════════════════════════════════════════════════════════
-// Main
-// ═══════════════════════════════════════════════════════════════
+// ── Gráfico de barras (ventas reales) ──
+function SalesBarChart({ data }) {
+  const points = (data || []).slice(-14)
+  const max = Math.max(...points.map(d => d.total||0), 1)
+  const fmtDay = d => {
+    try { return new Date(d).toLocaleDateString("es-CL", { day:"2-digit", month:"short" }) }
+    catch { return d }
+  }
+  if (!points.length) return (
+    <p style={{ fontSize:"13px", color:"var(--text-3)", textAlign:"center", padding:"40px 0" }}>
+      Sin ventas registradas todavía.</p>
+  )
+  return (
+    <div style={{ display:"flex", alignItems:"flex-end", gap:"8px", height:"220px", paddingTop:"10px" }}>
+      {points.map((d, i) => {
+        const h = Math.max(6, ((d.total||0)/max)*180)
+        const strong = i === points.length - 1 || (d.total||0) >= max*0.6
+        return (
+          <div key={i} style={{ flex:1, display:"flex", flexDirection:"column",
+            alignItems:"center", gap:"8px", minWidth:0 }}>
+            <div title={clp(d.total)} style={{ width:"100%", maxWidth:"26px", height:`${h}px`,
+              borderRadius:"8px", background: strong ? "#1AFF6E" : "#E5E7EB",
+              transition:"height 300ms var(--ease)" }} />
+            <span style={{ fontSize:"10px", color:"var(--text-3)", whiteSpace:"nowrap",
+              overflow:"hidden", textOverflow:"ellipsis", maxWidth:"100%" }}>{fmtDay(d.date)}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Fila de resumen ──
+function SummaryRow({ label, value, badge }) {
+  return (
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+      padding:"12px 0", borderBottom:"1px solid var(--border)" }}>
+      <span style={{ fontSize:"13.5px", color:"var(--text-2)" }}>{label}</span>
+      <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
+        <span style={{ fontSize:"15px", fontWeight:700, color:"var(--text)",
+          fontVariantNumeric:"tabular-nums" }}>{value}</span>
+        {badge && <span className={`a-badge ${badge.positive ? "pos" : "neg"}`}>{badge.text}</span>}
+      </div>
+    </div>
+  )
+}
+
 export default function AdminDashboard() {
   const { data, isLoading } = useQuery({
-    queryKey:        ["admin-dashboard"],
-    queryFn:         getAdminDashboard,
-    refetchInterval: 60000,
+    queryKey:["admin-dashboard"], queryFn:getAdminDashboard, refetchInterval:60000,
   })
 
-  const rev      = data?.revenue   || {}
-  const orders   = data?.orders    || {}
-  const users    = data?.users     || {}
-  const products = data?.products  || {}
-  const academy  = data?.academy   || {}
-  const chart    = data?.sales_chart || []
-  const actions  = data?.actions   || {}
-  const pending  = actions.pending_orders || []
-  const lowStock = actions.low_stock      || []
-  const unreadRequests = actions.unread_service_requests || 0
+  const rev=data?.revenue||{}, orders=data?.orders||{}, users=data?.users||{}
+  const products=data?.products||{}, academy=data?.academy||{}, chart=data?.sales_chart||[]
+  const actions=data?.actions||{}
+  const pending=actions.pending_orders||[], lowStock=actions.low_stock||[]
+  const unread=actions.unread_service_requests||0
+
+  if (isLoading) return (
+    <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(230px,1fr))", gap:"18px" }}>
+      {[...Array(4)].map((_,i)=><div key={i} className="a-card" style={{ height:"150px" }} />)}
+    </div>
+  )
 
   return (
-    <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
+    <div style={{ display:"flex", flexDirection:"column", gap:"18px", paddingBottom:"20px" }}>
 
-      {/* Header */}
-      <div style={{ marginBottom:"32px" }}>
-        <p style={{ fontSize:"12px", color:"var(--accent)", fontWeight:600,
-          letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"8px" }}>
-          Panel de control
-        </p>
-        <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.6rem)",
-          fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>
-          Bienvenido de vuelta
-        </h1>
-        <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
-          Todo lo que necesitás resolver, en un solo lugar.
-        </p>
+      {/* Alertas reales */}
+      {(pending.length>0 || products.out_of_stock>0 || unread>0) && (
+        <div data-testid="admin-alerts" className="a-card" style={{ padding:"16px 20px",
+          display:"flex", gap:"14px", alignItems:"center", flexWrap:"wrap",
+          background:"#FFFBEB", border:"1px solid #FDE68A" }}>
+          <AlertTriangle size={18} style={{ color:"#D97706", flexShrink:0 }} />
+          <p style={{ fontSize:"13px", color:"#92400E", flex:1 }}>
+            {pending.length>0 && `${pending.length} pedidos pendientes · `}
+            {products.out_of_stock>0 && `${products.out_of_stock} productos sin stock · `}
+            {unread>0 && `${unread} solicitudes de servicio`}
+          </p>
+        </div>
+      )}
+
+      {/* KPIs */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(230px,1fr))", gap:"18px" }}>
+        <FeaturedCard value={clp(rev.total)} note={`Este mes: ${clp(rev.this_month)}`}
+          badge={rev.this_month>0 ? "Este mes" : null} />
+        <MetricCard Icon={ShoppingBag} label="Pedidos" value={orders.total||0}
+          note="totales" to="/admin/orders" testId="kpi-orders"
+          badge={orders.today>0 ? { text:`+${orders.today} hoy`, positive:true } : null} />
+        <MetricCard Icon={Users} label="Usuarios" value={users.total||0}
+          note="registrados" to="/admin/users" testId="kpi-users"
+          badge={users.new_week>0 ? { text:`+${users.new_week} sem`, positive:true } : null} />
+        <MetricCard Icon={Package} label="Productos activos" value={products.total||0}
+          note="en catálogo" to="/admin/products" testId="kpi-products"
+          badge={products.out_of_stock>0 ? { text:`${products.out_of_stock} agotados`, positive:false } : null} />
       </div>
 
-      {isLoading ? (
-        <div style={{ display:"grid",
-          gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:"14px" }}>
-          {[...Array(6)].map((_,i) => (
-            <div key={i} className="skeleton" style={{ height:"120px" }} />
-          ))}
+      {/* Gráfico + resumen */}
+      <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1.6fr) minmax(0,1fr)", gap:"18px" }}
+        className="admin-grid-2">
+        <div className="a-card" style={{ padding:"24px" }} data-testid="admin-sales-chart">
+          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"6px" }}>
+            <div>
+              <h2 style={{ fontSize:"18px", fontWeight:800, color:"var(--text)", letterSpacing:"-0.01em" }}>
+                Ventas recientes</h2>
+              <p style={{ fontSize:"13px", color:"var(--text-3)", marginTop:"2px" }}>Últimos días con actividad</p>
+            </div>
+            <span style={{ fontSize:"22px", fontWeight:800, color:"#0F9940",
+              fontVariantNumeric:"tabular-nums" }}>{clp(rev.last_30_days)}</span>
+          </div>
+          <SalesBarChart data={chart} />
         </div>
-      ) : (
-        <>
-          {/* Alertas críticas si las hay */}
-          {(pending.length > 0 || products.out_of_stock > 0 || unreadRequests > 0) && (
-            <div data-testid="admin-alerts" style={{
-              padding:"14px 18px", marginBottom:"24px",
-              background:"linear-gradient(135deg, rgba(250,204,21,0.06) 0%, transparent 100%)",
-              border:"1px solid rgba(250,204,21,0.25)",
-              borderRadius:"var(--r-xl)",
-              display:"flex", gap:"14px", alignItems:"center", flexWrap:"wrap",
-            }}>
-              <AlertTriangle size={16} strokeWidth={1.8}
-                style={{ color:"#facc15", flexShrink:0 }} />
-              <div style={{ flex:1, minWidth:0 }}>
-                <p style={{ fontSize:"13px", fontWeight:500, color:"var(--text)" }}>
-                  Necesitan tu atención
-                </p>
-                <p style={{ fontSize:"12px", color:"var(--text-3)", marginTop:"2px" }}>
-                  {pending.length > 0 && `${pending.length} pedidos pendientes de confirmar · `}
-                  {products.out_of_stock > 0 && `${products.out_of_stock} productos sin stock · `}
-                  {unreadRequests > 0 && `${unreadRequests} solicitudes de servicio`}
-                </p>
-              </div>
+
+        <div className="a-card" style={{ padding:"24px" }} data-testid="admin-summary">
+          <h2 style={{ fontSize:"18px", fontWeight:800, color:"var(--text)", letterSpacing:"-0.01em", marginBottom:"6px" }}>
+            Resumen</h2>
+          <p style={{ fontSize:"13px", color:"var(--text-3)", marginBottom:"8px" }}>Estado de tu operación</p>
+          <SummaryRow label="Pedidos pendientes" value={orders.pending||0}
+            badge={pending.length>0 ? { text:"revisar", positive:false } : null} />
+          <SummaryRow label="Ventas del mes" value={clp(rev.this_month)} />
+          <SummaryRow label="Productos sin stock" value={products.out_of_stock||0}
+            badge={products.out_of_stock>0 ? { text:"agotado", positive:false } : { text:"ok", positive:true }} />
+          <SummaryRow label="Stock bajo" value={products.low_stock||0} />
+          <SummaryRow label="Inscripciones academia" value={academy.total_enrollments||0}
+            badge={academy.enrollments_month>0 ? { text:`+${academy.enrollments_month}`, positive:true } : null} />
+        </div>
+      </div>
+
+      {/* Acciones */}
+      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(320px,1fr))", gap:"18px" }}>
+        {/* Órdenes pendientes */}
+        <div className="a-card" style={{ padding:"22px" }} data-testid="action-pending-orders">
+          <ActionHeader Icon={Clock} title="Órdenes por confirmar" count={pending.length} to="/admin/orders" />
+          {pending.length ? (
+            <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"12px" }}>
+              {pending.slice(0,5).map(o => (
+                <Link key={o.id} to={`/admin/orders?id=${o.id}`} style={rowStyle}>
+                  <div style={{ minWidth:0, flex:1 }}>
+                    <p style={{ fontSize:"12.5px", fontWeight:600, color:"var(--text)", fontFamily:"monospace" }}>#{o.short_id}</p>
+                    <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"2px", overflow:"hidden",
+                      textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{o.user_name} · {o.items_count} items</p>
+                  </div>
+                  <span style={{ fontSize:"13px", fontWeight:700, color:"#0F9940" }}>{clp(o.total)}</span>
+                </Link>
+              ))}
             </div>
-          )}
+          ) : <Empty msg="No hay órdenes pendientes ✓" />}
+        </div>
 
-          {/* KPIs principales */}
-          <div style={{ display:"grid",
-            gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))",
-            gap:"12px", marginBottom:"24px" }}>
-            <KPI label="Ingresos totales"
-              value={`$${Math.round(rev.total||0).toLocaleString("es-CL")}`}
-              sub={`Este mes: $${Math.round(rev.this_month||0).toLocaleString("es-CL")}`}
-              color="var(--accent)" Icon={DollarSign} testId="kpi-revenue" />
-            <KPI label="Pedidos"
-              value={orders.total||0}
-              sub={`${orders.pending||0} pendientes · ${orders.today||0} hoy`}
-              Icon={ShoppingBag} to="/admin/orders" testId="kpi-orders" />
-            <KPI label="Usuarios"
-              value={users.total||0}
-              sub={`${users.new_week||0} nuevos esta semana`}
-              color="#60a5fa" Icon={Users} to="/admin/users" testId="kpi-users" />
-            <KPI label="Productos activos"
-              value={products.total||0}
-              sub={`${products.out_of_stock||0} sin stock · ${products.low_stock||0} bajo stock`}
-              Icon={Package} to="/admin/products" testId="kpi-products" />
-            <KPI label="Inscripciones"
-              value={academy.total_enrollments||0}
-              sub={`${academy.enrollments_month||0} este mes`}
-              color="#c084fc" Icon={GraduationCap} to="/admin/enrollments"
-              testId="kpi-enrollments" />
-            <KPI label="Últimos 30 días"
-              value={`$${Math.round(rev.last_30_days||0).toLocaleString("es-CL")}`}
-              sub={`${orders.this_month||0} pedidos este mes`}
-              color="var(--accent)" Icon={TrendingUp} testId="kpi-30days" />
-          </div>
-
-          {/* Sparkbar ventas */}
-          {chart.length > 0 && (
-            <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-              borderRadius:"var(--r-xl)", padding:"22px 26px", marginBottom:"24px" }}>
-              <div style={{ display:"flex", justifyContent:"space-between",
-                alignItems:"flex-start", marginBottom:"18px" }}>
-                <div>
-                  <p style={{ fontSize:"13px", fontWeight:500, marginBottom:"3px" }}>
-                    Ventas últimos 30 días
-                  </p>
-                  <p style={{ fontSize:"12px", color:"var(--text-3)" }}>
-                    {chart.length} días con actividad
-                  </p>
-                </div>
-                <p style={{ fontSize:"24px", fontWeight:600, color:"var(--accent)",
-                  fontVariantNumeric:"tabular-nums" }}>
-                  ${Math.round(rev.last_30_days||0).toLocaleString("es-CL")}
-                </p>
-              </div>
-              <SparkBar data={chart} />
+        {/* Stock bajo */}
+        <div className="a-card" style={{ padding:"22px" }} data-testid="action-low-stock">
+          <ActionHeader Icon={Boxes} title="Stock bajo o agotado" count={lowStock.length} to="/admin/inventory" />
+          {lowStock.length ? (
+            <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"12px" }}>
+              {lowStock.slice(0,5).map(p => (
+                <Link key={p.id} to={`/admin/products?highlight=${p.id}`} style={rowStyle}>
+                  <p style={{ fontSize:"12.5px", fontWeight:600, color:"var(--text)", overflow:"hidden",
+                    textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{p.name}</p>
+                  <span style={{ fontSize:"12.5px", fontWeight:700,
+                    color: p.stock===0 ? "#EF4444" : "#D97706" }}>
+                    {p.stock===0 ? "Agotado" : `${p.stock} u.`}</span>
+                </Link>
+              ))}
             </div>
-          )}
+          ) : <Empty msg="Todo en stock ✓" />}
+        </div>
 
-          {/* Grid de acciones */}
-          <div style={{ display:"grid",
-            gridTemplateColumns:"repeat(auto-fill, minmax(340px, 1fr))",
-            gap:"14px", marginBottom:"24px" }}>
-
-            {/* Órdenes pendientes */}
-            <ActionCard
-              title="Órdenes por confirmar"
-              icon={Clock}
-              count={pending.length}
-              viewAllTo="/admin/orders"
-              accent="#facc15"
-              testId="action-pending-orders"
-              emptyMessage="No hay órdenes pendientes ✓">
-              {pending.length > 0 && (
-                <div style={{ display:"flex", flexDirection:"column", gap:"7px" }}>
-                  {pending.map(o => (
-                    <Link key={o.id} to={`/admin/orders?id=${o.id}`}
-                      style={{
-                        display:"flex", justifyContent:"space-between",
-                        alignItems:"center", padding:"10px 12px",
-                        background:"var(--surface-2)", border:"1px solid var(--border)",
-                        borderRadius:"var(--r-md)", textDecoration:"none",
-                        gap:"10px",
-                      }}>
-                      <div style={{ minWidth:0, flex:1 }}>
-                        <p style={{ fontSize:"12px", fontWeight:500,
-                          color:"var(--text)", fontFamily:"monospace" }}>
-                          #{o.short_id}
-                        </p>
-                        <p style={{ fontSize:"11px", color:"var(--text-3)",
-                          marginTop:"2px", overflow:"hidden",
-                          textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                          {o.user_name} · {o.items_count} items · {o.created}
-                        </p>
-                      </div>
-                      <p style={{ fontSize:"13px", fontWeight:600, color:"#facc15",
-                        fontVariantNumeric:"tabular-nums", whiteSpace:"nowrap" }}>
-                        ${Number(o.total).toLocaleString("es-CL")}
-                      </p>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </ActionCard>
-
-            {/* Stock bajo */}
-            <ActionCard
-              title="Stock bajo o agotado"
-              icon={Boxes}
-              count={lowStock.length}
-              viewAllTo="/admin/inventory"
-              accent="#f87171"
-              testId="action-low-stock"
-              emptyMessage="Todo en stock ✓">
-              {lowStock.length > 0 && (
-                <div style={{ display:"flex", flexDirection:"column", gap:"7px" }}>
-                  {lowStock.map(p => (
-                    <Link key={p.id} to={`/admin/products?highlight=${p.id}`}
-                      style={{
-                        display:"flex", justifyContent:"space-between",
-                        alignItems:"center", padding:"10px 12px",
-                        background:"var(--surface-2)", border:"1px solid var(--border)",
-                        borderRadius:"var(--r-md)", textDecoration:"none",
-                      }}>
-                      <div style={{ minWidth:0, flex:1 }}>
-                        <p style={{ fontSize:"12px", fontWeight:500,
-                          color:"var(--text)", overflow:"hidden",
-                          textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                          {p.name}
-                        </p>
-                        <p style={{ fontSize:"11px", color:"var(--text-3)",
-                          marginTop:"2px" }}>
-                          ${Number(p.price).toLocaleString("es-CL")}
-                        </p>
-                      </div>
-                      <p style={{
-                        fontSize:"12px", fontWeight:600, whiteSpace:"nowrap",
-                        color: p.stock === 0 ? "#ef4444" : "#facc15",
-                        fontVariantNumeric:"tabular-nums",
-                      }}>
-                        {p.stock === 0 ? "Agotado" : `${p.stock} u.`}
-                      </p>
-                    </Link>
-                  ))}
-                </div>
-              )}
-            </ActionCard>
-
-            {/* Solicitudes de servicios */}
-            {unreadRequests > 0 && (
-              <ActionCard
-                title="Solicitudes de servicios"
-                icon={MessageSquare}
-                count={unreadRequests}
-                viewAllTo="/admin/services"
-                accent="#60a5fa"
-                testId="action-service-requests"
-                emptyMessage="Sin solicitudes nuevas">
-                <p style={{ fontSize:"13px", color:"var(--text-2)",
-                  padding:"10px 12px", background:"var(--surface-2)",
-                  border:"1px solid var(--border)", borderRadius:"var(--r-md)" }}>
-                  Tenés <strong style={{ color:"#60a5fa" }}>{unreadRequests}</strong>{" "}
-                  cotizaciones esperando respuesta.
-                </p>
-              </ActionCard>
-            )}
+        {/* Solicitudes */}
+        {unread>0 && (
+          <div className="a-card" style={{ padding:"22px" }} data-testid="action-service-requests">
+            <ActionHeader Icon={MessageSquare} title="Solicitudes de servicios" count={unread} to="/admin/services" />
+            <p style={{ fontSize:"13px", color:"var(--text-2)", marginTop:"12px", padding:"12px 14px",
+              background:"var(--surface-2)", borderRadius:"12px" }}>
+              Tenés <strong style={{ color:"#0F9940" }}>{unread}</strong> cotizaciones esperando respuesta.</p>
           </div>
-        </>
-      )}
+        )}
+      </div>
+
+      <style>{`
+        @media (max-width: 900px) { .admin-grid-2 { grid-template-columns: 1fr !important; } }
+      `}</style>
     </div>
   )
 }
+
+const rowStyle = { display:"flex", justifyContent:"space-between", alignItems:"center", gap:"10px",
+  padding:"11px 13px", background:"var(--surface-2)", borderRadius:"12px", textDecoration:"none" }
+
+function ActionHeader({ Icon, title, count, to }) {
+  return (
+    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+      <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
+        <span className="a-kpi-tile" style={{ width:"38px", height:"38px", borderRadius:"11px" }}>
+          <Icon size={17} strokeWidth={2} /></span>
+        <div>
+          <p style={{ fontSize:"13.5px", fontWeight:700, color:"var(--text)" }}>{title}</p>
+          <p style={{ fontSize:"11.5px", color:"var(--text-3)" }}>{count} pendientes</p>
+        </div>
+      </div>
+      <Link to={to} style={{ fontSize:"12px", color:"#0F9940", textDecoration:"none",
+        display:"inline-flex", alignItems:"center", gap:"3px", fontWeight:600 }}>
+        Ver todo <ArrowRight size={12} strokeWidth={2.2} />
+      </Link>
+    </div>
+  )
+}
+const Empty = ({ msg }) => (
+  <p style={{ fontSize:"12.5px", color:"var(--text-3)", padding:"24px 0", textAlign:"center" }}>{msg}</p>
+)

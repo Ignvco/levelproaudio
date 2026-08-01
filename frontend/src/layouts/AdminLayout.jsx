@@ -1,39 +1,97 @@
-// layouts/AdminLayout.jsx
+// layouts/AdminLayout.jsx — Rediseño estilo "DealDeck": sidebar oscuro flotante + topbar claro
 import { useState }                                          from "react"
 import { NavLink, Link, useNavigate, useLocation, Outlet }  from "react-router-dom"
 import { useAuthStore }                                      from "../store/authStore"
 import logoImg                                               from "../assets/logo.png"
 import {
-  LayoutDashboard, LineChart, BarChart3, ChevronRight,
+  LayoutDashboard, LineChart, BarChart3, ChevronRight, ChevronsLeft,
   ShoppingBag, CreditCard, Users, Package, Boxes, GraduationCap,
   Wrench, Gift, Wallet, Receipt, Star, Palette, ExternalLink, LogOut,
+  Search, Bell, Menu, X,
 } from "lucide-react"
 
-// ── NavGroup colapsable ───────────────────────────────────────
-function NavGroup({ item }) {
+// ── Mapa de navegación (conserva TODAS las rutas actuales) ──
+const navItems = [
+  { sep:"Panel" },
+  { to:"/admin",           label:"Dashboard",       icon:LayoutDashboard, end:true },
+  { to:"/admin/executive", label:"Vista Ejecutiva", icon:LineChart },
+  { to:"/admin/analytics", label:"Analytics",       icon:BarChart3 },
+
+  { sep:"Ventas" },
+  { to:"/admin/orders",   label:"Órdenes",   icon:ShoppingBag },
+  { to:"/admin/payments", label:"Pagos",     icon:CreditCard },
+  { to:"/admin/services", label:"Servicios", icon:Wrench },
+  { to:"/admin/users",    label:"Usuarios",  icon:Users },
+
+  { sep:"Catálogo" },
+  { label:"Productos", icon:Package, children:[
+    { to:"/admin/products",        label:"Catálogo"   },
+    { to:"/admin/brands",          label:"Marcas"     },
+    { to:"/admin/categories",      label:"Categorías" },
+    { to:"/admin/products/import", label:"Importar"   },
+  ]},
+  { to:"/admin/inventory", label:"Inventario", icon:Boxes },
+
+  { sep:"Academia" },
+  { label:"Academia", icon:GraduationCap, children:[
+    { to:"/admin/academy",             label:"Cursos"        },
+    { to:"/admin/academy/modules",     label:"Módulos"       },
+    { to:"/admin/academy/lessons",     label:"Lecciones"     },
+    { to:"/admin/academy/enrollments", label:"Inscripciones" },
+  ]},
+
+  { sep:"Rewards" },
+  { label:"Rewards", icon:Gift, children:[
+    { to:"/admin/rewards",           label:"Dashboard"       },
+    { to:"/admin/rewards/campaigns", label:"Campañas"        },
+    { to:"/admin/rewards/entries",   label:"Participaciones" },
+    { to:"/admin/rewards/winners",   label:"Ganadores"       },
+  ]},
+  { to:"/admin/loyalty", label:"Puntos y niveles", icon:Star },
+
+  { sep:"Finanzas" },
+  { to:"/admin/finance", label:"Finanzas",    icon:Wallet },
+  { to:"/admin/billing", label:"Facturación", icon:Receipt },
+
+  { sep:"Sitio web" },
+  { to:"/admin/settings", label:"Personalización", icon:Palette },
+]
+
+// Título/subtítulo del topbar según la ruta
+const ROUTE_TITLES = {
+  "/admin":           ["Dashboard",       "Resumen general de tu tienda"],
+  "/admin/executive": ["Vista Ejecutiva", "Métricas clave del negocio"],
+  "/admin/analytics": ["Analytics",       "Análisis detallado"],
+  "/admin/orders":    ["Órdenes",         "Gestión de pedidos"],
+  "/admin/payments":  ["Pagos",           "Transacciones y cobros"],
+  "/admin/services":  ["Servicios",       "Solicitudes y cotizaciones"],
+  "/admin/users":     ["Usuarios",        "Clientes registrados"],
+  "/admin/products":  ["Productos",       "Catálogo de la tienda"],
+  "/admin/inventory": ["Inventario",      "Stock y disponibilidad"],
+  "/admin/settings":  ["Personalización", "Configuración del sitio"],
+}
+
+function NavGroup({ item, collapsed }) {
   const location = useLocation()
   const isOpen   = item.children.some(c => location.pathname.startsWith(c.to))
   const [open, setOpen] = useState(isOpen)
   const Icon = item.icon
-
   return (
     <div style={{ marginBottom:"2px" }}>
-      <button onClick={() => setOpen(!open)}
-        className={`admin-nav-link${isOpen ? " group-open" : ""}`}
-        style={{ width:"100%", background:"none", border:"none", cursor:"pointer" }}>
-        {Icon && <Icon size={16} strokeWidth={1.8} style={{ flexShrink:0 }} />}
-        <span style={{ flex:1, textAlign:"left" }}>{item.label}</span>
-        <ChevronRight size={13} strokeWidth={2}
-          style={{ opacity:0.5,
-            transform: open ? "rotate(90deg)" : "none",
+      <button onClick={() => setOpen(!open)} className={`a-nav${isOpen ? " active" : ""}`}
+        data-testid={`admin-navgroup-${item.label.toLowerCase()}`}>
+        {Icon && <Icon size={18} strokeWidth={1.9} />}
+        <span style={{ flex:1 }}>{item.label}</span>
+        <ChevronRight className="a-chevron" size={14} strokeWidth={2}
+          style={{ opacity:0.6, transform: open ? "rotate(90deg)" : "none",
             transition:"transform 200ms var(--ease)" }} />
       </button>
-      {open && (
-        <div style={{ paddingLeft:"30px", marginTop:"2px", marginBottom:"4px" }}>
-          {item.children.map(child => (
-            <NavLink key={child.to} to={child.to}
-              className={({ isActive }) => `admin-nav-sublink${isActive ? " active" : ""}`}>
-              {child.label}
+      {open && !collapsed && (
+        <div style={{ marginTop:"2px", marginBottom:"4px" }}>
+          {item.children.map(c => (
+            <NavLink key={c.to} to={c.to}
+              className={({ isActive }) => `a-subnav${isActive ? " active" : ""}`}>
+              {c.label}
             </NavLink>
           ))}
         </div>
@@ -42,193 +100,157 @@ function NavGroup({ item }) {
   )
 }
 
-// ── Separador visual ──────────────────────────────────────────
-function NavSep({ label }) {
-  return (
-    <p style={{ fontSize:"10px", fontWeight:700, color:"var(--text-3)",
-      textTransform:"uppercase", letterSpacing:"0.12em",
-      padding:"18px 12px 6px", opacity:0.55 }}>
-      {label}
-    </p>
-  )
-}
-
-// ── NavItems ──────────────────────────────────────────────────
-const navItems = [
-  { sep: "Panel" },
-  { to:"/admin",           label:"Dashboard",       icon:LayoutDashboard, end:true },
-  { to:"/admin/executive", label:"Vista Ejecutiva", icon:LineChart },
-  { to:"/admin/analytics", label:"Analytics",       icon:BarChart3 },
-
-  { sep: "Ventas" },
-  { to:"/admin/orders",   label:"Órdenes",   icon:ShoppingBag },
-  { to:"/admin/payments", label:"Pagos",     icon:CreditCard },
-  { to:"/admin/services", label:"Servicios", icon:Wrench },
-  { to:"/admin/users",    label:"Usuarios",  icon:Users },
-
-  { sep: "Catálogo" },
-  {
-    label:"Productos", icon:Package,
-    children:[
-      { to:"/admin/products",        label:"Catálogo"   },
-      { to:"/admin/brands",          label:"Marcas"     },
-      { to:"/admin/categories",      label:"Categorías" },
-      { to:"/admin/products/import", label:"Importar"   },
-    ],
-  },
-  { to:"/admin/inventory", label:"Inventario", icon:Boxes },
-
-  { sep: "Academia" },
-  {
-    label:"Academia", icon:GraduationCap,
-    children:[
-      { to:"/admin/academy",              label:"Cursos"         },
-      { to:"/admin/academy/modules",      label:"Módulos"        },
-      { to:"/admin/academy/lessons",      label:"Lecciones"      },
-      { to:"/admin/academy/enrollments",  label:"Inscripciones"  },
-    ],
-  },
-
-  { sep: "Programas de fidelización" },
-  {
-    label:"Rewards", icon:Gift,
-    children:[
-      { to:"/admin/rewards",           label:"Dashboard"       },
-      { to:"/admin/rewards/campaigns", label:"Campañas"        },
-      { to:"/admin/rewards/entries",   label:"Participaciones" },
-      { to:"/admin/rewards/winners",   label:"Ganadores"       },
-    ],
-  },
-  { to:"/admin/loyalty", label:"Puntos y niveles", icon:Star },
-
-  { sep: "Finanzas" },
-  { to:"/admin/finance", label:"Finanzas",    icon:Wallet },
-  { to:"/admin/billing", label:"Facturación", icon:Receipt },
-
-  { sep: "Sitio web" },
-  { to:"/admin/settings", label:"Personalización", icon:Palette },
-]
-
-// ── AdminLayout ───────────────────────────────────────────────
 export default function AdminLayout() {
   const { user, logout } = useAuthStore()
-  const navigate         = useNavigate()
+  const navigate  = useNavigate()
+  const location  = useLocation()
+  const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+
   const initial = (user?.first_name?.[0] || user?.email?.[0] || "A").toUpperCase()
+  const [title, subtitle] = ROUTE_TITLES[location.pathname] ||
+    [ (location.pathname.split("/")[2] || "Panel").replace(/^\w/, c => c.toUpperCase()), "Administración" ]
+  const today = new Date().toLocaleDateString("es-CL",
+    { weekday:"long", year:"numeric", month:"long", day:"numeric" })
 
-  return (
-    <div style={{ minHeight:"100vh", display:"flex",
-      background:"var(--bg)", fontFamily:"var(--font-sans)" }}>
+  const width = collapsed ? 84 : 256
 
-      {/* Sidebar */}
-      <aside style={{
-        width:"236px", flexShrink:0,
-        borderRight:"1px solid var(--border)",
-        background:"var(--bg-2)",
-        display:"flex", flexDirection:"column",
-        position:"sticky", top:0, height:"100vh",
-      }}>
+  const SidebarInner = (
+    <aside className={`a-sidebar${collapsed ? " collapsed" : ""}`}
+      style={{ width, height:"100%" }} data-testid="admin-sidebar">
+      {/* Logo */}
+      <div style={{ padding:"22px 18px 6px", display:"flex", alignItems:"center", gap:"10px",
+        justifyContent: collapsed ? "center" : "flex-start" }}>
+        <Link to="/" style={{ display:"flex", alignItems:"center", gap:"9px" }}>
+          {collapsed
+            ? <span style={{ width:"34px", height:"34px", borderRadius:"10px", background:"#1AFF6E",
+                display:"flex", alignItems:"center", justifyContent:"center", color:"#000",
+                fontWeight:800, fontSize:"16px" }}>L</span>
+            : <img src={logoImg} alt="LevelPro Audio"
+                style={{ height:"24px", filter:"brightness(0) invert(1)", maxWidth:"120px" }} />}
+        </Link>
+      </div>
 
-        {/* Logo */}
-        <div style={{ padding:"22px 18px 20px", borderBottom:"1px solid var(--border)",
-          display:"flex", alignItems:"center", gap:"10px" }}>
-          <Link to="/" style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-            <img src={logoImg} alt="LevelPro"
-              style={{ height:"26px", filter:"brightness(0) invert(1)", maxWidth:"110px" }} />
-          </Link>
-          <span style={{ marginLeft:"auto", fontSize:"9px", fontWeight:700,
-            padding:"3px 8px", borderRadius:"100px",
-            background:"var(--accent-glow)", color:"var(--accent)",
-            border:"1px solid rgba(26,255,110,0.25)", letterSpacing:"0.1em" }}>
-            ADMIN
-          </span>
-        </div>
+      {/* Nav */}
+      <nav style={{ flex:1, padding:"6px 12px 14px", overflowY:"auto", overflowX:"hidden" }}
+        className="admin-scroll">
+        {navItems.map((item, i) => {
+          if (item.sep) return <p key={item.sep+i} className="a-group-label">{item.sep}</p>
+          if (item.children) return <NavGroup key={item.label} item={item} collapsed={collapsed} />
+          const Icon = item.icon
+          return (
+            <NavLink key={item.to} to={item.to} end={item.end}
+              onClick={() => setMobileOpen(false)}
+              className={({ isActive }) => `a-nav${isActive ? " active" : ""}`}
+              data-testid={`admin-nav-${item.label.toLowerCase().replace(/\s/g,'-')}`}>
+              {Icon && <Icon size={18} strokeWidth={1.9} />}
+              <span>{item.label}</span>
+            </NavLink>
+          )
+        })}
+      </nav>
 
-        {/* Nav */}
-        <nav style={{ flex:1, padding:"6px 10px 14px", overflowY:"auto" }}>
-          {navItems.map((item, i) => {
-            if (item.sep) return <NavSep key={item.sep + i} label={item.sep} />
-            if (item.children) return <NavGroup key={item.label} item={item} />
-            const Icon = item.icon
-            return (
-              <NavLink key={item.to} to={item.to} end={item.end}
-                className={({ isActive }) => `admin-nav-link${isActive ? " active" : ""}`}>
-                {Icon && <Icon size={16} strokeWidth={1.8} style={{ flexShrink:0 }} />}
-                {item.label}
-              </NavLink>
-            )
-          })}
-        </nav>
-
-        {/* Footer del sidebar */}
-        <div style={{ padding:"12px 10px", borderTop:"1px solid var(--border)" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:"10px",
-            padding:"8px 10px", marginBottom:"6px" }}>
-            <span style={{ width:"32px", height:"32px", borderRadius:"50%",
-              background:"var(--accent)", color:"#000", flexShrink:0,
-              display:"flex", alignItems:"center", justifyContent:"center",
-              fontSize:"13px", fontWeight:800 }}>
-              {initial}
-            </span>
+      {/* Footer */}
+      <div style={{ padding:"10px 12px 14px", borderTop:"1px solid rgba(255,255,255,0.06)" }}>
+        {!collapsed && (
+          <div style={{ display:"flex", alignItems:"center", gap:"10px", padding:"8px 6px 10px" }}>
+            <span style={{ width:"34px", height:"34px", borderRadius:"50%", background:"#1AFF6E",
+              color:"#000", flexShrink:0, display:"flex", alignItems:"center",
+              justifyContent:"center", fontSize:"14px", fontWeight:800 }}>{initial}</span>
             <div style={{ minWidth:0 }}>
-              <p style={{ fontSize:"12px", fontWeight:600, overflow:"hidden",
-                textOverflow:"ellipsis", whiteSpace:"nowrap", color:"var(--text)" }}>
-                {user?.email}
-              </p>
-              <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
-                {user?.is_superuser ? "Superusuario" : "Staff"}
-              </p>
+              <p style={{ fontSize:"12px", fontWeight:600, color:"#fff", overflow:"hidden",
+                textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.email}</p>
+              <p style={{ fontSize:"11px", color:"#6B7280" }}>
+                {user?.is_superuser ? "Superusuario" : "Staff"}</p>
             </div>
           </div>
-          <Link to="/" className="admin-nav-link" style={{ fontSize:"12px" }}>
-            <ExternalLink size={14} strokeWidth={1.8} /> Ver sitio
-          </Link>
-          <button onClick={() => { logout(); navigate("/admin/login") }}
-            className="admin-nav-link"
-            style={{ width:"100%", background:"none", border:"none", cursor:"pointer",
-              fontSize:"12px" }}>
-            <LogOut size={14} strokeWidth={1.8} /> Cerrar sesión
-          </button>
-        </div>
-      </aside>
+        )}
+        <Link to="/" className="a-nav" data-testid="admin-view-site">
+          <ExternalLink size={17} strokeWidth={1.9} /><span>Ver sitio</span>
+        </Link>
+        <button onClick={() => { logout(); navigate("/admin/login") }}
+          className="a-nav" data-testid="admin-logout">
+          <LogOut size={17} strokeWidth={1.9} /><span>Cerrar sesión</span>
+        </button>
+      </div>
+    </aside>
+  )
 
-      {/* Contenido principal */}
-      <main style={{ flex:1, overflow:"auto", minWidth:0,
-        background:"radial-gradient(ellipse 80% 40% at 50% 0%, rgba(26,255,110,0.03) 0%, transparent 60%), var(--bg)" }}>
-        <Outlet />
+  return (
+    <div className="admin-root" style={{ minHeight:"100vh", display:"flex",
+      padding:"14px", gap:"18px", fontFamily:"var(--font-sans)" }}>
+
+      {/* Sidebar desktop */}
+      <div style={{ position:"sticky", top:"14px", height:"calc(100vh - 28px)", flexShrink:0 }}
+        className="a-sidebar-desktop">
+        {SidebarInner}
+      </div>
+
+      {/* Drawer móvil */}
+      {mobileOpen && <div className="a-drawer-backdrop" onClick={() => setMobileOpen(false)} />}
+      <div className={`a-sidebar-wrap${mobileOpen ? " open" : ""}`}
+        style={{ width:256, display:"none" }} data-mobile>
+        {SidebarInner}
+      </div>
+
+      {/* Main */}
+      <main style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column" }}>
+        {/* Topbar */}
+        <header style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
+          gap:"16px", marginBottom:"8px", flexWrap:"wrap" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+            <button className="a-icon-btn a-mobile-toggle" onClick={() => setMobileOpen(true)}
+              aria-label="Abrir menú" style={{ display:"none" }} data-testid="admin-mobile-menu">
+              <Menu size={18} />
+            </button>
+            <button className="a-icon-btn a-collapse-toggle" onClick={() => setCollapsed(c => !c)}
+              aria-label="Contraer menú" data-testid="admin-collapse-toggle">
+              <ChevronsLeft size={18} style={{ transform: collapsed ? "rotate(180deg)" : "none",
+                transition:"transform 250ms var(--ease)" }} />
+            </button>
+            <div>
+              <h1 style={{ fontSize:"clamp(1.5rem,2.6vw,2rem)", fontWeight:800,
+                letterSpacing:"-0.02em", color:"var(--text)", lineHeight:1.1 }}>{title}</h1>
+              <p style={{ fontSize:"13px", color:"var(--text-3)", marginTop:"3px",
+                textTransform:"capitalize" }}>
+                {location.pathname === "/admin" ? today : subtitle}</p>
+            </div>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+            <button className="a-icon-btn" aria-label="Buscar" data-testid="admin-search-btn"><Search size={18} /></button>
+            <button className="a-icon-btn" aria-label="Notificaciones" data-testid="admin-notifications-btn"><Bell size={18} /></button>
+            <div style={{ display:"flex", alignItems:"center", gap:"10px", background:"#fff",
+              padding:"6px 14px 6px 6px", borderRadius:"100px", border:"1px solid var(--border)",
+              boxShadow:"0 4px 12px rgba(20,30,24,0.05)" }} data-testid="admin-user-chip">
+              <span style={{ width:"34px", height:"34px", borderRadius:"50%", background:"#1AFF6E",
+                color:"#000", display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:"14px", fontWeight:800, flexShrink:0 }}>{initial}</span>
+              <div style={{ lineHeight:1.2 }} className="a-user-meta">
+                <p style={{ fontSize:"13px", fontWeight:700, color:"var(--text)", maxWidth:"140px",
+                  overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+                  {user?.first_name || user?.email?.split("@")[0] || "Admin"}</p>
+                <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
+                  {user?.is_superuser ? "Superusuario" : "Admin"}</p>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        {/* Contenido */}
+        <div style={{ flex:1, minWidth:0 }}>
+          <Outlet />
+        </div>
       </main>
 
       <style>{`
-        .admin-nav-link {
-          display: flex; align-items: center; gap: 11px;
-          padding: 9px 12px; border-radius: 11px;
-          font-size: 13px; font-weight: 500; margin-bottom: 2px;
-          color: var(--text-2); text-decoration: none;
-          position: relative;
-          transition: color 180ms var(--ease), background 180ms var(--ease), box-shadow 180ms var(--ease);
+        @media (max-width: 1024px) {
+          .a-sidebar-desktop { display:none !important; }
+          .a-sidebar-wrap[data-mobile] { display:block !important; }
+          .a-mobile-toggle { display:flex !important; }
+          .a-collapse-toggle { display:none !important; }
         }
-        .admin-nav-link svg { opacity: 0.6; transition: opacity 180ms var(--ease); }
-        .admin-nav-link:hover { color: var(--text); background: rgba(255,255,255,0.035); }
-        .admin-nav-link:hover svg { opacity: 0.9; }
-        .admin-nav-link.active,
-        .admin-nav-link.group-open.active {
-          color: var(--accent); font-weight: 600;
-          background: var(--accent-glow);
-          box-shadow: inset 2px 0 0 var(--accent);
-        }
-        .admin-nav-link.active svg { opacity: 1; }
-        .admin-nav-link.group-open { color: var(--text); }
-
-        .admin-nav-sublink {
-          display: block; padding: 7px 12px; border-radius: 9px;
-          font-size: 12.5px; margin-bottom: 1px; color: var(--text-3);
-          text-decoration: none; position: relative;
-          transition: color 160ms var(--ease), background 160ms var(--ease);
-        }
-        .admin-nav-sublink:hover { color: var(--text-2); background: rgba(255,255,255,0.03); }
-        .admin-nav-sublink.active {
-          color: var(--accent); font-weight: 600;
-          background: var(--accent-glow);
-          box-shadow: inset 2px 0 0 var(--accent);
+        @media (max-width: 560px) {
+          .a-user-meta { display:none; }
         }
       `}</style>
     </div>
