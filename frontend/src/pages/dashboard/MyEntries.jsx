@@ -22,7 +22,7 @@ function TicketCard({ code }) {
   return (
     <div data-testid={`ticket-${code}`} style={{
       position: "relative", borderRadius: "14px", overflow: "hidden",
-      border: "1px solid rgba(255,255,255,0.08)", background: "#0d0d0d",
+      border: "1px solid var(--border)", background: "#fff",
       aspectRatio: "1.6", display: "flex", flexDirection: "column", justifyContent: "flex-end",
     }}>
       <img src={imageForCode(code)} alt="" loading="lazy" style={{
@@ -94,7 +94,7 @@ function CampaignCard({ campaign }) {
             ? (isBackup
                 ? "rgba(250,204,21,0.08)"
                 : "rgba(26,255,110,0.1)")
-            : "rgba(255,255,255,0.03)",
+            : "var(--surface-2)",
           border: won
             ? (isBackup
                 ? "1px solid rgba(250,204,21,0.3)"
@@ -129,7 +129,7 @@ function CampaignCard({ campaign }) {
       }}>
         <span style={{ fontSize:"11px",
           padding:"4px 10px", borderRadius:"var(--r-full)",
-          background: drawn ? "rgba(255,255,255,0.04)" : "rgba(26,255,110,0.08)",
+          background: drawn ? "var(--surface-2)" : "rgba(26,255,110,0.08)",
           color: drawn ? "var(--text-3)" : "var(--accent)",
           fontWeight:600, letterSpacing:"0.06em",
           textTransform:"uppercase",

@@ -20,7 +20,7 @@ const PAYMENT_METHODS = [
   { id: "global66",       label: "Transferencia", Icon: Landmark,   desc: "Global66" },
 ]
 
-const card = { background: "#121212", border: "1px solid rgba(255,255,255,0.06)", borderRadius: "20px" }
+const card = { background: "#fff", border: "1px solid var(--border)", borderRadius: "20px", boxShadow: "var(--card-shadow)" }
 const eyebrow = { fontSize: "11px", fontWeight: 700, color: "var(--accent)",
   textTransform: "uppercase", letterSpacing: "0.15em" }
 
@@ -43,7 +43,7 @@ function Timeline({ status }) {
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
               <div style={{ width: "34px", height: "34px", borderRadius: "50%", display: "flex",
                 alignItems: "center", justifyContent: "center", fontSize: "12px", fontWeight: 700,
-                background: done ? "var(--accent)" : "rgba(255,255,255,0.04)",
+                background: done ? "var(--accent)" : "var(--surface-2)",
                 color: done ? "#000" : "var(--text-3)",
                 border: done ? "none" : "1px solid var(--border)",
                 boxShadow: done ? "0 4px 14px rgba(26,255,110,0.25)" : "none",
@@ -114,8 +114,8 @@ function PaymentPanel({ order, onCancelled }) {
                 data-testid={`od-method-${m.id}`}
                 style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 16px",
                   borderRadius: "var(--r-lg)", cursor: "pointer", textAlign: "left", width: "100%",
-                  background: active ? "rgba(26,255,110,0.05)" : "rgba(255,255,255,0.03)",
-                  border: `1px solid ${active ? "rgba(26,255,110,0.35)" : "rgba(255,255,255,0.08)"}`,
+                  background: active ? "rgba(26,255,110,0.05)" : "var(--surface-2)",
+                  border: `1px solid ${active ? "rgba(26,255,110,0.35)" : "var(--border)"}`,
                   transition: "all var(--dur) var(--ease)" }}>
                 <div style={{ width: "16px", height: "16px", borderRadius: "50%", flexShrink: 0,
                   border: `2px solid ${active ? "var(--accent)" : "var(--border)"}`,
@@ -147,7 +147,7 @@ function PaymentPanel({ order, onCancelled }) {
 
       {!showCancel ? (
         <button onClick={() => setShowCancel(true)} data-testid="od-cancel-open"
-          style={{ background: "rgba(255,255,255,0.02)", border: "1px solid var(--border)",
+          style={{ background: "var(--surface-2)", border: "1px solid var(--border)",
             borderRadius: "var(--r-lg)", padding: "12px", color: "var(--text-3)", fontSize: "13px",
             cursor: "pointer", width: "100%", transition: "all var(--dur) var(--ease)" }}>
           Cancelar esta orden
@@ -200,7 +200,7 @@ export default function OrderDetail() {
     <div style={{ ...wrap, textAlign: "center" }}>
       <p style={{ color: "var(--text-3)", marginBottom: "16px" }}>Pedido no encontrado.</p>
       <Link to="/dashboard/orders" style={{ display: "inline-flex", alignItems: "center", gap: "6px",
-        padding: "10px 20px", borderRadius: "var(--r-full)", background: "rgba(255,255,255,0.04)",
+        padding: "10px 20px", borderRadius: "var(--r-full)", background: "var(--surface-2)",
         border: "1px solid var(--border)", color: "var(--text)", textDecoration: "none", fontSize: "14px" }}>
         <ChevronLeft size={15} /> Volver
       </Link>
@@ -239,13 +239,13 @@ export default function OrderDetail() {
 
         {/* Productos */}
         <div style={{ ...card, overflow: "hidden" }}>
-          <div style={{ padding: "16px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+          <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)" }}>
             <p style={eyebrow}>· Productos</p>
           </div>
           {order.items?.map((item, i) => (
             <div key={item.id || `${item.product_name}-${i}`} style={{ display: "flex",
               justifyContent: "space-between", alignItems: "center", padding: "16px 24px",
-              borderBottom: i < order.items.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+              borderBottom: i < order.items.length - 1 ? "1px solid var(--surface-2)" : "none" }}>
               <div>
                 <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)", marginBottom: "4px" }}>{item.product_name}</p>
                 <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
@@ -258,7 +258,7 @@ export default function OrderDetail() {
             </div>
           ))}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline",
-            padding: "18px 24px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            padding: "18px 24px", borderTop: "1px solid var(--border)" }}>
             <span style={{ fontSize: "15px", fontWeight: 600, color: "var(--text)" }}>Total</span>
             <span style={{ fontFamily: "var(--font-display)", fontSize: "2rem", fontWeight: 800,
               letterSpacing: "-0.03em", color: "var(--accent)" }}>
@@ -287,8 +287,8 @@ export default function OrderDetail() {
         {(order.status === "paid" || order.status === "completed") && (
           <Link to={`/payment/success?order=${order.id}`} data-testid="od-receipt"
             style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "8px",
-              padding: "14px", borderRadius: "var(--r-full)", background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.12)", color: "var(--text)", textDecoration: "none",
+              padding: "14px", borderRadius: "var(--r-full)", background: "var(--surface-2)",
+              border: "1px solid var(--border)", color: "var(--text)", textDecoration: "none",
               fontSize: "14px", fontWeight: 600 }}>
             <ReceiptText size={16} /> Ver comprobante de compra
           </Link>

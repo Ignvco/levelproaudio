@@ -43,7 +43,7 @@ export default function MyFavorites() {
       )}
 
       {!isLoading && products.length === 0 && (
-        <div style={{ background: "#121212", border: "1px solid var(--border)",
+        <div style={{ background: "#fff", border: "1px solid var(--border)",
           borderRadius: "22px", padding: "64px 32px", textAlign: "center" }}>
           <div style={{ width: "64px", height: "64px", borderRadius: "50%",
             background: "rgba(26,255,110,0.08)", border: "1px solid rgba(26,255,110,0.2)",

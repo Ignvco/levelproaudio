@@ -1,152 +1,160 @@
-// layouts/DashboardLayout.jsx
-import { NavLink, useNavigate, Link } from "react-router-dom"
+// layouts/DashboardLayout.jsx — mismo lenguaje que AdminLayout (sidebar oscuro + contenido claro)
+import { useState } from "react"
+import { NavLink, Link, useNavigate } from "react-router-dom"
 import {
-  LayoutDashboard, Package, FileText, PlayCircle,
-  Wrench, Star, Gift, User, LogOut, Store, Heart,
+  LayoutDashboard, Package, FileText, PlayCircle, Wrench, Star, Gift,
+  User, LogOut, Store, Heart, ChevronsLeft, Menu,
 } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
 import logoImg from "../assets/logo.png"
 
-const NAV = [
+const navItems = [
   { sep: "Panel" },
-  { to: "/dashboard",           label: "Inicio",              Icon: LayoutDashboard, end: true },
+  { to: "/dashboard",           label: "Inicio",             icon: LayoutDashboard, end: true },
   { sep: "Mi actividad" },
-  { to: "/dashboard/orders",    label: "Pedidos",             Icon: Package },
-  { to: "/dashboard/favorites", label: "Mis favoritos",       Icon: Heart },
-  { to: "/dashboard/courses",   label: "Mis cursos",          Icon: PlayCircle },
-  { to: "/dashboard/services",  label: "Servicios",           Icon: Wrench },
-  { to: "/dashboard/documents", label: "Documentos",          Icon: FileText },
+  { to: "/dashboard/orders",    label: "Pedidos",            icon: Package },
+  { to: "/dashboard/favorites", label: "Mis favoritos",      icon: Heart },
+  { to: "/dashboard/courses",   label: "Mis cursos",         icon: PlayCircle },
+  { to: "/dashboard/services",  label: "Servicios",          icon: Wrench },
+  { to: "/dashboard/documents", label: "Documentos",         icon: FileText },
   { sep: "Fidelización" },
-  { to: "/dashboard/loyalty",   label: "Mis puntos",          Icon: Star },
-  { to: "/dashboard/rewards",   label: "Mis participaciones",  Icon: Gift },
+  { to: "/dashboard/loyalty",   label: "Mis puntos",         icon: Star },
+  { to: "/dashboard/rewards",   label: "Mis participaciones", icon: Gift },
   { sep: "Cuenta" },
-  { to: "/dashboard/profile",   label: "Perfil",              Icon: User },
+  { to: "/dashboard/profile",   label: "Perfil",             icon: User },
 ]
 
 export default function DashboardLayout({ children }) {
   const { user, logout } = useAuthStore()
-  const navigate         = useNavigate()
+  const navigate = useNavigate()
+  const [collapsed, setCollapsed] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+
+  const initial = (user?.first_name?.[0] || user?.email?.[0] || "U").toUpperCase()
+  const width = collapsed ? 84 : 256
+
+  const SidebarInner = (
+    <aside className={`a-sidebar${collapsed ? " collapsed" : ""}`}
+      style={{ width, height: "100%" }} data-testid="dash-sidebar">
+      {/* Logo */}
+      <div style={{ padding: "22px 18px 6px", display: "flex", alignItems: "center", gap: "10px",
+        justifyContent: collapsed ? "center" : "flex-start" }}>
+        <Link to="/" data-testid="dash-logo-home" style={{ display: "flex", alignItems: "center", gap: "9px" }}>
+          {collapsed
+            ? <span style={{ width: "34px", height: "34px", borderRadius: "10px", background: "#1AFF6E",
+                display: "flex", alignItems: "center", justifyContent: "center", color: "#000",
+                fontWeight: 800, fontSize: "16px" }}>L</span>
+            : <img src={logoImg} alt="LevelPro Audio"
+                style={{ height: "24px", filter: "brightness(0) invert(1)", maxWidth: "120px" }} />}
+        </Link>
+      </div>
+
+      {/* Nav */}
+      <nav style={{ flex: 1, padding: "6px 12px 14px", overflowY: "auto", overflowX: "hidden" }}
+        className="admin-scroll">
+        {navItems.map((item, i) => {
+          if (item.sep) return <p key={item.sep + i} className="a-group-label">{item.sep}</p>
+          const Icon = item.icon
+          return (
+            <NavLink key={item.to} to={item.to} end={item.end}
+              onClick={() => setMobileOpen(false)}
+              className={({ isActive }) => `a-nav${isActive ? " active" : ""}`}
+              data-testid={`dash-nav-${item.to.split("/").pop() || "home"}`}>
+              {Icon && <Icon size={18} strokeWidth={1.9} />}
+              <span>{item.label}</span>
+            </NavLink>
+          )
+        })}
+      </nav>
+
+      {/* Footer */}
+      <div style={{ padding: "10px 12px 14px", borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+        {!collapsed && (
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 6px 10px" }}>
+            <span style={{ width: "34px", height: "34px", borderRadius: "50%", background: "#1AFF6E",
+              color: "#000", flexShrink: 0, display: "flex", alignItems: "center",
+              justifyContent: "center", fontSize: "14px", fontWeight: 800 }}>{initial}</span>
+            <div style={{ minWidth: 0 }}>
+              <p style={{ fontSize: "12px", fontWeight: 600, color: "#fff", overflow: "hidden",
+                textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{user?.email}</p>
+              <p style={{ fontSize: "11px", color: "#6B7280" }}>Cliente</p>
+            </div>
+          </div>
+        )}
+        <Link to="/" className="a-nav" data-testid="dash-back-to-site">
+          <Store size={17} strokeWidth={1.9} /><span>Volver al sitio</span>
+        </Link>
+        <button onClick={() => { logout(); navigate("/") }}
+          className="a-nav" data-testid="dash-logout">
+          <LogOut size={17} strokeWidth={1.9} /><span>Cerrar sesión</span>
+        </button>
+      </div>
+    </aside>
+  )
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "var(--bg)" }} className="dash-root">
+    <div className="admin-root" style={{ minHeight: "100vh", display: "flex",
+      padding: "14px", gap: "18px", fontFamily: "var(--font-sans)" }}>
 
-      {/* Sidebar */}
-      <aside className="dashboard-sidebar" style={{
-        width: "260px", flexShrink: 0,
-        position: "sticky", top: 0,
-        alignSelf: "flex-start",
-        height: "100vh",
-        padding: "24px 16px 20px",
-        display: "flex", flexDirection: "column", gap: "4px",
-        borderRight: "1px solid rgba(255,255,255,0.06)",
-      }}>
-        {/* Marca */}
-        <Link to="/" data-testid="dash-logo-home" style={{ display: "flex", alignItems: "center",
-          padding: "8px 12px 20px", textDecoration: "none" }}>
-          <img src={logoImg} alt="LevelPro Audio" style={{ height: "24px", objectFit: "contain",
-            filter: "brightness(0) invert(1)", maxWidth: "150px" }} />
-        </Link>
+      {/* Sidebar desktop */}
+      <div style={{ position: "sticky", top: "14px", height: "calc(100vh - 28px)", flexShrink: 0 }}
+        className="a-sidebar-desktop">
+        {SidebarInner}
+      </div>
 
-        {/* Nav */}
-        <nav style={{ display: "flex", flexDirection: "column", gap: "2px" }} className="dash-nav">
-          {NAV.map((item, idx) => {
-            if (item.sep) return (
-              <p key={`sep-${idx}`} className="dash-sep" style={{ fontSize: "10px", fontWeight: 600,
-                color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em",
-                padding: "16px 12px 6px", opacity: 0.55 }}>{item.sep}</p>
-            )
-            const { to, label, Icon, end } = item
-            return (
-            <NavLink key={to} to={to} end={end} data-testid={`dash-nav-${to.split("/").pop() || "home"}`}
-              style={({ isActive }) => ({
-                display: "flex", alignItems: "center", gap: "11px",
-                padding: "9px 12px", borderRadius: "var(--r-md)", fontSize: "13px",
-                whiteSpace: "nowrap",
-                color: isActive ? "var(--accent)" : "var(--text-2)",
-                background: isActive ? "var(--surface-2)" : "transparent",
-                fontWeight: isActive ? 600 : 400,
-                transition: "all var(--dur) var(--ease)", textDecoration: "none",
-              })}
-              className="dash-nav-link">
-              {({ isActive }) => (
-                <>
-                  <Icon size={16} strokeWidth={1.8} style={{ opacity: isActive ? 1 : 0.6, flexShrink: 0 }} />
-                  {label}
-                </>
-              )}
-            </NavLink>
-          )})}
-        </nav>
+      {/* Drawer móvil */}
+      {mobileOpen && <div className="a-drawer-backdrop" onClick={() => setMobileOpen(false)} />}
+      <div className={`a-sidebar-wrap${mobileOpen ? " open" : ""}`}
+        style={{ width: 256, display: "none" }} data-mobile>
+        {SidebarInner}
+      </div>
 
-        <div style={{ flex: 1 }} className="dash-spacer" />
-
-        {/* Volver al sitio */}
-        <Link to="/" data-testid="dash-back-to-site" className="dash-backsite" style={{ display: "flex", alignItems: "center",
-          gap: "10px", padding: "11px 14px", borderRadius: "14px", marginBottom: "8px",
-          fontSize: "14px", fontWeight: 600, color: "var(--text-2)", textDecoration: "none",
-          background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)",
-          transition: "all var(--dur) var(--ease)" }}
-          onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(26,255,110,0.3)"; e.currentTarget.style.color = "var(--text)" }}
-          onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)"; e.currentTarget.style.color = "var(--text-2)" }}>
-          <Store size={18} strokeWidth={2} />
-          Volver al sitio
-        </Link>
-
-        {/* User card */}
-        <div style={{ background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
-          borderRadius: "18px", padding: "12px", display: "flex", alignItems: "center",
-          gap: "12px" }} className="dash-usercard">
-          <div style={{ width: "40px", height: "40px", borderRadius: "50%",
-            background: "var(--accent)", color: "#000", flexShrink: 0,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: "15px", fontWeight: 800, fontFamily: "var(--font-display)" }}>
-            {user?.first_name?.[0]?.toUpperCase() || "U"}
+      {/* Main */}
+      <main style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
+        {/* Topbar */}
+        <header style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+          gap: "16px", marginBottom: "14px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <button className="a-icon-btn a-mobile-toggle" onClick={() => setMobileOpen(true)}
+              aria-label="Abrir menú" style={{ display: "none" }} data-testid="dash-mobile-menu">
+              <Menu size={18} />
+            </button>
+            <button className="a-icon-btn a-collapse-toggle" onClick={() => setCollapsed(c => !c)}
+              aria-label="Contraer menú" data-testid="dash-collapse-toggle">
+              <ChevronsLeft size={18} style={{ transform: collapsed ? "rotate(180deg)" : "none",
+                transition: "transform 250ms var(--ease)" }} />
+            </button>
           </div>
-          <div style={{ minWidth: 0, flex: 1 }}>
-            <p style={{ fontSize: "13px", fontWeight: 600, color: "var(--text)",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {user?.first_name} {user?.last_name}
-            </p>
-            <p style={{ fontSize: "11px", color: "var(--text-3)", overflow: "hidden",
-              textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {user?.email}
-            </p>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", background: "#fff",
+            padding: "6px 14px 6px 6px", borderRadius: "100px", border: "1px solid #ECEEF2",
+            boxShadow: "0 4px 12px rgba(20,30,24,0.05)" }} data-testid="dash-user-chip">
+            <span style={{ width: "34px", height: "34px", borderRadius: "50%", background: "#1AFF6E",
+              color: "#000", display: "flex", alignItems: "center", justifyContent: "center",
+              fontSize: "14px", fontWeight: 800, flexShrink: 0 }}>{initial}</span>
+            <div style={{ lineHeight: 1.2 }} className="a-user-meta">
+              <p style={{ fontSize: "13px", fontWeight: 700, color: "#14161A", maxWidth: "160px",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {user?.first_name || user?.email?.split("@")[0] || "Cliente"}</p>
+              <p style={{ fontSize: "11px", color: "#98A2B3" }}>Cliente</p>
+            </div>
           </div>
-          <button onClick={() => { logout(); navigate("/") }} title="Cerrar sesión"
-            data-testid="dash-logout"
-            style={{ width: "32px", height: "32px", borderRadius: "10px", flexShrink: 0,
-              background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
-              color: "var(--text-3)", cursor: "pointer", display: "flex",
-              alignItems: "center", justifyContent: "center", transition: "all var(--dur)" }}
-            onMouseEnter={e => { e.currentTarget.style.color = "#ff6b6b"; e.currentTarget.style.borderColor = "rgba(255,107,107,0.3)" }}
-            onMouseLeave={e => { e.currentTarget.style.color = "var(--text-3)"; e.currentTarget.style.borderColor = "rgba(255,255,255,0.08)" }}>
-            <LogOut size={15} />
-          </button>
+        </header>
+
+        {/* Contenido */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {children}
         </div>
-      </aside>
-
-      <main style={{ flex: 1, overflowX: "hidden", minWidth: 0 }}>
-        {children}
       </main>
 
       <style>{`
-        @media (max-width: 900px) {
-          .dash-root { flex-direction: column; }
-          .dashboard-sidebar {
-            width: 100% !important; height: auto !important; position: sticky !important;
-            top: 0; z-index: 20; padding: 12px 16px !important;
-            border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.06);
-            background: var(--bg);
-          }
-          .dashboard-sidebar .dash-spacer { display: none !important; }
-          .dash-nav {
-            flex-direction: row !important; overflow-x: auto; gap: 8px !important;
-            padding-bottom: 6px; -webkit-overflow-scrolling: touch;
-          }
-          .dash-nav-link { flex-shrink: 0; }
-          .dash-sep { display: none !important; }
-          .dash-usercard { display: none !important; }
-          .dash-backsite { display: none !important; }
+        @media (max-width: 1024px) {
+          .a-sidebar-desktop { display:none !important; }
+          .a-sidebar-wrap[data-mobile] { display:block !important; }
+          .a-mobile-toggle { display:flex !important; }
+          .a-collapse-toggle { display:none !important; }
+        }
+        @media (max-width: 560px) {
+          .a-user-meta { display:none; }
         }
       `}</style>
     </div>

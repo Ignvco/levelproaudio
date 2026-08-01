@@ -46,7 +46,7 @@ export default function Orders() {
       )}
 
       {!isLoading && orders.length === 0 && (
-        <div style={{ background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
+        <div style={{ background: "#fff", border: "1px solid var(--border)",
           borderRadius: "24px", padding: "64px 32px", textAlign: "center" }}>
           <div style={{ width: "68px", height: "68px", borderRadius: "50%",
             background: "rgba(26,255,110,0.08)", border: "1px solid rgba(26,255,110,0.2)",
@@ -68,8 +68,8 @@ export default function Orders() {
       )}
 
       {!isLoading && orders.length > 0 && (
-        <div style={{ background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
-          borderRadius: "24px", overflow: "hidden" }} data-testid="orders-table">
+        <div style={{ background: "#fff", border: "1px solid var(--border)",
+          borderRadius: "24px", overflow: "hidden", boxShadow: "var(--card-shadow)" }} data-testid="orders-table">
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", minWidth: "620px" }}>
               <thead>
@@ -77,14 +77,14 @@ export default function Orders() {
                   {["Pedido", "Productos", "Total", "Estado", "Fecha", ""].map((h, i) => (
                     <th key={i} style={{ padding: "14px 24px", textAlign: "left", fontSize: "11px",
                       fontWeight: 700, color: "var(--text-3)", textTransform: "uppercase",
-                      letterSpacing: "0.08em", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>{h}</th>
+                      letterSpacing: "0.08em", borderBottom: "1px solid var(--border)", background: "var(--surface-2)" }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {orders.map((o, i) => (
                   <tr key={o.id} data-testid={`order-row-${o.id}`} className="dash-row"
-                    style={{ borderBottom: i < orders.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}>
+                    style={{ borderBottom: i < orders.length - 1 ? "1px solid var(--border)" : "none" }}>
                     <td style={{ padding: "16px 24px" }}>
                       <span style={{ fontFamily: "monospace", fontSize: "13px", fontWeight: 600,
                         color: "var(--text)" }}>#{o.id.slice(0, 8).toUpperCase()}</span>
@@ -118,7 +118,8 @@ export default function Orders() {
 
       <style>{`
         .dash-row { transition: background var(--dur) var(--ease); }
-        .dash-row:hover { background: rgba(255,255,255,0.02); }
+        .dash-row:nth-child(even) { background: rgba(20,30,24,0.022); }
+        .dash-row:hover { background: var(--accent-dim); box-shadow: inset 3px 0 0 var(--accent); }
       `}</style>
     </div>
   )

@@ -180,5 +180,10 @@ Verificado (curl + playwright): sitemap XML válido con 28+ URLs, canonical/robo
   - Fondo card `#FCFCFC`, borde exterior `#FFFFFF`, pill superior `#1AFF6E` (texto `#00160b`), pill inferior `#292929` (texto `#ffffff`, sin borde), círculo de ícono `#292929` con símbolo blanco, monto principal `#000000`.
 - Verificado por screenshots (Dashboard, Finanzas, Marcas, Órdenes): coincide con la referencia `admin.png`.
 
+## Panel de Usuario — mismo diseño que el Admin (2026-08-01) ✅
+- `DashboardLayout` reconstruido como espejo del `AdminLayout`: sidebar oscuro colapsable + drawer móvil, topbar clara con user-chip, nav agrupado (Panel / Mi actividad / Fidelización / Cuenta), footer con "Volver al sitio" y "Cerrar sesión". Envuelto en `.admin-root` → re-escala todos los tokens a claro, reskineando automáticamente las páginas basadas en tokens (Dashboard, Profile, MyCourses, MyServices, MyDocuments, MyLoyalty).
+- Páginas con oscuros hardcodeados convertidas a claras: `Orders.jsx` (tabla clara + zebra + hover verde), `OrderDetail.jsx`, `MyEntries.jsx`, `MyFavorites.jsx` (empty-state). Favoritos mantiene el `ProductCard` compartido de la tienda (oscuro por identidad de marca).
+- Verificado por screenshots (Inicio, Pedidos, Servicios, Perfil, Mis puntos, Participaciones): consistente con el admin (cards `#FCFCFC`, pills verde/`#292929`, tablas con zebra).
+
 ## Credenciales de prueba
 Ver `/app/memory/test_credentials.md`.
