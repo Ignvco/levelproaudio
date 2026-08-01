@@ -7,6 +7,8 @@ import {
   uploadProductImage, deleteProductImage, setPrimaryImage,
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
+import { DataTable, StatusBadge, AdminPageHeader, PrimaryButton } from "../../components/admin/ui"
+import { Pencil, Trash2, Package } from "lucide-react"
 
 const inputSt = {
   width: "100%", padding: "10px 14px",

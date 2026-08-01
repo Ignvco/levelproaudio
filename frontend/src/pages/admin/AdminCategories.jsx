@@ -5,6 +5,7 @@
 import { useState, useRef, useCallback } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../../api/client"
+import { AdminPageHeader, PrimaryButton } from "../../components/admin/ui"
 
 // ── API helpers ───────────────────────────────────────────────
 const getCategories   = ()           => api.get("/admin/categories/").then(r => r.data)
@@ -372,25 +373,10 @@ export default function AdminCategories() {
       )}
 
       {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between",
-        alignItems:"flex-start", marginBottom:"28px", flexWrap:"wrap", gap:"16px" }}>
-        <div>
-          <h1 style={{ fontFamily:"var(--font-display)",
-            fontSize:"clamp(1.8rem, 3vw, 2.4rem)", fontWeight:800,
-            letterSpacing:"-0.02em", marginBottom:"6px" }}>
-            Categorías
-          </h1>
-          <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
-            {allCats.length} categorías · {roots.length} principales ·{" "}
-            <span style={{ color:"var(--accent-text)" }}>
-              arrastrá ⠿ para reordenar
-            </span>
-          </p>
-        </div>
-        <button onClick={() => setModal({})} className="btn btn-accent"
-          style={{ padding:"10px 20px", fontSize:"13px" }}>
-          + Nueva categoría
-        </button>
+      <div style={{ marginBottom:"28px" }}>
+        <AdminPageHeader eyebrow="Catálogo" title="Categorías"
+          description={`${allCats.length} categorías · ${roots.length} principales · arrastrá ⠿ para reordenar`}
+          actions={<PrimaryButton onClick={() => setModal({})} testId="btn-new-category">+ Nueva categoría</PrimaryButton>} />
       </div>
 
       {isLoading ? (
