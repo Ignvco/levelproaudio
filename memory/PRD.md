@@ -62,6 +62,20 @@ Basado en mockup del usuario (admin.png): sidebar oscuro flotante + área clara 
 5. **Emojis → lucide**: medallas de nivel en AdminLoyalty (🥉🥈🥇💎 → Medal/Award/Gem monocromos con color de nivel de mejor contraste). Íconos de categoría configurables por el usuario se conservan (son data).
 - Verificado por screenshots: Executive, Analytics, Finance, Loyalty. Sin regresiones.
 
+## Admin — Biblioteca de componentes `au-*` + Dashboard piloto (2026-08-01) ✅
+Rediseño SaaS premium basado en referencia "Job Portal Admin Dashboard" adaptada a la identidad LevelPro (negro + verde neón estratégico).
+- **Tokens** `--admin-*` en `.admin-root` (index.css): primary/soft/text, background/surface/border, text/muted, success/warning/danger, radius sm/md/lg, shadow sm/md.
+- **Hoja de estilos** `frontend/src/styles/admin-ui.css` (clases `.au-*`, importada en main.jsx). Sin estilos hardcodeados repetidos por página.
+- **Biblioteca** `frontend/src/components/admin/ui/` (barrel `index.js`):
+  - `AdminPageHeader` (eyebrow/title/description/actions/breadcrumbs)
+  - `StatCard` (variantes default/primary/dark/compact/outlined + Icon/label/value/sub/delta/badge/action/to/loading) + `MetricBadge`
+  - `ChartCard` (title/desc/legend/period/action + loading/empty) + `SectionCard` + `ChartLegend`
+  - `RadialStatCard` (donut recharts + leyenda por categoría, paleta de marca `BRAND_CHART_COLORS`)
+  - `DataTable` (búsqueda, filtros, selector estado, page-size, paginación, orden por columnas, checkbox, menú 3-puntos por fila, badges, responsive scroll, skeleton/empty/error)
+  - `StatusBadge`, `EmptyState`/`ErrorState`, `SkeletonCard`/`SkeletonTable`, `SearchInput`, `FilterSelect`, `AdminTabs`, `Pagination`, `ConfirmationModal`, `PrimaryButton`/`SecondaryButton`/`DangerButton`/`IconButton`.
+- **AdminDashboard.jsx reescrito** como piloto (4 filas: KPIs → gráfico+radial → tabla órdenes+resumen → acciones). Datos reales de `getAdminDashboard`, rutas/acciones intactas.
+- Verificado por screenshots (desktop). Sin errores de compilación. **Pendiente de aprobación del usuario** antes de migrar las demás pantallas.
+
 
 
 Decisiones del usuario: prerendering en build (Fase 2, pendiente), mantener URLs actuales (/shop/:slug, ?category=), dominio dual (canónico primario: https://levelproaudio.com), arrancar por Fase 1.

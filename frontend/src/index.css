@@ -779,6 +779,25 @@ h1 em, h2 em, h3 em {
   --warning:      #D97706;
   --danger:       #EF4444;
   --card-shadow:  0 10px 30px rgba(20,30,24,0.07);
+  /* ── Design tokens del panel admin (biblioteca au-*) ── */
+  --admin-primary:            #1AFF6E;
+  --admin-primary-hover:      #00E653;
+  --admin-primary-soft:       rgba(26,255,110,0.12);
+  --admin-primary-text:       #0F9940;
+  --admin-background:         #F4F5F7;
+  --admin-surface:            #FFFFFF;
+  --admin-surface-secondary:  #F7F8FA;
+  --admin-border:             #ECEEF2;
+  --admin-text:               #14161A;
+  --admin-text-muted:         #6B7280;
+  --admin-success:            #0F9940;
+  --admin-warning:            #D97706;
+  --admin-danger:             #EF4444;
+  --admin-radius-sm:          12px;
+  --admin-radius-md:          16px;
+  --admin-radius-lg:          20px;
+  --admin-shadow-sm:          0 4px 14px rgba(20,30,24,0.05);
+  --admin-shadow-md:          0 10px 30px rgba(20,30,24,0.07);
   background: var(--bg);
   color: var(--text);
 }

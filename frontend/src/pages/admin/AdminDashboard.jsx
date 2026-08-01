@@ -1,289 +1,223 @@
-// pages/admin/AdminDashboard.jsx — Rediseño estilo "DealDeck" con datos reales
-import { useQuery }  from "@tanstack/react-query"
-import { Link }      from "react-router-dom"
+// pages/admin/AdminDashboard.jsx — Piloto del rediseño con la biblioteca au-*
+import { useQuery } from "@tanstack/react-query"
+import { Link, useNavigate } from "react-router-dom"
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell,
 } from "recharts"
+import {
+  DollarSign, ShoppingBag, Users, Package, Boxes, Clock,
+  MessageSquare, AlertTriangle, ArrowRight, RefreshCw, Eye,
+} from "lucide-react"
 import { getAdminDashboard } from "../../api/admin.api"
 import {
-  DollarSign, ShoppingBag, Users, Package,
-  GraduationCap, ArrowRight, Clock, Boxes, MessageSquare, AlertTriangle,
-} from "lucide-react"
+  AdminPageHeader, StatCard, ChartCard, RadialStatCard, SectionCard,
+  DataTable, StatusBadge, SecondaryButton, EmptyState,
+} from "../../components/admin/ui"
 
-const clp = n => `$${Math.round(n||0).toLocaleString("es-CL")}`
+const clp = (n) => `$${Math.round(n || 0).toLocaleString("es-CL")}`
 
-// ── KPI card ──
-function MetricCard({ Icon, label, value, note, badge, to, testId }) {
-  const body = (
-    <div className="a-card a-kpi-hover" data-testid={testId}
-      style={{ padding:"22px", display:"flex", flexDirection:"column", gap:"14px", height:"100%" }}>
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-        <span className="a-kpi-tile"><Icon size={20} strokeWidth={2} /></span>
-        {badge && <span className={`a-badge ${badge.positive ? "pos" : "neg"}`}>{badge.text}</span>}
-      </div>
-      <div>
-        <p style={{ fontSize:"13.5px", color:"var(--text-2)", fontWeight:500, marginBottom:"4px" }}>{label}</p>
-        <div style={{ display:"flex", alignItems:"baseline", gap:"10px", flexWrap:"wrap" }}>
-          <p style={{ fontSize:"30px", fontWeight:800, color:"var(--text)", letterSpacing:"-0.02em",
-            lineHeight:1, fontVariantNumeric:"tabular-nums" }}>{value}</p>
-          {note && <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{note}</p>}
-        </div>
-      </div>
-    </div>
-  )
-  return to ? <Link to={to} style={{ textDecoration:"none" }}>{body}</Link> : body
-}
-
-// ── Card destacada (ingresos) ──
-function FeaturedCard({ value, note, badge }) {
-  return (
-    <div data-testid="kpi-revenue" style={{ background:"#1AFF6E", borderRadius:"20px", padding:"22px",
-      display:"flex", flexDirection:"column", gap:"14px", height:"100%",
-      boxShadow:"0 14px 34px rgba(26,255,110,0.35)" }} className="a-kpi-hover">
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-        <span style={{ width:"46px", height:"46px", borderRadius:"14px", background:"rgba(0,0,0,0.12)",
-          color:"#00120a", display:"flex", alignItems:"center", justifyContent:"center" }}>
-          <DollarSign size={20} strokeWidth={2.2} /></span>
-        {badge && <span style={{ padding:"4px 10px", borderRadius:"100px", fontSize:"12px",
-          fontWeight:700, background:"rgba(0,0,0,0.15)", color:"#00160b" }}>{badge}</span>}
-      </div>
-      <div>
-        <p style={{ fontSize:"13.5px", color:"rgba(0,20,8,0.7)", fontWeight:600, marginBottom:"4px" }}>Ingresos totales</p>
-        <p style={{ fontSize:"32px", fontWeight:800, color:"#00160b", letterSpacing:"-0.02em",
-          lineHeight:1, fontVariantNumeric:"tabular-nums" }}>{value}</p>
-        {note && <p style={{ fontSize:"12px", color:"rgba(0,20,8,0.65)", marginTop:"6px" }}>{note}</p>}
-      </div>
-    </div>
-  )
-}
-
-// ── Tooltip oscuro redondeado (estilo mockup) ──
-function ChartTooltip({ active, payload, label }) {
+function SalesTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background:"#0D0D0F", color:"#fff", padding:"10px 14px", borderRadius:"12px",
-      boxShadow:"0 8px 24px rgba(0,0,0,0.25)", border:"1px solid rgba(255,255,255,0.08)" }}>
-      <p style={{ fontSize:"11px", color:"#9CA3AF", marginBottom:"3px" }}>{label}</p>
-      <p style={{ fontSize:"15px", fontWeight:700, color:"#1AFF6E",
-        fontVariantNumeric:"tabular-nums" }}>{clp(payload[0].value)}</p>
+    <div style={{ background: "#0D0D0F", color: "#fff", padding: "10px 14px", borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,.25)" }}>
+      <p style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{label}</p>
+      <p style={{ fontSize: 15, fontWeight: 700, color: "#1AFF6E" }}>{clp(payload[0].value)}</p>
     </div>
   )
 }
 
-// ── Gráfico de barras interactivo (Recharts, ventas reales) ──
-function SalesBarChart({ data }) {
-  const fmtDay = d => {
-    try { return new Date(d).toLocaleDateString("es-CL", { day:"2-digit", month:"short" }) }
-    catch { return d }
-  }
-  const points = (data || []).slice(-14).map(d => ({ day: fmtDay(d.date), total: d.total || 0 }))
-  if (!points.length) return (
-    <p style={{ fontSize:"13px", color:"var(--text-3)", textAlign:"center", padding:"60px 0" }}>
-      Sin ventas registradas todavía.</p>
-  )
-  const max = Math.max(...points.map(p => p.total), 1)
+function SalesChart({ data }) {
+  const fmtDay = (d) => { try { return new Date(d).toLocaleDateString("es-CL", { day: "2-digit", month: "short" }) } catch { return d } }
+  const points = (data || []).slice(-14).map((d) => ({ day: fmtDay(d.date), total: d.total || 0 }))
+  const max = Math.max(...points.map((p) => p.total), 1)
   return (
     <ResponsiveContainer width="100%" height={240}>
       <BarChart data={points} margin={{ top: 10, right: 6, left: -18, bottom: 0 }} barCategoryGap="28%">
         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ECEEF2" />
-        <XAxis dataKey="day" tickLine={false} axisLine={false}
-          tick={{ fontSize: 11, fill: "#98A2B3" }} interval="preserveStartEnd" />
-        <YAxis tickLine={false} axisLine={false} width={54}
-          tick={{ fontSize: 11, fill: "#98A2B3" }}
-          tickFormatter={v => v >= 1000 ? `$${Math.round(v/1000)}k` : `$${v}`} />
-        <Tooltip cursor={{ fill: "rgba(26,255,110,0.06)" }} content={<ChartTooltip />} />
+        <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#98A2B3" }} interval="preserveStartEnd" />
+        <YAxis tickLine={false} axisLine={false} width={54} tick={{ fontSize: 11, fill: "#98A2B3" }}
+          tickFormatter={(v) => (v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`)} />
+        <Tooltip cursor={{ fill: "rgba(26,255,110,0.06)" }} content={<SalesTooltip />} />
         <Bar dataKey="total" radius={[8, 8, 0, 0]} maxBarSize={34}>
-          {points.map((p, i) => (
-            <Cell key={i} fill={p.total >= max * 0.6 ? "#1AFF6E" : "#E5E7EB"} />
-          ))}
+          {points.map((p, i) => <Cell key={i} fill={p.total >= max * 0.6 ? "#1AFF6E" : "#E5E7EB"} />)}
         </Bar>
       </BarChart>
     </ResponsiveContainer>
   )
 }
 
-// ── Fila de resumen ──
-function SummaryRow({ label, value, badge }) {
+function SummaryRow({ label, value, tone, badge }) {
   return (
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
-      padding:"12px 0", borderBottom:"1px solid var(--border)" }}>
-      <span style={{ fontSize:"13.5px", color:"var(--text-2)" }}>{label}</span>
-      <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
-        <span style={{ fontSize:"15px", fontWeight:700, color:"var(--text)",
-          fontVariantNumeric:"tabular-nums" }}>{value}</span>
-        {badge && <span className={`a-badge ${badge.positive ? "pos" : "neg"}`}>{badge.text}</span>}
+    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--admin-border)" }}>
+      <span style={{ fontSize: 13.5, color: "var(--admin-text-muted)" }}>{label}</span>
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--admin-text)", fontVariantNumeric: "tabular-nums" }}>{value}</span>
+        {badge && <StatusBadge tone={tone}>{badge}</StatusBadge>}
       </div>
     </div>
   )
 }
 
+function ActionList({ Icon, title, to, items, renderItem, emptyMsg }) {
+  return (
+    <SectionCard
+      title={title}
+      action={to && <Link to={to} style={{ fontSize: 12, color: "var(--admin-primary-text)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 600 }}>Ver todo <ArrowRight size={12} /></Link>}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+        <span className="au-stat__icon" style={{ width: 38, height: 38, borderRadius: 11 }}><Icon size={17} /></span>
+        <span style={{ fontSize: 12.5, color: "var(--admin-text-muted)" }}>{items.length} elementos</span>
+      </div>
+      {items.length
+        ? <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{items.slice(0, 5).map(renderItem)}</div>
+        : <EmptyState title={emptyMsg} />}
+    </SectionCard>
+  )
+}
+
+const rowLink = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "11px 13px", background: "var(--admin-surface-secondary)", borderRadius: 12, textDecoration: "none" }
+
 export default function AdminDashboard() {
-  const { data, isLoading } = useQuery({
-    queryKey:["admin-dashboard"], queryFn:getAdminDashboard, refetchInterval:60000,
+  const navigate = useNavigate()
+  const { data, isLoading, refetch, isFetching } = useQuery({
+    queryKey: ["admin-dashboard"], queryFn: getAdminDashboard, refetchInterval: 60000,
   })
 
-  const rev=data?.revenue||{}, orders=data?.orders||{}, users=data?.users||{}
-  const products=data?.products||{}, academy=data?.academy||{}, chart=data?.sales_chart||[]
-  const actions=data?.actions||{}
-  const pending=actions.pending_orders||[], lowStock=actions.low_stock||[]
-  const unread=actions.unread_service_requests||0
+  const rev = data?.revenue || {}, orders = data?.orders || {}, users = data?.users || {}
+  const products = data?.products || {}, academy = data?.academy || {}, chart = data?.sales_chart || []
+  const actions = data?.actions || {}
+  const pending = actions.pending_orders || [], lowStock = actions.low_stock || []
+  const unread = actions.unread_service_requests || 0
 
-  if (isLoading) return (
-    <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(230px,1fr))", gap:"18px" }}>
-      {[...Array(4)].map((_,i)=><div key={i} className="a-card" style={{ height:"150px" }} />)}
-    </div>
-  )
+  const activeProducts = Math.max((products.total || 0) - (products.out_of_stock || 0) - (products.low_stock || 0), 0)
+
+  const today = new Date().toLocaleDateString("es-CL", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
+
+  const orderColumns = [
+    { key: "short_id", header: "Orden", sortable: true, render: (r) => <span style={{ fontFamily: "monospace", fontWeight: 600, fontSize: 12.5 }}>#{r.short_id}</span> },
+    { key: "user_name", header: "Cliente", sortable: true, render: (r) => <span style={{ color: "var(--admin-text-muted)" }}>{r.user_name || "—"}</span> },
+    { key: "items_count", header: "Items", align: "center", render: (r) => r.items_count },
+    { key: "total", header: "Total", sortable: true, align: "right", render: (r) => <span style={{ fontWeight: 700, color: "var(--admin-primary-text)" }}>{clp(r.total)}</span> },
+    { key: "estado", header: "Estado", render: () => <StatusBadge tone="warning">Pendiente</StatusBadge> },
+  ]
 
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:"18px", paddingBottom:"20px" }}>
+    <div className="au-page" data-testid="admin-dashboard">
+      <AdminPageHeader
+        eyebrow="Panel"
+        title="Dashboard"
+        description={today.charAt(0).toUpperCase() + today.slice(1)}
+        actions={<SecondaryButton onClick={() => refetch()} testId="dashboard-refresh">
+          <RefreshCw size={14} className={isFetching ? "spin" : ""} /> Actualizar
+        </SecondaryButton>}
+      />
 
-      {/* Header */}
-      <div>
-        <h1 style={{ fontSize:"clamp(1.6rem,2.8vw,2.1rem)", fontWeight:800, letterSpacing:"-0.02em",
-          color:"var(--text)", lineHeight:1.1 }}>Dashboard</h1>
-        <p style={{ fontSize:"13.5px", color:"var(--text-3)", marginTop:"4px", textTransform:"capitalize" }}>
-          {new Date().toLocaleDateString("es-CL", { weekday:"long", year:"numeric", month:"long", day:"numeric" })}
-        </p>
-      </div>
-
-      {/* Alertas reales */}
-      {(pending.length>0 || products.out_of_stock>0 || unread>0) && (
-        <div data-testid="admin-alerts" className="a-card" style={{ padding:"16px 20px",
-          display:"flex", gap:"14px", alignItems:"center", flexWrap:"wrap",
-          background:"#FFFBEB", border:"1px solid #FDE68A" }}>
-          <AlertTriangle size={18} style={{ color:"#D97706", flexShrink:0 }} />
-          <p style={{ fontSize:"13px", color:"#92400E", flex:1 }}>
-            {pending.length>0 && `${pending.length} pedidos pendientes · `}
-            {products.out_of_stock>0 && `${products.out_of_stock} productos sin stock · `}
-            {unread>0 && `${unread} solicitudes de servicio`}
+      {(pending.length > 0 || products.out_of_stock > 0 || unread > 0) && (
+        <div className="au-card" data-testid="admin-alerts" style={{ padding: "14px 20px", display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", background: "#FFFBEB", border: "1px solid #FDE68A", boxShadow: "none" }}>
+          <AlertTriangle size={18} style={{ color: "#D97706", flexShrink: 0 }} />
+          <p style={{ fontSize: 13, color: "#92400E", flex: 1 }}>
+            {pending.length > 0 && `${pending.length} pedidos pendientes · `}
+            {products.out_of_stock > 0 && `${products.out_of_stock} productos sin stock · `}
+            {unread > 0 && `${unread} solicitudes de servicio`}
           </p>
         </div>
       )}
 
-      {/* KPIs */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(230px,1fr))", gap:"18px" }}>
-        <FeaturedCard value={clp(rev.total)} note={`Este mes: ${clp(rev.this_month)}`}
-          badge={rev.this_month>0 ? "Este mes" : null} />
-        <MetricCard Icon={ShoppingBag} label="Pedidos" value={orders.total||0}
-          note="totales" to="/admin/orders" testId="kpi-orders"
-          badge={orders.today>0 ? { text:`+${orders.today} hoy`, positive:true } : null} />
-        <MetricCard Icon={Users} label="Usuarios" value={users.total||0}
-          note="registrados" to="/admin/users" testId="kpi-users"
-          badge={users.new_week>0 ? { text:`+${users.new_week} sem`, positive:true } : null} />
-        <MetricCard Icon={Package} label="Productos activos" value={products.total||0}
-          note="en catálogo" to="/admin/products" testId="kpi-products"
-          badge={products.out_of_stock>0 ? { text:`${products.out_of_stock} agotados`, positive:false } : null} />
+      {/* Fila 1 — KPIs */}
+      <div className="au-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px,1fr))" }}>
+        <StatCard variant="primary" Icon={DollarSign} label="Ingresos totales" value={clp(rev.total)}
+          sub={`Este mes: ${clp(rev.this_month)}`} loading={isLoading} testId="kpi-revenue" />
+        <StatCard Icon={ShoppingBag} label="Pedidos" value={orders.total || 0} sub="totales" to="/admin/orders"
+          delta={orders.today > 0 ? orders.today : undefined} loading={isLoading} testId="kpi-orders" />
+        <StatCard Icon={Users} label="Usuarios" value={users.total || 0} sub="registrados" to="/admin/users"
+          delta={users.new_week > 0 ? users.new_week : undefined} loading={isLoading} testId="kpi-users" />
+        <StatCard Icon={Package} label="Productos activos" value={products.total || 0} sub="en catálogo" to="/admin/products"
+          badge={products.out_of_stock > 0 ? <StatusBadge tone="danger">{products.out_of_stock} agotados</StatusBadge> : null}
+          loading={isLoading} testId="kpi-products" />
       </div>
 
-      {/* Gráfico + resumen */}
-      <div style={{ display:"grid", gridTemplateColumns:"minmax(0,1.6fr) minmax(0,1fr)", gap:"18px" }}
-        className="admin-grid-2">
-        <div className="a-card" style={{ padding:"24px" }} data-testid="admin-sales-chart">
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:"6px" }}>
-            <div>
-              <h2 style={{ fontSize:"18px", fontWeight:800, color:"var(--text)", letterSpacing:"-0.01em" }}>
-                Ventas recientes</h2>
-              <p style={{ fontSize:"13px", color:"var(--text-3)", marginTop:"2px" }}>Últimos días con actividad</p>
-            </div>
-            <span style={{ fontSize:"22px", fontWeight:800, color:"#0F9940",
-              fontVariantNumeric:"tabular-nums" }}>{clp(rev.last_30_days)}</span>
-          </div>
-          <SalesBarChart data={chart} />
+      {/* Fila 2 — gráfico + radial */}
+      <div className="au-grid admin-grid-2" style={{ gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr)" }}>
+        <ChartCard title="Ventas recientes" description="Últimos días con actividad"
+          loading={isLoading} isEmpty={chart.length === 0} emptyDesc="Cuando registres ventas las verás acá."
+          action={<span style={{ fontSize: 22, fontWeight: 800, color: "var(--admin-primary-text)" }}>{clp(rev.last_30_days)}</span>}
+          testId="admin-sales-chart">
+          <SalesChart data={chart} />
+        </ChartCard>
+
+        <RadialStatCard title="Estadística de productos" description="Distribución del catálogo"
+          total={products.total || 0} totalLabel="Productos" loading={isLoading}
+          data={[
+            { name: "Activos", value: activeProducts },
+            { name: "Stock bajo", value: products.low_stock || 0, color: "#CA8A04" },
+            { name: "Agotados", value: products.out_of_stock || 0, color: "#EF4444" },
+          ]}
+          testId="admin-products-radial" />
+      </div>
+
+      {/* Fila 3 — tabla + resumen */}
+      <div className="au-grid admin-grid-2" style={{ gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr)" }}>
+        <div>
+          <h2 className="au-panel__title" style={{ marginBottom: 12 }}>Órdenes por confirmar</h2>
+          <DataTable
+            columns={orderColumns} data={pending} loading={isLoading}
+            getRowId={(r) => r.id} searchPlaceholder="Buscar orden o cliente..."
+            onRowClick={(r) => navigate(`/admin/orders?id=${r.id}`)}
+            rowActions={(r) => [{ label: "Ver orden", icon: Eye, onClick: () => navigate(`/admin/orders?id=${r.id}`) }]}
+            initialPageSize={10} emptyTitle="No hay órdenes pendientes" emptyDesc="Todas las órdenes están al día."
+            emptyIcon={Clock} testId="dashboard-orders-table" />
         </div>
 
-        <div className="a-card" style={{ padding:"24px" }} data-testid="admin-summary">
-          <h2 style={{ fontSize:"18px", fontWeight:800, color:"var(--text)", letterSpacing:"-0.01em", marginBottom:"6px" }}>
-            Resumen</h2>
-          <p style={{ fontSize:"13px", color:"var(--text-3)", marginBottom:"8px" }}>Estado de tu operación</p>
-          <SummaryRow label="Pedidos pendientes" value={orders.pending||0}
-            badge={pending.length>0 ? { text:"revisar", positive:false } : null} />
+        <SectionCard title="Resumen" description="Estado de tu operación" testId="admin-summary">
+          <SummaryRow label="Pedidos pendientes" value={orders.pending || 0} tone={pending.length > 0 ? "warning" : "success"} badge={pending.length > 0 ? "revisar" : "ok"} />
           <SummaryRow label="Ventas del mes" value={clp(rev.this_month)} />
-          <SummaryRow label="Productos sin stock" value={products.out_of_stock||0}
-            badge={products.out_of_stock>0 ? { text:"agotado", positive:false } : { text:"ok", positive:true }} />
-          <SummaryRow label="Stock bajo" value={products.low_stock||0} />
-          <SummaryRow label="Inscripciones academia" value={academy.total_enrollments||0}
-            badge={academy.enrollments_month>0 ? { text:`+${academy.enrollments_month}`, positive:true } : null} />
-        </div>
+          <SummaryRow label="Productos sin stock" value={products.out_of_stock || 0} tone={products.out_of_stock > 0 ? "danger" : "success"} badge={products.out_of_stock > 0 ? "agotado" : "ok"} />
+          <SummaryRow label="Stock bajo" value={products.low_stock || 0} />
+          <SummaryRow label="Inscripciones academia" value={academy.total_enrollments || 0} tone="success" badge={academy.enrollments_month > 0 ? `+${academy.enrollments_month}` : null} />
+        </SectionCard>
       </div>
 
-      {/* Acciones */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(320px,1fr))", gap:"18px" }}>
-        {/* Órdenes pendientes */}
-        <div className="a-card" style={{ padding:"22px" }} data-testid="action-pending-orders">
-          <ActionHeader Icon={Clock} title="Órdenes por confirmar" count={pending.length} to="/admin/orders" />
-          {pending.length ? (
-            <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"12px" }}>
-              {pending.slice(0,5).map(o => (
-                <Link key={o.id} to={`/admin/orders?id=${o.id}`} style={rowStyle}>
-                  <div style={{ minWidth:0, flex:1 }}>
-                    <p style={{ fontSize:"12.5px", fontWeight:600, color:"var(--text)", fontFamily:"monospace" }}>#{o.short_id}</p>
-                    <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"2px", overflow:"hidden",
-                      textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{o.user_name} · {o.items_count} items</p>
-                  </div>
-                  <span style={{ fontSize:"13px", fontWeight:700, color:"#0F9940" }}>{clp(o.total)}</span>
-                </Link>
-              ))}
-            </div>
-          ) : <Empty msg="No hay órdenes pendientes ✓" />}
-        </div>
+      {/* Fila 4 — acciones */}
+      <div className="au-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px,1fr))" }}>
+        <ActionList Icon={Boxes} title="Stock bajo o agotado" to="/admin/inventory" items={lowStock}
+          emptyMsg="Todo en stock ✓"
+          renderItem={(p) => (
+            <Link key={p.id} to={`/admin/products?highlight=${p.id}`} style={rowLink}>
+              <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--admin-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{p.name}</span>
+              <span style={{ fontSize: 12.5, fontWeight: 700, color: p.stock === 0 ? "#EF4444" : "#D97706" }}>{p.stock === 0 ? "Agotado" : `${p.stock} u.`}</span>
+            </Link>
+          )} />
 
-        {/* Stock bajo */}
-        <div className="a-card" style={{ padding:"22px" }} data-testid="action-low-stock">
-          <ActionHeader Icon={Boxes} title="Stock bajo o agotado" count={lowStock.length} to="/admin/inventory" />
-          {lowStock.length ? (
-            <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"12px" }}>
-              {lowStock.slice(0,5).map(p => (
-                <Link key={p.id} to={`/admin/products?highlight=${p.id}`} style={rowStyle}>
-                  <p style={{ fontSize:"12.5px", fontWeight:600, color:"var(--text)", overflow:"hidden",
-                    textOverflow:"ellipsis", whiteSpace:"nowrap", flex:1 }}>{p.name}</p>
-                  <span style={{ fontSize:"12.5px", fontWeight:700,
-                    color: p.stock===0 ? "#EF4444" : "#D97706" }}>
-                    {p.stock===0 ? "Agotado" : `${p.stock} u.`}</span>
-                </Link>
-              ))}
-            </div>
-          ) : <Empty msg="Todo en stock ✓" />}
-        </div>
+        <ActionList Icon={Clock} title="Órdenes por confirmar" to="/admin/orders" items={pending}
+          emptyMsg="No hay órdenes pendientes ✓"
+          renderItem={(o) => (
+            <Link key={o.id} to={`/admin/orders?id=${o.id}`} style={rowLink}>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <p style={{ fontSize: 12.5, fontWeight: 600, color: "var(--admin-text)", fontFamily: "monospace" }}>#{o.short_id}</p>
+                <p style={{ fontSize: 11, color: "var(--admin-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.user_name} · {o.items_count} items</p>
+              </div>
+              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--admin-primary-text)" }}>{clp(o.total)}</span>
+            </Link>
+          )} />
 
-        {/* Solicitudes */}
-        {unread>0 && (
-          <div className="a-card" style={{ padding:"22px" }} data-testid="action-service-requests">
-            <ActionHeader Icon={MessageSquare} title="Solicitudes de servicios" count={unread} to="/admin/services" />
-            <p style={{ fontSize:"13px", color:"var(--text-2)", marginTop:"12px", padding:"12px 14px",
-              background:"var(--surface-2)", borderRadius:"12px" }}>
-              Tenés <strong style={{ color:"#0F9940" }}>{unread}</strong> cotizaciones esperando respuesta.</p>
+        <SectionCard title="Solicitudes de servicios"
+          action={<Link to="/admin/services" style={{ fontSize: 12, color: "var(--admin-primary-text)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 600 }}>Ver todo <ArrowRight size={12} /></Link>}
+          testId="action-service-requests">
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
+            <span className="au-stat__icon" style={{ width: 38, height: 38, borderRadius: 11 }}><MessageSquare size={17} /></span>
+            <span style={{ fontSize: 12.5, color: "var(--admin-text-muted)" }}>{unread} sin leer</span>
           </div>
-        )}
+          {unread > 0
+            ? <p style={{ fontSize: 13, color: "var(--admin-text-muted)", padding: "12px 14px", background: "var(--admin-surface-secondary)", borderRadius: 12 }}>Tenés <strong style={{ color: "var(--admin-primary-text)" }}>{unread}</strong> cotizaciones esperando respuesta.</p>
+            : <EmptyState title="Sin solicitudes nuevas ✓" />}
+        </SectionCard>
       </div>
 
       <style>{`
-        @media (max-width: 900px) { .admin-grid-2 { grid-template-columns: 1fr !important; } }
+        @media (max-width:900px){ .admin-root .admin-grid-2 { grid-template-columns:1fr !important; } }
+        .admin-root .spin { animation: au-spin 1s linear infinite; }
+        @keyframes au-spin { to { transform: rotate(360deg); } }
       `}</style>
     </div>
   )
 }
-
-const rowStyle = { display:"flex", justifyContent:"space-between", alignItems:"center", gap:"10px",
-  padding:"11px 13px", background:"var(--surface-2)", borderRadius:"12px", textDecoration:"none" }
-
-function ActionHeader({ Icon, title, count, to }) {
-  return (
-    <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
-        <span className="a-kpi-tile" style={{ width:"38px", height:"38px", borderRadius:"11px" }}>
-          <Icon size={17} strokeWidth={2} /></span>
-        <div>
-          <p style={{ fontSize:"13.5px", fontWeight:700, color:"var(--text)" }}>{title}</p>
-          <p style={{ fontSize:"11.5px", color:"var(--text-3)" }}>{count} pendientes</p>
-        </div>
-      </div>
-      <Link to={to} style={{ fontSize:"12px", color:"#0F9940", textDecoration:"none",
-        display:"inline-flex", alignItems:"center", gap:"3px", fontWeight:600 }}>
-        Ver todo <ArrowRight size={12} strokeWidth={2.2} />
-      </Link>
-    </div>
-  )
-}
-const Empty = ({ msg }) => (
-  <p style={{ fontSize:"12.5px", color:"var(--text-3)", padding:"24px 0", textAlign:"center" }}>{msg}</p>
-)
