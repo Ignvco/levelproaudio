@@ -5,6 +5,8 @@ import {
   getBillingDocuments, getBillingConfig, updateBillingConfig,
   generateDocument, downloadDocument, voidDocument,
 } from "../../api/admin.api"
+import { AdminPageHeader, DataTable, StatusBadge } from "../../components/admin/ui"
+import { Download, Ban, FileText } from "lucide-react"
 
 const TABS   = ["Documentos","Generar","Configuración"]
 
@@ -78,15 +80,10 @@ export default function AdminBilling() {
   )
 
   return (
-    <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page" style={{ padding:"clamp(24px, 4vw, 40px)" }}>
 
-      <div style={{ marginBottom:"28px" }}>
-        <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
-          fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>Facturación</h1>
-        <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
-          Genera boletas y facturas PDF · Envío por email · Historial completo
-        </p>
-      </div>
+      <AdminPageHeader eyebrow="Ventas" title="Facturación"
+        description="Genera boletas y facturas PDF · Envío por email · Historial completo" />
 
       {/* Tabs */}
       <div style={{ display:"flex", gap:"0", marginBottom:"28px", borderBottom:"1px solid var(--border)" }}>
@@ -105,87 +102,45 @@ export default function AdminBilling() {
 
       {/* ── DOCUMENTOS ── */}
       {tab===0 && (
-        loadingDocs ? (
-          <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-            {[...Array(5)].map((_,i) => <div key={i} className="skeleton" style={{ height:"56px" }} />)}
-          </div>
-        ) : docs.length===0 ? (
-          <div style={{ padding:"60px", textAlign:"center", background:"var(--surface)",
-            border:"1px solid var(--border)", borderRadius:"var(--r-2xl)" }}>
-            <p style={{ fontSize:"40px", marginBottom:"12px" }}>🧾</p>
-            <h3 style={{ fontFamily:"var(--font-display)", fontWeight:800, fontSize:"1.4rem", marginBottom:"8px" }}>
-              Sin documentos emitidos
-            </h3>
-            <p style={{ fontSize:"14px", color:"var(--text-3)", marginBottom:"20px" }}>
-              Ve a &quot;Generar&quot; para emitir boletas o facturas.
-            </p>
-            <button onClick={() => setTab(1)} className="btn btn-accent">
-              Generar primer documento →
-            </button>
-          </div>
-        ) : (
-          <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-            borderRadius:"var(--r-xl)", overflow:"hidden" }}>
-            <div style={{ display:"grid",
-              gridTemplateColumns:"1fr 1fr 1.5fr 1fr 1fr 120px",
-              padding:"10px 20px", borderBottom:"1px solid var(--border)",
-              fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
-              letterSpacing:"0.06em", fontWeight:500 }}>
-              <span>Folio</span><span>Tipo</span>
-              <span>Orden</span><span>Total</span><span>Estado</span><span />
-            </div>
-
-            {docs.map((doc,i) => (
-              <div key={doc.id} style={{ display:"grid",
-                gridTemplateColumns:"1fr 1fr 1.5fr 1fr 1fr 120px",
-                padding:"13px 20px", alignItems:"center",
-                borderTop: i>0 ? "1px solid var(--border)" : "none",
-                gap:"8px", transition:"background var(--dur) var(--ease)" }}
-                onMouseEnter={e => e.currentTarget.style.background="var(--surface-2)"}
-                onMouseLeave={e => e.currentTarget.style.background="transparent"}>
-                <span style={{ fontFamily:"monospace", fontSize:"13px",
-                  fontWeight:600, color:"var(--accent-text)" }}>{doc.folio}</span>
-                <span style={{ padding:"2px 10px", borderRadius:"var(--r-full)",
-                  fontSize:"11px", fontWeight:500, display:"inline-block",
-                  color:      doc.tipo==="boleta" ? "#60a5fa" : "#c084fc",
-                  background: doc.tipo==="boleta" ? "rgba(96,165,250,0.1)" : "rgba(192,132,252,0.1)",
-                  border:     doc.tipo==="boleta" ? "1px solid rgba(96,165,250,0.3)" : "1px solid rgba(192,132,252,0.3)" }}>
-                  {doc.tipo==="boleta" ? "Boleta" : "Factura"}
-                </span>
-                <span style={{ fontSize:"12px", fontFamily:"monospace", color:"var(--text-3)" }}>
-                  #{doc.order_id?.slice(0,8).toUpperCase()}
-                </span>
-                <span style={{ fontSize:"13px", fontWeight:600 }}>
-                  ${Number(doc.total).toLocaleString("es-CL")}
-                </span>
-                <span style={{ padding:"2px 8px", borderRadius:"var(--r-full)", fontSize:"11px",
-                  fontWeight:500, display:"inline-block",
-                  color:      doc.estado==="emitido" ? "var(--accent-text)" : "#EF4444",
-                  background: doc.estado==="emitido" ? "var(--accent-dim)" : "rgba(248,113,113,0.1)",
-                  border:     `1px solid ${doc.estado==="emitido" ? "var(--accent-glow)" : "rgba(248,113,113,0.2)"}` }}>
-                  {doc.estado==="emitido" ? "Emitido" : "Anulado"}
-                </span>
-                <div style={{ display:"flex", gap:"6px" }}>
-                  <button onClick={() => handleDownload(doc.id, doc.folio)} style={{
-                    padding:"5px 10px", borderRadius:"var(--r-md)", fontSize:"11px",
-                    cursor:"pointer", color:"var(--accent-text)",
-                    background:"var(--accent-dim)", border:"1px solid var(--accent-glow)" }}>
-                    ⬇
-                  </button>
-                  {doc.estado==="emitido" && (
-                    <button onClick={() => {
-                      if (window.confirm(`¿Anular ${doc.folio}?`)) voidMutation.mutate(doc.id)
-                    }} style={{ padding:"5px 10px", borderRadius:"var(--r-md)", fontSize:"11px",
-                      cursor:"pointer", color:"#EF4444",
-                      background:"rgba(248,113,113,0.1)", border:"1px solid rgba(248,113,113,0.2)" }}>
-                      ✕
-                    </button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )
+        <DataTable
+          columns={[
+            { key:"folio", header:"Folio", sortable:true, render:doc => (
+              <span style={{ fontFamily:"monospace", fontWeight:700,
+                color:"var(--admin-primary-text)" }}>{doc.folio}</span>
+            )},
+            { key:"tipo", header:"Tipo", render:doc => (
+              <StatusBadge tone={doc.tipo==="boleta" ? "info" : "neutral"}>
+                {doc.tipo==="boleta" ? "Boleta" : "Factura"}
+              </StatusBadge>
+            )},
+            { key:"order_id", header:"Orden", render:doc => (
+              <span style={{ fontFamily:"monospace", fontSize:"12px", color:"var(--admin-text-muted)" }}>
+                #{doc.order_id?.slice(0,8).toUpperCase()}
+              </span>
+            )},
+            { key:"total", header:"Total", sortable:true, align:"right", render:doc => (
+              <span style={{ fontWeight:700 }}>${Number(doc.total).toLocaleString("es-CL")}</span>
+            )},
+            { key:"estado", header:"Estado", render:doc => (
+              <StatusBadge tone={doc.estado==="emitido" ? "success" : "danger"}>
+                {doc.estado==="emitido" ? "Emitido" : "Anulado"}
+              </StatusBadge>
+            )},
+          ]}
+          data={docs} loading={loadingDocs}
+          getRowId={doc => doc.id}
+          searchable searchKeys={["folio","order_id"]} searchPlaceholder="Buscar por folio u orden..."
+          rowActions={doc => [
+            { label:"Descargar PDF", icon:Download, onClick:() => handleDownload(doc.id, doc.folio) },
+            ...(doc.estado==="emitido" ? [{
+              label:"Anular", icon:Ban, danger:true, onClick:() => {
+                if (window.confirm(`¿Anular ${doc.folio}?`)) voidMutation.mutate(doc.id)
+              },
+            }] : []),
+          ]}
+          emptyIcon={FileText} emptyTitle="Sin documentos emitidos"
+          emptyDesc="Ve a &quot;Generar&quot; para emitir boletas o facturas."
+          testId="billing-documents-table" />
       )}
 
       {/* ── GENERAR ── */}

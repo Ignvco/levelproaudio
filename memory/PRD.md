@@ -160,5 +160,11 @@ Verificado (curl + playwright): sitemap XML válido con 28+ URLs, canonical/robo
 - P1: Validar PayPal + emails reales en prod. Editar prize_product en detalle admin.
 - P2: Automatizar USD_CLP_RATE. Reseñas. Cupones.
 
+## Admin — Batch 2 tablas → DataTable COMPLETO (2026-08-01) ✅
+- **AdminProducts.jsx**: tabla nativa reemplazada por `DataTable` (columnas: Producto imagen+nombre+SKU, Precio, Stock coloreado, Categoría, Estado con StatusBadge + ★ destacado). `AdminPageHeader` con acción "Nuevo producto" (PrimaryButton). Row actions: Editar/Eliminar (menú 3-puntos). Se conservan el modal `ProductForm`, el buscador server-side, el select de categoría y el toggle Activos/Inactivos/Todos (searchable={false} en el DataTable para no duplicar el buscador).
+- **AdminBilling.jsx**: pestaña "Documentos" migrada a `DataTable` (Folio, Tipo, Orden, Total, Estado con StatusBadge). Row actions: Descargar PDF / Anular. Buscador por folio/orden. Header con `AdminPageHeader`. Pestañas "Generar" y "Configuración" (formularios) sin cambios.
+- Verificado por screenshots (Productos con 6 items, Facturación empty state). Con esto queda cerrada la migración de todas las tablas admin al `DataTable`.
+- Observación pendiente (fuera de scope de esta migración): en Productos todos los items aparecen con badge "Inactivo" bajo el filtro "Activos" — a revisar en backend/serializer (lógica de render idéntica a la versión previa).
+
 ## Credenciales de prueba
 Ver `/app/memory/test_credentials.md`.

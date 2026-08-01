@@ -617,8 +617,57 @@ export default function AdminProducts() {
   const categories = categoriesData?.results || categoriesData || []
   const brands     = brandsData?.results     || brandsData     || []
 
+  const columns = [
+    { key:"name", header:"Producto", sortable:true, render:p => {
+      const primaryImg = p.images?.find(img => img.is_primary) || p.images?.[0]
+      const img = primaryImg ? mediaUrl(primaryImg.image) : null
+      return (
+        <div style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
+          <div style={{ width:"40px", height:"40px", borderRadius:"var(--r-md)",
+            overflow:"hidden", background:"var(--admin-surface-alt, #f1f1f1)",
+            border:"1px solid var(--admin-border, #e5e5e5)", flexShrink:0,
+            display:"flex", alignItems:"center", justifyContent:"center" }}>
+            {img
+              ? <img src={img} alt={p.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+              : <Package size={16} style={{ opacity:.4 }} />}
+          </div>
+          <div style={{ minWidth:0 }}>
+            <p style={{ fontSize:"13px", fontWeight:600, overflow:"hidden",
+              textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</p>
+            {p.sku && <p style={{ fontSize:"11px", color:"var(--admin-text-muted)",
+              fontFamily:"monospace" }}>{p.sku}</p>}
+          </div>
+        </div>
+      )
+    }},
+    { key:"price", header:"Precio", sortable:true, align:"right", render:p => (
+      <div style={{ textAlign:"right" }}>
+        <p style={{ fontSize:"13px", fontWeight:600 }}>${Number(p.price).toLocaleString("es-CL")}</p>
+        {p.compare_price && <p style={{ fontSize:"11px", color:"var(--admin-text-muted)",
+          textDecoration:"line-through" }}>${Number(p.compare_price).toLocaleString("es-CL")}</p>}
+      </div>
+    )},
+    { key:"stock", header:"Stock", sortable:true, align:"right", render:p => (
+      <span style={{ fontSize:"13px", fontWeight:600,
+        color: p.stock === 0 ? "var(--admin-danger, #EF4444)"
+          : p.stock <= (p.stock_min || 3) ? "#D97706" : "inherit" }}>
+        {p.stock}
+      </span>
+    )},
+    { key:"category", header:"Categoría",
+      render:p => <span style={{ color:"var(--admin-text-muted)" }}>{p.category?.name || "—"}</span> },
+    { key:"is_active", header:"Estado", render:p => (
+      <div style={{ display:"flex", gap:"6px", alignItems:"center" }}>
+        <StatusBadge tone={p.is_active ? "success" : "neutral"}>
+          {p.is_active ? "Activo" : "Inactivo"}
+        </StatusBadge>
+        {p.is_featured && <StatusBadge tone="warning">★</StatusBadge>}
+      </div>
+    )},
+  ]
+
   return (
-    <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page" style={{ padding: "clamp(24px, 4vw, 40px)" }}>
 
       {/* Modal */}
       {modal && (
@@ -631,31 +680,19 @@ export default function AdminProducts() {
         />
       )}
 
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between",
-        alignItems: "flex-start", marginBottom: "28px",
-        flexWrap: "wrap", gap: "16px" }}>
-        <div>
-          <h1 style={{ fontFamily: "var(--font-display)",
-            fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 800,
-            letterSpacing: "-0.02em", marginBottom: "6px" }}>
-            Productos
-          </h1>
-          <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
-            {data?.count || products.length} productos
-          </p>
-        </div>
-        <button onClick={() => setModal("new")} className="btn btn-accent"
-          style={{ padding: "10px 20px", fontSize: "13px" }}>
-          + Nuevo producto
-        </button>
-      </div>
+      <AdminPageHeader eyebrow="Catálogo" title="Productos"
+        description={`${data?.count || products.length} productos`}
+        actions={
+          <PrimaryButton onClick={() => setModal("new")} data-testid="new-product-btn">
+            + Nuevo producto
+          </PrimaryButton>
+        } />
 
-      {/* Búsqueda + filtros */}
-      <div style={{ display: "flex", gap: "10px", marginBottom: "20px",
+      {/* Búsqueda + filtro categoría */}
+      <div style={{ display: "flex", gap: "10px", marginBottom: "18px",
         flexWrap: "wrap" }}>
         <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar producto..."
+          placeholder="Buscar producto..." data-testid="products-search"
           style={{ ...inputSt, maxWidth: "280px" }}
           onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
           onBlur={e => e.target.style.borderColor = "var(--border)"} />
@@ -694,170 +731,20 @@ export default function AdminProducts() {
         ))}
       </div>
 
-      {/* Tabla */}
-      {isLoading ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: "64px" }} />
-          ))}
-        </div>
-      ) : products.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "80px 24px",
-          background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-2xl)" }}>
-          <p style={{ fontSize: "40px", marginBottom: "12px" }}>📦</p>
-          <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 800,
-            fontSize: "1.4rem", marginBottom: "8px" }}>
-            Sin productos
-          </h3>
-          <p style={{ fontSize: "14px", color: "var(--text-3)", marginBottom: "20px" }}>
-            {search ? "No hay productos con esos términos." : "Crea el primer producto."}
-          </p>
-          <button onClick={() => setModal("new")} className="btn btn-accent">
-            + Nuevo producto
-          </button>
-        </div>
-      ) : (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-xl)", overflow: "hidden" }}>
-          {/* Cabecera */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "56px 2.5fr 1fr 1fr 1fr 1fr 80px",
-            padding: "10px 20px", borderBottom: "1px solid var(--border)",
-            fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
-            textTransform: "uppercase", letterSpacing: "0.08em",
-          }}>
-            <span />
-            <span>Producto</span>
-            <span>Precio</span>
-            <span>Stock</span>
-            <span>Categoría</span>
-            <span>Estado</span>
-            <span />
-          </div>
-
-          {products.map((p, i) => {
-            const primaryImg = p.images?.find(img => img.is_primary) || p.images?.[0]
-            const img = primaryImg ? mediaUrl(primaryImg.image) : null
-
-            return (
-              <div key={p.id} style={{
-                display: "grid",
-                gridTemplateColumns: "56px 2.5fr 1fr 1fr 1fr 1fr 80px",
-                padding: "12px 20px", alignItems: "center",
-                borderTop: i > 0 ? "1px solid var(--border)" : "none",
-                transition: "background var(--dur) var(--ease)", gap: "8px",
-              }}
-                onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2)"}
-                onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-              >
-                {/* Imagen */}
-                <div style={{ width: "40px", height: "40px", borderRadius: "var(--r-md)",
-                  overflow: "hidden", background: "var(--surface-2)",
-                  border: "1px solid var(--border)", flexShrink: 0 }}>
-                  {img ? (
-                    <img src={img} alt={p.name}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  ) : (
-                    <div style={{ width: "100%", height: "100%", display: "flex",
-                      alignItems: "center", justifyContent: "center",
-                      fontSize: "18px" }}>🎧</div>
-                  )}
-                </div>
-
-                {/* Nombre */}
-                <div style={{ minWidth: 0 }}>
-                  <p style={{ fontSize: "13px", fontWeight: 500,
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {p.name}
-                  </p>
-                  {p.sku && (
-                    <p style={{ fontSize: "11px", color: "var(--text-3)",
-                      fontFamily: "monospace" }}>
-                      {p.sku}
-                    </p>
-                  )}
-                </div>
-
-                {/* Precio */}
-                <div>
-                  <p style={{ fontSize: "13px", fontWeight: 500 }}>
-                    ${Number(p.price).toLocaleString("es-CL")}
-                  </p>
-                  {p.compare_price && (
-                    <p style={{ fontSize: "11px", color: "var(--text-3)",
-                      textDecoration: "line-through" }}>
-                      ${Number(p.compare_price).toLocaleString("es-CL")}
-                    </p>
-                  )}
-                </div>
-
-                {/* Stock */}
-                <span style={{
-                  fontSize: "13px", fontWeight: 500,
-                  color: p.stock === 0 ? "var(--danger)"
-                    : p.stock <= (p.stock_min || 3) ? "#D97706"
-                    : "var(--text)",
-                }}>
-                  {p.stock}
-                </span>
-
-                {/* Categoría */}
-                <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                  {p.category?.name || "—"}
-                </span>
-
-                {/* Estado */}
-                <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                  <span style={{
-                    padding: "2px 8px", borderRadius: "var(--r-full)", fontSize: "11px",
-                    fontWeight: 500,
-                    color:       p.is_active ? "var(--accent)" : "var(--text-3)",
-                    background:  p.is_active ? "var(--accent-dim)" : "var(--surface-2)",
-                    border:      `1px solid ${p.is_active ? "var(--accent-glow)" : "var(--border)"}`,
-                  }}>
-                    {p.is_active ? "Activo" : "Inactivo"}
-                  </span>
-                  {p.is_featured && (
-                    <span style={{
-                      padding: "2px 8px", borderRadius: "var(--r-full)", fontSize: "11px",
-                      fontWeight: 500, color: "#D97706",
-                      background: "rgba(250,204,21,0.1)",
-                      border: "1px solid rgba(250,204,21,0.25)",
-                    }}>
-                      ⭐
-                    </span>
-                  )}
-                </div>
-
-                {/* Acciones */}
-                <div style={{ display: "flex", gap: "6px" }}>
-                  <button onClick={() => setModal(p)} style={{
-                    padding: "5px 10px", borderRadius: "var(--r-md)",
-                    fontSize: "11px", cursor: "pointer",
-                    color: "#60a5fa", background: "rgba(96,165,250,0.1)",
-                    border: "1px solid rgba(96,165,250,0.2)",
-                  }}>
-                    ✎
-                  </button>
-                  <button onClick={() => {
-                    if (window.confirm(`¿Eliminar "${p.name}"?`))
-                      deleteMutation.mutate(p.id)
-                  }} style={{
-                    padding: "5px 10px", borderRadius: "var(--r-md)",
-                    fontSize: "11px", cursor: "pointer",
-                    color: "#EF4444", background: "rgba(248,113,113,0.1)",
-                    border: "1px solid rgba(248,113,113,0.2)",
-                  }}>
-                    ×
-                  </button>
-                </div>
-              </div>
-            )
-          })}
-        </div>
-      )}
+      <DataTable
+        columns={columns} data={products} loading={isLoading}
+        getRowId={p => p.id}
+        searchable={false}
+        onRowClick={p => setModal(p)}
+        rowActions={p => [
+          { label:"Editar", icon:Pencil, onClick:() => setModal(p) },
+          { label:"Eliminar", icon:Trash2, danger:true, onClick:() => {
+            if (window.confirm(`¿Eliminar "${p.name}"?`)) deleteMutation.mutate(p.id)
+          }},
+        ]}
+        emptyIcon={Package} emptyTitle="Sin productos"
+        emptyDesc={search ? "No hay productos con esos términos." : "Crea el primer producto."}
+        testId="products-table" />
     </div>
   )
 }
