@@ -101,12 +101,9 @@ function ProtectedRoute({ children }) {
 }
 
 
-// Agrega después de ProtectedRoute en App.jsx
 function AdminRoute({ children }) {
   const { isAuthenticated, user } = useAuthStore()
   if (!isAuthenticated) return <Navigate to="/login" replace />
-  // Agrega console.log para debug
-  console.log("user admin check:", user?.is_staff, user?.is_superuser)
   if (!user?.is_staff && !user?.is_superuser) return <Navigate to="/" replace />
   return children
 }
