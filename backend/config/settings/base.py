@@ -145,6 +145,19 @@ DATABASES = {
     }
 }
 
+# Cache compartido entre todas las instancias de Cloud Run, usando la misma
+# Postgres que ya tenemos (sin provisionar Redis/Memorystore — no lo
+# necesitamos a esta escala). Principalmente lo usa el throttling de DRF
+# (login/registro/reset password) para que el límite de intentos sea el
+# mismo sin importar a qué instancia le toque atender cada request.
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'django_cache_table',
+        'TIMEOUT': 300,
+    }
+}
+
 # Contraseñas
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},

@@ -25,7 +25,9 @@ RUN python manage.py collectstatic --noinput \
 
 EXPOSE 8080
 
-# Ejecuta migraciones automáticamente al iniciar cada instancia de Cloud Run.
-# El socket de Cloud SQL es inyectado por Cloud Run (--add-cloudsql-instances),
-# así que la conexión a la DB está disponible en runtime.
-CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120 --access-logfile - --error-logfile -"]
+# Ejecuta migraciones y crea la tabla de cache automáticamente al iniciar
+# cada instancia de Cloud Run. createcachetable es idempotente (no falla
+# si la tabla ya existe). El socket de Cloud SQL es inyectado por Cloud Run
+# (--add-cloudsql-instances), así que la conexión a la DB está disponible
+# en runtime.
+CMD ["sh", "-c", "python manage.py migrate --noinput && (python manage.py createcachetable || true) && exec gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120 --access-logfile - --error-logfile -"]

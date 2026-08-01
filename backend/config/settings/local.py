@@ -23,6 +23,14 @@ DATABASES = {
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
+# Cache simple en memoria para desarrollo (el DatabaseCache de base.py
+# requiere la tabla creada con `createcachetable`, innecesario en local).
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+    }
+}
+
 # Media local
 MEDIA_URL  = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"  # noqa: F405
