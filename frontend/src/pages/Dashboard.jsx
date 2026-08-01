@@ -6,6 +6,7 @@ import {
   ArrowRight, AlertTriangle, ChevronRight,
 } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
+import { StatCard } from "../components/admin/ui"
 import { getOrders } from "../api/orders.api"
 import { getEnrollments } from "../api/academy.api"
 import { getServiceRequests } from "../api/services.api"
@@ -28,29 +29,6 @@ function StatusBadge({ status }) {
       {c.label}
     </span>
   )
-}
-
-// ── KPI card (mismo lenguaje que el panel admin) ──
-function KPI({ label, value, sub, color = "var(--text)", Icon, to, testId }) {
-  const inner = (
-    <div data-testid={testId} style={{
-      background: "var(--surface)", border: "1px solid var(--border)",
-      borderRadius: "var(--r-xl)", padding: "18px 22px", height: "100%",
-      transition: "border-color var(--dur) var(--ease)" }}
-      className={to ? "kpi-hover" : ""}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
-        <p style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: 600,
-          textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</p>
-        {Icon && <Icon size={16} strokeWidth={1.6} style={{ color: "var(--text-3)", opacity: 0.85 }} />}
-      </div>
-      <p style={{ fontSize: "28px", fontWeight: 700, color, lineHeight: 1, marginBottom: "6px",
-        fontFamily: "var(--font-display)", letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums" }}>
-        {value}
-      </p>
-      {sub && <p style={{ fontSize: "12px", color: "var(--text-3)" }}>{sub}</p>}
-    </div>
-  )
-  return to ? <Link to={to} style={{ textDecoration: "none" }}>{inner}</Link> : inner
 }
 
 // ── Action card con lista ──
@@ -159,21 +137,21 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* KPIs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
-        gap: "12px", marginBottom: "24px" }} className="dash-kpis">
-        <KPI label="Pedidos" value={orders.length}
+      {/* KPIs — mismas cards que el panel admin (StatCard) */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+        gap: "14px", marginBottom: "24px" }} className="dash-kpis">
+        <StatCard label="Pedidos" value={orders.length}
           sub={`${pending.length} pendientes${todayCount ? ` · ${todayCount} hoy` : ""}`}
           Icon={Package} to="/dashboard/orders" testId="dash-kpi-pedidos" />
-        <KPI label="Puntos" value={points.toLocaleString("es-CL")}
+        <StatCard label="Puntos" value={points.toLocaleString("es-CL")}
           sub={loyalty ? `Nivel ${loyalty.nivel}` : "Programa de fidelidad"}
-          color="var(--accent)" Icon={Star} to="/dashboard/loyalty" testId="dash-kpi-puntos" />
-        <KPI label="Cursos" value={enrollCount}
+          variant="primary" Icon={Star} to="/dashboard/loyalty" testId="dash-kpi-puntos" />
+        <StatCard label="Cursos" value={enrollCount}
           sub={enrollCount === 1 ? "inscripción activa" : "inscripciones"}
-          color="#60a5fa" Icon={PlayCircle} to="/dashboard/courses" testId="dash-kpi-cursos" />
-        <KPI label="Servicios" value={reqCount}
+          Icon={PlayCircle} to="/dashboard/courses" testId="dash-kpi-cursos" />
+        <StatCard label="Servicios" value={reqCount}
           sub={reqCount === 1 ? "solicitud" : "solicitudes"}
-          color="#c084fc" Icon={Wrench} to="/dashboard/services" testId="dash-kpi-servicios" />
+          Icon={Wrench} to="/dashboard/services" testId="dash-kpi-servicios" />
       </div>
 
       {/* Loyalty progress (si aplica) */}

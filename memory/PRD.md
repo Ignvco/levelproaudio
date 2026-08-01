@@ -185,5 +185,9 @@ Verificado (curl + playwright): sitemap XML válido con 28+ URLs, canonical/robo
 - Páginas con oscuros hardcodeados convertidas a claras: `Orders.jsx` (tabla clara + zebra + hover verde), `OrderDetail.jsx`, `MyEntries.jsx`, `MyFavorites.jsx` (empty-state). Favoritos mantiene el `ProductCard` compartido de la tienda (oscuro por identidad de marca).
 - Verificado por screenshots (Inicio, Pedidos, Servicios, Perfil, Mis puntos, Participaciones): consistente con el admin (cards `#FCFCFC`, pills verde/`#292929`, tablas con zebra).
 
+## Panel de Usuario — StatCard + DataTable (2026-08-01) ✅
+- KPIs del `Dashboard.jsx` migrados al componente `StatCard` del admin (mismas cards: pill superior verde, círculo oscuro con ícono blanco, monto negro, pill inferior `#292929`). Card "Puntos" usa variant primary (círculo verde).
+- Tabla de Pedidos (`dashboard/Orders.jsx`) migrada a `DataTable` + `AdminPageHeader`: búsqueda por N° de pedido, orden por columnas, paginación, zebra, `StatusBadge` por tono y navegación al detalle con `onRowClick`. Verificado (search filtra a 1 resultado; clic navega a `/dashboard/orders/:id`).
+
 ## Credenciales de prueba
 Ver `/app/memory/test_credentials.md`.
