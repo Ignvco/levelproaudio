@@ -212,8 +212,7 @@
 .admin-root .au-lp__delta { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:700; padding:8px 13px; border-radius:9999px; }
 .admin-root .au-lp__delta--pos { background:rgba(26,255,110,.16); color:#1AFF6E; }
 .admin-root .au-lp__delta--neg { background:rgba(239,68,68,.16); color:#ff8b8b; }
-/* variante primary: glow verde en esquina (como card de Academia) */
-.admin-root .au-lp--primary::before { content:""; position:absolute; top:-45%; right:-15%; width:65%; height:130%; background:radial-gradient(circle, rgba(26,255,110,.4), transparent 62%); z-index:1; }
+/* variante primary: ícono verde sólido (sin glow) */
 .admin-root .au-lp--primary .au-lp__icon { background:#1AFF6E; color:#00160b; }
 /* variante light (blanca, mismo lenguaje de pills) */
 .admin-root .au-lp--light { background:#fff; border:1px solid var(--admin-border); box-shadow:var(--admin-shadow-md); }
