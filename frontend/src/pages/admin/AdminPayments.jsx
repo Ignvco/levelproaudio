@@ -2,7 +2,8 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminPayments, updatePaymentStatus } from "../../api/admin.api"
-import { StatCard } from "../../components/admin/ui"
+import { StatCard, DataTable, StatusBadge, AdminPageHeader } from "../../components/admin/ui"
+import { Inbox } from "lucide-react"
 
 const STATUS = {
   pending:   { label:"Pendiente",   color:"#D97706" },
@@ -11,6 +12,8 @@ const STATUS = {
   cancelled: { label:"Cancelado",   color:"#888888" },
   refunded:  { label:"Reembolsado", color:"#60a5fa" },
 }
+
+const TONE = { pending:"warning", approved:"success", rejected:"danger", cancelled:"neutral", refunded:"info" }
 
 const PROVIDERS = {
   mercadopago_cl: "MP Chile", mercadopago_ar: "MP Argentina",
@@ -70,26 +73,31 @@ export default function AdminPayments() {
   })
   const payments = data?.results || []
 
-  return (
-    <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
+  const columns = [
+    { key:"order_id", header:"Orden", sortable:true,
+      render:p => <span style={{ fontFamily:"monospace", fontWeight:600, fontSize:12.5 }}>#{p.order_id?.slice(0,8).toUpperCase()}</span> },
+    { key:"order_email", header:"Email", sortable:true,
+      render:p => <span style={{ color:"var(--admin-text-muted)" }}>{p.order_email}</span> },
+    { key:"provider", header:"Método",
+      render:p => <span style={{ color:"var(--admin-text-muted)" }}>{PROVIDERS[p.provider] || p.provider}</span> },
+    { key:"amount", header:"Monto", sortable:true, align:"right",
+      render:p => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>${Number(p.amount).toLocaleString("es-CL")}</span> },
+    { key:"status", header:"Estado",
+      render:p => <StatusBadge tone={TONE[p.status] || "neutral"}>{STATUS[p.status]?.label || p.status}</StatusBadge> },
+    { header:"Cambiar estado",
+      render:p => <StatusSelector paymentId={p.id} current={p.status} /> },
+  ]
 
-      {/* Header */}
-      <div style={{ marginBottom:"28px" }}>
-        <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
-          fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>Pagos</h1>
-        {data?.total_approved > 0 && (
-          <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
-            Total aprobado:{" "}
-            <span style={{ color:"var(--accent-text)", fontWeight:600 }}>
-              ${Number(data.total_approved).toLocaleString("es-CL")}
-            </span>
-          </p>
-        )}
-      </div>
+  return (
+    <div className="au-page" style={{ padding:"clamp(24px, 4vw, 40px)" }}>
+
+      <AdminPageHeader eyebrow="Ventas" title="Pagos"
+        description={data?.total_approved > 0
+          ? `Total aprobado: $${Number(data.total_approved).toLocaleString("es-CL")}`
+          : undefined} />
 
       {/* KPIs rápidos por estado */}
-      <div className="au-grid" style={{ gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))",
-        marginBottom:"24px" }}>
+      <div className="au-grid" style={{ gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))" }}>
         {Object.entries(STATUS).map(([s, { label }]) => {
           const count = payments.filter(p => p.status === s).length
           const active = statusFilter === s
@@ -102,76 +110,17 @@ export default function AdminPayments() {
         })}
       </div>
 
-      {/* Filtros pills */}
-      <div style={{ display:"flex", gap:"6px", marginBottom:"20px", flexWrap:"wrap" }}>
-        {[["","Todos"], ...Object.entries(STATUS).map(([s,{label}]) => [s,label])].map(
-          ([s, label]) => (
-            <button key={s} type="button" onClick={() => setStatusFilter(s)} style={{
-              padding:"6px 14px", borderRadius:"var(--r-full)", fontSize:"12px", cursor:"pointer",
-              background: statusFilter === s ? "var(--text)" : "transparent",
-              color:      statusFilter === s ? "var(--bg)"   : "var(--text-3)",
-              border:     `1px solid ${statusFilter === s ? "var(--text)" : "var(--border)"}`,
-              fontWeight: statusFilter === s ? 500 : 400,
-              transition:"all var(--dur) var(--ease)" }}>
-              {label}
-            </button>
-          )
-        )}
-      </div>
-
-      {/* Tabla */}
-      {isLoading ? (
-        <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-          {[...Array(6)].map((_,i) => <div key={i} className="skeleton" style={{ height:"52px" }} />)}
-        </div>
-      ) : payments.length === 0 ? (
-        <div style={{ padding:"60px", textAlign:"center", background:"var(--surface)",
-          border:"1px solid var(--border)", borderRadius:"var(--r-2xl)",
-          color:"var(--text-3)" }}>
-          <p style={{ fontSize:"36px", marginBottom:"12px" }}>💳</p>
-          <p style={{ fontSize:"14px" }}>No hay pagos con este filtro.</p>
-        </div>
-      ) : (
-        <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-          borderRadius:"var(--r-xl)", overflow:"hidden" }}>
-
-          <div style={{ display:"grid",
-            gridTemplateColumns:"1fr 2fr 1fr 1.2fr 1fr 1.4fr",
-            padding:"10px 20px", borderBottom:"1px solid var(--border)",
-            fontSize:"11px", fontWeight:500, color:"var(--text-3)",
-            textTransform:"uppercase", letterSpacing:"0.08em" }}>
-            <span>Orden</span><span>Email</span><span>Método</span>
-            <span>Monto</span><span>Estado</span><span>Cambiar</span>
-          </div>
-
-          {payments.map((p, i) => (
-            <div key={p.id} style={{ display:"grid",
-              gridTemplateColumns:"1fr 2fr 1fr 1.2fr 1fr 1.4fr",
-              padding:"13px 20px", alignItems:"center",
-              borderTop: i > 0 ? "1px solid var(--border)" : "none",
-              gap:"8px", transition:"background var(--dur) var(--ease)" }}
-              onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2)"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
-              <span style={{ fontSize:"12px", fontFamily:"monospace",
-                color:"var(--text-2)", fontWeight:500 }}>
-                #{p.order_id?.slice(0,8).toUpperCase()}
-              </span>
-              <span style={{ fontSize:"13px", overflow:"hidden",
-                textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                {p.order_email}
-              </span>
-              <span style={{ fontSize:"12px", color:"var(--text-2)" }}>
-                {PROVIDERS[p.provider] || p.provider}
-              </span>
-              <span style={{ fontSize:"13px", fontWeight:600, color:"var(--accent-text)" }}>
-                ${Number(p.amount).toLocaleString("es-CL")}
-              </span>
-              <Badge status={p.status} />
-              <StatusSelector paymentId={p.id} current={p.status} />
-            </div>
-          ))}
-        </div>
-      )}
+      <DataTable
+        columns={columns} data={payments} loading={isLoading}
+        getRowId={p => p.id}
+        searchable searchKeys={["order_email", "order_id"]} searchPlaceholder="Buscar por email u orden..."
+        filters={[{
+          label:"Estado", value:statusFilter, onChange:setStatusFilter,
+          options:[{ value:"", label:"Todos los estados" },
+            ...Object.entries(STATUS).map(([v, { label }]) => ({ value:v, label }))],
+        }]}
+        emptyIcon={Inbox} emptyTitle="No hay pagos" emptyDesc="No hay pagos con este filtro."
+        testId="payments-table" />
     </div>
   )
 }

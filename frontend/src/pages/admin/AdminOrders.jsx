@@ -5,6 +5,8 @@ import {
   getAdminOrders, updateOrderStatus,
   generateDocumentFromOrder, downloadDocument,
 } from "../../api/admin.api"
+import { Eye, Inbox } from "lucide-react"
+import { DataTable, StatusBadge, AdminPageHeader } from "../../components/admin/ui"
 
 const STATUS = {
   pending:   { label:"Pendiente",  color:"#D97706" },
@@ -13,6 +15,8 @@ const STATUS = {
   completed: { label:"Completado", color:"#0F9940" },
   cancelled: { label:"Cancelado",  color:"#EF4444" },
 }
+
+const TONE = { pending:"warning", paid:"success", shipped:"info", completed:"success", cancelled:"danger", approved:"success", rejected:"danger", refunded:"info" }
 
 function Badge({ status }) {
   const s = STATUS[status] || { label:status, color:"#888" }
@@ -241,114 +245,51 @@ function OrderPanel({ order, onClose }) {
 
 export default function AdminOrders() {
   const [statusFilter,  setStatusFilter]  = useState("")
-  const [search,        setSearch]        = useState("")
   const [selectedOrder, setSelectedOrder] = useState(null)
 
   const { data, isLoading } = useQuery({
-    queryKey: ["admin-orders", statusFilter, search],
-    queryFn:  () => getAdminOrders({
-      ...(statusFilter && { status: statusFilter }),
-      ...(search       && { search }),
-    }),
+    queryKey: ["admin-orders", statusFilter],
+    queryFn:  () => getAdminOrders({ ...(statusFilter && { status: statusFilter }) }),
   })
 
   const orders = data?.results || []
 
+  const columns = [
+    { key:"id", header:"Orden", sortable:true,
+      render:o => <span style={{ fontFamily:"monospace", fontWeight:600, fontSize:12.5 }}>#{o.id.slice(0,8).toUpperCase()}</span> },
+    { key:"email", header:"Cliente", sortable:true,
+      render:o => <span style={{ color:"var(--admin-text-muted)" }}>{o.email}</span> },
+    { key:"total", header:"Total", sortable:true, align:"right",
+      render:o => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>${Number(o.total).toLocaleString("es-CL")}</span> },
+    { key:"status", header:"Estado",
+      render:o => <StatusBadge tone={TONE[o.status] || "neutral"}>{STATUS[o.status]?.label || o.status}</StatusBadge> },
+    { key:"created_at", header:"Fecha", sortable:true,
+      render:o => <span style={{ color:"var(--admin-text-muted)" }}>{new Date(o.created_at).toLocaleDateString("es-CL", { day:"numeric", month:"short", year:"2-digit" })}</span> },
+  ]
+
   return (
-    <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page" style={{ padding:"clamp(24px, 4vw, 40px)" }}>
 
       {selectedOrder && (
         <OrderPanel order={selectedOrder} onClose={() => setSelectedOrder(null)} />
       )}
 
-      {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-end",
-        marginBottom:"28px", flexWrap:"wrap", gap:"16px" }}>
-        <div>
-          <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
-            fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>Órdenes</h1>
-          <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
-            {data?.count || 0} pedidos totales
-          </p>
-        </div>
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar por email o ID..."
-          style={{ padding:"9px 16px", fontSize:"13px", outline:"none",
-            background:"var(--surface-2)", border:"1px solid var(--border)",
-            borderRadius:"var(--r-full)", color:"var(--text)", width:"260px",
-            transition:"border-color var(--dur)" }}
-          onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
-          onBlur={e => e.target.style.borderColor = "var(--border)"} />
-      </div>
+      <AdminPageHeader eyebrow="Ventas" title="Órdenes"
+        description={`${data?.count || 0} pedidos totales`} />
 
-      {/* Filtros */}
-      <div style={{ display:"flex", gap:"6px", marginBottom:"20px", flexWrap:"wrap" }}>
-        {[["","Todos"],["pending","Pendiente"],["paid","Pagado"],
-          ["shipped","Enviado"],["completed","Completado"],["cancelled","Cancelado"]
-        ].map(([s, label]) => (
-          <button key={s} type="button" onClick={() => setStatusFilter(s)} style={{
-            padding:"6px 16px", borderRadius:"var(--r-full)", fontSize:"12px", cursor:"pointer",
-            background: statusFilter === s ? "var(--text)" : "transparent",
-            color:      statusFilter === s ? "var(--bg)"   : "var(--text-3)",
-            border:     `1px solid ${statusFilter === s ? "var(--text)" : "var(--border)"}`,
-            fontWeight: statusFilter === s ? 500 : 400,
-            transition:"all var(--dur) var(--ease)" }}>
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* Tabla */}
-      {isLoading ? (
-        <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-          {[...Array(7)].map((_,i) => <div key={i} className="skeleton" style={{ height:"56px" }} />)}
-        </div>
-      ) : orders.length === 0 ? (
-        <div style={{ padding:"60px", textAlign:"center", background:"var(--surface)",
-          border:"1px solid var(--border)", borderRadius:"var(--r-2xl)",
-          color:"var(--text-3)", fontSize:"14px" }}>
-          <p style={{ fontSize:"36px", marginBottom:"12px" }}>📭</p>
-          No hay órdenes con este filtro.
-        </div>
-      ) : (
-        <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-          borderRadius:"var(--r-xl)", overflow:"hidden" }}>
-          <div style={{ display:"grid", gridTemplateColumns:"1.2fr 2fr 1.2fr 1fr 1fr",
-            padding:"10px 20px", borderBottom:"1px solid var(--border)",
-            fontSize:"11px", fontWeight:500, color:"var(--text-3)",
-            textTransform:"uppercase", letterSpacing:"0.08em" }}>
-            <span>ID</span><span>Email</span>
-            <span>Total</span><span>Estado</span><span>Fecha</span>
-          </div>
-
-          {orders.map((order, i) => (
-            <div key={order.id}
-              onClick={() => setSelectedOrder(selectedOrder?.id === order.id ? null : order)}
-              style={{ display:"grid", gridTemplateColumns:"1.2fr 2fr 1.2fr 1fr 1fr",
-                padding:"14px 20px", alignItems:"center", gap:"8px",
-                borderTop: i > 0 ? "1px solid var(--border)" : "none",
-                cursor:"pointer", transition:"background var(--dur) var(--ease)",
-                background: selectedOrder?.id === order.id ? "rgba(26,255,110,0.03)" : "transparent" }}
-              onMouseEnter={e => { if (selectedOrder?.id !== order.id) e.currentTarget.style.background = "var(--surface-2)" }}
-              onMouseLeave={e => { if (selectedOrder?.id !== order.id) e.currentTarget.style.background = "transparent" }}>
-              <span style={{ fontSize:"12px", fontFamily:"monospace", color:"var(--text-2)", fontWeight:500 }}>
-                #{order.id.slice(0,8).toUpperCase()}
-              </span>
-              <span style={{ fontSize:"13px", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                {order.email}
-              </span>
-              <span style={{ fontSize:"13px", fontWeight:500 }}>
-                ${Number(order.total).toLocaleString("es-CL")}
-              </span>
-              <Badge status={order.status} />
-              <span style={{ fontSize:"12px", color:"var(--text-3)" }}>
-                {new Date(order.created_at).toLocaleDateString("es-CL", {
-                  day:"numeric", month:"short", year:"2-digit" })}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
+      <DataTable
+        columns={columns} data={orders} loading={isLoading}
+        getRowId={o => o.id}
+        searchable searchKeys={["email", "id"]} searchPlaceholder="Buscar por email o ID..."
+        filters={[{
+          label:"Estado", value:statusFilter, onChange:setStatusFilter,
+          options:[{ value:"", label:"Todos los estados" },
+            ...Object.entries(STATUS).map(([v, { label }]) => ({ value:v, label }))],
+        }]}
+        onRowClick={o => setSelectedOrder(o)}
+        rowActions={o => [{ label:"Ver detalle", icon:Eye, onClick:() => setSelectedOrder(o) }]}
+        emptyIcon={Inbox} emptyTitle="No hay órdenes" emptyDesc="No hay pedidos con este filtro."
+        testId="orders-table" />
 
       <style>{`
         @keyframes slideInRight {

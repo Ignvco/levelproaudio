@@ -105,6 +105,12 @@ Nuevas clases en `admin-ui.css`: `.au-pcard` (estilo ProductCard) y `.au-acard` 
 - Alturas igualadas: `min-height` en `.au-pcard` (236px) y `.au-acard` (200px) + grid stretch → grillas parejas.
 - Verificado por screenshots (Marcas, Academia, Servicios). Sin errores.
 
+## Admin — Batch 2: Órdenes y Pagos al DataTable (2026-08-01) ✅
+- **Órdenes** (`AdminOrders.jsx`): tabla migrada al `DataTable` (buscador email/ID, filtro por estado server-side vía FilterSelect, orden por columnas, `StatusBadge`, paginación, menú 3-puntos "Ver detalle"). Panel lateral de detalle + cambio de estado + generación de documentos INTACTOS. Verificado: clic en fila abre panel; filtro "paid" → resultados correctos.
+- **Pagos** (`AdminPayments.jsx`): tabla migrada al `DataTable` (buscador, filtro por estado, orden, badges, paginación). KPIs compactos arriba. Columna "Cambiar estado" conserva el `StatusSelector` por fila (con confirmación en rechazo/cancelación/reembolso). 
+- Headers a `AdminPageHeader`. Sin errores de compilación.
+- **Pendiente batch 2 restante**: Usuarios, Productos, Facturación, Categorías → tablas al `DataTable`.
+
 
 
 Decisiones del usuario: prerendering en build (Fase 2, pendiente), mantener URLs actuales (/shop/:slug, ?category=), dominio dual (canónico primario: https://levelproaudio.com), arrancar por Fase 1.
