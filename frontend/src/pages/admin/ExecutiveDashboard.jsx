@@ -6,7 +6,7 @@ import { getExecutiveDashboard } from "../../api/admin.api"
 
 const fmt = n => `$${Number(n||0).toLocaleString("es-CL")}`
 
-function Sparkline({ data=[], color="var(--accent)", height=40 }) {
+function Sparkline({ data=[], color="var(--accent-text)", height=40 }) {
   if (!data.length) return null
   const values = data.map(d => d.total || 0)
   const max    = Math.max(...values, 1)
@@ -28,7 +28,7 @@ function Sparkline({ data=[], color="var(--accent)", height=40 }) {
   )
 }
 
-function KPICard({ label, value, sub, sparkData, Icon, color="var(--accent)", badge }) {
+function KPICard({ label, value, sub, sparkData, Icon, color="var(--accent-text)", badge }) {
   return (
     <div className="a-kpi-hover" style={{ background:"var(--surface)", border:"1px solid var(--border)",
       borderRadius:"var(--r-xl)", padding:"20px 24px",
@@ -110,10 +110,6 @@ export default function ExecutiveDashboard() {
       <div style={{ display:"flex", justifyContent:"space-between",
         alignItems:"flex-end", marginBottom:"32px", flexWrap:"wrap", gap:"16px" }}>
         <div>
-          <p style={{ fontSize:"12px", color:"var(--accent)", fontWeight:600,
-            letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"8px" }}>
-            Vista ejecutiva
-          </p>
           <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.6rem)",
             fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>
             Vista ejecutiva
@@ -135,7 +131,7 @@ export default function ExecutiveDashboard() {
           sub={`${ventas.hoy_count||0} órdenes`}
           sparkData={chart7}
           badge={ventas.var_dia}
-          Icon={Calendar} color="var(--accent)" />
+          Icon={Calendar} color="var(--accent-text)" />
         <KPICard label="Ventas esta semana"
           value={fmt(ventas.semana)}
           sub="Últimos 7 días"
@@ -150,7 +146,7 @@ export default function ExecutiveDashboard() {
           value={fmt(data?.utilidad_mes)}
           sub="Después de costos"
           Icon={Briefcase}
-          color={(data?.utilidad_mes||0) > 0 ? "var(--accent)" : "#f87171"} />
+          color={(data?.utilidad_mes||0) > 0 ? "var(--accent-text)" : "#EF4444"} />
       </div>
 
       {/* Gráfico 7 días + Órdenes de hoy */}
@@ -166,7 +162,7 @@ export default function ExecutiveDashboard() {
               <p style={{ fontSize:"13px", fontWeight:500, marginBottom:"3px" }}>
                 Ventas últimos 7 días
               </p>
-              <p style={{ fontSize:"12px", color:"var(--accent)", fontWeight:600 }}>
+              <p style={{ fontSize:"12px", color:"var(--accent-text)", fontWeight:600 }}>
                 {fmt(ventas.semana)}
               </p>
             </div>
@@ -215,7 +211,7 @@ export default function ExecutiveDashboard() {
             background:"var(--surface-2)", flexShrink:0 }}>
             <p style={{ fontSize:"13px", fontWeight:500 }}>Órdenes de hoy</p>
             <Link to="/admin/orders" style={{ fontSize:"12px",
-              color:"var(--accent)", textDecoration:"none" }}>
+              color:"var(--accent-text)", textDecoration:"none" }}>
               Ver todas →
             </Link>
           </div>
@@ -245,12 +241,12 @@ export default function ExecutiveDashboard() {
                 </div>
                 <div style={{ textAlign:"right" }}>
                   <p style={{ fontSize:"13px", fontWeight:600,
-                    color:"var(--accent)" }}>
+                    color:"var(--accent-text)" }}>
                     {fmt(o.total)}
                   </p>
                   <p style={{ fontSize:"10px", marginTop:"2px",
-                    color: o.status==="paid" ? "#4ade80"
-                      : o.status==="pending" ? "#facc15" : "#f87171" }}>
+                    color: o.status==="paid" ? "#0F9940"
+                      : o.status==="pending" ? "#D97706" : "#EF4444" }}>
                     {o.status}
                   </p>
                 </div>
@@ -295,7 +291,7 @@ export default function ExecutiveDashboard() {
                   </div>
                   <div style={{ textAlign:"right", flexShrink:0, marginLeft:"12px" }}>
                     <span style={{ fontSize:"13px", fontWeight:600,
-                      color:"var(--accent)" }}>
+                      color:"var(--accent-text)" }}>
                       {fmt(p.total_revenue)}
                     </span>
                     <span style={{ fontSize:"11px", color:"var(--text-3)",
@@ -324,13 +320,13 @@ export default function ExecutiveDashboard() {
             background:"var(--surface-2)" }}>
             <p style={{ fontSize:"13px", fontWeight:500 }}>Alertas de inventario</p>
             <Link to="/admin/inventory" style={{ fontSize:"12px",
-              color:"var(--accent)", textDecoration:"none" }}>
+              color:"var(--accent-text)", textDecoration:"none" }}>
               Ver todo →
             </Link>
           </div>
           {!inventario.criticos && !inventario.sin_stock ? (
             <div style={{ padding:"40px", textAlign:"center",
-              color:"var(--accent)", fontSize:"13px" }}>
+              color:"var(--accent-text)", fontSize:"13px" }}>
               <p style={{ fontSize:"36px", marginBottom:"8px" }}>✅</p>
               Stock OK en todos los productos.
             </div>
@@ -339,7 +335,7 @@ export default function ExecutiveDashboard() {
               display:"flex", flexDirection:"column", gap:"14px" }}>
               {[
                 { label:"Sin stock",    value:inventario.sin_stock||0, color:"var(--danger)" },
-                { label:"Stock crítico", value:inventario.criticos||0, color:"#facc15" },
+                { label:"Stock crítico", value:inventario.criticos||0, color:"#D97706" },
               ].map(({ label, value, color }) => (
                 <div key={label} style={{ display:"flex", justifyContent:"space-between",
                   alignItems:"center", padding:"14px 16px",
@@ -352,7 +348,7 @@ export default function ExecutiveDashboard() {
                 </div>
               ))}
               <Link to="/admin/inventory" style={{ fontSize:"12px",
-                color:"var(--accent)", textDecoration:"none", textAlign:"center",
+                color:"var(--accent-text)", textDecoration:"none", textAlign:"center",
                 padding:"8px" }}>
                 Ver alertas detalladas →
               </Link>

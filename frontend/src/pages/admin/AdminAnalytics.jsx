@@ -8,7 +8,7 @@ import {
 } from "recharts"
 
 const ACCENT = "#1aff6e"
-const COLORS = ["#1aff6e","#60a5fa","#facc15","#f87171","#c084fc","#fb923c","#34d399","#a78bfa"]
+const COLORS = ["#1AFF6E","#0F9940","#14B8A6","#5EEAD4","#A7F3D0","#CA8A04","#78716C","#D6D3D1"]
 
 const statusLabels   = { pending:"Pendiente", paid:"Pagado", shipped:"Enviado", completed:"Completado", cancelled:"Cancelado" }
 const providerLabels = { mercadopago_cl:"MP Chile", mercadopago_ar:"MP Argentina", paypal:"PayPal", global66:"Global66", transfer:"Transferencia", cash:"Manual" }
@@ -36,7 +36,7 @@ function KpiCard({ label, value, sub, accent, Icon }) {
       <p style={{ fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
         letterSpacing:"0.08em", fontWeight:500, marginBottom:"10px" }}>{label}</p>
       <p style={{ fontFamily:"var(--font-display)", fontSize:"1.9rem", lineHeight:1,
-        marginBottom:"6px", color: accent ? "var(--accent)" : "var(--text)" }}>{value}</p>
+        marginBottom:"6px", color: accent ? "var(--accent-text)" : "var(--text)" }}>{value}</p>
       {sub && <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{sub}</p>}
     </div>
   )
@@ -264,7 +264,7 @@ export default function AdminAnalytics() {
                     {p.sku && <p style={{ fontSize:"11px", color:"var(--text-3)", fontFamily:"monospace" }}>{p.sku}</p>}
                   </div>
                   <span style={{ fontSize:"15px", fontWeight:700, marginLeft:"12px", flexShrink:0,
-                    color: p.stock === 0 ? "var(--danger)" : p.stock <= 3 ? "#f87171" : "#facc15" }}>
+                    color: p.stock === 0 ? "var(--danger)" : p.stock <= 3 ? "#EF4444" : "#D97706" }}>
                     {p.stock}
                   </span>
                 </div>

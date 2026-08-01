@@ -35,7 +35,7 @@ function KpiCard({ label, value, sub, accent, Icon }) {
       <p style={{ fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
         letterSpacing:"0.08em", fontWeight:500, marginBottom:"10px" }}>{label}</p>
       <p style={{ fontFamily:"var(--font-display)", fontSize:"1.9rem", lineHeight:1,
-        marginBottom:"6px", color: accent ? "var(--accent)" : "var(--text)" }}>
+        marginBottom:"6px", color: accent ? "var(--accent-text)" : "var(--text)" }}>
         {value}
       </p>
       {sub && <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{sub}</p>}
@@ -504,8 +504,8 @@ export default function AdminFinance() {
                   </div>
                 </div>
                 {[
-                  { label:"Ingresado",  value: fmt(cat.total_in),   color:"#4ade80" },
-                  { label:"Retirado",   value: `−${fmt(cat.total_out)}`, color:"#f87171" },
+                  { label:"Ingresado",  value: fmt(cat.total_in),   color:"#0F9940" },
+                  { label:"Retirado",   value: `−${fmt(cat.total_out)}`, color:"#EF4444" },
                 ].map(({ label, value, color }) => (
                   <div key={label} style={{ display:"flex", justifyContent:"space-between",
                     fontSize:"12px", marginBottom:"6px" }}>
@@ -594,7 +594,7 @@ export default function AdminFinance() {
                   {income.source==="payment" ? "Pago automático" : "Manual"}
                 </p>
               </div>
-              <span style={{ fontSize:"14px", fontWeight:600, color:"var(--accent)" }}>
+              <span style={{ fontSize:"14px", fontWeight:600, color:"var(--accent-text)" }}>
                 {fmt(income.amount)}
               </span>
               <span style={{ fontSize:"12px", color:"var(--text-3)" }}>
@@ -674,7 +674,7 @@ export default function AdminFinance() {
                   if (window.confirm("¿Eliminar este retiro?"))
                     deleteWithdrawalMutation.mutate(w.id)
                 }} style={{ padding:"4px 10px", borderRadius:"var(--r-full)",
-                  fontSize:"11px", cursor:"pointer", color:"#f87171",
+                  fontSize:"11px", cursor:"pointer", color:"#EF4444",
                   background:"rgba(248,113,113,0.08)",
                   border:"1px solid rgba(248,113,113,0.2)" }}>×</button>
               </div>
@@ -693,7 +693,7 @@ export default function AdminFinance() {
               <div style={{ padding:"12px 16px", borderRadius:"var(--r-xl)",
                 background:"rgba(250,204,21,0.08)",
                 border:"1px solid rgba(250,204,21,0.25)",
-                color:"#facc15", fontSize:"13px", marginBottom:"16px" }}>
+                color:"#D97706", fontSize:"13px", marginBottom:"16px" }}>
                 ⚠️ Los porcentajes suman {total.toFixed(1)}% — deberían sumar 100%.
               </div>
             ) : null
@@ -738,7 +738,7 @@ export default function AdminFinance() {
                 </div>
                 <span style={{ padding:"2px 8px", borderRadius:"var(--r-full)",
                   fontSize:"11px", fontWeight:500, display:"inline-block",
-                  color:      cat.is_active ? "#4ade80" : "var(--text-3)",
+                  color:      cat.is_active ? "#0F9940" : "var(--text-3)",
                   background: cat.is_active ? "rgba(74,222,128,0.1)" : "var(--surface-3)",
                   border:     `1px solid ${cat.is_active ? "rgba(74,222,128,0.25)" : "var(--border)"}` }}>
                   {cat.is_active ? "Activa" : "Inactiva"}
@@ -754,7 +754,7 @@ export default function AdminFinance() {
                     if (window.confirm(`¿Eliminar "${cat.name}"?`))
                       deleteCatMutation.mutate(cat.id)
                   }} style={{ padding:"5px 10px", borderRadius:"var(--r-md)", fontSize:"11px",
-                    cursor:"pointer", color:"#f87171",
+                    cursor:"pointer", color:"#EF4444",
                     background:"rgba(248,113,113,0.1)", border:"1px solid rgba(248,113,113,0.25)" }}>
                     ×
                   </button>
@@ -800,10 +800,10 @@ export default function AdminFinance() {
                 )}
               </div>
               <span style={{ fontSize:"13px" }}>{p.units_sold} u.</span>
-              <span style={{ fontSize:"13px", color:"var(--accent)" }}>
+              <span style={{ fontSize:"13px", color:"var(--accent-text)" }}>
                 {fmt(p.total_revenue)}
               </span>
-              <span style={{ fontSize:"13px", color:"#f87171" }}>
+              <span style={{ fontSize:"13px", color:"#EF4444" }}>
                 {fmt(p.total_cost)}
               </span>
               <div>

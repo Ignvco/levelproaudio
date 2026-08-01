@@ -49,7 +49,7 @@ export default function AdminProductImport() {
           <div style={{ width: "36px", height: "36px", borderRadius: "50%",
             background: "var(--accent-dim)", border: "1px solid var(--accent-glow)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            color: "var(--accent)", fontSize: "14px", fontWeight: 700, flexShrink: 0 }}>
+            color: "var(--accent-text)", fontSize: "14px", fontWeight: 700, flexShrink: 0 }}>
             1
           </div>
           <div style={{ flex: 1 }}>
@@ -126,7 +126,7 @@ export default function AdminProductImport() {
             marginBottom: "16px" }}>
             <span style={{ fontSize: "28px" }}>✅</span>
             <div>
-              <p style={{ fontSize: "15px", fontWeight: 500, color: "var(--accent)" }}>
+              <p style={{ fontSize: "15px", fontWeight: 500, color: "var(--accent-text)" }}>
                 Importación completada
               </p>
               <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
@@ -139,7 +139,7 @@ export default function AdminProductImport() {
           {result.error_list?.length > 0 && (
             <div style={{ padding: "12px 14px", borderRadius: "var(--r-lg)",
               background: "rgba(255,77,77,0.06)", border: "1px solid rgba(255,77,77,0.2)" }}>
-              <p style={{ fontSize: "12px", fontWeight: 600, color: "#f87171",
+              <p style={{ fontSize: "12px", fontWeight: 600, color: "#EF4444",
                 marginBottom: "8px" }}>
                 Filas con errores:
               </p>

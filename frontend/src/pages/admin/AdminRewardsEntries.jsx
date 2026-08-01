@@ -49,7 +49,7 @@ export default function AdminRewardsEntries() {
       <div style={{ display:"flex", justifyContent:"space-between",
         alignItems:"start", marginBottom:"28px", flexWrap:"wrap", gap:"12px" }}>
         <div>
-          <p style={{ fontSize:"12px", color:"var(--accent)",
+          <p style={{ fontSize:"12px", color:"var(--accent-text)",
             letterSpacing:"0.1em", textTransform:"uppercase",
             fontWeight:600, marginBottom:"6px" }}>
             Rewards
@@ -131,7 +131,7 @@ export default function AdminRewardsEntries() {
               borderBottom:"1px solid var(--border)",
               alignItems:"center",
             }}>
-              <span style={{ fontFamily:"monospace", color:"var(--accent)" }}>
+              <span style={{ fontFamily:"monospace", color:"var(--accent-text)" }}>
                 {e.unique_code}
               </span>
               <span style={{ minWidth:0, overflow:"hidden",

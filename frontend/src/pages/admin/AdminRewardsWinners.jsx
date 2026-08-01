@@ -38,7 +38,7 @@ function WinnerCard({ w }) {
       <div style={{ display:"flex", justifyContent:"space-between",
         alignItems:"start", gap:"14px", marginBottom:"14px" }}>
         <div>
-          <p style={{ fontSize:"11px", color:"var(--accent)",
+          <p style={{ fontSize:"11px", color:"var(--accent-text)",
             letterSpacing:"0.1em", textTransform:"uppercase",
             fontWeight:700, marginBottom:"4px" }}>
             {w.is_backup ? `Suplente #${w.backup_position}` : "🏆 Ganador principal"}
@@ -113,7 +113,7 @@ export default function AdminRewardsWinners() {
       <div style={{ display:"flex", justifyContent:"space-between",
         alignItems:"start", marginBottom:"28px", flexWrap:"wrap", gap:"12px" }}>
         <div>
-          <p style={{ fontSize:"12px", color:"var(--accent)",
+          <p style={{ fontSize:"12px", color:"var(--accent-text)",
             letterSpacing:"0.1em", textTransform:"uppercase",
             fontWeight:600, marginBottom:"6px" }}>
             Rewards

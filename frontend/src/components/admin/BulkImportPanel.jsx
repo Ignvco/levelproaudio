@@ -71,7 +71,7 @@ export default function BulkImportPanel({
         alignItems:"start", gap:"14px", marginBottom:"14px",
         flexWrap:"wrap" }}>
         <div>
-          <p style={{ fontSize:"11px", color:"var(--accent)",
+          <p style={{ fontSize:"11px", color:"var(--accent-text)",
             letterSpacing:"0.1em", textTransform:"uppercase",
             fontWeight:600, marginBottom:"4px" }}>
             Importación masiva
@@ -133,21 +133,21 @@ export default function BulkImportPanel({
           borderRadius:"var(--r-md)", fontSize:"12px" }}>
           <div style={{ display:"flex", gap:"14px", flexWrap:"wrap",
             marginBottom: result.errors?.length ? "10px" : 0 }}>
-            <span style={{ color:"var(--accent)" }}>
+            <span style={{ color:"var(--accent-text)" }}>
               ✓ {result.created?.length || 0} creados
             </span>
             <span style={{ color:"#60a5fa" }}>
               ↻ {result.updated?.length || 0} actualizados
             </span>
             {result.errors?.length > 0 && (
-              <span style={{ color:"#facc15" }}>
+              <span style={{ color:"#D97706" }}>
                 ⚠ {result.errors.length} con errores
               </span>
             )}
           </div>
           {result.errors?.length > 0 && (
             <details>
-              <summary style={{ cursor:"pointer", color:"#facc15",
+              <summary style={{ cursor:"pointer", color:"#D97706",
                 fontSize:"11px" }}>
                 Ver errores
               </summary>

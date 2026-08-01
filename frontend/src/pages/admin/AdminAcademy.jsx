@@ -176,9 +176,9 @@ export default function AdminAcademy() {
   const courses = data?.results || data || []
 
   const LEVELS = {
-    beginner:     { label: "Principiante", color: "#4ade80" },
-    intermediate: { label: "Intermedio",   color: "#facc15" },
-    advanced:     { label: "Avanzado",     color: "#f87171" },
+    beginner:     { label: "Principiante", color: "#0F9940" },
+    intermediate: { label: "Intermedio",   color: "#D97706" },
+    advanced:     { label: "Avanzado",     color: "#EF4444" },
   }
 
   return (
@@ -330,7 +330,7 @@ export default function AdminAcademy() {
                         deleteMutation.mutate(course.id)
                     }} style={{
                       padding: "7px 12px", borderRadius: "var(--r-md)", fontSize: "12px",
-                      cursor: "pointer", color: "#f87171",
+                      cursor: "pointer", color: "#EF4444",
                       background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)",
                     }}>×</button>
                   </div>

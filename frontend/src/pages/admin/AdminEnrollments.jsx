@@ -189,7 +189,7 @@ export default function AdminEnrollments() {
                     transition: "width 600ms var(--ease)",
                   }} />
                 </div>
-                <span style={{ fontSize: "11px", color: "var(--accent)",
+                <span style={{ fontSize: "11px", color: "var(--accent-text)",
                   fontWeight: 500, flexShrink: 0 }}>
                   {enr.progress_percentage || 0}%
                 </span>

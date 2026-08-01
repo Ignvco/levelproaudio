@@ -4,9 +4,9 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminPayments, updatePaymentStatus } from "../../api/admin.api"
 
 const STATUS = {
-  pending:   { label:"Pendiente",   color:"#facc15" },
-  approved:  { label:"Aprobado",    color:"#4ade80" },
-  rejected:  { label:"Rechazado",   color:"#f87171" },
+  pending:   { label:"Pendiente",   color:"#D97706" },
+  approved:  { label:"Aprobado",    color:"#0F9940" },
+  rejected:  { label:"Rechazado",   color:"#EF4444" },
   cancelled: { label:"Cancelado",   color:"#888888" },
   refunded:  { label:"Reembolsado", color:"#60a5fa" },
 }
@@ -79,7 +79,7 @@ export default function AdminPayments() {
         {data?.total_approved > 0 && (
           <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
             Total aprobado:{" "}
-            <span style={{ color:"var(--accent)", fontWeight:600 }}>
+            <span style={{ color:"var(--accent-text)", fontWeight:600 }}>
               ${Number(data.total_approved).toLocaleString("es-CL")}
             </span>
           </p>
@@ -168,7 +168,7 @@ export default function AdminPayments() {
               <span style={{ fontSize:"12px", color:"var(--text-2)" }}>
                 {PROVIDERS[p.provider] || p.provider}
               </span>
-              <span style={{ fontSize:"13px", fontWeight:600, color:"var(--accent)" }}>
+              <span style={{ fontSize:"13px", fontWeight:600, color:"var(--accent-text)" }}>
                 ${Number(p.amount).toLocaleString("es-CL")}
               </span>
               <Badge status={p.status} />

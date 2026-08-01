@@ -231,7 +231,7 @@ export default function AdminModules() {
                     deleteMutation.mutate(mod.id)
                 }} style={{
                   padding: "4px 8px", borderRadius: "var(--r-sm)", fontSize: "11px",
-                  cursor: "pointer", color: "#f87171",
+                  cursor: "pointer", color: "#EF4444",
                   background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)",
                 }}>×</button>
               </div>

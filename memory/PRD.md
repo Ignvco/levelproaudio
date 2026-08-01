@@ -54,6 +54,14 @@ Basado en mockup del usuario (admin.png): sidebar oscuro flotante + área clara 
 - **Bug corregido**: texto blanco invisible (`color:"#fff"` heredado del tema oscuro) en AdminRewards y AdminRewardsCampaignDetail → `var(--text)`.
 - Verificado por screenshots (elección del usuario): Executive, Analytics, Payments, Users, Orders, Services, Finance, Inventory, Rewards, Loyalty — todos consistentes.
 
+## Admin — Afinado cromático y tipográfico (2026-08-01) ✅
+1. **Verde de texto accesible**: nueva var `--accent-text: #0F9940` en `.admin-root`. Todo el TEXTO verde (`color:"var(--accent)"` inline → `--accent-text` vía sed en todo `pages/admin`) pasó al verde oscuro accesible; el neón `#1AFF6E` queda SOLO para fondos (botones, tiles KPI, barras, nav activo).
+2. **Paleta de estados unificada**: `--success:#0F9940`, `--warning:#D97706`, `--danger:#EF4444` en `.admin-root`. Reemplazo global de los hexes dispersos (`#4ade80→#0F9940`, `#facc15→#D97706`, `#f87171→#EF4444`).
+3. **Paleta de gráficos de marca** (AdminAnalytics `COLORS`): greens/teals + neutros cálidos `["#1AFF6E","#0F9940","#14B8A6","#5EEAD4","#A7F3D0","#CA8A04","#78716C","#D6D3D1"]` (se fueron los azul/violeta/naranja "de librería").
+4. **Tipografía**: eliminado el eyebrow duplicado "VISTA EJECUTIVA" (el H1 ya lo dice); micro-labels uppercase se mantienen solo en KPIs/headers de tabla.
+5. **Emojis → lucide**: medallas de nivel en AdminLoyalty (🥉🥈🥇💎 → Medal/Award/Gem monocromos con color de nivel de mejor contraste). Íconos de categoría configurables por el usuario se conservan (son data).
+- Verificado por screenshots: Executive, Analytics, Finance, Loyalty. Sin regresiones.
+
 
 
 Decisiones del usuario: prerendering en build (Fase 2, pendiente), mantener URLs actuales (/shop/:slug, ?category=), dominio dual (canónico primario: https://levelproaudio.com), arrancar por Fase 1.

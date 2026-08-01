@@ -166,7 +166,7 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
                   onChange={e => setForm(p => ({ ...p, video_url: e.target.value }))}
                   style={inputSt} placeholder="https://youtube.com/watch?v=..." />
                 {form.video_url && form.video_url.includes("youtube") && (
-                  <p style={{ fontSize: "11px", color: "var(--accent)", marginTop: "4px" }}>
+                  <p style={{ fontSize: "11px", color: "var(--accent-text)", marginTop: "4px" }}>
                     ✓ URL de YouTube detectada
                   </p>
                 )}
@@ -195,7 +195,7 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
                     style={{ display:"none" }} />
                   {videoFile ? (
                     <>
-                      <p style={{ fontSize:"13px", color:"var(--accent)", fontWeight:500 }}>
+                      <p style={{ fontSize:"13px", color:"var(--accent-text)", fontWeight:500 }}>
                         📁 {videoFile.name}
                       </p>
                       <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
@@ -423,7 +423,7 @@ export default function AdminLessons() {
                     deleteMutation.mutate(lesson.id)
                 }} style={{
                   padding: "4px 8px", borderRadius: "var(--r-sm)", fontSize: "11px",
-                  cursor: "pointer", color: "#f87171",
+                  cursor: "pointer", color: "#EF4444",
                   background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)",
                 }}>×</button>
               </div>

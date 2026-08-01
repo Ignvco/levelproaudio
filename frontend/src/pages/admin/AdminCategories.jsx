@@ -237,7 +237,7 @@ function DraggableRow({ cat, isChild, onEdit, onDelete,
         </button>
         <button onClick={e => { e.stopPropagation(); onDelete(cat) }}
           style={{ padding:"4px 8px", borderRadius:"var(--r-sm)", fontSize:"11px",
-            cursor:"pointer", color:"#f87171",
+            cursor:"pointer", color:"#EF4444",
             background:"rgba(248,113,113,0.1)", border:"1px solid rgba(248,113,113,0.2)" }}>
           ×
         </button>
@@ -382,7 +382,7 @@ export default function AdminCategories() {
           </h1>
           <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
             {allCats.length} categorías · {roots.length} principales ·{" "}
-            <span style={{ color:"var(--accent)" }}>
+            <span style={{ color:"var(--accent-text)" }}>
               arrastrá ⠿ para reordenar
             </span>
           </p>

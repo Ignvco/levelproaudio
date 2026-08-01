@@ -47,7 +47,7 @@ export default function AdminLogin() {
             <span style={{ width: "6px", height: "6px", borderRadius: "50%",
               background: "var(--accent)", display: "inline-block" }} />
             <span style={{ fontSize: "11px", fontWeight: 600,
-              color: "var(--accent)", letterSpacing: "0.08em" }}>
+              color: "var(--accent-text)", letterSpacing: "0.08em" }}>
               PANEL ADMIN
             </span>
           </div>

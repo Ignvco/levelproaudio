@@ -169,7 +169,7 @@ export default function AdminSettings() {
         alignItems: "flex-start", flexWrap: "wrap", gap: "16px",
         marginBottom: "32px" }}>
         <div>
-          <p style={{ fontSize: "11px", color: "var(--accent)",
+          <p style={{ fontSize: "11px", color: "var(--accent-text)",
             textTransform: "uppercase", letterSpacing: "0.15em",
             fontWeight: 700, marginBottom: "10px",
             display: "inline-flex", alignItems: "center", gap: "8px" }}>

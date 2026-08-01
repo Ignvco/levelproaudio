@@ -14,8 +14,8 @@ import { mediaUrl } from "../../utils/mediaUrl"
 
 const STATUS_STYLES = {
   draft:    { bg:"rgba(255,255,255,0.05)", color:"var(--text-3)", label:"Borrador"    },
-  active:   { bg:"rgba(26,255,110,0.1)",   color:"var(--accent)", label:"Activa"      },
-  finished: { bg:"rgba(250,204,21,0.08)",  color:"#facc15",       label:"Finalizada"  },
+  active:   { bg:"rgba(26,255,110,0.1)",   color:"var(--accent-text)", label:"Activa"      },
+  finished: { bg:"rgba(250,204,21,0.08)",  color:"#D97706",       label:"Finalizada"  },
 }
 
 function CampaignRow({ c, onDuplicate, onDelete }) {
@@ -204,7 +204,7 @@ function NewCampaignModal({ open, onClose }) {
                     whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>
                     {selectedProduct.name}
                   </p>
-                  <p style={{ fontSize:"12px", color:"var(--accent)" }}>
+                  <p style={{ fontSize:"12px", color:"var(--accent-text)" }}>
                     ${Number(selectedProduct.price).toLocaleString("es-CL")}
                   </p>
                 </div>
@@ -366,7 +366,7 @@ export default function AdminRewardsCampaigns() {
       <div style={{ display:"flex", justifyContent:"space-between",
         alignItems:"start", marginBottom:"32px", flexWrap:"wrap", gap:"12px" }}>
         <div>
-          <p style={{ fontSize:"12px", color:"var(--accent)",
+          <p style={{ fontSize:"12px", color:"var(--accent-text)",
             letterSpacing:"0.1em", textTransform:"uppercase",
             fontWeight:600, marginBottom:"6px" }}>
             Rewards

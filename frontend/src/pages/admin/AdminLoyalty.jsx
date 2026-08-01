@@ -5,14 +5,14 @@ import {
   getLoyaltySummary, getLoyaltyConfig,
   updateLoyaltyConfig, adjustLoyaltyPoints,
 } from "../../api/admin.api"
-import { Users, Star, Sparkles, Gift } from "lucide-react"
+import { Users, Star, Sparkles, Gift, Medal, Award, Gem } from "lucide-react"
 
 const TABS   = ["Resumen","Top clientes","Configuración"]
 const NIVELES = {
-  bronze:   { label:"Bronce",  icon:"🥉", color:"#cd7f32" },
-  silver:   { label:"Plata",   icon:"🥈", color:"#c0c0c0" },
-  gold:     { label:"Oro",     icon:"🥇", color:"#ffd700" },
-  platinum: { label:"Platino", icon:"💎", color:"#a8c0d6" },
+  bronze:   { label:"Bronce",  Icon: Medal, color:"#b45309" },
+  silver:   { label:"Plata",   Icon: Medal, color:"#6b7280" },
+  gold:     { label:"Oro",     Icon: Award, color:"#ca8a04" },
+  platinum: { label:"Platino", Icon: Gem,   color:"#0891b2" },
 }
 
 const inputSt = {
@@ -97,7 +97,7 @@ function AdjustModal({ account, onClose }) {
               <div style={{ display:"flex", justifyContent:"space-between" }}>
                 <span style={{ color:"var(--text-3)" }}>Después del ajuste</span>
                 <span style={{ fontWeight:600,
-                  color: parseInt(form.points) >= 0 ? "var(--accent)" : "#f87171" }}>
+                  color: parseInt(form.points) >= 0 ? "var(--accent-text)" : "#EF4444" }}>
                   {(account.puntos_disponibles + parseInt(form.points)).toLocaleString("es-CL")}
                 </span>
               </div>
@@ -201,7 +201,7 @@ export default function AdminLoyalty() {
                   <p style={{ fontSize:"11px", color:"var(--text-3)", fontWeight:500,
                     textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:"10px" }}>{label}</p>
                   <p style={{ fontFamily:"var(--font-display)", fontSize:"1.8rem",
-                    color: accent ? "var(--accent)" : "var(--text)", lineHeight:1 }}>{value}</p>
+                    color: accent ? "var(--accent-text)" : "var(--text)", lineHeight:1 }}>{value}</p>
                 </div>
               ))}
             </div>
@@ -213,14 +213,14 @@ export default function AdminLoyalty() {
                   Distribución por nivel
                 </p>
                 <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:"12px" }}>
-                  {Object.entries(NIVELES).map(([key, { label, icon, color }]) => {
+                  {Object.entries(NIVELES).map(([key, { label, Icon, color }]) => {
                     const count = kpis.by_nivel[key] || 0
                     const total = kpis.total_accounts || 1
                     return (
                       <div key={key} style={{ textAlign:"center", padding:"14px",
                         borderRadius:"var(--r-lg)", border:"1px solid var(--border)",
                         background:"var(--surface-2)" }}>
-                        <span style={{ fontSize:"28px", display:"block", marginBottom:"8px" }}>{icon}</span>
+                        <span style={{ display:"block", marginBottom:"10px" }}><Icon size={28} color={color} strokeWidth={2} /></span>
                         <p style={{ fontFamily:"var(--font-display)", fontSize:"1.6rem",
                           color, lineHeight:1, marginBottom:"4px" }}>{count}</p>
                         <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{label}</p>
@@ -261,7 +261,7 @@ export default function AdminLoyalty() {
             </div>
 
             {accounts.map((acc,i) => {
-              const nivel = NIVELES[acc.nivel] || { label:acc.nivel, icon:"⭐", color:"#888" }
+              const nivel = NIVELES[acc.nivel] || { label:acc.nivel, Icon: Star, color:"#888" }
               return (
                 <div key={acc.id} style={{ display:"grid",
                   gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",
@@ -279,9 +279,9 @@ export default function AdminLoyalty() {
                   </div>
                   <span style={{ display:"flex", alignItems:"center", gap:"6px",
                     fontSize:"13px", fontWeight:500, color:nivel.color }}>
-                    {nivel.icon} {nivel.label}
+                    <nivel.Icon size={15} strokeWidth={2} /> {nivel.label}
                   </span>
-                  <span style={{ fontSize:"14px", fontWeight:600, color:"var(--accent)" }}>
+                  <span style={{ fontSize:"14px", fontWeight:600, color:"var(--accent-text)" }}>
                     {(acc.puntos_disponibles||0).toLocaleString("es-CL")}
                   </span>
                   <span style={{ fontSize:"13px", color:"var(--text-2)" }}>
@@ -321,7 +321,7 @@ export default function AdminLoyalty() {
                 {cfgOk && (
                   <div style={{ padding:"10px 14px", borderRadius:"var(--r-md)",
                     background:"rgba(26,255,110,0.08)", border:"1px solid rgba(26,255,110,0.2)",
-                    color:"var(--accent)", fontSize:"13px" }}>
+                    color:"var(--accent-text)", fontSize:"13px" }}>
                     ✓ Configuración guardada correctamente
                   </div>
                 )}

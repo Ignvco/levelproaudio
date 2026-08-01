@@ -126,7 +126,7 @@ export default function AdminRewardsCampaignDetail() {
             </h1>
             <span style={chip(
               c.status === "active" ? "var(--accent)" :
-              c.status === "finished" ? "#facc15" : "var(--text-3)",
+              c.status === "finished" ? "#D97706" : "var(--text-3)",
               c.status === "active" ? "rgba(26,255,110,0.1)" :
               c.status === "finished" ? "rgba(250,204,21,0.08)" :
               "rgba(255,255,255,0.05)"
@@ -186,7 +186,7 @@ export default function AdminRewardsCampaignDetail() {
           background:"rgba(250,204,21,0.06)",
           border:"1px solid rgba(250,204,21,0.3)",
           borderRadius:"var(--r-lg)",
-          fontSize:"13px", color:"#facc15", display:"flex",
+          fontSize:"13px", color:"#D97706", display:"flex",
           alignItems:"center", gap:"10px",
         }}>
           <span style={{ fontSize:"18px" }}>⚠️</span>
@@ -219,7 +219,7 @@ export default function AdminRewardsCampaignDetail() {
           background:"rgba(26,255,110,0.06)",
           border:"1px solid rgba(26,255,110,0.25)",
           borderRadius:"var(--r-lg)",
-          fontSize:"12px", color:"var(--accent)",
+          fontSize:"12px", color:"var(--accent-text)",
           display:"inline-flex", alignItems:"center", gap:"8px",
         }}>
           <span style={{ width:"7px", height:"7px", borderRadius:"50%",

@@ -97,7 +97,7 @@ export default function AdminInventory() {
             {i===1 && alertsList.length > 0 && (
               <span style={{ marginLeft:"6px", padding:"1px 6px",
                 borderRadius:"var(--r-full)", fontSize:"10px",
-                background:"#facc15", color:"#000", fontWeight:700 }}>
+                background:"#D97706", color:"#000", fontWeight:700 }}>
                 {alertsList.length}
               </span>
             )}
@@ -122,7 +122,7 @@ export default function AdminInventory() {
               <KPI label="Valor en inventario"
                 value={fmt(summary?.valor_inventario)}
                 sub="Capital invertido en stock"
-                Icon={Coins} color="var(--accent)" />
+                Icon={Coins} color="var(--accent-text)" />
               <KPI label="Valor a precio de venta"
                 value={fmt(summary?.valor_venta)}
                 sub="Si se vende todo el stock"
@@ -130,7 +130,7 @@ export default function AdminInventory() {
               <KPI label="Ganancia potencial"
                 value={fmt(summary?.ganancia_potencial)}
                 sub="Venta − costo del stock"
-                Icon={TrendingUp} color="#4ade80" />
+                Icon={TrendingUp} color="#0F9940" />
               <KPI label="Total productos"
                 value={summary?.total_productos||0}
                 Icon={Boxes} />
@@ -143,7 +143,7 @@ export default function AdminInventory() {
                 value={summary?.stock_critico||0}
                 sub="Bajo el mínimo configurado"
                 Icon={AlertTriangle}
-                color={(summary?.stock_critico||0)>0 ? "#facc15" : "var(--text)"} />
+                color={(summary?.stock_critico||0)>0 ? "#D97706" : "var(--text)"} />
             </div>
 
             {/* Lista de productos */}
@@ -181,7 +181,7 @@ export default function AdminInventory() {
                     </div>
                     <span style={{ fontSize:"14px", fontWeight:600,
                       color: p.stock===0 ? "var(--danger)"
-                        : p.stock<=(p.stock_min||3) ? "#facc15"
+                        : p.stock<=(p.stock_min||3) ? "#D97706"
                         : "var(--accent)" }}>
                       {p.stock}
                     </span>
@@ -217,7 +217,7 @@ export default function AdminInventory() {
             borderRadius:"var(--r-2xl)" }}>
             <p style={{ fontSize:"48px", marginBottom:"12px" }}>✅</p>
             <h3 style={{ fontFamily:"var(--font-display)", fontWeight:800,
-              fontSize:"1.4rem", marginBottom:"8px", color:"var(--accent)" }}>
+              fontSize:"1.4rem", marginBottom:"8px", color:"var(--accent-text)" }}>
               Todo en orden
             </h3>
             <p style={{ fontSize:"14px", color:"var(--text-3)" }}>
@@ -231,7 +231,7 @@ export default function AdminInventory() {
                 justifyContent:"space-between", padding:"18px 22px",
                 background:"var(--surface)",
                 border:`1px solid ${p.stock===0 ? "rgba(248,113,113,0.25)" : "rgba(250,204,21,0.2)"}`,
-                borderLeft:`3px solid ${p.stock===0 ? "var(--danger)" : "#facc15"}`,
+                borderLeft:`3px solid ${p.stock===0 ? "var(--danger)" : "#D97706"}`,
                 borderRadius:"var(--r-xl)", flexWrap:"wrap", gap:"12px" }}>
                 <div>
                   <p style={{ fontSize:"14px", fontWeight:500, marginBottom:"3px" }}>
@@ -248,7 +248,7 @@ export default function AdminInventory() {
                       textTransform:"uppercase", letterSpacing:"0.06em",
                       marginBottom:"2px" }}>Stock actual</p>
                     <p style={{ fontFamily:"var(--font-display)", fontSize:"2rem",
-                      color: p.stock===0 ? "var(--danger)" : "#facc15", lineHeight:1 }}>
+                      color: p.stock===0 ? "var(--danger)" : "#D97706", lineHeight:1 }}>
                       {p.stock}
                     </p>
                   </div>
@@ -261,7 +261,7 @@ export default function AdminInventory() {
                   </div>
                   <span style={{ padding:"4px 12px", borderRadius:"var(--r-full)",
                     fontSize:"12px", fontWeight:600,
-                    color:      p.stock===0 ? "var(--danger)" : "#facc15",
+                    color:      p.stock===0 ? "var(--danger)" : "#D97706",
                     background: p.stock===0 ? "rgba(248,113,113,0.1)" : "rgba(250,204,21,0.1)",
                     border:     `1px solid ${p.stock===0 ? "rgba(248,113,113,0.3)" : "rgba(250,204,21,0.3)"}` }}>
                     {p.stock===0 ? "Sin stock" : "Bajo mínimo"}
@@ -316,7 +316,7 @@ export default function AdminInventory() {
                 </div>
                 <span style={{ fontSize:"13px", fontWeight:500 }}>{p.units_sold}</span>
                 <span style={{ fontSize:"13px" }}>{p.stock}</span>
-                <span style={{ fontSize:"13px", color:"var(--accent)" }}>
+                <span style={{ fontSize:"13px", color:"var(--accent-text)" }}>
                   {fmt(p.total_revenue||0)}
                 </span>
                 <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>

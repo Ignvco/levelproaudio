@@ -349,19 +349,19 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                       {
                         label: "Precio venta",
                         value: `$${Number(form.price || 0).toLocaleString("es-CL")}`,
-                        color: "var(--accent)",
+                        color: "var(--accent-text)",
                       },
                       {
                         label: "Costo",
                         value: form.cost_price
                           ? `$${Number(form.cost_price).toLocaleString("es-CL")}`
                           : "—",
-                        color: "#f87171",
+                        color: "#EF4444",
                       },
                       {
                         label: "Margen bruto",
                         value: margin !== null ? `${margin}%` : "—",
-                        color: margin > 30 ? "#4ade80" : margin > 15 ? "#facc15" : "#f87171",
+                        color: margin > 30 ? "#0F9940" : margin > 15 ? "#D97706" : "#EF4444",
                       },
                     ].map(({ label, value, color }) => (
                       <div key={label} style={{ textAlign: "center" }}>
@@ -438,7 +438,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                   <span style={{
                     fontSize: "12px", fontWeight: 600,
                     color: form.stock === 0 ? "var(--danger)"
-                      : form.stock <= form.stock_min ? "#facc15"
+                      : form.stock <= form.stock_min ? "#D97706"
                       : "var(--accent)",
                   }}>
                     {form.stock === 0 ? "Sin stock"
@@ -452,7 +452,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                     height: "100%", borderRadius: "3px",
                     width: `${Math.min(100, (form.stock / Math.max(form.stock_min * 3, 10)) * 100)}%`,
                     background: form.stock === 0 ? "var(--danger)"
-                      : form.stock <= form.stock_min ? "#facc15"
+                      : form.stock <= form.stock_min ? "#D97706"
                       : "var(--accent)",
                     transition: "width 400ms var(--ease)",
                   }} />
@@ -795,7 +795,7 @@ export default function AdminProducts() {
                 <span style={{
                   fontSize: "13px", fontWeight: 500,
                   color: p.stock === 0 ? "var(--danger)"
-                    : p.stock <= (p.stock_min || 3) ? "#facc15"
+                    : p.stock <= (p.stock_min || 3) ? "#D97706"
                     : "var(--text)",
                 }}>
                   {p.stock}
@@ -820,7 +820,7 @@ export default function AdminProducts() {
                   {p.is_featured && (
                     <span style={{
                       padding: "2px 8px", borderRadius: "var(--r-full)", fontSize: "11px",
-                      fontWeight: 500, color: "#facc15",
+                      fontWeight: 500, color: "#D97706",
                       background: "rgba(250,204,21,0.1)",
                       border: "1px solid rgba(250,204,21,0.25)",
                     }}>
@@ -845,7 +845,7 @@ export default function AdminProducts() {
                   }} style={{
                     padding: "5px 10px", borderRadius: "var(--r-md)",
                     fontSize: "11px", cursor: "pointer",
-                    color: "#f87171", background: "rgba(248,113,113,0.1)",
+                    color: "#EF4444", background: "rgba(248,113,113,0.1)",
                     border: "1px solid rgba(248,113,113,0.2)",
                   }}>
                     ×

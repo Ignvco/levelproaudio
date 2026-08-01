@@ -7,11 +7,11 @@ import {
 } from "../../api/admin.api"
 
 const STATUS = {
-  pending:   { label:"Pendiente",  color:"#facc15" },
-  paid:      { label:"Pagado",     color:"#4ade80" },
+  pending:   { label:"Pendiente",  color:"#D97706" },
+  paid:      { label:"Pagado",     color:"#0F9940" },
   shipped:   { label:"Enviado",    color:"#60a5fa" },
-  completed: { label:"Completado", color:"#4ade80" },
-  cancelled: { label:"Cancelado",  color:"#f87171" },
+  completed: { label:"Completado", color:"#0F9940" },
+  cancelled: { label:"Cancelado",  color:"#EF4444" },
 }
 
 function Badge({ status }) {
@@ -118,7 +118,7 @@ function OrderPanel({ order, onClose }) {
                 ))}
             </div>
             {statusMutation.isSuccess && (
-              <p style={{ fontSize:"12px", color:"var(--accent)", marginTop:"8px" }}>
+              <p style={{ fontSize:"12px", color:"var(--accent-text)", marginTop:"8px" }}>
                 ✓ Estado actualizado
               </p>
             )}
@@ -176,7 +176,7 @@ function OrderPanel({ order, onClose }) {
               background:"var(--surface-3)" }}>
               <span style={{ fontSize:"14px", fontWeight:500 }}>Total</span>
               <span style={{ fontFamily:"var(--font-display)", fontSize:"1.4rem",
-                color:"var(--accent)" }}>
+                color:"var(--accent-text)" }}>
                 ${Number(order.total).toLocaleString("es-CL")}
               </span>
             </div>

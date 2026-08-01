@@ -19,11 +19,11 @@ const inputSt = {
 }
 
 const REQ_STATUS = {
-  pending:   { label: "Pendiente",   color: "#facc15" },
+  pending:   { label: "Pendiente",   color: "#D97706" },
   reviewing: { label: "En revisión", color: "#60a5fa" },
-  accepted:  { label: "Aceptado",    color: "#4ade80" },
-  rejected:  { label: "Rechazado",   color: "#f87171" },
-  completed: { label: "Completado",  color: "#4ade80" },
+  accepted:  { label: "Aceptado",    color: "#0F9940" },
+  rejected:  { label: "Rechazado",   color: "#EF4444" },
+  completed: { label: "Completado",  color: "#0F9940" },
 }
 
 function StatusBadge({ status, map }) {
@@ -98,7 +98,7 @@ export default function AdminServices() {
               <span style={{
                 marginLeft: "6px", padding: "1px 6px",
                 borderRadius: "var(--r-full)", fontSize: "10px",
-                background: "#facc15", color: "#000", fontWeight: 700,
+                background: "#D97706", color: "#000", fontWeight: 700,
               }}>
                 {requests.filter(r => r.status === "pending").length}
               </span>
@@ -235,7 +235,7 @@ export default function AdminServices() {
                     </p>
                   )}
                   <p style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem",
-                    color: "var(--accent)" }}>
+                    color: "var(--accent-text)" }}>
                     {s.price_display}
                   </p>
                   <div style={{ display:"flex", gap:"8px", marginTop:"auto",

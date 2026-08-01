@@ -144,7 +144,7 @@ export default function AdminBilling() {
                 onMouseEnter={e => e.currentTarget.style.background="var(--surface-2)"}
                 onMouseLeave={e => e.currentTarget.style.background="transparent"}>
                 <span style={{ fontFamily:"monospace", fontSize:"13px",
-                  fontWeight:600, color:"var(--accent)" }}>{doc.folio}</span>
+                  fontWeight:600, color:"var(--accent-text)" }}>{doc.folio}</span>
                 <span style={{ padding:"2px 10px", borderRadius:"var(--r-full)",
                   fontSize:"11px", fontWeight:500, display:"inline-block",
                   color:      doc.tipo==="boleta" ? "#60a5fa" : "#c084fc",
@@ -160,7 +160,7 @@ export default function AdminBilling() {
                 </span>
                 <span style={{ padding:"2px 8px", borderRadius:"var(--r-full)", fontSize:"11px",
                   fontWeight:500, display:"inline-block",
-                  color:      doc.estado==="emitido" ? "var(--accent)" : "#f87171",
+                  color:      doc.estado==="emitido" ? "var(--accent-text)" : "#EF4444",
                   background: doc.estado==="emitido" ? "var(--accent-dim)" : "rgba(248,113,113,0.1)",
                   border:     `1px solid ${doc.estado==="emitido" ? "var(--accent-glow)" : "rgba(248,113,113,0.2)"}` }}>
                   {doc.estado==="emitido" ? "Emitido" : "Anulado"}
@@ -168,7 +168,7 @@ export default function AdminBilling() {
                 <div style={{ display:"flex", gap:"6px" }}>
                   <button onClick={() => handleDownload(doc.id, doc.folio)} style={{
                     padding:"5px 10px", borderRadius:"var(--r-md)", fontSize:"11px",
-                    cursor:"pointer", color:"var(--accent)",
+                    cursor:"pointer", color:"var(--accent-text)",
                     background:"var(--accent-dim)", border:"1px solid var(--accent-glow)" }}>
                     ⬇
                   </button>
@@ -176,7 +176,7 @@ export default function AdminBilling() {
                     <button onClick={() => {
                       if (window.confirm(`¿Anular ${doc.folio}?`)) voidMutation.mutate(doc.id)
                     }} style={{ padding:"5px 10px", borderRadius:"var(--r-md)", fontSize:"11px",
-                      cursor:"pointer", color:"#f87171",
+                      cursor:"pointer", color:"#EF4444",
                       background:"rgba(248,113,113,0.1)", border:"1px solid rgba(248,113,113,0.2)" }}>
                       ✕
                     </button>
@@ -198,11 +198,11 @@ export default function AdminBilling() {
               <div style={{ width:"72px", height:"72px", borderRadius:"50%",
                 background:"rgba(26,255,110,0.1)", border:"2px solid rgba(26,255,110,0.3)",
                 display:"flex", alignItems:"center", justifyContent:"center",
-                margin:"0 auto 20px", fontSize:"32px", color:"var(--accent)" }}>✓</div>
+                margin:"0 auto 20px", fontSize:"32px", color:"var(--accent-text)" }}>✓</div>
               <h2 style={{ fontFamily:"var(--font-display)", fontSize:"1.8rem",
                 fontWeight:800, marginBottom:"6px" }}>Documento generado</h2>
               <p style={{ fontFamily:"monospace", fontSize:"1.6rem",
-                color:"var(--accent)", fontWeight:700, marginBottom:"6px" }}>
+                color:"var(--accent-text)", fontWeight:700, marginBottom:"6px" }}>
                 {genResult.folio}
               </p>
               <p style={{ fontSize:"14px", color:"var(--text-2)", marginBottom:"28px" }}>
@@ -247,12 +247,12 @@ export default function AdminBilling() {
                     onFocus={e => e.target.style.borderColor="rgba(26,255,110,0.4)"}
                     onBlur={e => e.target.style.borderColor="var(--border)"} />
                   {genForm.order_id && !uuidOk && (
-                    <p style={{ fontSize:"11px", color:"#facc15", marginTop:"4px" }}>
+                    <p style={{ fontSize:"11px", color:"#D97706", marginTop:"4px" }}>
                       ⚠️ Formato UUID incorrecto — debe ser completo (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)
                     </p>
                   )}
                   {genForm.order_id && uuidOk && (
-                    <p style={{ fontSize:"11px", color:"var(--accent)", marginTop:"4px" }}>
+                    <p style={{ fontSize:"11px", color:"var(--accent-text)", marginTop:"4px" }}>
                       ✓ UUID válido
                     </p>
                   )}
@@ -333,7 +333,7 @@ export default function AdminBilling() {
                 {cfgOk && (
                   <div style={{ padding:"10px 14px", borderRadius:"var(--r-md)",
                     background:"rgba(26,255,110,0.08)", border:"1px solid rgba(26,255,110,0.2)",
-                    color:"var(--accent)", fontSize:"13px" }}>
+                    color:"var(--accent-text)", fontSize:"13px" }}>
                     ✓ Configuración guardada correctamente
                   </div>
                 )}

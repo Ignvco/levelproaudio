@@ -19,7 +19,7 @@ function KpiCard({ label, value, subtitle, accent, testId, Icon }) {
       </p>
       <p style={{
         fontSize:"32px", fontWeight:600,
-        color: accent ? "var(--accent)" : "var(--text)",
+        color: accent ? "var(--accent-text)" : "var(--text)",
         fontVariantNumeric:"tabular-nums", lineHeight:1,
       }}>
         {value}
@@ -69,7 +69,7 @@ export default function AdminRewards() {
       <div style={{ display:"flex", justifyContent:"space-between",
         alignItems:"start", marginBottom:"32px", flexWrap:"wrap", gap:"12px" }}>
         <div>
-          <p style={{ fontSize:"12px", color:"var(--accent)",
+          <p style={{ fontSize:"12px", color:"var(--accent-text)",
             letterSpacing:"0.1em", textTransform:"uppercase",
             fontWeight:600, marginBottom:"6px" }}>
             LevelPro Rewards
@@ -114,7 +114,7 @@ export default function AdminRewards() {
           <div style={{ display:"flex", justifyContent:"space-between",
             alignItems:"start", flexWrap:"wrap", gap:"20px" }}>
             <div style={{ minWidth:0, flex:1 }}>
-              <p style={{ fontSize:"11px", color:"var(--accent)",
+              <p style={{ fontSize:"11px", color:"var(--accent-text)",
                 letterSpacing:"0.1em", textTransform:"uppercase",
                 fontWeight:700, marginBottom:"8px" }}>
                 Campaña activa
@@ -135,7 +135,7 @@ export default function AdminRewards() {
                 Tiempo restante
               </p>
               <p style={{ fontSize:"22px", fontWeight:600,
-                color:"var(--accent)", fontVariantNumeric:"tabular-nums" }}>
+                color:"var(--accent-text)", fontVariantNumeric:"tabular-nums" }}>
                 {remainingLabel}
               </p>
             </div>
