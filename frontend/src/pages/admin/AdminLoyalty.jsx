@@ -5,6 +5,7 @@ import {
   getLoyaltySummary, getLoyaltyConfig,
   updateLoyaltyConfig, adjustLoyaltyPoints,
 } from "../../api/admin.api"
+import { Users, Star, Sparkles, Gift } from "lucide-react"
 
 const TABS   = ["Resumen","Top clientes","Configuración"]
 const NIVELES = {
@@ -189,18 +190,16 @@ export default function AdminLoyalty() {
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))",
               gap:"12px", marginBottom:"28px" }}>
               {[
-                { label:"Clientes activos", value: kpis.total_accounts||0,                              icon:"👥" },
-                { label:"Puntos emitidos",  value: (kpis.total_points_issued||0).toLocaleString("es-CL"),icon:"⭐" },
-                { label:"Puntos activos",   value: (kpis.total_points_available||0).toLocaleString("es-CL"),icon:"✨", accent:true },
-                { label:"Puntos canjeados", value: (kpis.total_points_redeemed||0).toLocaleString("es-CL"),icon:"🎁" },
-              ].map(({ label, value, icon, accent }) => (
-                <div key={label} style={{ background:"var(--surface)", border:"1px solid var(--border)",
+                { label:"Clientes activos", value: kpis.total_accounts||0,                              Icon: Users },
+                { label:"Puntos emitidos",  value: (kpis.total_points_issued||0).toLocaleString("es-CL"),Icon: Star },
+                { label:"Puntos activos",   value: (kpis.total_points_available||0).toLocaleString("es-CL"),Icon: Sparkles, accent:true },
+                { label:"Puntos canjeados", value: (kpis.total_points_redeemed||0).toLocaleString("es-CL"),Icon: Gift },
+              ].map(({ label, value, Icon, accent }) => (
+                <div key={label} className="a-kpi-hover" style={{ background:"var(--surface)", border:"1px solid var(--border)",
                   borderRadius:"var(--r-xl)", padding:"18px 20px" }}>
-                  <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"10px" }}>
-                    <p style={{ fontSize:"11px", color:"var(--text-3)", fontWeight:500,
-                      textTransform:"uppercase", letterSpacing:"0.06em" }}>{label}</p>
-                    <span style={{ fontSize:"18px" }}>{icon}</span>
-                  </div>
+                  <span className="a-kpi-tile" style={{ marginBottom:"12px" }}><Icon size={20} strokeWidth={2} /></span>
+                  <p style={{ fontSize:"11px", color:"var(--text-3)", fontWeight:500,
+                    textTransform:"uppercase", letterSpacing:"0.06em", marginBottom:"10px" }}>{label}</p>
                   <p style={{ fontFamily:"var(--font-display)", fontSize:"1.8rem",
                     color: accent ? "var(--accent)" : "var(--text)", lineHeight:1 }}>{value}</p>
                 </div>

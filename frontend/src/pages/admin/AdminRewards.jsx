@@ -2,14 +2,16 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
+import { Gift, Ticket, Users, DollarSign } from "lucide-react"
 import { adminGetRewardsDashboard } from "../../api/rewards.api"
 
-function KpiCard({ label, value, subtitle, accent, testId }) {
+function KpiCard({ label, value, subtitle, accent, testId, Icon }) {
   return (
-    <div data-testid={testId} style={{
+    <div data-testid={testId} className="a-kpi-hover" style={{
       padding:"22px 24px", background:"var(--surface)",
       border:"1px solid var(--border)", borderRadius:"var(--r-xl)",
     }}>
+      {Icon && <span className="a-kpi-tile" style={{ marginBottom:"14px" }}><Icon size={20} strokeWidth={2} /></span>}
       <p style={{ fontSize:"11px", color:"var(--text-3)",
         letterSpacing:"0.1em", textTransform:"uppercase",
         fontWeight:600, marginBottom:"10px" }}>
@@ -17,7 +19,7 @@ function KpiCard({ label, value, subtitle, accent, testId }) {
       </p>
       <p style={{
         fontSize:"32px", fontWeight:600,
-        color: accent ? "var(--accent)" : "#fff",
+        color: accent ? "var(--accent)" : "var(--text)",
         fontVariantNumeric:"tabular-nums", lineHeight:1,
       }}>
         {value}
@@ -92,12 +94,12 @@ export default function AdminRewards() {
         gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))",
         gap:"14px", marginBottom:"32px",
       }}>
-        <KpiCard testId="kpi-campaigns" label="Campañas totales" value={data.totals.campaigns} />
-        <KpiCard testId="kpi-entries" label="Participaciones" value={data.totals.entries} accent />
-        <KpiCard testId="kpi-participants" label="Participantes únicos" value={data.totals.participants} />
+        <KpiCard testId="kpi-campaigns" label="Campañas totales" value={data.totals.campaigns} Icon={Gift} />
+        <KpiCard testId="kpi-entries" label="Participaciones" value={data.totals.entries} accent Icon={Ticket} />
+        <KpiCard testId="kpi-participants" label="Participantes únicos" value={data.totals.participants} Icon={Users} />
         <KpiCard testId="kpi-revenue" label="Ingresos relacionados"
           value={`$${Number(data.totals.related_revenue).toLocaleString("es-CL")}`}
-          subtitle="Órdenes que generaron tickets" />
+          subtitle="Órdenes que generaron tickets" Icon={DollarSign} />
       </div>
 
       {/* Campaña actual */}
@@ -156,7 +158,7 @@ export default function AdminRewards() {
                   textTransform:"uppercase", letterSpacing:"0.08em",
                   marginBottom:"4px" }}>{label}</p>
                 <p style={{ fontSize:"20px", fontWeight:600,
-                  color:"#fff", fontVariantNumeric:"tabular-nums" }}>{value}</p>
+                  color:"var(--text)", fontVariantNumeric:"tabular-nums" }}>{value}</p>
               </div>
             ))}
           </div>

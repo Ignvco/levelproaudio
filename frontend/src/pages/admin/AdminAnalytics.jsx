@@ -1,6 +1,7 @@
 // pages/admin/AdminAnalytics.jsx
 import { useQuery } from "@tanstack/react-query"
 import { getAnalytics } from "../../api/admin.api"
+import { DollarSign, Receipt, Users, Repeat } from "lucide-react"
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -27,10 +28,11 @@ const CustomTooltip = ({ active, payload, label, currency }) => {
   )
 }
 
-function KpiCard({ label, value, sub, accent }) {
+function KpiCard({ label, value, sub, accent, Icon }) {
   return (
-    <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
+    <div className="a-kpi-hover" style={{ background:"var(--surface)", border:"1px solid var(--border)",
       borderRadius:"var(--r-xl)", padding:"20px 22px" }}>
+      {Icon && <span className="a-kpi-tile" style={{ marginBottom:"14px" }}><Icon size={20} strokeWidth={2} /></span>}
       <p style={{ fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
         letterSpacing:"0.08em", fontWeight:500, marginBottom:"10px" }}>{label}</p>
       <p style={{ fontFamily:"var(--font-display)", fontSize:"1.9rem", lineHeight:1,
@@ -102,14 +104,14 @@ export default function AdminAnalytics() {
       {/* KPIs */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))",
         gap:"12px", marginBottom:"28px" }}>
-        <KpiCard label="Ingresos totales"
+        <KpiCard label="Ingresos totales" Icon={DollarSign}
           value={`$${Number(kpis.total_revenue).toLocaleString("es-CL")}`} accent />
-        <KpiCard label="Ticket promedio"
+        <KpiCard label="Ticket promedio" Icon={Receipt}
           value={`$${Number(kpis.avg_order_value).toLocaleString("es-CL")}`}
           sub="Por orden pagada" />
-        <KpiCard label="Clientes únicos" value={kpis.total_customers}
+        <KpiCard label="Clientes únicos" value={kpis.total_customers} Icon={Users}
           sub={`${kpis.repeat_customers} compraron más de una vez`} />
-        <KpiCard label="Tasa de repetición" value={`${kpis.repeat_rate}%`}
+        <KpiCard label="Tasa de repetición" value={`${kpis.repeat_rate}%`} Icon={Repeat}
           sub="Clientes que repiten" accent={kpis.repeat_rate > 20} />
       </div>
 

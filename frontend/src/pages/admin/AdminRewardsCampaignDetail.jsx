@@ -317,9 +317,9 @@ export default function AdminRewardsCampaignDetail() {
       }}>
         {[
           ["Participaciones", c.total_entries,      "var(--accent)"],
-          ["Participantes",   c.total_participants, "#fff"],
-          ["Productos",       c.reward_products.length, "#fff"],
-          ["Suplentes",       c.backup_winners_count,   "#fff"],
+          ["Participantes",   c.total_participants, "var(--text)"],
+          ["Productos",       c.reward_products.length, "var(--text)"],
+          ["Suplentes",       c.backup_winners_count,   "var(--text)"],
         ].map(([label, value, color]) => (
           <div key={label} style={{
             padding:"18px", background:"var(--surface)",

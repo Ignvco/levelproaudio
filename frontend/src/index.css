@@ -962,4 +962,23 @@ h1 em, h2 em, h3 em {
 /* Divisores y bordes translúcidos claros heredados */
 .admin-root [style*="rgba(255,255,255"] { }
 
+/* ═══════════════════════════════════════════════════════════════
+   ADMIN — Unificación de tarjetas en páginas internas
+   Las páginas internas usan estilos inline (var(--surface) + var(--border)
+   + var(--r-xl/2xl)) sin sombra ni hover. Este bloque las alinea con el
+   Dashboard: bordes redondeados, sombra suave y realce al pasar el mouse.
+   ═══════════════════════════════════════════════════════════════ */
+.admin-root [style*="var(--surface)"][style*="var(--border)"][style*="var(--r-xl)"],
+.admin-root [style*="var(--surface)"][style*="var(--border)"][style*="var(--r-2xl)"] {
+  border-radius: 20px !important;
+  box-shadow: var(--card-shadow) !important;
+  border-color: var(--border) !important;
+  transition: transform 220ms var(--ease), box-shadow 220ms var(--ease),
+    border-color 220ms var(--ease) !important;
+}
+.admin-root [style*="var(--surface)"][style*="var(--border)"][style*="var(--r-xl)"]:hover,
+.admin-root [style*="var(--surface)"][style*="var(--border)"][style*="var(--r-2xl)"]:hover {
+  box-shadow: 0 16px 36px rgba(20,30,24,0.10) !important;
+}
+
 

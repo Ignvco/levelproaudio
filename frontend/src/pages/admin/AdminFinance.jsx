@@ -2,6 +2,7 @@
 import { useState }                             from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api                                       from "../../api/client"          // ← fix crítico
+import { TrendingUp, ArrowUpFromLine, Wallet }   from "lucide-react"
 import {
   getFinanceSummary, getFinanceCategories,
   createFinanceCategory, updateFinanceCategory, deleteFinanceCategory,
@@ -26,16 +27,13 @@ const inputSt = {
 }
 
 // ── KPI Card ─────────────────────────────────────────────────
-function KpiCard({ label, value, sub, accent, icon }) {
+function KpiCard({ label, value, sub, accent, Icon }) {
   return (
-    <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
+    <div className="a-kpi-hover" style={{ background:"var(--surface)", border:"1px solid var(--border)",
       borderRadius:"var(--r-xl)", padding:"20px 22px" }}>
-      <div style={{ display:"flex", justifyContent:"space-between",
-        alignItems:"flex-start", marginBottom:"10px" }}>
-        <p style={{ fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
-          letterSpacing:"0.08em", fontWeight:500 }}>{label}</p>
-        <span style={{ fontSize:"20px" }}>{icon}</span>
-      </div>
+      {Icon && <span className="a-kpi-tile" style={{ marginBottom:"14px" }}><Icon size={20} strokeWidth={2} /></span>}
+      <p style={{ fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
+        letterSpacing:"0.08em", fontWeight:500, marginBottom:"10px" }}>{label}</p>
       <p style={{ fontFamily:"var(--font-display)", fontSize:"1.9rem", lineHeight:1,
         marginBottom:"6px", color: accent ? "var(--accent)" : "var(--text)" }}>
         {value}
@@ -449,12 +447,12 @@ export default function AdminFinance() {
         gap:"12px", marginBottom:"24px" }}>
         <KpiCard label="Ingresos totales"
           value={fmt(summary?.total_income)} sub="Desde todos los pagos aprobados"
-          accent icon="📈" />
+          accent Icon={TrendingUp} />
         <KpiCard label="Total retirado"
-          value={fmt(summary?.total_withdrawn)} sub="Suma de todos los retiros" icon="↑" />
+          value={fmt(summary?.total_withdrawn)} sub="Suma de todos los retiros" Icon={ArrowUpFromLine} />
         <KpiCard label="Balance neto"
           value={fmt(summary?.net_balance)} sub="Ingresos − retiros"
-          accent={summary?.net_balance > 0} icon="💼" />
+          accent={summary?.net_balance > 0} Icon={Wallet} />
       </div>
 
       {/* Barra distribución */}

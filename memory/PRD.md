@@ -48,6 +48,13 @@ Basado en mockup del usuario (admin.png): sidebar oscuro flotante + área clara 
 - Todas las pestañas (Vista Ejecutiva, Analytics, Órdenes, Pagos, Servicios, Usuarios, Finanzas, etc.) quedan coherentes con el tema claro + verde vía scoping. Verificado Dashboard + Órdenes.
 - Pendiente menor: el gráfico "Ventas por mes" de Analytics muestra un bloque verde grande cuando hay 1 solo mes de datos (artefacto del componente viejo); se puede migrar a Recharts en una próxima iteración.
 
+## Admin — Unificación de cards/KPIs en páginas internas (2026-08-01) ✅
+- **CSS global** (`index.css`, bloque final `.admin-root`): un selector por atributo (`[style*="var(--surface)"][style*="var(--border)"][style*="var(--r-xl)"]` y `--r-2xl`) aplica a TODAS las páginas internas —de una sola vez— bordes redondeados 20px, sombra suave `var(--card-shadow)` y realce de sombra en hover. Resuelve la queja de "cards/botones no se ven como el Dashboard" sin editar página por página.
+- **KPIs con ícono en tile verde** (`.a-kpi-tile` + `.a-kpi-hover`), reemplazando emojis por íconos lucide, en: ExecutiveDashboard, AdminAnalytics, AdminFinance, AdminInventory, AdminRewards, AdminLoyalty. Los emojis decorativos legítimos (medallas de nivel 🥉🥈🥇💎, íconos de categoría configurables) se conservan.
+- **Bug corregido**: texto blanco invisible (`color:"#fff"` heredado del tema oscuro) en AdminRewards y AdminRewardsCampaignDetail → `var(--text)`.
+- Verificado por screenshots (elección del usuario): Executive, Analytics, Payments, Users, Orders, Services, Finance, Inventory, Rewards, Loyalty — todos consistentes.
+
+
 
 Decisiones del usuario: prerendering en build (Fase 2, pendiente), mantener URLs actuales (/shop/:slug, ?category=), dominio dual (canónico primario: https://levelproaudio.com), arrancar por Fase 1.
 

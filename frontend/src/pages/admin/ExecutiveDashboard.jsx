@@ -1,6 +1,7 @@
 // pages/admin/ExecutiveDashboard.jsx
 import { useQuery } from "@tanstack/react-query"
 import { Link }     from "react-router-dom"
+import { Calendar, BarChart3, CalendarDays, Briefcase } from "lucide-react"
 import { getExecutiveDashboard } from "../../api/admin.api"
 
 const fmt = n => `$${Number(n||0).toLocaleString("es-CL")}`
@@ -27,27 +28,24 @@ function Sparkline({ data=[], color="var(--accent)", height=40 }) {
   )
 }
 
-function KPICard({ label, value, sub, sparkData, icon, color="var(--accent)", badge }) {
+function KPICard({ label, value, sub, sparkData, Icon, color="var(--accent)", badge }) {
   return (
-    <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
+    <div className="a-kpi-hover" style={{ background:"var(--surface)", border:"1px solid var(--border)",
       borderRadius:"var(--r-xl)", padding:"20px 24px",
       display:"flex", flexDirection:"column", gap:"8px" }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-        <p style={{ fontSize:"11px", color:"var(--text-3)", fontWeight:500,
-          textTransform:"uppercase", letterSpacing:"0.08em" }}>{label}</p>
-        <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-          {badge !== undefined && badge !== null && (
-            <span style={{ fontSize:"11px", fontWeight:600, padding:"2px 8px",
-              borderRadius:"var(--r-full)",
-              color:      badge >= 0 ? "#4ade80" : "#f87171",
-              background: badge >= 0 ? "rgba(74,222,128,0.1)" : "rgba(248,113,113,0.1)",
-              border:     `1px solid ${badge>=0 ? "rgba(74,222,128,0.2)" : "rgba(248,113,113,0.2)"}` }}>
-              {badge >= 0 ? "↑" : "↓"} {Math.abs(badge)}%
-            </span>
-          )}
-          {icon && <span style={{ fontSize:"18px" }}>{icon}</span>}
-        </div>
+        {Icon && <span className="a-kpi-tile"><Icon size={20} strokeWidth={2} /></span>}
+        {badge !== undefined && badge !== null && (
+          <span style={{ fontSize:"11px", fontWeight:600, padding:"2px 8px",
+            borderRadius:"var(--r-full)",
+            color:      badge >= 0 ? "#0F9940" : "#EF4444",
+            background: badge >= 0 ? "rgba(26,255,110,0.15)" : "rgba(239,68,68,0.1)" }}>
+            {badge >= 0 ? "↑" : "↓"} {Math.abs(badge)}%
+          </span>
+        )}
       </div>
+      <p style={{ fontSize:"11px", color:"var(--text-3)", fontWeight:500,
+        textTransform:"uppercase", letterSpacing:"0.08em", marginTop:"2px" }}>{label}</p>
       <p style={{ fontFamily:"var(--font-display)", fontSize:"2.2rem", color, lineHeight:1 }}>
         {value}
       </p>
@@ -137,21 +135,21 @@ export default function ExecutiveDashboard() {
           sub={`${ventas.hoy_count||0} órdenes`}
           sparkData={chart7}
           badge={ventas.var_dia}
-          icon="📅" color="var(--accent)" />
+          Icon={Calendar} color="var(--accent)" />
         <KPICard label="Ventas esta semana"
           value={fmt(ventas.semana)}
           sub="Últimos 7 días"
           sparkData={chart7}
-          icon="📊" color="#60a5fa" />
+          Icon={BarChart3} color="#60a5fa" />
         <KPICard label="Ventas este mes"
           value={fmt(ventas.mes)}
           sub="Últimos 30 días"
           badge={ventas.var_mes}
-          icon="🗓" color="var(--text)" />
+          Icon={CalendarDays} color="var(--text)" />
         <KPICard label="Utilidad neta mes"
           value={fmt(data?.utilidad_mes)}
           sub="Después de costos"
-          icon="💼"
+          Icon={Briefcase}
           color={(data?.utilidad_mes||0) > 0 ? "var(--accent)" : "#f87171"} />
       </div>
 

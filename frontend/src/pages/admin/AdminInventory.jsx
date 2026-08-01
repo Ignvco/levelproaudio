@@ -5,6 +5,7 @@ import {
   getInventorySummary, getInventoryAlerts, getInventoryRotation,
 } from "../../api/admin.api"
 import { getAdminProducts } from "../../api/admin.api"
+import { Coins, Tag, TrendingUp, Boxes, Ban, AlertTriangle } from "lucide-react"
 
 const TABS = ["Resumen","Alertas","Rotación","Por categoría"]
 const fmt  = n => `$${Number(n||0).toLocaleString("es-CL")}`
@@ -13,16 +14,13 @@ const fmt  = n => `$${Number(n||0).toLocaleString("es-CL")}`
 // valor_inventario, valor_venta, ganancia_potencial
 // total_productos, sin_stock, stock_critico, stock_ok
 
-function KPI({ label, value, sub, icon, color="var(--text)" }) {
+function KPI({ label, value, sub, Icon, color="var(--text)" }) {
   return (
-    <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
+    <div className="a-kpi-hover" style={{ background:"var(--surface)", border:"1px solid var(--border)",
       borderRadius:"var(--r-xl)", padding:"20px 24px" }}>
-      <div style={{ display:"flex", justifyContent:"space-between",
-        alignItems:"flex-start", marginBottom:"10px" }}>
-        <p style={{ fontSize:"11px", color:"var(--text-3)", fontWeight:500,
-          textTransform:"uppercase", letterSpacing:"0.08em" }}>{label}</p>
-        {icon && <span style={{ fontSize:"20px" }}>{icon}</span>}
-      </div>
+      {Icon && <span className="a-kpi-tile" style={{ marginBottom:"14px" }}><Icon size={20} strokeWidth={2} /></span>}
+      <p style={{ fontSize:"11px", color:"var(--text-3)", fontWeight:500,
+        textTransform:"uppercase", letterSpacing:"0.08em", marginBottom:"10px" }}>{label}</p>
       <p style={{ fontFamily:"var(--font-display)", fontSize:"2rem",
         lineHeight:1, marginBottom:"4px", color }}>{value}</p>
       {sub && <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{sub}</p>}
@@ -124,27 +122,27 @@ export default function AdminInventory() {
               <KPI label="Valor en inventario"
                 value={fmt(summary?.valor_inventario)}
                 sub="Capital invertido en stock"
-                icon="💰" color="var(--accent)" />
+                Icon={Coins} color="var(--accent)" />
               <KPI label="Valor a precio de venta"
                 value={fmt(summary?.valor_venta)}
                 sub="Si se vende todo el stock"
-                icon="🏷" color="#60a5fa" />
+                Icon={Tag} color="#60a5fa" />
               <KPI label="Ganancia potencial"
                 value={fmt(summary?.ganancia_potencial)}
                 sub="Venta − costo del stock"
-                icon="📈" color="#4ade80" />
+                Icon={TrendingUp} color="#4ade80" />
               <KPI label="Total productos"
                 value={summary?.total_productos||0}
-                icon="📦" />
+                Icon={Boxes} />
               <KPI label="Sin stock"
                 value={summary?.sin_stock||0}
                 sub={summary?.sin_stock===0 ? "✓ Sin problemas" : "Requiere reposición"}
-                icon="🚫"
+                Icon={Ban}
                 color={(summary?.sin_stock||0)>0 ? "var(--danger)" : "var(--text)"} />
               <KPI label="Stock crítico"
                 value={summary?.stock_critico||0}
                 sub="Bajo el mínimo configurado"
-                icon="⚠️"
+                Icon={AlertTriangle}
                 color={(summary?.stock_critico||0)>0 ? "#facc15" : "var(--text)"} />
             </div>
 
