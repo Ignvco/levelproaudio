@@ -135,7 +135,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "description", "short_description",
             "price", "compare_price", "cost_price",
             "has_discount", "discount_percentage",
-            "stock", "in_stock", "is_featured",
+            "stock", "in_stock", "is_active", "is_featured",
             "primary_image", "images",
             "created_at", "updated_at",
         ]
