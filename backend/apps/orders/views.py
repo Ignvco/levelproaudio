@@ -87,24 +87,38 @@ class OrderViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Verifica stock ANTES de crear la orden
+        # Verifica stock ANTES de crear la orden, y arma la lista de items
+        # con el precio REAL del producto (nunca el que manda el cliente:
+        # de lo contrario cualquiera podría comprar a cualquier precio).
+        validated_items = []
         for item_data in items_data:
             try:
-                product = Product.objects.get(id=item_data["product"])
+                product = Product.objects.get(id=item_data["product"], is_active=True)
             except Product.DoesNotExist:
                 return Response(
                     {"error": f"Producto {item_data['product']} no existe."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            if product.stock < int(item_data["quantity"]):
+            quantity = int(item_data["quantity"])
+            if quantity < 1:
+                return Response(
+                    {"error": f"Cantidad inválida para {product.name}."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if product.stock < quantity:
                 return Response(
                     {"error": f"Stock insuficiente para {product.name}."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+            validated_items.append({
+                "product": product,
+                "quantity": quantity,
+                "price": product.price,  # ← precio real de la BD
+            })
 
         subtotal = sum(
-            float(item["price"]) * int(item["quantity"])
-            for item in items_data
+            float(item["price"]) * item["quantity"]
+            for item in validated_items
         )
 
         # ── Canje de puntos de fidelización (opcional) ──
@@ -154,16 +168,16 @@ class OrderViewSet(viewsets.ModelViewSet):
                 orden       = order,
             )
 
-        for item_data in items_data:
-            product = Product.objects.get(id=item_data["product"])
+        for item in validated_items:
+            product = item["product"]
             OrderItem.objects.create(
                 order        = order,
                 product      = product,
-                product_name = item_data.get("product_name", product.name),
-                price        = item_data["price"],
-                quantity     = item_data["quantity"],
+                product_name = product.name,
+                price        = item["price"],
+                quantity     = item["quantity"],
             )
-            product.stock = max(0, product.stock - int(item_data["quantity"]))
+            product.stock = max(0, product.stock - item["quantity"])
             product.save(update_fields=["stock"])
 
         return Response(
