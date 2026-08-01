@@ -74,6 +74,13 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter",
     ],
+
+    # Anti fuerza-bruta / anti spam en endpoints públicos de auth.
+    "DEFAULT_THROTTLE_RATES": {
+        "login": "10/min",
+        "register": "5/min",
+        "password_reset": "5/min",
+    },
 }
 
 # JWT — configuración de tokens
@@ -146,8 +153,8 @@ AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-LANGUAGE_CODE = 'es-ar'
-TIME_ZONE = 'America/Argentina/Buenos_Aires'
+LANGUAGE_CODE = 'es-cl'
+TIME_ZONE = 'America/Santiago'
 USE_I18N = True
 USE_TZ = True
 

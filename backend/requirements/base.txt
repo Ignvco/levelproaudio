@@ -13,3 +13,4 @@ paypalrestsdk==1.13.3
 requests==2.32.3
 openpyxl
 reportlab==4.2.2
+resend==2.35.0

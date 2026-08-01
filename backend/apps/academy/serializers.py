@@ -12,13 +12,15 @@ def _media_url(image_field):
 class LessonSerializer(serializers.ModelSerializer):
     is_locked    = serializers.SerializerMethodField()
     video_source = serializers.CharField(read_only=True)
+    video_url    = serializers.SerializerMethodField()
+    video_file   = serializers.SerializerMethodField()
 
     class Meta:
         model  = Lesson
         fields = ["id", "title", "video_url", "video_file", "video_source",
                   "description", "order", "is_free", "duration_minutes", "is_locked"]
 
-    def get_is_locked(self, obj):
+    def _is_locked(self, obj):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return not obj.is_free
@@ -27,6 +29,23 @@ class LessonSerializer(serializers.ModelSerializer):
             return False
         enrolled = Enrollment.objects.filter(user=request.user, course=obj.module.course).exists()
         return not enrolled and not obj.is_free
+
+    def get_is_locked(self, obj):
+        return self._is_locked(obj)
+
+    # video_url y video_file solo se exponen si la lección NO está bloqueada.
+    # is_locked es un flag informativo para el frontend, pero el control de
+    # acceso real tiene que vivir acá — de lo contrario cualquiera puede leer
+    # la URL del video pago directo desde la respuesta del API.
+    def get_video_url(self, obj):
+        if self._is_locked(obj):
+            return None
+        return obj.video_url
+
+    def get_video_file(self, obj):
+        if self._is_locked(obj):
+            return None
+        return _media_url(obj.video_file)
 
 
 class ModuleSerializer(serializers.ModelSerializer):

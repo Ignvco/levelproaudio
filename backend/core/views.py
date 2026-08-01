@@ -38,7 +38,11 @@ class MediaProxyView(View):
 
     # ── local (desarrollo) ────────────────────────────────────
     def _serve_local(self, request, path):
-        file_path = os.path.join(settings.MEDIA_ROOT, path)
+        media_root = os.path.realpath(settings.MEDIA_ROOT)
+        file_path = os.path.realpath(os.path.join(media_root, path))
+        # Evita path traversal (../, rutas absolutas) fuera de MEDIA_ROOT.
+        if os.path.commonpath([media_root, file_path]) != media_root:
+            raise Http404
         if not os.path.exists(file_path):
             raise Http404
         content_type = mimetypes.guess_type(file_path)[0] or "application/octet-stream"

@@ -13,7 +13,9 @@ env = environ.Env()
 
 # ── Seguridad ─────────────────────────────────────────────────
 DEBUG = False
-ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS", default=["*"])
+# Sin fallback wildcard: si falta la variable en Secret Manager, el deploy
+# debe fallar explícitamente en vez de quedar abierto a Host header injection.
+ALLOWED_HOSTS = env.list("DJANGO_ALLOWED_HOSTS")
 SECRET_KEY = os.environ.get("SECRET_KEY") or os.environ.get("DJANGO_SECRET_KEY")
 
 SECURE_PROXY_SSL_HEADER        = ("HTTP_X_FORWARDED_PROTO", "https")

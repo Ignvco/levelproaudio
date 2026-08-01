@@ -1,10 +1,23 @@
 # apps/users/views.py
 from django.conf import settings
 from rest_framework import generics, permissions
+from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
+
+
+class LoginRateThrottle(AnonRateThrottle):
+    scope = "login"
+
+
+class RegisterRateThrottle(AnonRateThrottle):
+    scope = "register"
+
+
+class PasswordResetRateThrottle(AnonRateThrottle):
+    scope = "password_reset"
 from .models import User
 from .serializers import (
     UserRegisterSerializer, UserProfileSerializer,
@@ -49,6 +62,8 @@ def clear_auth_cookies(response):
 
 # ── Login: setea cookies HTTPOnly y NO devuelve tokens en el body ──
 class CookieTokenObtainPairView(TokenObtainPairView):
+    throttle_classes = [LoginRateThrottle]
+
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
@@ -98,6 +113,7 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserRegisterSerializer
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [RegisterRateThrottle]
 
 
 class ProfileView(generics.RetrieveUpdateAPIView):
@@ -118,6 +134,7 @@ _GENERIC_RESET_MSG = {
 class PasswordResetRequestView(APIView):
     """POST /api/v1/auth/password/reset/ — genera token y envía email (respuesta genérica)."""
     permission_classes = [permissions.AllowAny]
+    throttle_classes = [PasswordResetRateThrottle]
 
     def post(self, request):
         serializer = PasswordResetRequestSerializer(data=request.data)
