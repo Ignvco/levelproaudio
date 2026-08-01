@@ -173,5 +173,12 @@ Verificado (curl + playwright): sitemap XML válido con 28+ URLs, canonical/robo
 - El `AdminLayout` ya tenía sidebar oscuro colapsable + drawer móvil con hamburguesa (≤1024).
 - Verificado por screenshots en desktop/tablet/móvil (Dashboard, Analytics, Finanzas, Productos, Órdenes): todo se ve como aplicación móvil, sin overflow.
 
+## Admin — Tema claro DEFINITIVO + spec de cards (2026-08-01) ✅
+- Decisión definitiva del usuario: **fondo de página claro, tablas y gráficos claros con zebra, y TODAS las cards claras**. Se revirtió el experimento dark.
+- Tokens `.admin-root` restaurados a claros (`index.css`). Zebra, selects, paginación, menús de fila, badges, gráfico del Dashboard y card de alertas → claros. Rewards "Campaña activa" y Finanzas "Distribución"/"Resumen" → claras.
+- **Spec de card aplicada** a `au-lp` (KPIs), `au-pcard` (Marcas) y `au-acard` (Servicios/Finanzas Resumen) en `admin-ui.css`:
+  - Fondo card `#FCFCFC`, borde exterior `#FFFFFF`, pill superior `#1AFF6E` (texto `#00160b`), pill inferior `#292929` (texto `#ffffff`, sin borde), círculo de ícono `#292929` con símbolo blanco, monto principal `#000000`.
+- Verificado por screenshots (Dashboard, Finanzas, Marcas, Órdenes): coincide con la referencia `admin.png`.
+
 ## Credenciales de prueba
 Ver `/app/memory/test_credentials.md`.

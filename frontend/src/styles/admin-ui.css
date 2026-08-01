@@ -92,10 +92,10 @@
 
 /* ── Badges ── */
 .admin-root .au-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:100px; font-size:11.5px; font-weight:700; line-height:1; white-space:nowrap; }
-.admin-root .au-badge--success, .admin-root .au-badge--pos { background:rgba(26,255,110,.15); color:#3DFF86; }
-.admin-root .au-badge--danger,  .admin-root .au-badge--neg { background:rgba(255,107,107,.14);  color:#FF8B8B; }
-.admin-root .au-badge--warning { background:rgba(240,169,59,.16); color:#F0BE7A; }
-.admin-root .au-badge--info    { background:rgba(45,212,191,.16); color:#5EEAD4; }
+.admin-root .au-badge--success, .admin-root .au-badge--pos { background:rgba(26,255,110,.15); color:#0F9940; }
+.admin-root .au-badge--danger,  .admin-root .au-badge--neg { background:rgba(239,68,68,.1);  color:#EF4444; }
+.admin-root .au-badge--warning { background:rgba(217,119,6,.12); color:#B45309; }
+.admin-root .au-badge--info    { background:rgba(20,184,166,.12); color:#0F766E; }
 .admin-root .au-badge--neutral { background:var(--admin-surface-secondary); color:var(--admin-text-muted); }
 .admin-root .au-metric { display:inline-flex; align-items:center; gap:3px; font-size:12px; font-weight:700; }
 .admin-root .au-metric--pos { color:#0F9940; }
@@ -131,10 +131,10 @@
 .admin-root .au-search input:focus { border-color:var(--admin-primary); box-shadow:0 0 0 3px rgba(26,255,110,.14); }
 .admin-root .au-select {
   padding:8px 14px; font-size:12.5px; border-radius:100px; cursor:pointer;
-  background:var(--admin-surface-secondary); border:1px solid var(--admin-border); color:var(--admin-text); outline:none;
+  background:#fff; border:1px solid var(--admin-border); color:var(--admin-text); outline:none;
   box-shadow:var(--admin-shadow-sm);
 }
-.admin-root .au-select option { background:#1e2220; color:var(--admin-text); }
+.admin-root .au-select option { background:#fff; color:var(--admin-text); }
 .admin-root .au-select:focus { border-color:var(--admin-primary); box-shadow:0 0 0 3px rgba(26,255,110,.14); }
 
 /* ── DataTable ── */
@@ -154,7 +154,7 @@
 .admin-root .au-table tbody td:first-child { color:var(--admin-text); }
 .admin-root .au-table tbody tr:last-child td { border-bottom:none; }
 /* Zebra striping sutil para guiar el ojo horizontalmente */
-.admin-root .au-table tbody tr:nth-child(even) { background:rgba(255,255,255,.025); }
+.admin-root .au-table tbody tr:nth-child(even) { background:rgba(20,30,24,.022); }
 .admin-root .au-table tbody tr { transition:background .16s var(--ease), box-shadow .16s var(--ease); }
 .admin-root .au-table tbody tr:hover { background:var(--admin-primary-soft); box-shadow:inset 3px 0 0 var(--admin-primary); }
 .admin-root .au-table__foot { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:14px 20px; border-top:1px solid var(--admin-border); }
@@ -162,14 +162,14 @@
 .admin-root .au-pagination { display:flex; align-items:center; gap:4px; }
 .admin-root .au-pagination button {
   min-width:32px; height:32px; padding:0 8px; border-radius:9px; border:1px solid var(--admin-border);
-  background:var(--admin-surface-secondary); color:var(--admin-text); font-size:12.5px; cursor:pointer; transition:all .16s;
+  background:#fff; color:var(--admin-text); font-size:12.5px; cursor:pointer; transition:all .16s;
 }
 .admin-root .au-pagination button:hover:not(:disabled) { background:var(--admin-surface-secondary); }
 .admin-root .au-pagination button.is-active { background:var(--admin-primary); color:#00160b; border-color:transparent; font-weight:700; }
 .admin-root .au-pagination button:disabled { opacity:.45; cursor:not-allowed; }
 .admin-root .au-checkbox { width:16px; height:16px; border-radius:5px; border:1.5px solid var(--admin-border); accent-color:var(--admin-primary); cursor:pointer; }
 .admin-root .au-rowmenu { position:relative; }
-.admin-root .au-rowmenu__list { position:absolute; right:0; top:calc(100% + 4px); z-index:20; min-width:160px; background:#1e2220; border:1px solid var(--admin-border); border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.5); padding:6px; }
+.admin-root .au-rowmenu__list { position:absolute; right:0; top:calc(100% + 4px); z-index:20; min-width:160px; background:#fff; border:1px solid var(--admin-border); border-radius:12px; box-shadow:0 12px 30px rgba(20,30,24,.14); padding:6px; }
 .admin-root .au-rowmenu__item { display:flex; align-items:center; gap:8px; width:100%; padding:8px 10px; border:none; background:none; text-align:left; font-size:12.5px; color:var(--admin-text); border-radius:8px; cursor:pointer; }
 .admin-root .au-rowmenu__item:hover { background:var(--admin-surface-secondary); }
 .admin-root .au-rowmenu__item--danger { color:var(--admin-danger); }
@@ -248,33 +248,33 @@
    ═══════════════════════════════════════════════════════════════ */
 .admin-root .au-lp {
   position:relative; overflow:hidden; height:100%;
-  background:#121212; border:1px solid rgba(255,255,255,.06);
+  background:#FCFCFC; border:1px solid #FFFFFF;
   border-radius:24px; padding:20px;
-  box-shadow:0 18px 50px -20px rgba(0,0,0,.5);
+  box-shadow:0 10px 30px rgba(20,30,24,.08);
   display:flex; flex-direction:column; gap:16px;
 }
 .admin-root .au-lp--interactive {
   transition: transform .4s cubic-bezier(.16,1,.3,1), box-shadow .4s cubic-bezier(.16,1,.3,1), border-color .3s;
   cursor:pointer; text-decoration:none;
 }
-.admin-root .au-lp--interactive:hover { transform:translateY(-6px); box-shadow:0 30px 60px -25px rgba(0,0,0,.7); border-color:rgba(255,255,255,.12); }
+.admin-root .au-lp--interactive:hover { transform:translateY(-6px); box-shadow:0 24px 50px -18px rgba(20,30,24,.22); }
 .admin-root .au-lp__top { display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; z-index:2; }
-.admin-root .au-lp__tag { background:rgba(255,255,255,.08); color:#e7e7e7; font-size:11px; font-weight:600; letter-spacing:.04em; padding:6px 13px; border-radius:9999px; white-space:nowrap; }
-.admin-root .au-lp__icon { width:44px; height:44px; border-radius:50%; background:rgba(26,255,110,.14); color:#1AFF6E; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
-.admin-root .au-lp__value { font-family:var(--font-display); font-size:30px; font-weight:800; letter-spacing:-.02em; line-height:1; color:#fff; position:relative; z-index:2; font-variant-numeric:tabular-nums; }
+.admin-root .au-lp__tag { background:#1AFF6E; color:#00160b; font-size:11px; font-weight:700; letter-spacing:.04em; padding:6px 13px; border-radius:9999px; white-space:nowrap; }
+.admin-root .au-lp__icon { width:44px; height:44px; border-radius:50%; background:#292929; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.admin-root .au-lp__value { font-family:var(--font-display); font-size:30px; font-weight:800; letter-spacing:-.02em; line-height:1; color:#000000; position:relative; z-index:2; font-variant-numeric:tabular-nums; }
 .admin-root .au-lp__foot { display:flex; align-items:center; gap:8px; flex-wrap:wrap; position:relative; z-index:2; margin-top:auto; }
-.admin-root .au-lp__pill { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); color:#cfcfcf; font-size:12.5px; font-weight:600; padding:9px 16px; border-radius:9999px; white-space:nowrap; }
+.admin-root .au-lp__pill { background:#292929; border:1px solid transparent; color:#ffffff; font-size:12.5px; font-weight:600; padding:9px 16px; border-radius:9999px; white-space:nowrap; }
 .admin-root .au-lp__delta { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:700; padding:8px 13px; border-radius:9999px; }
-.admin-root .au-lp__delta--pos { background:rgba(26,255,110,.16); color:#1AFF6E; }
-.admin-root .au-lp__delta--neg { background:rgba(239,68,68,.16); color:#ff8b8b; }
-/* variante primary: ícono verde sólido (sin glow) */
+.admin-root .au-lp__delta--pos { background:rgba(26,255,110,.16); color:#0F9940; }
+.admin-root .au-lp__delta--neg { background:rgba(239,68,68,.12); color:#EF4444; }
+/* variante primary: ícono verde sólido */
 .admin-root .au-lp--primary .au-lp__icon { background:#1AFF6E; color:#00160b; }
-/* variante light (blanca, mismo lenguaje de pills) */
-.admin-root .au-lp--light { background:#fff; border:1px solid var(--admin-border); box-shadow:var(--admin-shadow-md); }
-.admin-root .au-lp--light .au-lp__tag { background:var(--admin-surface-secondary); color:var(--admin-text-muted); }
-.admin-root .au-lp--light .au-lp__icon { background:var(--admin-primary-soft); color:var(--admin-primary-text); }
-.admin-root .au-lp--light .au-lp__value { color:var(--admin-text); }
-.admin-root .au-lp--light .au-lp__pill { background:var(--admin-surface-secondary); border-color:var(--admin-border); color:var(--admin-text-muted); }
+/* variante light (alias del mismo estilo claro) */
+.admin-root .au-lp--light { background:#FCFCFC; border:1px solid #FFFFFF; box-shadow:0 10px 30px rgba(20,30,24,.08); }
+.admin-root .au-lp--light .au-lp__tag { background:#1AFF6E; color:#00160b; }
+.admin-root .au-lp--light .au-lp__icon { background:#292929; color:#fff; }
+.admin-root .au-lp--light .au-lp__value { color:#000000; }
+.admin-root .au-lp--light .au-lp__pill { background:#292929; border-color:transparent; color:#ffffff; }
 /* compacta */
 .admin-root .au-lp--compact { padding:16px; gap:12px; border-radius:20px; }
 .admin-root .au-lp--compact .au-lp__value { font-size:24px; }
@@ -284,17 +284,17 @@
    Cards estilo front LevelPro (sin imagen)
    au-pcard → como ProductCard (Marcas) · au-acard → como CourseCard (Servicios/Cursos)
    ═══════════════════════════════════════════════════════════════ */
-.admin-root .au-pcard { background:#121212; border:1px solid rgba(255,255,255,.06); border-radius:26px; padding:16px 16px 18px; display:flex; flex-direction:column; min-height:236px; box-shadow:0 18px 50px -20px rgba(0,0,0,.6); transition:transform .4s cubic-bezier(.16,1,.3,1), box-shadow .4s cubic-bezier(.16,1,.3,1), border-color .3s; }
-.admin-root .au-pcard:hover { transform:translateY(-6px); box-shadow:0 30px 60px -25px rgba(0,0,0,.85); border-color:rgba(255,255,255,.12); }
+.admin-root .au-pcard { background:#FCFCFC; border:1px solid #FFFFFF; border-radius:26px; padding:16px 16px 18px; display:flex; flex-direction:column; min-height:236px; box-shadow:0 10px 30px rgba(20,30,24,.08); transition:transform .4s cubic-bezier(.16,1,.3,1), box-shadow .4s cubic-bezier(.16,1,.3,1); }
+.admin-root .au-pcard:hover { transform:translateY(-6px); box-shadow:0 24px 50px -18px rgba(20,30,24,.22); }
 .admin-root .au-pcard__head { display:flex; align-items:center; justify-content:space-between; margin-bottom:16px; }
-.admin-root .au-pcard__brand { width:54px; height:54px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; padding:11px; color:#121212; box-shadow:0 4px 14px rgba(0,0,0,.18); flex-shrink:0; }
+.admin-root .au-pcard__brand { width:54px; height:54px; border-radius:50%; background:#fff; display:flex; align-items:center; justify-content:center; padding:11px; color:#121212; box-shadow:0 4px 14px rgba(20,30,24,.1); border:1px solid #F0F1F3; flex-shrink:0; }
 .admin-root .au-pcard__brand img { width:100%; height:100%; object-fit:contain; }
-.admin-root .au-pcard__del { width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); color:#ff8b8b; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .18s; flex-shrink:0; }
-.admin-root .au-pcard__del:hover { background:rgba(239,68,68,.2); }
-.admin-root .au-pcard__title { font-family:var(--font-display); font-size:1.35rem; font-weight:700; color:#fff; letter-spacing:-.02em; line-height:1.15; overflow:hidden; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; }
-.admin-root .au-pcard__sub { font-size:14px; color:#8c8c8c; margin-top:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.admin-root .au-pcard__del { width:38px; height:38px; border-radius:50%; background:rgba(239,68,68,.08); border:1px solid rgba(239,68,68,.18); color:#EF4444; display:flex; align-items:center; justify-content:center; cursor:pointer; transition:background .18s; flex-shrink:0; }
+.admin-root .au-pcard__del:hover { background:rgba(239,68,68,.16); }
+.admin-root .au-pcard__title { font-family:var(--font-display); font-size:1.35rem; font-weight:700; color:#000000; letter-spacing:-.02em; line-height:1.15; overflow:hidden; display:-webkit-box; -webkit-line-clamp:1; -webkit-box-orient:vertical; }
+.admin-root .au-pcard__sub { font-size:14px; color:#98A2B3; margin-top:5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .admin-root .au-pcard__buyrow { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:auto; padding-top:16px; }
-.admin-root .au-pcard__pill { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); color:#fff; font-weight:600; font-size:12.5px; padding:11px 18px; border-radius:9999px; white-space:nowrap; }
+.admin-root .au-pcard__pill { background:#292929; border:1px solid transparent; color:#ffffff; font-weight:600; font-size:12.5px; padding:11px 18px; border-radius:9999px; white-space:nowrap; }
 .admin-root .au-pcard__buy { display:flex; align-items:center; gap:10px; background:var(--admin-primary); color:#000; font-weight:700; font-size:.95rem; padding:11px 11px 11px 20px; border-radius:9999px; border:none; cursor:pointer; transition:transform .3s cubic-bezier(.16,1,.3,1); white-space:nowrap; }
 .admin-root .au-pcard__buy:hover { transform:scale(1.04); }
 .admin-root .au-pcard__circle { width:26px; height:26px; border-radius:50%; background:#000; color:var(--admin-primary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
@@ -305,14 +305,14 @@
 .admin-root .au-pill-btn--del { background:rgba(239,68,68,.12); color:#ff8b8b; }
 .admin-root .au-pill-btn--del:hover { background:rgba(239,68,68,.2); }
 
-.admin-root .au-acard { position:relative; overflow:hidden; background:#121212; border:1px solid rgba(255,255,255,.06); border-radius:24px; padding:18px; display:flex; flex-direction:column; gap:12px; min-height:200px; box-shadow:0 18px 50px -20px rgba(0,0,0,.5); transition:transform .4s cubic-bezier(.16,1,.3,1), box-shadow .4s cubic-bezier(.16,1,.3,1); }
-.admin-root .au-acard:hover { transform:translateY(-4px); box-shadow:0 26px 56px -24px rgba(0,0,0,.7); }
+.admin-root .au-acard { position:relative; overflow:hidden; background:#FCFCFC; border:1px solid #FFFFFF; border-radius:24px; padding:18px; display:flex; flex-direction:column; gap:12px; min-height:200px; box-shadow:0 10px 30px rgba(20,30,24,.08); transition:transform .4s cubic-bezier(.16,1,.3,1), box-shadow .4s cubic-bezier(.16,1,.3,1); }
+.admin-root .au-acard:hover { transform:translateY(-4px); box-shadow:0 24px 50px -18px rgba(20,30,24,.2); }
 .admin-root .au-acard__strip { display:none; }
 .admin-root .au-acard__head { position:relative; z-index:1; display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
-.admin-root .au-acard__tag { background:rgba(255,255,255,.1); color:#eaeaea; font-size:10.5px; font-weight:600; letter-spacing:.04em; padding:5px 11px; border-radius:9999px; text-transform:uppercase; }
-.admin-root .au-acard__title { position:relative; z-index:1; font-family:var(--font-display); font-size:1.25rem; font-weight:700; color:#fff; letter-spacing:-.01em; line-height:1.15; }
-.admin-root .au-acard__sub { position:relative; z-index:1; font-size:12.5px; color:#8c8c8c; line-height:1.5; }
+.admin-root .au-acard__tag { background:#1AFF6E; color:#00160b; font-size:10.5px; font-weight:700; letter-spacing:.04em; padding:5px 11px; border-radius:9999px; text-transform:uppercase; }
+.admin-root .au-acard__title { position:relative; z-index:1; font-family:var(--font-display); font-size:1.25rem; font-weight:700; color:#000000; letter-spacing:-.01em; line-height:1.15; }
+.admin-root .au-acard__sub { position:relative; z-index:1; font-size:12.5px; color:#98A2B3; line-height:1.5; }
 .admin-root .au-acard__foot { position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:auto; padding-top:12px; }
-.admin-root .au-acard__price { background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.08); color:#fff; font-weight:700; font-size:.98rem; padding:9px 18px; border-radius:9999px; white-space:nowrap; }
+.admin-root .au-acard__price { background:#292929; border:1px solid transparent; color:#ffffff; font-weight:700; font-size:.98rem; padding:9px 18px; border-radius:9999px; white-space:nowrap; }
 .admin-root .au-acard__actions { display:flex; gap:7px; }
 .admin-root .au-acard__dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }

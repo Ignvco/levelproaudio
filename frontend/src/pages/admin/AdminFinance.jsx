@@ -39,7 +39,7 @@ function DistributionBar({ categories }) {
     <div>
       <div style={{ display:"flex", height:"14px", borderRadius:"100px",
         overflow:"hidden", gap:"3px", marginBottom:"18px",
-        background:"rgba(255,255,255,.05)" }}>
+        background:"#EFF1F4" }}>
         {categories.map(c => (
           <div key={c.id} style={{ flex:Math.max(c.balance, 0),
             background:c.color, transition:"flex 0.5s ease",
@@ -50,14 +50,14 @@ function DistributionBar({ categories }) {
       <div style={{ display:"flex", flexWrap:"wrap", gap:"8px" }}>
         {categories.map(c => (
           <div key={c.id} style={{ display:"flex", alignItems:"center", gap:"7px",
-            background:"rgba(255,255,255,.06)", border:"1px solid rgba(255,255,255,.08)",
+            background:"var(--surface-2)", border:"1px solid var(--border)",
             borderRadius:"9999px", padding:"7px 14px" }}>
             <div style={{ width:"8px", height:"8px", borderRadius:"50%",
-              background:c.color, flexShrink:0, boxShadow:`0 0 8px ${c.color}` }} />
-            <span style={{ fontSize:"12px", color:"#cfcfcf" }}>
+              background:c.color, flexShrink:0 }} />
+            <span style={{ fontSize:"12px", color:"var(--text-2)" }}>
               {c.icon} {c.name}
             </span>
-            <span style={{ fontSize:"12px", fontWeight:700, color:"#fff" }}>{fmt(c.balance)}</span>
+            <span style={{ fontSize:"12px", fontWeight:700, color:"var(--text)" }}>{fmt(c.balance)}</span>
           </div>
         ))}
       </div>
@@ -440,11 +440,11 @@ export default function AdminFinance() {
 
       {/* Barra distribución */}
       {summaryCategories.length > 0 && (
-        <div style={{ background:"#121212", border:"1px solid rgba(255,255,255,.06)",
+        <div style={{ background:"#FCFCFC", border:"1px solid #FFFFFF",
           borderRadius:"24px", padding:"24px", marginBottom:"24px",
-          boxShadow:"0 18px 50px -20px rgba(0,0,0,.5)" }}>
+          boxShadow:"0 10px 30px rgba(20,30,24,.08)" }}>
           <p style={{ fontSize:"11px", fontWeight:700, letterSpacing:".08em",
-            textTransform:"uppercase", color:"#8c8c8c", marginBottom:"18px" }}>
+            textTransform:"uppercase", color:"var(--text-3)", marginBottom:"18px" }}>
             Distribución de fondos disponibles
           </p>
           <DistributionBar categories={summaryCategories} />
@@ -487,12 +487,12 @@ export default function AdminFinance() {
 
                 <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"2px" }}>
                   {[
-                    { label:"Ingresado",  value: fmt(cat.total_in),        color:"#1AFF6E" },
-                    { label:"Retirado",   value: `−${fmt(cat.total_out)}`, color:"#ff8b8b" },
+                    { label:"Ingresado",  value: fmt(cat.total_in),        color:"#0F9940" },
+                    { label:"Retirado",   value: `−${fmt(cat.total_out)}`, color:"#EF4444" },
                   ].map(({ label, value, color }) => (
                     <div key={label} style={{ display:"flex", justifyContent:"space-between",
                       fontSize:"12.5px" }}>
-                      <span style={{ color:"#8c8c8c" }}>{label}</span>
+                      <span style={{ color:"var(--text-3)" }}>{label}</span>
                       <span style={{ color, fontWeight:600 }}>{value}</span>
                     </div>
                   ))}
@@ -502,7 +502,7 @@ export default function AdminFinance() {
                   <span className="au-acard__price">Disponible</span>
                   <span style={{ fontFamily:"var(--font-display)", fontSize:"1.5rem", fontWeight:800,
                     letterSpacing:"-.02em", lineHeight:1,
-                    color: cat.balance >= 0 ? "#1AFF6E" : "#ff8b8b" }}>
+                    color: cat.balance >= 0 ? "#0F9940" : "#EF4444" }}>
                     {fmt(cat.balance)}
                   </span>
                 </div>
