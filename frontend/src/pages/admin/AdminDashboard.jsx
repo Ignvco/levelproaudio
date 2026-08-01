@@ -137,6 +137,15 @@ export default function AdminDashboard() {
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:"18px", paddingBottom:"20px" }}>
 
+      {/* Header */}
+      <div>
+        <h1 style={{ fontSize:"clamp(1.6rem,2.8vw,2.1rem)", fontWeight:800, letterSpacing:"-0.02em",
+          color:"var(--text)", lineHeight:1.1 }}>Dashboard</h1>
+        <p style={{ fontSize:"13.5px", color:"var(--text-3)", marginTop:"4px", textTransform:"capitalize" }}>
+          {new Date().toLocaleDateString("es-CL", { weekday:"long", year:"numeric", month:"long", day:"numeric" })}
+        </p>
+      </div>
+
       {/* Alertas reales */}
       {(pending.length>0 || products.out_of_stock>0 || unread>0) && (
         <div data-testid="admin-alerts" className="a-card" style={{ padding:"16px 20px",

@@ -207,9 +207,9 @@ export default function AdminLayout() {
 
       {/* Main */}
       <main style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column" }}>
-        {/* Topbar */}
+        {/* Topbar (solo acciones — el título lo pone cada página) */}
         <header style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
-          gap:"16px", marginBottom:"8px", flexWrap:"wrap" }}>
+          gap:"16px", marginBottom:"14px" }}>
           <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
             <button className="a-icon-btn a-mobile-toggle" onClick={() => setMobileOpen(true)}
               aria-label="Abrir menú" style={{ display:"none" }} data-testid="admin-mobile-menu">
@@ -220,13 +220,6 @@ export default function AdminLayout() {
               <ChevronsLeft size={18} style={{ transform: collapsed ? "rotate(180deg)" : "none",
                 transition:"transform 250ms var(--ease)" }} />
             </button>
-            <div>
-              <h1 style={{ fontSize:"clamp(1.5rem,2.6vw,2rem)", fontWeight:800,
-                letterSpacing:"-0.02em", color:"var(--text)", lineHeight:1.1 }}>{title}</h1>
-              <p style={{ fontSize:"13px", color:"var(--text-3)", marginTop:"3px",
-                textTransform:"capitalize" }}>
-                {location.pathname === "/admin" ? today : subtitle}</p>
-            </div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
             <button className="a-icon-btn" aria-label="Buscar" onClick={() => setSearchOpen(true)}

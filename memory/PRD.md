@@ -43,6 +43,11 @@ Basado en mockup del usuario (admin.png): sidebar oscuro flotante + área clara 
 - **Buscador global**: `components/admin/AdminSearch.jsx` (command palette) — busca productos/pedidos/usuarios vía getAdminProducts/Orders/Users({search}). Abre desde botón search del topbar o Cmd/Ctrl+K. Navega al resultado. Verificado con datos reales.
 - **Modales**: heredan el tema claro (usan var(--surface)/.input/.btn-accent dentro de .admin-root). Modal de producto verificado (panel blanco redondeado, tabs verde, inputs claros, botón "Crear producto" pill verde). Curso/campaña usan mismo patrón.
 
+## Admin — Consistencia de pestañas (2026-08-01) ✅
+- **Fix duplicación de títulos**: el topbar de `AdminLayout` ya NO muestra título/subtítulo (solo botón colapsar + acciones search/bell/user). Cada página usa su propio H1 (como el mockup). `AdminDashboard` recibió su header propio (Dashboard + fecha).
+- Todas las pestañas (Vista Ejecutiva, Analytics, Órdenes, Pagos, Servicios, Usuarios, Finanzas, etc.) quedan coherentes con el tema claro + verde vía scoping. Verificado Dashboard + Órdenes.
+- Pendiente menor: el gráfico "Ventas por mes" de Analytics muestra un bloque verde grande cuando hay 1 solo mes de datos (artefacto del componente viejo); se puede migrar a Recharts en una próxima iteración.
+
 
 Decisiones del usuario: prerendering en build (Fase 2, pendiente), mantener URLs actuales (/shop/:slug, ?category=), dominio dual (canónico primario: https://levelproaudio.com), arrancar por Fase 1.
 
