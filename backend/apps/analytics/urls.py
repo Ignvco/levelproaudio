@@ -80,7 +80,6 @@ urlpatterns = [
     path("finance/categories/<uuid:cat_id>/",           admin_finance_category_detail,      name="finance-category-detail"),
     path("finance/withdrawals/",                        admin_finance_withdrawals,          name="finance-withdrawals"),
     path("finance/withdrawals/<uuid:withdrawal_id>/",   admin_finance_withdrawal_delete,    name="finance-withdrawal-delete"),
-    path("finance/by-product/",                         admin_finance_by_product,           name="finance-by-product"),
 
     # Academia
     path("academy/",           admin_academy,      name="admin-academy"),
