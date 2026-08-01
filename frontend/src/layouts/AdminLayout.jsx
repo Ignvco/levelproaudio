@@ -1,7 +1,8 @@
 // layouts/AdminLayout.jsx — Rediseño estilo "DealDeck": sidebar oscuro flotante + topbar claro
-import { useState }                                          from "react"
+import { useState, useEffect }                             from "react"
 import { NavLink, Link, useNavigate, useLocation, Outlet }  from "react-router-dom"
 import { useAuthStore }                                      from "../store/authStore"
+import AdminSearch                                           from "../components/admin/AdminSearch"
 import logoImg                                               from "../assets/logo.png"
 import {
   LayoutDashboard, LineChart, BarChart3, ChevronRight, ChevronsLeft,
@@ -106,6 +107,17 @@ export default function AdminLayout() {
   const location  = useLocation()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  useEffect(() => {
+    const onKey = e => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault(); setSearchOpen(true)
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
 
   const initial = (user?.first_name?.[0] || user?.email?.[0] || "A").toUpperCase()
   const [title, subtitle] = ROUTE_TITLES[location.pathname] ||
@@ -217,7 +229,8 @@ export default function AdminLayout() {
             </div>
           </div>
           <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
-            <button className="a-icon-btn" aria-label="Buscar" data-testid="admin-search-btn"><Search size={18} /></button>
+            <button className="a-icon-btn" aria-label="Buscar" onClick={() => setSearchOpen(true)}
+              data-testid="admin-search-btn"><Search size={18} /></button>
             <button className="a-icon-btn" aria-label="Notificaciones" data-testid="admin-notifications-btn"><Bell size={18} /></button>
             <div style={{ display:"flex", alignItems:"center", gap:"10px", background:"#fff",
               padding:"6px 14px 6px 6px", borderRadius:"100px", border:"1px solid var(--border)",
@@ -253,6 +266,8 @@ export default function AdminLayout() {
           .a-user-meta { display:none; }
         }
       `}</style>
+
+      <AdminSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
     </div>
   )
 }

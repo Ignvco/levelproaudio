@@ -38,6 +38,11 @@ Basado en mockup del usuario (admin.png): sidebar oscuro flotante + área clara 
 - Verificado: login, dashboard con datos reales, colapsar sidebar, navegación completa (testing_agent iteration_6, 7 rutas OK antes de rate-limit de Vite) + screenshots de Dashboard/Órdenes/Productos/Personalización/Finanzas. Funcionalidad/datos/rutas intactos.
 - Nota: el rediseño se logra por scoping (no se reescribió cada página); las páginas con estilos inline usan variables CSS y quedaron claras automáticamente.
 
+## Admin — Recharts + Buscador global + Modales (2026-08-01) ✅
+- **Recharts**: `AdminDashboard.jsx` usa BarChart interactivo (recharts, ya instalado) con ejes, barras verdes redondeadas y tooltip oscuro redondeado (`ChartTooltip`). Datos reales de sales_chart.
+- **Buscador global**: `components/admin/AdminSearch.jsx` (command palette) — busca productos/pedidos/usuarios vía getAdminProducts/Orders/Users({search}). Abre desde botón search del topbar o Cmd/Ctrl+K. Navega al resultado. Verificado con datos reales.
+- **Modales**: heredan el tema claro (usan var(--surface)/.input/.btn-accent dentro de .admin-root). Modal de producto verificado (panel blanco redondeado, tabs verde, inputs claros, botón "Crear producto" pill verde). Curso/campaña usan mismo patrón.
+
 
 Decisiones del usuario: prerendering en build (Fase 2, pendiente), mantener URLs actuales (/shop/:slug, ?category=), dominio dual (canónico primario: https://levelproaudio.com), arrancar por Fase 1.
 

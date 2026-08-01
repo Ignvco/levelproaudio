@@ -1,6 +1,9 @@
 // pages/admin/AdminDashboard.jsx — Rediseño estilo "DealDeck" con datos reales
 import { useQuery }  from "@tanstack/react-query"
 import { Link }      from "react-router-dom"
+import {
+  ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell,
+} from "recharts"
 import { getAdminDashboard } from "../../api/admin.api"
 import {
   DollarSign, ShoppingBag, Users, Package,
@@ -54,35 +57,48 @@ function FeaturedCard({ value, note, badge }) {
   )
 }
 
-// ── Gráfico de barras (ventas reales) ──
+// ── Tooltip oscuro redondeado (estilo mockup) ──
+function ChartTooltip({ active, payload, label }) {
+  if (!active || !payload?.length) return null
+  return (
+    <div style={{ background:"#0D0D0F", color:"#fff", padding:"10px 14px", borderRadius:"12px",
+      boxShadow:"0 8px 24px rgba(0,0,0,0.25)", border:"1px solid rgba(255,255,255,0.08)" }}>
+      <p style={{ fontSize:"11px", color:"#9CA3AF", marginBottom:"3px" }}>{label}</p>
+      <p style={{ fontSize:"15px", fontWeight:700, color:"#1AFF6E",
+        fontVariantNumeric:"tabular-nums" }}>{clp(payload[0].value)}</p>
+    </div>
+  )
+}
+
+// ── Gráfico de barras interactivo (Recharts, ventas reales) ──
 function SalesBarChart({ data }) {
-  const points = (data || []).slice(-14)
-  const max = Math.max(...points.map(d => d.total||0), 1)
   const fmtDay = d => {
     try { return new Date(d).toLocaleDateString("es-CL", { day:"2-digit", month:"short" }) }
     catch { return d }
   }
+  const points = (data || []).slice(-14).map(d => ({ day: fmtDay(d.date), total: d.total || 0 }))
   if (!points.length) return (
-    <p style={{ fontSize:"13px", color:"var(--text-3)", textAlign:"center", padding:"40px 0" }}>
+    <p style={{ fontSize:"13px", color:"var(--text-3)", textAlign:"center", padding:"60px 0" }}>
       Sin ventas registradas todavía.</p>
   )
+  const max = Math.max(...points.map(p => p.total), 1)
   return (
-    <div style={{ display:"flex", alignItems:"flex-end", gap:"8px", height:"220px", paddingTop:"10px" }}>
-      {points.map((d, i) => {
-        const h = Math.max(6, ((d.total||0)/max)*180)
-        const strong = i === points.length - 1 || (d.total||0) >= max*0.6
-        return (
-          <div key={i} style={{ flex:1, display:"flex", flexDirection:"column",
-            alignItems:"center", gap:"8px", minWidth:0 }}>
-            <div title={clp(d.total)} style={{ width:"100%", maxWidth:"26px", height:`${h}px`,
-              borderRadius:"8px", background: strong ? "#1AFF6E" : "#E5E7EB",
-              transition:"height 300ms var(--ease)" }} />
-            <span style={{ fontSize:"10px", color:"var(--text-3)", whiteSpace:"nowrap",
-              overflow:"hidden", textOverflow:"ellipsis", maxWidth:"100%" }}>{fmtDay(d.date)}</span>
-          </div>
-        )
-      })}
-    </div>
+    <ResponsiveContainer width="100%" height={240}>
+      <BarChart data={points} margin={{ top: 10, right: 6, left: -18, bottom: 0 }} barCategoryGap="28%">
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ECEEF2" />
+        <XAxis dataKey="day" tickLine={false} axisLine={false}
+          tick={{ fontSize: 11, fill: "#98A2B3" }} interval="preserveStartEnd" />
+        <YAxis tickLine={false} axisLine={false} width={54}
+          tick={{ fontSize: 11, fill: "#98A2B3" }}
+          tickFormatter={v => v >= 1000 ? `$${Math.round(v/1000)}k` : `$${v}`} />
+        <Tooltip cursor={{ fill: "rgba(26,255,110,0.06)" }} content={<ChartTooltip />} />
+        <Bar dataKey="total" radius={[8, 8, 0, 0]} maxBarSize={34}>
+          {points.map((p, i) => (
+            <Cell key={i} fill={p.total >= max * 0.6 ? "#1AFF6E" : "#E5E7EB"} />
+          ))}
+        </Bar>
+      </BarChart>
+    </ResponsiveContainer>
   )
 }
 
