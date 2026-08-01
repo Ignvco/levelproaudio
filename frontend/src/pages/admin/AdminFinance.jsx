@@ -468,45 +468,35 @@ export default function AdminFinance() {
 
           {/* Cards por categoría */}
           <div style={{ display:"grid",
-            gridTemplateColumns:"repeat(auto-fill, minmax(240px, 1fr))", gap:"14px" }}>
+            gridTemplateColumns:"repeat(auto-fill, minmax(250px, 1fr))", gap:"14px" }}>
             {summaryCategories.map(cat => (
-              <div key={cat.id} className="au-card au-card--interactive"
-                style={{ position:"relative", overflow:"hidden", padding:"20px" }}>
-                {/* Tira de color superior */}
-                <div style={{ position:"absolute", top:0, left:0, right:0, height:"4px",
-                  background:cat.color }} />
-                <div style={{ display:"flex", alignItems:"center",
-                  gap:"12px", marginBottom:"16px" }}>
-                  <span style={{ width:"38px", height:"38px", borderRadius:"11px",
-                    display:"flex", alignItems:"center", justifyContent:"center",
-                    fontSize:"19px", flexShrink:0,
-                    background:`${cat.color}1f`, border:`1px solid ${cat.color}3a` }}>
-                    {cat.icon}
+              <div key={cat.id} className="au-acard">
+                <div className="au-acard__head">
+                  <span className="au-acard__tag" style={{ display:"inline-flex", alignItems:"center", gap:"6px" }}>
+                    <span>{cat.icon}</span> {cat.percentage}% de cada ingreso
                   </span>
-                  <div style={{ minWidth:0 }}>
-                    <p style={{ fontSize:"14px", fontWeight:700, color:"var(--admin-text)" }}>{cat.name}</p>
-                    <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>
-                      {cat.percentage}% de cada ingreso
-                    </p>
-                  </div>
+                  <span className="au-acard__dot" style={{ background:cat.color, boxShadow:`0 0 10px ${cat.color}` }} />
                 </div>
-                {[
-                  { label:"Ingresado",  value: fmt(cat.total_in),        color:"var(--admin-primary-text)" },
-                  { label:"Retirado",   value: `−${fmt(cat.total_out)}`, color:"var(--admin-danger)" },
-                ].map(({ label, value, color }) => (
-                  <div key={label} style={{ display:"flex", justifyContent:"space-between",
-                    fontSize:"12.5px", marginBottom:"7px" }}>
-                    <span style={{ color:"var(--admin-text-muted)" }}>{label}</span>
-                    <span style={{ color, fontWeight:600 }}>{value}</span>
-                  </div>
-                ))}
-                <div style={{ height:"1px", background:"var(--admin-border)", margin:"12px 0" }} />
-                <div style={{ display:"flex", justifyContent:"space-between",
-                  alignItems:"baseline" }}>
-                  <span style={{ fontSize:"12px", color:"var(--admin-text-muted)" }}>Disponible</span>
-                  <span style={{ fontFamily:"var(--font-display)", fontSize:"1.35rem",
-                    fontWeight:700,
-                    color: cat.balance >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>
+                <p className="au-acard__title">{cat.name}</p>
+
+                <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"2px" }}>
+                  {[
+                    { label:"Ingresado",  value: fmt(cat.total_in),        color:"#1AFF6E" },
+                    { label:"Retirado",   value: `−${fmt(cat.total_out)}`, color:"#ff8b8b" },
+                  ].map(({ label, value, color }) => (
+                    <div key={label} style={{ display:"flex", justifyContent:"space-between",
+                      fontSize:"12.5px" }}>
+                      <span style={{ color:"#8c8c8c" }}>{label}</span>
+                      <span style={{ color, fontWeight:600 }}>{value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="au-acard__foot">
+                  <span className="au-acard__price">Disponible</span>
+                  <span style={{ fontFamily:"var(--font-display)", fontSize:"1.5rem", fontWeight:800,
+                    letterSpacing:"-.02em", lineHeight:1,
+                    color: cat.balance >= 0 ? "#1AFF6E" : "#ff8b8b" }}>
                     {fmt(cat.balance)}
                   </span>
                 </div>
