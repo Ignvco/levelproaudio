@@ -71,8 +71,8 @@ export default function AdminRewards() {
       {data.current_campaign ? (
         <div style={{
           padding:"28px 32px",
-          background:"linear-gradient(135deg, rgba(26,255,110,0.06) 0%, rgba(26,255,110,0.01) 100%)",
-          border:"1px solid rgba(26,255,110,0.2)",
+          background:"linear-gradient(135deg, rgba(26,255,110,0.10) 0%, rgba(26,255,110,0.02) 100%), #121212",
+          border:"1px solid rgba(26,255,110,0.25)",
           borderRadius:"var(--r-2xl)",
           marginBottom:"32px",
         }}>

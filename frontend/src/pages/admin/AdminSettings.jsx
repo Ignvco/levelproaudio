@@ -181,7 +181,7 @@ export default function AdminSettings() {
             fontFamily: "var(--font-display)",
             fontSize: "clamp(1.6rem, 2.4vw, 2.2rem)",
             fontWeight: 700, letterSpacing: "-0.03em",
-            color: "var(--text)", lineHeight: 1,
+            color: "var(--admin-page-text)", lineHeight: 1,
           }}>
             Configurá tu sitio
           </h1>
@@ -214,8 +214,8 @@ export default function AdminSettings() {
             onClick={() => setTab(t.id)}
             style={{
               padding: "8px 16px", borderRadius: "var(--r-full)",
-              background: tab === t.id ? "var(--text)" : "transparent",
-              color: tab === t.id ? "var(--bg)" : "var(--text-2)",
+              background: tab === t.id ? "var(--accent)" : "transparent",
+              color: tab === t.id ? "#000" : "var(--text-2)",
               fontSize: "12px", fontWeight: 600,
               border: "none", cursor: "pointer",
               fontFamily: "var(--font-sans)",

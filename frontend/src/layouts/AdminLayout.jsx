@@ -118,9 +118,9 @@ function NotificationsBell() {
       {open && (
         <div data-testid="admin-notifications-panel" className="a-notif-panel" style={{
           position: "absolute", top: "calc(100% + 10px)", right: 0, zIndex: 80,
-          width: 340, maxWidth: "calc(100vw - 32px)", background: "#fff",
-          border: "1px solid var(--border)", borderRadius: 18,
-          boxShadow: "0 24px 60px rgba(20,30,24,.18)", overflow: "hidden",
+          width: 340, maxWidth: "calc(100vw - 32px)", background: "var(--admin-surface)",
+          border: "1px solid var(--admin-border)", borderRadius: 18,
+          boxShadow: "0 24px 60px rgba(0,0,0,.5)", overflow: "hidden",
           animation: "scaleIn 160ms var(--ease)",
         }}>
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--border)",
@@ -378,16 +378,16 @@ export default function AdminLayout() {
               data-testid="admin-search-btn"><Search size={18} /></button>
             <NotificationsBell />
             <div style={{ display:"flex", alignItems:"center", gap:"10px", background:"#fff",
-              padding:"6px 14px 6px 6px", borderRadius:"100px", border:"1px solid var(--border)",
+              padding:"6px 14px 6px 6px", borderRadius:"100px", border:"1px solid #ECEEF2",
               boxShadow:"0 4px 12px rgba(20,30,24,0.05)" }} data-testid="admin-user-chip">
               <span style={{ width:"34px", height:"34px", borderRadius:"50%", background:"#1AFF6E",
                 color:"#000", display:"flex", alignItems:"center", justifyContent:"center",
                 fontSize:"14px", fontWeight:800, flexShrink:0 }}>{initial}</span>
               <div style={{ lineHeight:1.2 }} className="a-user-meta">
-                <p style={{ fontSize:"13px", fontWeight:700, color:"var(--text)", maxWidth:"140px",
+                <p style={{ fontSize:"13px", fontWeight:700, color:"#14161A", maxWidth:"140px",
                   overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
                   {user?.first_name || user?.email?.split("@")[0] || "Admin"}</p>
-                <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
+                <p style={{ fontSize:"11px", color:"#98A2B3" }}>
                   {user?.is_superuser ? "Superusuario" : "Admin"}</p>
               </div>
             </div>

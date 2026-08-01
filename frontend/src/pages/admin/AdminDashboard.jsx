@@ -33,13 +33,13 @@ function SalesChart({ data }) {
   return (
     <ResponsiveContainer width="100%" height={240}>
       <BarChart data={points} margin={{ top: 10, right: 6, left: -18, bottom: 0 }} barCategoryGap="28%">
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ECEEF2" />
-        <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#98A2B3" }} interval="preserveStartEnd" />
-        <YAxis tickLine={false} axisLine={false} width={54} tick={{ fontSize: 11, fill: "#98A2B3" }}
+        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.07)" />
+        <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#8b938e" }} interval="preserveStartEnd" />
+        <YAxis tickLine={false} axisLine={false} width={54} tick={{ fontSize: 11, fill: "#8b938e" }}
           tickFormatter={(v) => (v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`)} />
         <Tooltip cursor={{ fill: "rgba(26,255,110,0.06)" }} content={<SalesTooltip />} />
         <Bar dataKey="total" radius={[8, 8, 0, 0]} maxBarSize={34}>
-          {points.map((p, i) => <Cell key={i} fill={p.total >= max * 0.6 ? "#1AFF6E" : "#E5E7EB"} />)}
+          {points.map((p, i) => <Cell key={i} fill={p.total >= max * 0.6 ? "#1AFF6E" : "rgba(255,255,255,0.14)"} />)}
         </Bar>
       </BarChart>
     </ResponsiveContainer>
@@ -118,9 +118,9 @@ export default function AdminDashboard() {
       />
 
       {(pending.length > 0 || products.out_of_stock > 0 || unread > 0) && (
-        <div className="au-card" data-testid="admin-alerts" style={{ padding: "14px 20px", display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", background: "#FFFBEB", border: "1px solid #FDE68A", boxShadow: "none" }}>
-          <AlertTriangle size={18} style={{ color: "#D97706", flexShrink: 0 }} />
-          <p style={{ fontSize: 13, color: "#92400E", flex: 1 }}>
+        <div className="au-card" data-testid="admin-alerts" style={{ padding: "14px 20px", display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", background: "rgba(240,169,59,0.10)", border: "1px solid rgba(240,169,59,0.28)", boxShadow: "none" }}>
+          <AlertTriangle size={18} style={{ color: "#F0A93B", flexShrink: 0 }} />
+          <p style={{ fontSize: 13, color: "#F0C486", flex: 1 }}>
             {pending.length > 0 && `${pending.length} pedidos pendientes · `}
             {products.out_of_stock > 0 && `${products.out_of_stock} productos sin stock · `}
             {unread > 0 && `${unread} solicitudes de servicio`}

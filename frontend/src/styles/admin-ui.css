@@ -5,6 +5,8 @@
 
 /* ── Layout helpers ── */
 .admin-root .au-page { display:flex; flex-direction:column; gap:20px; padding-bottom:24px; }
+/* Los <h1> son siempre headers de página (sobre fondo claro); las cards usan h2/h3/p */
+.admin-root h1 { color:var(--admin-page-text); }
 .admin-root .au-grid { display:grid; gap:16px; }
 
 /* ── Card base ── */
@@ -25,12 +27,12 @@
 
 /* ── Page header ── */
 .admin-root .au-header { display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px; }
-.admin-root .au-header__crumbs { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--admin-text-muted); margin-bottom:8px; }
-.admin-root .au-header__crumbs a { color:var(--admin-text-muted); text-decoration:none; }
-.admin-root .au-header__crumbs a:hover { color:var(--admin-text); }
-.admin-root .au-eyebrow { font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:var(--admin-primary-text); margin-bottom:8px; }
-.admin-root .au-title { font-family:var(--font-display); font-size:clamp(1.6rem,2.8vw,2.1rem); font-weight:800; letter-spacing:-.02em; line-height:1.1; color:var(--admin-text); }
-.admin-root .au-desc { font-size:13.5px; color:var(--admin-text-muted); margin-top:4px; }
+.admin-root .au-header__crumbs { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--admin-page-text-muted); margin-bottom:8px; }
+.admin-root .au-header__crumbs a { color:var(--admin-page-text-muted); text-decoration:none; }
+.admin-root .au-header__crumbs a:hover { color:var(--admin-page-text); }
+.admin-root .au-eyebrow { font-size:11px; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#0F9940; margin-bottom:8px; }
+.admin-root .au-title { font-family:var(--font-display); font-size:clamp(1.6rem,2.8vw,2.1rem); font-weight:800; letter-spacing:-.02em; line-height:1.1; color:var(--admin-page-text); }
+.admin-root .au-desc { font-size:13.5px; color:var(--admin-page-text-muted); margin-top:4px; }
 .admin-root .au-header__actions { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 
 /* ── Buttons ── */
@@ -43,8 +45,8 @@
 .admin-root .au-btn:disabled { opacity:.55; cursor:not-allowed; }
 .admin-root .au-btn--primary { background:var(--admin-primary); color:#00160b; box-shadow:0 8px 20px rgba(26,255,110,0.28); }
 .admin-root .au-btn--primary:hover:not(:disabled) { background:var(--admin-primary-hover); transform:translateY(-1px); }
-.admin-root .au-btn--secondary { background:#fff; color:var(--admin-text); border-color:var(--admin-border); box-shadow:var(--admin-shadow-sm); }
-.admin-root .au-btn--secondary:hover:not(:disabled) { background:var(--admin-surface-secondary); border-color:#E2E5EA; }
+.admin-root .au-btn--secondary { background:#fff; color:#14161A; border-color:#ECEEF2; box-shadow:var(--admin-shadow-sm); }
+.admin-root .au-btn--secondary:hover:not(:disabled) { background:#F7F8FA; border-color:#E2E5EA; }
 .admin-root .au-btn--danger { background:rgba(239,68,68,.1); color:var(--admin-danger); }
 .admin-root .au-btn--danger:hover:not(:disabled) { background:rgba(239,68,68,.16); }
 .admin-root .au-btn--sm { padding:7px 14px; font-size:12px; }
@@ -90,10 +92,10 @@
 
 /* ── Badges ── */
 .admin-root .au-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:100px; font-size:11.5px; font-weight:700; line-height:1; white-space:nowrap; }
-.admin-root .au-badge--success, .admin-root .au-badge--pos { background:rgba(26,255,110,.15); color:#0F9940; }
-.admin-root .au-badge--danger,  .admin-root .au-badge--neg { background:rgba(239,68,68,.1);  color:#EF4444; }
-.admin-root .au-badge--warning { background:rgba(217,119,6,.12); color:#B45309; }
-.admin-root .au-badge--info    { background:rgba(20,184,166,.12); color:#0F766E; }
+.admin-root .au-badge--success, .admin-root .au-badge--pos { background:rgba(26,255,110,.15); color:#3DFF86; }
+.admin-root .au-badge--danger,  .admin-root .au-badge--neg { background:rgba(255,107,107,.14);  color:#FF8B8B; }
+.admin-root .au-badge--warning { background:rgba(240,169,59,.16); color:#F0BE7A; }
+.admin-root .au-badge--info    { background:rgba(45,212,191,.16); color:#5EEAD4; }
 .admin-root .au-badge--neutral { background:var(--admin-surface-secondary); color:var(--admin-text-muted); }
 .admin-root .au-metric { display:inline-flex; align-items:center; gap:3px; font-size:12px; font-weight:700; }
 .admin-root .au-metric--pos { color:#0F9940; }
@@ -129,9 +131,10 @@
 .admin-root .au-search input:focus { border-color:var(--admin-primary); box-shadow:0 0 0 3px rgba(26,255,110,.14); }
 .admin-root .au-select {
   padding:8px 14px; font-size:12.5px; border-radius:100px; cursor:pointer;
-  background:#fff; border:1px solid var(--admin-border); color:var(--admin-text); outline:none;
+  background:var(--admin-surface-secondary); border:1px solid var(--admin-border); color:var(--admin-text); outline:none;
   box-shadow:var(--admin-shadow-sm);
 }
+.admin-root .au-select option { background:#1e2220; color:var(--admin-text); }
 .admin-root .au-select:focus { border-color:var(--admin-primary); box-shadow:0 0 0 3px rgba(26,255,110,.14); }
 
 /* ── DataTable ── */
@@ -151,7 +154,7 @@
 .admin-root .au-table tbody td:first-child { color:var(--admin-text); }
 .admin-root .au-table tbody tr:last-child td { border-bottom:none; }
 /* Zebra striping sutil para guiar el ojo horizontalmente */
-.admin-root .au-table tbody tr:nth-child(even) { background:rgba(20,30,24,.022); }
+.admin-root .au-table tbody tr:nth-child(even) { background:rgba(255,255,255,.025); }
 .admin-root .au-table tbody tr { transition:background .16s var(--ease), box-shadow .16s var(--ease); }
 .admin-root .au-table tbody tr:hover { background:var(--admin-primary-soft); box-shadow:inset 3px 0 0 var(--admin-primary); }
 .admin-root .au-table__foot { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:14px 20px; border-top:1px solid var(--admin-border); }
@@ -159,14 +162,14 @@
 .admin-root .au-pagination { display:flex; align-items:center; gap:4px; }
 .admin-root .au-pagination button {
   min-width:32px; height:32px; padding:0 8px; border-radius:9px; border:1px solid var(--admin-border);
-  background:#fff; color:var(--admin-text); font-size:12.5px; cursor:pointer; transition:all .16s;
+  background:var(--admin-surface-secondary); color:var(--admin-text); font-size:12.5px; cursor:pointer; transition:all .16s;
 }
 .admin-root .au-pagination button:hover:not(:disabled) { background:var(--admin-surface-secondary); }
 .admin-root .au-pagination button.is-active { background:var(--admin-primary); color:#00160b; border-color:transparent; font-weight:700; }
 .admin-root .au-pagination button:disabled { opacity:.45; cursor:not-allowed; }
 .admin-root .au-checkbox { width:16px; height:16px; border-radius:5px; border:1.5px solid var(--admin-border); accent-color:var(--admin-primary); cursor:pointer; }
 .admin-root .au-rowmenu { position:relative; }
-.admin-root .au-rowmenu__list { position:absolute; right:0; top:calc(100% + 4px); z-index:20; min-width:160px; background:#fff; border:1px solid var(--admin-border); border-radius:12px; box-shadow:0 12px 30px rgba(20,30,24,.14); padding:6px; }
+.admin-root .au-rowmenu__list { position:absolute; right:0; top:calc(100% + 4px); z-index:20; min-width:160px; background:#1e2220; border:1px solid var(--admin-border); border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.5); padding:6px; }
 .admin-root .au-rowmenu__item { display:flex; align-items:center; gap:8px; width:100%; padding:8px 10px; border:none; background:none; text-align:left; font-size:12.5px; color:var(--admin-text); border-radius:8px; cursor:pointer; }
 .admin-root .au-rowmenu__item:hover { background:var(--admin-surface-secondary); }
 .admin-root .au-rowmenu__item--danger { color:var(--admin-danger); }

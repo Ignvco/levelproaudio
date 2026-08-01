@@ -764,63 +764,66 @@ h1 em, h2 em, h3 em {
 .admin-root {
   --bg:           #F4F5F7;
   --bg-2:         #FFFFFF;
-  --surface:      #FFFFFF;
-  --surface-2:    #F7F8FA;
-  --surface-3:    #EFF1F4;
-  --border:       #ECEEF2;
-  --border-hover: #E2E5EA;
-  --text:         #14161A;
-  --text-2:       #5B6472;
-  --text-3:       #98A2B3;
-  --accent-glow:  rgba(26,255,110,0.14);
+  --surface:      #16191a;
+  --surface-2:    #1e2220;
+  --surface-3:    #262b28;
+  --border:       rgba(255,255,255,0.08);
+  --border-hover: rgba(255,255,255,0.16);
+  --text:         #EDEFEE;
+  --text-2:       #AEB6B1;
+  --text-3:       #7E8783;
+  --accent-glow:  rgba(26,255,110,0.18);
   --accent-dim:   rgba(26,255,110,0.12);
-  --accent-text:  #0F9940;
-  --success:      #0F9940;
-  --warning:      #D97706;
-  --danger:       #EF4444;
-  --card-shadow:  0 10px 30px rgba(20,30,24,0.07);
+  --accent-text:  #3DFF86;
+  --success:      #3DFF86;
+  --warning:      #F0A93B;
+  --danger:       #FF6B6B;
+  --card-shadow:  0 12px 34px rgba(0,0,0,0.28);
+  /* Texto a nivel de página (sobre el fondo claro) */
+  --admin-page-text:       #14161A;
+  --admin-page-text-muted: #5B6472;
   /* ── Design tokens del panel admin (biblioteca au-*) ── */
   --admin-primary:            #1AFF6E;
   --admin-primary-hover:      #00E653;
-  --admin-primary-soft:       rgba(26,255,110,0.12);
-  --admin-primary-text:       #0F9940;
+  --admin-primary-soft:       rgba(26,255,110,0.14);
+  --admin-primary-text:       #3DFF86;
   --admin-background:         #F4F5F7;
-  --admin-surface:            #FFFFFF;
-  --admin-surface-secondary:  #F7F8FA;
-  --admin-border:             #ECEEF2;
-  --admin-text:               #14161A;
-  --admin-text-muted:         #6B7280;
-  --admin-success:            #0F9940;
-  --admin-warning:            #D97706;
-  --admin-danger:             #EF4444;
+  --admin-surface:            #16191a;
+  --admin-surface-secondary:  #1e2220;
+  --admin-border:             rgba(255,255,255,0.08);
+  --admin-text:               #EDEFEE;
+  --admin-text-muted:         #8b938e;
+  --admin-success:            #3DFF86;
+  --admin-warning:            #F0A93B;
+  --admin-danger:             #FF6B6B;
   --admin-radius-sm:          12px;
   --admin-radius-md:          16px;
   --admin-radius-lg:          20px;
-  --admin-shadow-sm:          0 4px 14px rgba(20,30,24,0.05);
-  --admin-shadow-md:          0 10px 30px rgba(20,30,24,0.07);
+  --admin-shadow-sm:          0 4px 14px rgba(0,0,0,0.30);
+  --admin-shadow-md:          0 12px 30px rgba(0,0,0,0.40);
   background: var(--bg);
-  color: var(--text);
+  color: var(--admin-text);
 }
-.admin-root ::selection { background: rgba(26,255,110,0.2); color: #0F9940; }
+.admin-root ::selection { background: rgba(26,255,110,0.25); color: #0F9940; }
 
 /* Card genérica del admin */
 .a-card {
-  background: #fff;
-  border: 1px solid var(--border);
+  background: var(--admin-surface);
+  border: 1px solid var(--admin-border);
   border-radius: 20px;
   box-shadow: var(--card-shadow);
 }
 
-/* Botón circular del topbar */
+/* Botón circular del topbar (sobre fondo claro) */
 .a-icon-btn {
   width: 42px; height: 42px; border-radius: 50%;
-  background: #fff; border: 1px solid var(--border);
+  background: #fff; border: 1px solid #ECEEF2;
   display: flex; align-items: center; justify-content: center;
-  color: var(--text-2); cursor: pointer;
+  color: #5B6472; cursor: pointer;
   box-shadow: 0 4px 12px rgba(20,30,24,0.05);
   transition: box-shadow 200ms var(--ease), color 200ms var(--ease), transform 200ms var(--ease);
 }
-.a-icon-btn:hover { box-shadow: 0 6px 18px rgba(20,30,24,0.1); color: var(--text); transform: translateY(-1px); }
+.a-icon-btn:hover { box-shadow: 0 6px 18px rgba(20,30,24,0.1); color: #14161A; transform: translateY(-1px); }
 
 /* ── Sidebar oscuro flotante ── */
 .a-sidebar {
