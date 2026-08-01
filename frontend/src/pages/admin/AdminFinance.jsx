@@ -2,8 +2,8 @@
 import { useState }                             from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api                                       from "../../api/client"          // ← fix crítico
-import { TrendingUp, ArrowUpFromLine, Wallet, Pencil, Trash2 }   from "lucide-react"
-import { StatCard }                              from "../../components/admin/ui"
+import { TrendingUp, ArrowUpFromLine, Wallet, Pencil, Trash2, Inbox }   from "lucide-react"
+import { StatCard, AdminPageHeader, DataTable, PrimaryButton, SecondaryButton }  from "../../components/admin/ui"
 import {
   getFinanceSummary, getFinanceCategories,
   createFinanceCategory, updateFinanceCategory, deleteFinanceCategory,
@@ -395,7 +395,7 @@ export default function AdminFinance() {
   )
 
   return (
-    <div style={{ padding:"clamp(24px, 4vw, 40px)", maxWidth:"1100px" }}>
+    <div className="au-page" style={{ padding:"clamp(24px, 4vw, 40px)", maxWidth:"1100px" }}>
 
       {/* Modals */}
       {modal==="category" && (
@@ -409,27 +409,18 @@ export default function AdminFinance() {
           onClose={() => setModal(null)} onSave={onSave} />
       )}
 
-      {/* Header */}
-      <div style={{ display:"flex", justifyContent:"space-between",
-        alignItems:"flex-start", marginBottom:"28px", flexWrap:"wrap", gap:"16px" }}>
-        <div>
-          <h1 style={{ fontFamily:"var(--font-display)", fontSize:"clamp(1.8rem, 3vw, 2.4rem)",
-            fontWeight:800, letterSpacing:"-0.02em", marginBottom:"6px" }}>Finanzas</h1>
-          <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
-            Distribución automática de ingresos y retiros
-          </p>
-        </div>
-        <div style={{ display:"flex", gap:"10px" }}>
-          <button onClick={() => setModal("withdrawal")} className="btn btn-ghost"
-            style={{ padding:"10px 18px", fontSize:"13px" }}>
-            ↑ Registrar retiro
-          </button>
-          <button onClick={() => setModal("category")} className="btn btn-accent"
-            style={{ padding:"10px 18px", fontSize:"13px" }}>
-            + Nueva categoría
-          </button>
-        </div>
-      </div>
+      <AdminPageHeader eyebrow="Contabilidad" title="Finanzas"
+        description="Distribución automática de ingresos y retiros"
+        actions={
+          <>
+            <SecondaryButton onClick={() => setModal("withdrawal")} data-testid="register-withdrawal-btn">
+              ↑ Registrar retiro
+            </SecondaryButton>
+            <PrimaryButton onClick={() => setModal("category")} data-testid="new-category-btn">
+              + Nueva categoría
+            </PrimaryButton>
+          </>
+        } />
 
       {/* KPIs */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))",
@@ -552,124 +543,81 @@ export default function AdminFinance() {
 
       {/* ── INGRESOS ── */}
       {tab==="income" && (
-        <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-          borderRadius:"var(--r-xl)", overflow:"hidden" }}>
-          <div style={{ display:"grid",
-            gridTemplateColumns:"1.5fr 1fr 1fr 2fr",
-            padding:"10px 20px", borderBottom:"1px solid var(--border)",
-            fontSize:"11px", fontWeight:500, color:"var(--text-3)",
-            textTransform:"uppercase", letterSpacing:"0.08em" }}>
-            <span>Descripción</span><span>Monto</span>
-            <span>Fecha</span><span>Distribución</span>
-          </div>
-
-          {recentIncome.length===0 ? (
-            <div style={{ padding:"56px", textAlign:"center",
-              color:"var(--text-3)", fontSize:"14px" }}>
-              <p style={{ fontSize:"36px", marginBottom:"12px" }}>📊</p>
-              Sin ingresos registrados todavía. Se registran automáticamente al aprobarse un pago.
-            </div>
-          ) : recentIncome.map((income,i) => (
-            <div key={income.id} style={{ display:"grid",
-              gridTemplateColumns:"1.5fr 1fr 1fr 2fr",
-              padding:"14px 20px", alignItems:"center",
-              borderTop: i>0 ? "1px solid var(--border)" : "none",
-              transition:"background var(--dur) var(--ease)" }}
-              onMouseEnter={e => e.currentTarget.style.background="var(--surface-2)"}
-              onMouseLeave={e => e.currentTarget.style.background="transparent"}>
+        <DataTable
+          columns={[
+            { key:"description", header:"Descripción", sortable:true, render:income => (
               <div>
-                <p style={{ fontSize:"13px" }}>{income.description}</p>
-                <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
+                <p style={{ fontSize:"13px", fontWeight:600, color:"var(--admin-text)" }}>{income.description}</p>
+                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>
                   {income.source==="payment" ? "Pago automático" : "Manual"}
                 </p>
               </div>
-              <span style={{ fontSize:"14px", fontWeight:600, color:"var(--accent-text)" }}>
-                {fmt(income.amount)}
-              </span>
-              <span style={{ fontSize:"12px", color:"var(--text-3)" }}>
-                {income.created_at}
-              </span>
+            )},
+            { key:"amount", header:"Monto", sortable:true, align:"right", render:income => (
+              <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{fmt(income.amount)}</span>
+            )},
+            { key:"created_at", header:"Fecha", sortable:true, render:income => (
+              <span style={{ color:"var(--admin-text-muted)" }}>{income.created_at}</span>
+            )},
+            { key:"distributions", header:"Distribución", render:income => (
               <div style={{ display:"flex", gap:"4px", flexWrap:"wrap" }}>
                 {income.distributions?.map((d,j) => (
                   <span key={j} style={{ fontSize:"10px", padding:"2px 6px",
                     borderRadius:"100px", fontWeight:500,
-                    color:d.category_color,
-                    background:`${d.category_color}14`,
+                    color:d.category_color, background:`${d.category_color}14`,
                     border:`1px solid ${d.category_color}30` }}>
                     {d.category_icon} {d.category_name}: {fmt(d.amount)}
                   </span>
                 ))}
               </div>
-            </div>
-          ))}
-        </div>
+            )},
+          ]}
+          data={recentIncome} getRowId={r => r.id ?? r.description}
+          searchable searchKeys={["description"]} searchPlaceholder="Buscar ingreso..."
+          emptyIcon={Inbox} emptyTitle="Sin ingresos registrados"
+          emptyDesc="Se registran automáticamente al aprobarse un pago."
+          testId="income-table" />
       )}
 
       {/* ── RETIROS ── */}
       {tab==="withdrawals" && (
-        <div>
-          <div style={{ display:"flex", justifyContent:"flex-end", marginBottom:"16px" }}>
-            <button onClick={() => setModal("withdrawal")} className="btn btn-accent"
-              style={{ padding:"10px 20px", fontSize:"13px" }}>
+        <DataTable
+          columns={[
+            { key:"category_name", header:"Categoría", sortable:true, render:w => (
+              <span style={{ display:"flex", alignItems:"center", gap:"8px", color:"var(--admin-text)" }}>
+                <span style={{ fontSize:"16px" }}>{w.category_icon}</span>{w.category_name}
+              </span>
+            )},
+            { key:"destination", header:"Destino", sortable:true, render:w => (
+              <div>
+                <p style={{ fontSize:"13px", color:"var(--admin-text)", overflow:"hidden",
+                  textOverflow:"ellipsis", whiteSpace:"nowrap", maxWidth:"280px" }}>{w.destination}</p>
+                {w.reference && <p style={{ fontSize:"11px", color:"var(--admin-text-muted)",
+                  fontFamily:"monospace" }}>Ref: {w.reference}</p>}
+              </div>
+            )},
+            { key:"amount", header:"Monto", sortable:true, align:"right", render:w => (
+              <span style={{ fontWeight:700, color:"var(--admin-danger)" }}>−{fmt(w.amount)}</span>
+            )},
+            { key:"created_at", header:"Fecha", sortable:true, render:w => (
+              <span style={{ color:"var(--admin-text-muted)" }}>{w.created_at}</span>
+            )},
+          ]}
+          data={withdrawals} getRowId={w => w.id}
+          searchable searchKeys={["destination","category_name"]} searchPlaceholder="Buscar retiro..."
+          toolbarExtra={
+            <PrimaryButton onClick={() => setModal("withdrawal")} data-testid="register-withdrawal-btn-2">
               + Registrar retiro
-            </button>
-          </div>
-
-          <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-            borderRadius:"var(--r-xl)", overflow:"hidden" }}>
-            <div style={{ display:"grid",
-              gridTemplateColumns:"1fr 1.5fr 1fr 1fr 60px",
-              padding:"10px 20px", borderBottom:"1px solid var(--border)",
-              fontSize:"11px", fontWeight:500, color:"var(--text-3)",
-              textTransform:"uppercase", letterSpacing:"0.08em" }}>
-              <span>Categoría</span><span>Destino</span>
-              <span>Monto</span><span>Fecha</span><span />
-            </div>
-
-            {withdrawals.length===0 ? (
-              <div style={{ padding:"56px", textAlign:"center",
-                color:"var(--text-3)", fontSize:"14px" }}>
-                Sin retiros registrados.
-              </div>
-            ) : withdrawals.map((w,i) => (
-              <div key={w.id} style={{ display:"grid",
-                gridTemplateColumns:"1fr 1.5fr 1fr 1fr 60px",
-                padding:"14px 20px", alignItems:"center",
-                borderTop: i>0 ? "1px solid var(--border)" : "none",
-                transition:"background var(--dur) var(--ease)" }}
-                onMouseEnter={e => e.currentTarget.style.background="var(--surface-2)"}
-                onMouseLeave={e => e.currentTarget.style.background="transparent"}>
-                <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
-                  <span style={{ fontSize:"16px" }}>{w.category_icon}</span>
-                  <span style={{ fontSize:"13px" }}>{w.category_name}</span>
-                </div>
-                <div>
-                  <p style={{ fontSize:"13px", overflow:"hidden",
-                    textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                    {w.destination}
-                  </p>
-                  {w.reference && (
-                    <p style={{ fontSize:"11px", color:"var(--text-3)",
-                      fontFamily:"monospace" }}>Ref: {w.reference}</p>
-                  )}
-                </div>
-                <span style={{ fontSize:"14px", fontWeight:600, color:"var(--danger)" }}>
-                  −{fmt(w.amount)}
-                </span>
-                <span style={{ fontSize:"12px", color:"var(--text-3)" }}>
-                  {w.created_at}
-                </span>
-                <button onClick={() => {
-                  if (window.confirm("¿Eliminar este retiro?"))
-                    deleteWithdrawalMutation.mutate(w.id)
-                }} style={{ padding:"4px 10px", borderRadius:"var(--r-full)",
-                  fontSize:"11px", cursor:"pointer", color:"#EF4444",
-                  background:"rgba(248,113,113,0.08)",
-                  border:"1px solid rgba(248,113,113,0.2)" }}>×</button>
-              </div>
-            ))}
-          </div>
-        </div>
+            </PrimaryButton>
+          }
+          rowActions={w => [
+            { label:"Eliminar", icon:Trash2, danger:true, onClick:() => {
+              if (window.confirm("¿Eliminar este retiro?")) deleteWithdrawalMutation.mutate(w.id)
+            }},
+          ]}
+          emptyIcon={Inbox} emptyTitle="Sin retiros registrados"
+          emptyDesc="Registrá un retiro con el botón de arriba."
+          testId="withdrawals-table" />
       )}
 
       {/* ── CONFIGURACIÓN (categorías) ── */}
@@ -729,57 +677,34 @@ export default function AdminFinance() {
 
       {/* ── POR PRODUCTO ── */}
       {tab==="by_product" && (
-        <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-          borderRadius:"var(--r-xl)", overflow:"hidden" }}>
-          <div style={{ display:"grid",
-            gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",
-            padding:"10px 20px", borderBottom:"1px solid var(--border)",
-            fontSize:"11px", fontWeight:500, color:"var(--text-3)",
-            textTransform:"uppercase", letterSpacing:"0.08em" }}>
-            <span>Producto</span><span>Vendidos</span>
-            <span>Ingreso total</span><span>Costo total</span><span>Utilidad real</span>
-          </div>
-
-          {(incomeByProduct?.results || []).length===0 ? (
-            <div style={{ padding:"56px", textAlign:"center",
-              color:"var(--text-3)", fontSize:"14px" }}>
-              <p style={{ fontSize:"36px", marginBottom:"12px" }}>📊</p>
-              Sin datos todavía. Aparecen al aprobarse pagos con órdenes reales.
-            </div>
-          ) : (incomeByProduct?.results || []).map((p,i) => (
-            <div key={i} style={{ display:"grid",
-              gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr",
-              padding:"14px 20px", alignItems:"center",
-              borderTop: i>0 ? "1px solid var(--border)" : "none",
-              transition:"background var(--dur) var(--ease)" }}
-              onMouseEnter={e => e.currentTarget.style.background="var(--surface-2)"}
-              onMouseLeave={e => e.currentTarget.style.background="transparent"}>
+        <DataTable
+          columns={[
+            { key:"product_name", header:"Producto", sortable:true, render:p => (
               <div>
-                <p style={{ fontSize:"13px" }}>{p.product_name}</p>
-                {p.sku && (
-                  <p style={{ fontSize:"11px", color:"var(--text-3)",
-                    fontFamily:"monospace" }}>{p.sku}</p>
-                )}
+                <p style={{ fontSize:"13px", fontWeight:600, color:"var(--admin-text)" }}>{p.product_name}</p>
+                {p.sku && <p style={{ fontSize:"11px", color:"var(--admin-text-muted)",
+                  fontFamily:"monospace" }}>{p.sku}</p>}
               </div>
-              <span style={{ fontSize:"13px" }}>{p.units_sold} u.</span>
-              <span style={{ fontSize:"13px", color:"var(--accent-text)" }}>
-                {fmt(p.total_revenue)}
-              </span>
-              <span style={{ fontSize:"13px", color:"#EF4444" }}>
-                {fmt(p.total_cost)}
-              </span>
-              <div>
-                <p style={{ fontSize:"13px", fontWeight:600,
-                  color: p.profit >= 0 ? "var(--accent)" : "var(--danger)" }}>
-                  {fmt(p.profit)}
-                </p>
-                <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
-                  {p.margin}% margen
-                </p>
+            )},
+            { key:"units_sold", header:"Vendidos", sortable:true, align:"right",
+              render:p => <span style={{ color:"var(--admin-text)" }}>{p.units_sold} u.</span> },
+            { key:"total_revenue", header:"Ingreso total", sortable:true, align:"right",
+              render:p => <span style={{ color:"var(--admin-primary-text)", fontWeight:600 }}>{fmt(p.total_revenue)}</span> },
+            { key:"total_cost", header:"Costo total", sortable:true, align:"right",
+              render:p => <span style={{ color:"var(--admin-danger)" }}>{fmt(p.total_cost)}</span> },
+            { key:"profit", header:"Utilidad real", sortable:true, align:"right", render:p => (
+              <div style={{ textAlign:"right" }}>
+                <p style={{ fontSize:"13px", fontWeight:700,
+                  color: p.profit >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>{fmt(p.profit)}</p>
+                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{p.margin}% margen</p>
               </div>
-            </div>
-          ))}
-        </div>
+            )},
+          ]}
+          data={incomeByProduct?.results || []} getRowId={r => r.product_id ?? r.sku ?? r.product_name}
+          searchable searchKeys={["product_name","sku"]} searchPlaceholder="Buscar producto..."
+          emptyIcon={Inbox} emptyTitle="Sin datos todavía"
+          emptyDesc="Aparecen al aprobarse pagos con órdenes reales."
+          testId="by-product-table" />
       )}
     </div>
   )
