@@ -16,7 +16,7 @@ const fmt  = n => `$${Number(n||0).toLocaleString("es-CL")}`
 // total_productos, sin_stock, stock_critico, stock_ok
 
 function KPI({ label, value, sub, Icon, color="var(--text)" }) {
-  return <StatCard variant={color === "var(--accent-text)" ? "primary" : "dark"} Icon={Icon} label={label} value={value} sub={sub} />
+  return <StatCard variant="compact" Icon={Icon} label={label} value={value} sub={sub} />
 }
 
 export default function AdminInventory() {

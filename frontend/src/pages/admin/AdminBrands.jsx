@@ -2,6 +2,7 @@
 import { useState, useRef } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminBrands, createAdminBrand, updateAdminBrand, deleteAdminBrand } from "../../api/admin.api"
+import { Tag, Pencil, Trash2 } from "lucide-react"
 import { mediaUrl } from "../../utils/mediaUrl"
 import BulkImportPanel from "../../components/admin/BulkImportPanel"
 
@@ -214,66 +215,23 @@ export default function AdminBrands() {
         <div style={{ display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px" }}>
           {brands.map(brand => (
-            <div key={brand.id} style={{
-              background: "var(--surface)", border: "1px solid var(--border)",
-              borderRadius: "var(--r-xl)", padding: "20px",
-              display: "flex", flexDirection: "column", gap: "14px",
-              transition: "all var(--dur-slow) var(--ease)",
-            }}
-              className="card card-glow"
-            >
-              {/* Logo */}
-              <div style={{ height: "48px", display: "flex",
-                alignItems: "center", justifyContent: "center" }}>
-                {brand.logo_url ? (
-                  <img src={mediaUrl(brand.logo_url)} alt={brand.name}
-                    style={{ maxHeight: "44px", maxWidth: "160px",
-                      objectFit: "contain" }} />
-                ) : (
-                  <div style={{
-                    width: "40px", height: "40px", borderRadius: "var(--r-md)",
-                    background: "var(--surface-2)", border: "1px solid var(--border)",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "18px", color: "var(--text-3)",
-                  }}>
-                    🏷
-                  </div>
-                )}
+            <div key={brand.id} className="au-pcard">
+              <div className="au-pcard__logo">
+                {brand.logo_url
+                  ? <img src={mediaUrl(brand.logo_url)} alt={brand.name} />
+                  : <Tag size={22} strokeWidth={2} />}
               </div>
-
               <div>
-                <p style={{ fontSize: "14px", fontWeight: 500,
-                  textAlign: "center", marginBottom: "4px" }}>
-                  {brand.name}
-                </p>
-                {brand.website && (
-                  <p style={{ fontSize: "11px", color: "var(--text-3)",
-                    textAlign: "center", overflow: "hidden",
-                    textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {brand.website}
-                  </p>
-                )}
+                <p className="au-pcard__title">{brand.name}</p>
+                {brand.website && <p className="au-pcard__meta">{brand.website}</p>}
               </div>
-
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button onClick={() => setModal(brand)} style={{
-                  flex: 1, padding: "7px", borderRadius: "var(--r-md)",
-                  fontSize: "12px", cursor: "pointer",
-                  color: "#60a5fa", background: "rgba(96,165,250,0.1)",
-                  border: "1px solid rgba(96,165,250,0.2)",
-                }}>
-                  ✎ Editar
+              <div className="au-pcard__actions">
+                <button className="au-pill-btn au-pill-btn--edit" onClick={() => setModal(brand)} data-testid={`btn-edit-brand-${brand.id}`}>
+                  <Pencil size={13} /> Editar
                 </button>
-                <button onClick={() => {
-                  if (window.confirm(`¿Eliminar "${brand.name}"?`))
-                    deleteMutation.mutate(brand.id)
-                }} style={{
-                  flex: 1, padding: "7px", borderRadius: "var(--r-md)",
-                  fontSize: "12px", cursor: "pointer",
-                  color: "#EF4444", background: "rgba(248,113,113,0.1)",
-                  border: "1px solid rgba(248,113,113,0.2)",
-                }}>
-                  × Eliminar
+                <button className="au-pill-btn au-pill-btn--del" data-testid={`btn-delete-brand-${brand.id}`}
+                  onClick={() => { if (window.confirm(`¿Eliminar "${brand.name}"?`)) deleteMutation.mutate(brand.id) }}>
+                  <Trash2 size={13} /> Eliminar
                 </button>
               </div>
             </div>

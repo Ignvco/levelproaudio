@@ -2,7 +2,7 @@
 import { useState }                             from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api                                       from "../../api/client"          // ← fix crítico
-import { TrendingUp, ArrowUpFromLine, Wallet }   from "lucide-react"
+import { TrendingUp, ArrowUpFromLine, Wallet, Pencil, Trash2 }   from "lucide-react"
 import { StatCard }                              from "../../components/admin/ui"
 import {
   getFinanceSummary, getFinanceCategories,
@@ -688,65 +688,38 @@ export default function AdminFinance() {
             ) : null
           })()}
 
-          <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-            borderRadius:"var(--r-xl)", overflow:"hidden" }}>
-            <div style={{ display:"grid",
-              gridTemplateColumns:"40px 2fr 1fr 80px 1fr 80px",
-              padding:"10px 20px", borderBottom:"1px solid var(--border)",
-              fontSize:"11px", fontWeight:500, color:"var(--text-3)",
-              textTransform:"uppercase", letterSpacing:"0.08em" }}>
-              <span /><span>Categoría</span><span>Configuración</span>
-              <span>Color</span><span>Estado</span><span>Acciones</span>
-            </div>
-
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(240px, 1fr))", gap:"14px" }}>
             {categories.length===0 ? (
-              <div style={{ padding:"48px", textAlign:"center",
-                color:"var(--text-3)", fontSize:"14px" }}>
+              <div style={{ gridColumn:"1/-1", padding:"48px", textAlign:"center",
+                color:"var(--text-3)", fontSize:"14px", background:"var(--surface)",
+                border:"1px solid var(--border)", borderRadius:"var(--r-xl)" }}>
                 Sin categorías. Creá la primera con el botón &quot;+ Nueva categoría&quot;.
               </div>
-            ) : categories.map((cat,i) => (
-              <div key={cat.id} style={{ display:"grid",
-                gridTemplateColumns:"40px 2fr 1fr 80px 1fr 80px",
-                padding:"13px 20px", alignItems:"center",
-                borderTop: i>0 ? "1px solid var(--border)" : "none",
-                transition:"background var(--dur) var(--ease)" }}
-                onMouseEnter={e => e.currentTarget.style.background="var(--surface-2)"}
-                onMouseLeave={e => e.currentTarget.style.background="transparent"}>
-                <span style={{ fontSize:"20px" }}>{cat.icon}</span>
-                <span style={{ fontSize:"13px", fontWeight:500 }}>{cat.name}</span>
-                <span style={{ fontSize:"12px", color:"var(--text-2)" }}>
-                  {cat.cat_type==="fixed"     && "Costo real"}
-                  {cat.cat_type==="percent"   && `${cat.percentage}% venta`}
-                  {cat.cat_type==="remainder" && "Utilidad neta"}
-                </span>
-                <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
-                  <div style={{ width:"16px", height:"16px", borderRadius:"50%",
-                    background:cat.color, border:"1px solid rgba(255,255,255,0.1)" }} />
-                  <span style={{ fontSize:"10px", fontFamily:"monospace",
-                    color:"var(--text-3)" }}>{cat.color}</span>
+            ) : categories.map(cat => (
+              <div key={cat.id} className="au-acard">
+                <div className="au-acard__strip" style={{ background:`linear-gradient(135deg, ${cat.color}55, transparent 68%)` }} />
+                <div className="au-acard__head">
+                  <span className="au-acard__tag">
+                    {cat.icon} {cat.cat_type==="fixed" ? "Costo real"
+                      : cat.cat_type==="percent" ? `${cat.percentage}% venta` : "Utilidad neta"}
+                  </span>
+                  <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color: cat.is_active ? "#1AFF6E" : "#8c8c8c" }}>
+                    <span className="au-acard__dot" style={{ background: cat.is_active ? "#1AFF6E" : "#6b6b6b" }} />
+                    {cat.is_active ? "Activa" : "Inactiva"}
+                  </span>
                 </div>
-                <span style={{ padding:"2px 8px", borderRadius:"var(--r-full)",
-                  fontSize:"11px", fontWeight:500, display:"inline-block",
-                  color:      cat.is_active ? "#0F9940" : "var(--text-3)",
-                  background: cat.is_active ? "rgba(74,222,128,0.1)" : "var(--surface-3)",
-                  border:     `1px solid ${cat.is_active ? "rgba(74,222,128,0.25)" : "var(--border)"}` }}>
-                  {cat.is_active ? "Activa" : "Inactiva"}
-                </span>
-                <div style={{ display:"flex", gap:"6px" }}>
-                  <button onClick={() => setModal({ type:"edit-category", item:cat })} style={{
-                    padding:"5px 10px", borderRadius:"var(--r-md)", fontSize:"11px",
-                    cursor:"pointer", color:"#60a5fa",
-                    background:"rgba(96,165,250,0.1)", border:"1px solid rgba(96,165,250,0.25)" }}>
-                    ✎
-                  </button>
-                  <button onClick={() => {
-                    if (window.confirm(`¿Eliminar "${cat.name}"?`))
-                      deleteCatMutation.mutate(cat.id)
-                  }} style={{ padding:"5px 10px", borderRadius:"var(--r-md)", fontSize:"11px",
-                    cursor:"pointer", color:"#EF4444",
-                    background:"rgba(248,113,113,0.1)", border:"1px solid rgba(248,113,113,0.25)" }}>
-                    ×
-                  </button>
+                <p className="au-acard__title">{cat.name}</p>
+                <div className="au-acard__foot">
+                  <span className="au-acard__price" style={{ display:"flex", alignItems:"center", gap:8, fontSize:12, fontFamily:"monospace" }}>
+                    <span style={{ width:14, height:14, borderRadius:"50%", background:cat.color, flexShrink:0 }} /> {cat.color}
+                  </span>
+                  <div className="au-acard__actions">
+                    <button onClick={() => setModal({ type:"edit-category", item:cat })} title="Editar"
+                      className="au-pill-btn au-pill-btn--edit" style={{ flex:"none", padding:"8px 10px" }}><Pencil size={13} /></button>
+                    <button title="Eliminar"
+                      onClick={() => { if (window.confirm(`¿Eliminar "${cat.name}"?`)) deleteCatMutation.mutate(cat.id) }}
+                      className="au-pill-btn au-pill-btn--del" style={{ flex:"none", padding:"8px 10px" }}><Trash2 size={13} /></button>
+                  </div>
                 </div>
               </div>
             ))}

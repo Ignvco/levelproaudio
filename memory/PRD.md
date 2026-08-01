@@ -89,6 +89,16 @@ Patrón DRY: cada componente KPI local delega en el `StatCard` de la biblioteca 
 - Sin errores JS reales (los 429/blancos en screenshots fueron rate-limit de Cloudflare al navegador headless).
 - **Pendiente batch 2 (páginas con tablas)**: Productos, Categorías, Marcas, Facturación, Órdenes, Pagos, Servicios, Usuarios → convertir tablas al `DataTable` + headers `AdminPageHeader`. Requiere cablear columnas/acciones a los handlers CRUD existentes con cuidado (sin romper funcionalidad).
 
+## Admin — Cards estilo front en secciones específicas (2026-08-01) ✅
+Nuevas clases en `admin-ui.css`: `.au-pcard` (estilo ProductCard) y `.au-acard` (estilo CourseCard/Academia con franja verde), ambas oscuras, redondeadas, con pills y sin imagen.
+- **Pagos**: KPIs de estado → `StatCard variant="compact"` con indicador "activo" al filtrar.
+- **Marcas**: grilla de cards estilo producto (logo/Tag, título, website, pills Editar/Eliminar).
+- **Servicios** (tab Servicios) y **Cursos** (Academia): cards estilo academia (franja verde, tag de categoría/nivel, estado, precio en pill, acciones). Se quitó la imagen del curso.
+- **Finanzas → Configuración**: categorías como cards estilo academia (franja tintada con el color de la categoría, tag config, color pill, acciones).
+- **Densidad compacta** aplicada en Inventario (6 KPIs) y Pagos.
+- Verificado por screenshots. Sin errores de compilación.
+- **Sigue pendiente batch 2**: Órdenes y Pagos (y demás) → tablas al `DataTable`.
+
 
 
 Decisiones del usuario: prerendering en build (Fase 2, pendiente), mantener URLs actuales (/shop/:slug, ?category=), dominio dual (canónico primario: https://levelproaudio.com), arrancar por Fase 1.

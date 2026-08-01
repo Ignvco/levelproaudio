@@ -7,6 +7,7 @@ import {
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { Link } from "react-router-dom"
+import { Pencil, Trash2 } from "lucide-react"
 import BulkImportPanel from "../../components/admin/BulkImportPanel"
 
 const inputSt = {
@@ -254,85 +255,31 @@ export default function AdminAcademy() {
           {courses.map(course => {
             const lvl = LEVELS[course.level] || { label: course.level, color: "#888" }
             return (
-              <div key={course.id} style={{
-                background: "var(--surface)", border: "1px solid var(--border)",
-                borderRadius: "var(--r-xl)", overflow: "hidden",
-                transition: "all var(--dur-slow) var(--ease)",
-              }}
-                className="card card-glow"
-              >
-                {/* Thumbnail */}
-                <div style={{ aspectRatio: "16/9", background: "var(--surface-2)",
-                  overflow: "hidden", position: "relative" }}>
-                  {course.thumbnail_url ? (
-                    <img src={mediaUrl(course.thumbnail_url)} alt={course.title}
-                      style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                  ) : (
-                    <div style={{ width: "100%", height: "100%",
-                      display: "flex", alignItems: "center",
-                      justifyContent: "center", fontSize: "40px" }}>🎬</div>
-                  )}
-                  <div style={{
-                    position: "absolute", top: "10px", left: "10px",
-                    display: "flex", gap: "6px",
-                  }}>
-                    <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 8px",
-                      borderRadius: "var(--r-full)", background: lvl.color, color: "#000" }}>
-                      {lvl.label}
-                    </span>
-                    {course.is_free && (
-                      <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 8px",
-                        borderRadius: "var(--r-full)", background: "var(--accent)", color: "#000" }}>
-                        GRATIS
-                      </span>
-                    )}
-                    {!course.is_published && (
-                      <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 8px",
-                        borderRadius: "var(--r-full)", background: "#f59e0b", color: "#000" }}>
-                        BORRADOR
-                      </span>
-                    )}
+              <div key={course.id} className="au-acard">
+                <div className="au-acard__strip" />
+                <div className="au-acard__head">
+                  <span className="au-acard__tag" style={{ background: lvl.color, color: "#000" }}>{lvl.label}</span>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    {course.is_free && <span className="au-acard__tag" style={{ background: "#1AFF6E", color: "#00160b" }}>Gratis</span>}
+                    {!course.is_published && <span className="au-acard__tag" style={{ background: "#f59e0b", color: "#000" }}>Borrador</span>}
                   </div>
                 </div>
-
-                {/* Info */}
-                <div style={{ padding: "16px 18px" }}>
-                  <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "4px",
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {course.title}
-                  </p>
-                  <div style={{ display: "flex", gap: "12px", fontSize: "12px",
-                    color: "var(--text-3)", marginBottom: "12px" }}>
-                    <span>📹 {course.total_lessons || 0} lecciones</span>
-                    <span>👥 {course.enrollment_count || 0} inscritos</span>
-                    <span style={{ fontFamily: "var(--font-display)", fontSize: "13px",
-                      color: course.is_free ? "var(--accent)" : "var(--text-2)" }}>
-                      {course.is_free ? "Gratis" : `$${Number(course.price).toLocaleString("es-CL")}`}
-                    </span>
-                  </div>
-
-                  <div style={{ display: "flex", gap: "8px" }}>
+                <p className="au-acard__title">{course.title}</p>
+                <p className="au-acard__sub">{course.total_lessons || 0} lecciones · {course.enrollment_count || 0} inscritos</p>
+                <div className="au-acard__foot">
+                  <span className="au-acard__price">
+                    {course.is_free ? "Gratis" : `$${Number(course.price).toLocaleString("es-CL")}`}
+                  </span>
+                  <div className="au-acard__actions">
                     <Link to={`/admin/academy/modules?course=${course.id}`}
-                      style={{ flex: 1, padding: "7px", borderRadius: "var(--r-md)",
-                        fontSize: "12px", cursor: "pointer", textAlign: "center",
-                        color: "#60a5fa", background: "rgba(96,165,250,0.1)",
-                        border: "1px solid rgba(96,165,250,0.2)",
-                        textDecoration: "none" }}>
+                      className="au-pill-btn au-pill-btn--edit" style={{ flex: "none", padding: "8px 13px", textDecoration: "none" }}>
                       Módulos →
                     </Link>
-                    <button onClick={() => setModal(course)} style={{
-                      padding: "7px 12px", borderRadius: "var(--r-md)", fontSize: "12px",
-                      cursor: "pointer", color: "var(--text-2)",
-                      background: "var(--surface-2)", border: "1px solid var(--border)",
-                    }}>✎</button>
-                    <button onClick={() => {
-                      if (window.confirm(`¿Eliminar "${course.title}"?`))
-                        deleteMutation.mutate(course.id)
-                    }} style={{
-                      padding: "7px 12px", borderRadius: "var(--r-md)", fontSize: "12px",
-                      cursor: "pointer", color: "#EF4444",
-                      background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)",
-                    }}>×</button>
+                    <button onClick={() => setModal(course)} title="Editar"
+                      className="au-pill-btn au-pill-btn--edit" style={{ flex: "none", padding: "8px 10px" }}><Pencil size={13} /></button>
+                    <button title="Eliminar"
+                      onClick={() => { if (window.confirm(`¿Eliminar "${course.title}"?`)) deleteMutation.mutate(course.id) }}
+                      className="au-pill-btn au-pill-btn--del" style={{ flex: "none", padding: "8px 10px" }}><Trash2 size={13} /></button>
                   </div>
                 </div>
               </div>

@@ -2,6 +2,7 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminPayments, updatePaymentStatus } from "../../api/admin.api"
+import { StatCard } from "../../components/admin/ui"
 
 const STATUS = {
   pending:   { label:"Pendiente",   color:"#D97706" },
@@ -87,22 +88,16 @@ export default function AdminPayments() {
       </div>
 
       {/* KPIs rápidos por estado */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(150px, 1fr))",
-        gap:"10px", marginBottom:"24px" }}>
-        {Object.entries(STATUS).map(([s, { label, color }]) => {
+      <div className="au-grid" style={{ gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))",
+        marginBottom:"24px" }}>
+        {Object.entries(STATUS).map(([s, { label }]) => {
           const count = payments.filter(p => p.status === s).length
+          const active = statusFilter === s
           return (
-            <button key={s} type="button"
-              onClick={() => setStatusFilter(statusFilter === s ? "" : s)}
-              style={{ padding:"14px 16px", borderRadius:"var(--r-xl)", textAlign:"left",
-                cursor:"pointer", transition:"all var(--dur) var(--ease)",
-                background: statusFilter === s ? `${color}10` : "var(--surface)",
-                border:     `1px solid ${statusFilter === s ? color+"40" : "var(--border)"}` }}>
-              <p style={{ fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
-                letterSpacing:"0.06em", marginBottom:"6px" }}>{label}</p>
-              <p style={{ fontFamily:"var(--font-display)", fontSize:"1.6rem",
-                color, lineHeight:1 }}>{count}</p>
-            </button>
+            <StatCard key={s} variant="compact" label={label} value={count}
+              onClick={() => setStatusFilter(active ? "" : s)}
+              badge={active ? <span className="au-lp__delta au-lp__delta--pos">activo</span> : null}
+              testId={`payment-kpi-${s}`} />
           )
         })}
       </div>

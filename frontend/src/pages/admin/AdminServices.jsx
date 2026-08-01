@@ -211,58 +211,26 @@ export default function AdminServices() {
             <div style={{ display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
               {services.map(s => (
-                <div key={s.id} style={{
-                  background: "var(--surface)", border: "1px solid var(--border)",
-                  borderRadius: "var(--r-xl)", padding: "20px",
-                  display: "flex", flexDirection: "column", gap: "10px",
-                }} className="card card-glow">
-                  <div style={{ display: "flex", justifyContent: "space-between",
-                    alignItems: "flex-start" }}>
-                    <p style={{ fontSize: "14px", fontWeight: 500 }}>{s.name}</p>
-                    <span style={{
-                      padding: "2px 8px", borderRadius: "var(--r-full)", fontSize: "11px",
-                      fontWeight: 500,
-                      color:      s.is_active ? "var(--accent)" : "var(--text-3)",
-                      background: s.is_active ? "rgba(26,255,110,0.1)" : "var(--surface-2)",
-                      border:     `1px solid ${s.is_active ? "rgba(26,255,110,0.2)" : "var(--border)"}`,
-                    }}>
+                <div key={s.id} className="au-acard">
+                  <div className="au-acard__strip" />
+                  <div className="au-acard__head">
+                    <span className="au-acard__tag">{s.category_name || "Servicio"}</span>
+                    <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color: s.is_active ? "#1AFF6E" : "#8c8c8c" }}>
+                      <span className="au-acard__dot" style={{ background: s.is_active ? "#1AFF6E" : "#6b6b6b" }} />
                       {s.is_active ? "Activo" : "Inactivo"}
                     </span>
                   </div>
-                  {s.short_description && (
-                    <p style={{ fontSize: "12px", color: "var(--text-3)", lineHeight: 1.6 }}>
-                      {s.short_description}
-                    </p>
-                  )}
-                  <p style={{ fontFamily: "var(--font-display)", fontSize: "1.2rem",
-                    color: "var(--accent-text)" }}>
-                    {s.price_display}
-                  </p>
-                  <div style={{ display:"flex", gap:"8px", marginTop:"auto",
-                    paddingTop:"10px", borderTop:"1px solid var(--border)" }}>
-                    <button onClick={() => setModal(s)}
-                      data-testid={`btn-edit-service-${s.id}`}
-                      style={{
-                        flex:1, padding:"7px 12px", fontSize:"12px",
-                        background:"var(--surface-2)", border:"1px solid var(--border)",
-                        color:"var(--text)", borderRadius:"var(--r-full)",
-                        cursor:"pointer",
-                      }}>
-                      Editar
-                    </button>
-                    <button onClick={() => {
-                        if (confirm(`¿Eliminar "${s.name}"?`)) delMutation.mutate(s.id)
-                      }}
-                      data-testid={`btn-delete-service-${s.id}`}
-                      style={{
-                        padding:"7px 12px", fontSize:"12px",
-                        background:"transparent",
-                        border:"1px solid rgba(239,68,68,0.3)",
-                        color:"#ef4444", borderRadius:"var(--r-full)",
-                        cursor:"pointer",
-                      }}>
-                      Eliminar
-                    </button>
+                  <p className="au-acard__title">{s.name}</p>
+                  {s.short_description && <p className="au-acard__sub">{s.short_description}</p>}
+                  <div className="au-acard__foot">
+                    <span className="au-acard__price">{s.price_display}</span>
+                    <div className="au-acard__actions">
+                      <button onClick={() => setModal(s)} data-testid={`btn-edit-service-${s.id}`}
+                        className="au-pill-btn au-pill-btn--edit" style={{ padding:"8px 14px" }}>Editar</button>
+                      <button data-testid={`btn-delete-service-${s.id}`}
+                        onClick={() => { if (confirm(`¿Eliminar "${s.name}"?`)) delMutation.mutate(s.id) }}
+                        className="au-pill-btn au-pill-btn--del" style={{ padding:"8px 14px" }}>Eliminar</button>
+                    </div>
                   </div>
                 </div>
               ))}
