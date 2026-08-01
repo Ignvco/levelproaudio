@@ -99,6 +99,12 @@ Nuevas clases en `admin-ui.css`: `.au-pcard` (estilo ProductCard) y `.au-acard` 
 - Verificado por screenshots. Sin errores de compilación.
 - **Sigue pendiente batch 2**: Órdenes y Pagos (y demás) → tablas al `DataTable`.
 
+## Admin — Ajuste fino de cards (2026-08-01) ✅
+- `.au-pcard` reconstruida para replicar fielmente `ProductCard` del front (círculo de marca blanco, botón eliminar circular, título Geist 1.35rem, subtítulo, buy-row = pill de estado + botón neón "Editar" con círculo negro y flecha `ArrowUpRight`). Aplicada en **Marcas**.
+- Franja verde superior de `.au-acard` eliminada (`display:none`) → cards de **Servicios/Cursos/Finanzas-categorías** quedan oscuras y limpias.
+- Alturas igualadas: `min-height` en `.au-pcard` (236px) y `.au-acard` (200px) + grid stretch → grillas parejas.
+- Verificado por screenshots (Marcas, Academia, Servicios). Sin errores.
+
 
 
 Decisiones del usuario: prerendering en build (Fase 2, pendiente), mantener URLs actuales (/shop/:slug, ?category=), dominio dual (canónico primario: https://levelproaudio.com), arrancar por Fase 1.

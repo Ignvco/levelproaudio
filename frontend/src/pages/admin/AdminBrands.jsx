@@ -2,7 +2,7 @@
 import { useState, useRef } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminBrands, createAdminBrand, updateAdminBrand, deleteAdminBrand } from "../../api/admin.api"
-import { Tag, Pencil, Trash2 } from "lucide-react"
+import { Tag, Pencil, Trash2, ArrowUpRight } from "lucide-react"
 import { mediaUrl } from "../../utils/mediaUrl"
 import BulkImportPanel from "../../components/admin/BulkImportPanel"
 
@@ -216,22 +216,24 @@ export default function AdminBrands() {
           gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px" }}>
           {brands.map(brand => (
             <div key={brand.id} className="au-pcard">
-              <div className="au-pcard__logo">
-                {brand.logo_url
-                  ? <img src={mediaUrl(brand.logo_url)} alt={brand.name} />
-                  : <Tag size={22} strokeWidth={2} />}
-              </div>
-              <div>
-                <p className="au-pcard__title">{brand.name}</p>
-                {brand.website && <p className="au-pcard__meta">{brand.website}</p>}
-              </div>
-              <div className="au-pcard__actions">
-                <button className="au-pill-btn au-pill-btn--edit" onClick={() => setModal(brand)} data-testid={`btn-edit-brand-${brand.id}`}>
-                  <Pencil size={13} /> Editar
-                </button>
-                <button className="au-pill-btn au-pill-btn--del" data-testid={`btn-delete-brand-${brand.id}`}
+              <div className="au-pcard__head">
+                <div className="au-pcard__brand">
+                  {brand.logo_url
+                    ? <img src={mediaUrl(brand.logo_url)} alt={brand.name} />
+                    : <Tag size={22} strokeWidth={2} />}
+                </div>
+                <button className="au-pcard__del" data-testid={`btn-delete-brand-${brand.id}`}
+                  title="Eliminar"
                   onClick={() => { if (window.confirm(`¿Eliminar "${brand.name}"?`)) deleteMutation.mutate(brand.id) }}>
-                  <Trash2 size={13} /> Eliminar
+                  <Trash2 size={16} />
+                </button>
+              </div>
+              <h3 className="au-pcard__title">{brand.name}</h3>
+              <p className="au-pcard__sub">{brand.website || "Marca del catálogo"}</p>
+              <div className="au-pcard__buyrow">
+                <span className="au-pcard__pill">{brand.is_active === false ? "Inactiva" : "Activa"}</span>
+                <button className="au-pcard__buy" onClick={() => setModal(brand)} data-testid={`btn-edit-brand-${brand.id}`}>
+                  Editar <span className="au-pcard__circle"><ArrowUpRight size={15} strokeWidth={2.5} /></span>
                 </button>
               </div>
             </div>
