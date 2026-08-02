@@ -3,11 +3,18 @@ import os
 import pytest
 import requests
 
-BASE_URL = os.environ.get("REACT_APP_BACKEND_URL", "https://lpa-preview.preview.emergentagent.com").rstrip("/")
-API = f"{BASE_URL}/api/v1"
+BASE_URL = os.environ.get("REACT_APP_BACKEND_URL")
+CLIENT_EMAIL = os.environ.get("TEST_CLIENT_EMAIL") or os.environ.get("SEED_CLIENT_EMAIL")
+CLIENT_PASSWORD = os.environ.get("TEST_CLIENT_PASSWORD") or os.environ.get("SEED_CLIENT_PASSWORD")
 
-CLIENT_EMAIL = "cliente@test.com"
-CLIENT_PASSWORD = "[REDACTED]"
+if not all([BASE_URL, CLIENT_EMAIL, CLIENT_PASSWORD]):
+    pytest.skip(
+        "REACT_APP_BACKEND_URL / TEST_CLIENT_EMAIL / TEST_CLIENT_PASSWORD "
+        "(o SEED_*) requeridos para tests de service-requests.",
+        allow_module_level=True,
+    )
+BASE_URL = BASE_URL.rstrip("/")
+API = f"{BASE_URL}/api/v1"
 
 
 @pytest.fixture(scope="module")
