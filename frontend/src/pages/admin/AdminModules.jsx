@@ -6,12 +6,7 @@ import {
   getAdminModules, createAdminModule,
   updateAdminModule, deleteAdminModule, getAdminCourses,
 } from "../../api/admin.api"
-
-const inputSt = {
-  width: "100%", padding: "10px 14px",
-  background: "var(--surface-2)", border: "1px solid var(--border)",
-  borderRadius: "var(--r-md)", color: "var(--text)", fontSize: "13px", outline: "none",
-}
+import { FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
 
 function ModuleModal({ module, courseId, courses = [], onClose, onSave }) {
   const [form, setForm]     = useState({
@@ -40,76 +35,43 @@ function ModuleModal({ module, courseId, courses = [], onClose, onSave }) {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
-      backdropFilter: "blur(8px)", zIndex: 200, display: "flex",
-      alignItems: "center", justifyContent: "center", padding: "24px" }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-2xl)", width: "100%", maxWidth: "440px",
-        animation: "scaleIn 200ms var(--ease)" }}>
-        <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)",
-          display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <p style={{ fontSize: "15px", fontWeight: 500 }}>
-            {module?.id ? "Editar módulo" : "Nuevo módulo"}
-          </p>
-          <button onClick={onClose} style={{ background: "none", border: "none",
-            cursor: "pointer", color: "var(--text-3)", fontSize: "22px" }}>×</button>
-        </div>
-        <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "14px" }}>
-          {error && (
-            <div style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
-              background: "rgba(255,77,77,0.08)", border: "1px solid rgba(255,77,77,0.2)",
-              color: "var(--danger)", fontSize: "13px" }}>{error}</div>
-          )}
-          <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "7px" }}>Curso *</label>
-            <select value={form.course}
-              onChange={e => setForm(p => ({ ...p, course: e.target.value }))}
-              style={inputSt} data-testid="module-course-select">
-              <option value="">Seleccionar curso</option>
-              {courses.map(c => (
-                <option key={c.id} value={c.id}>{c.title}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "7px" }}>Título *</label>
-            <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-              style={inputSt} placeholder="Nombre del módulo" data-testid="module-title-input"
-              onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
-              onBlur={e => e.target.style.borderColor = "var(--border)"} />
-          </div>
-          <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "7px" }}>Orden</label>
-            <input type="number" value={form.order} min="1"
-              onChange={e => setForm(p => ({ ...p, order: parseInt(e.target.value) || 1 }))}
-              style={inputSt}
-              onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
-              onBlur={e => e.target.style.borderColor = "var(--border)"} />
-          </div>
-        </div>
-        <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)",
-          display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-          <button onClick={onClose} className="btn btn-ghost"
-            style={{ padding: "9px 18px", fontSize: "13px" }}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving}
-            className="btn btn-accent" data-testid="module-save-btn"
-            style={{ padding: "9px 18px", fontSize: "13px", opacity: saving ? 0.7 : 1 }}>
-            {saving ? "Guardando..." : "Guardar"}
-          </button>
-        </div>
-      </div>
-    </div>
+    <FormModal
+      open
+      title={module?.id ? "Editar módulo" : "Nuevo módulo"}
+      onClose={onClose}
+      onSave={handleSave}
+      saving={saving}
+      error={error}
+      testId="module-modal"
+    >
+      <FormField label="Curso *">
+        <select value={form.course}
+          onChange={e => setForm(p => ({ ...p, course: e.target.value }))}
+          style={formInputStyle} data-testid="module-course-select">
+          <option value="">Seleccionar curso</option>
+          {courses.map(c => (
+            <option key={c.id} value={c.id}>{c.title}</option>
+          ))}
+        </select>
+      </FormField>
+      <FormField label="Título *">
+        <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+          style={formInputStyle} placeholder="Nombre del módulo" data-testid="module-title-input" />
+      </FormField>
+      <FormField label="Orden">
+        <input type="number" value={form.order} min="1"
+          onChange={e => setForm(p => ({ ...p, order: parseInt(e.target.value) || 1 }))}
+          style={formInputStyle} />
+      </FormField>
+    </FormModal>
   )
 }
 
 export default function AdminModules() {
   const [searchParams]    = useSearchParams()
   const courseFilter      = searchParams.get("course") || ""
-  const [modal, setModal] = useState(null)
+  const [modal, setModal]     = useState(null)
+  const [toDelete, setToDelete] = useState(null)
   const queryClient       = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -121,7 +83,7 @@ export default function AdminModules() {
   })
   const deleteMutation = useMutation({
     mutationFn: deleteAdminModule,
-    onSuccess:  () => queryClient.invalidateQueries(["admin-modules"]),
+    onSuccess:  () => { queryClient.invalidateQueries(["admin-modules"]); setToDelete(null) },
   })
 
   const modules = data?.results || data || []
@@ -139,6 +101,17 @@ export default function AdminModules() {
           onSave={() => queryClient.invalidateQueries(["admin-modules"])}
         />
       )}
+
+      <ConfirmationModal
+        open={!!toDelete}
+        title="¿Eliminar módulo?"
+        description={toDelete ? `Se eliminará "${toDelete.title}" y sus lecciones.` : ""}
+        danger
+        loading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate(toDelete.id)}
+        onCancel={() => setToDelete(null)}
+        testId="delete-module-modal"
+      />
 
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between",
@@ -226,10 +199,7 @@ export default function AdminModules() {
                   cursor: "pointer", color: "#60a5fa",
                   background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)",
                 }}>✎</button>
-                <button onClick={() => {
-                  if (window.confirm(`¿Eliminar "${mod.title}"?`))
-                    deleteMutation.mutate(mod.id)
-                }} style={{
+                <button onClick={() => setToDelete(mod)} style={{
                   padding: "4px 8px", borderRadius: "var(--r-sm)", fontSize: "11px",
                   cursor: "pointer", color: "#EF4444",
                   background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)",

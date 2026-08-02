@@ -7,7 +7,7 @@ import {
   uploadProductImage, deleteProductImage, setPrimaryImage,
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
-import { DataTable, StatusBadge, AdminPageHeader, PrimaryButton } from "../../components/admin/ui"
+import { DataTable, StatusBadge, AdminPageHeader, PrimaryButton, FormModal, ConfirmationModal } from "../../components/admin/ui"
 import { Pencil, Trash2, Package } from "lucide-react"
 
 const inputSt = {
@@ -105,66 +105,43 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
   const TAB_LABELS = { basic: "Básico", pricing: "Precios", stock: "Stock", images: "Imágenes" }
 
   return (
-    <div style={{
-      position: "fixed", inset: 0, zIndex: 200,
-      background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      padding: "24px",
-    }}
-      onClick={e => e.target === e.currentTarget && onClose()}
+    <FormModal
+      open
+      title={product?.id ? "Editar producto" : "Nuevo producto"}
+      onClose={onClose}
+      onSave={handleSave}
+      saving={saving}
+      saveLabel={product?.id ? "Guardar cambios" : "Crear producto"}
+      error={null}
+      maxWidth="620px"
+      scrollableBody
+      testId="product-modal"
     >
+      {product?.id && (
+        <p style={{ fontSize: "11px", color: "var(--text-3)",
+          fontFamily: "monospace", marginTop: "-8px" }}>
+          ID: {product.id}
+        </p>
+      )}
+
+      {/* Tabs internos */}
       <div style={{
-        background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-2xl)", width: "100%", maxWidth: "620px",
-        maxHeight: "90vh", display: "flex", flexDirection: "column",
-        animation: "scaleIn 200ms var(--ease)",
+        display: "flex", gap: "0", borderBottom: "1px solid var(--border)",
+        flexShrink: 0, overflowX: "auto", margin: "0 -24px", padding: "0 24px",
       }}>
-        {/* Header */}
-        <div style={{
-          padding: "20px 24px", borderBottom: "1px solid var(--border)",
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          flexShrink: 0,
-        }}>
-          <div>
-            <p style={{ fontSize: "16px", fontWeight: 500 }}>
-              {product?.id ? "Editar producto" : "Nuevo producto"}
-            </p>
-            {product?.id && (
-              <p style={{ fontSize: "11px", color: "var(--text-3)",
-                fontFamily: "monospace", marginTop: "2px" }}>
-                ID: {product.id}
-              </p>
-            )}
-          </div>
-          <button onClick={onClose} style={{
-            background: "none", border: "none", cursor: "pointer",
-            color: "var(--text-3)", fontSize: "22px", lineHeight: 1,
-            padding: "4px",
-          }}>×</button>
-        </div>
-
-        {/* Tabs internos */}
-        <div style={{
-          display: "flex", gap: "0", borderBottom: "1px solid var(--border)",
-          flexShrink: 0, overflowX: "auto",
-        }}>
-          {FORM_TABS.map(t => (
-            <button key={t} type="button" onClick={() => setActiveTab(t)} style={{
-              padding: "10px 20px", fontSize: "13px", cursor: "pointer",
-              background: "none", border: "none",
-              borderBottom: activeTab === t ? "2px solid var(--accent)" : "2px solid transparent",
-              color: activeTab === t ? "var(--accent)" : "var(--text-3)",
-              fontWeight: activeTab === t ? 500 : 400,
-              marginBottom: "-1px", whiteSpace: "nowrap",
-            }}>
-              {TAB_LABELS[t]}
-            </button>
-          ))}
-        </div>
-
-        {/* Contenido scrollable */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "24px",
-          display: "flex", flexDirection: "column", gap: "16px" }}>
+        {FORM_TABS.map(t => (
+          <button key={t} type="button" onClick={() => setActiveTab(t)} style={{
+            padding: "10px 20px", fontSize: "13px", cursor: "pointer",
+            background: "none", border: "none",
+            borderBottom: activeTab === t ? "2px solid var(--accent)" : "2px solid transparent",
+            color: activeTab === t ? "var(--accent)" : "var(--text-3)",
+            fontWeight: activeTab === t ? 500 : 400,
+            marginBottom: "-1px", whiteSpace: "nowrap",
+          }}>
+            {TAB_LABELS[t]}
+          </button>
+        ))}
+      </div>
 
           {error && (
             <div style={{
@@ -559,26 +536,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
               )}
             </>
           )}
-        </div>
-
-        {/* Footer */}
-        <div style={{
-          padding: "16px 24px", borderTop: "1px solid var(--border)",
-          display: "flex", gap: "10px", justifyContent: "flex-end",
-          flexShrink: 0,
-        }}>
-          <button onClick={onClose} className="btn btn-ghost"
-            style={{ padding: "10px 20px", fontSize: "13px" }}>
-            Cancelar
-          </button>
-          <button onClick={handleSave} disabled={saving}
-            className="btn btn-accent"
-            style={{ padding: "10px 20px", fontSize: "13px", opacity: saving ? 0.7 : 1 }}>
-            {saving ? "Guardando..." : product?.id ? "Guardar cambios" : "Crear producto"}
-          </button>
-        </div>
-      </div>
-    </div>
+    </FormModal>
   )
 }
 
@@ -588,6 +546,7 @@ export default function AdminProducts() {
   const [catFilter, setCatFilter]   = useState("")
   const [statusFilter, setStatusFilter] = useState("active")  // active | inactive | all
   const [modal, setModal]           = useState(null) // null | "new" | product
+  const [toDelete, setToDelete]     = useState(null)
   const queryClient                 = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -610,7 +569,7 @@ export default function AdminProducts() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteAdminProduct,
-    onSuccess:  () => queryClient.invalidateQueries(["admin-products"]),
+    onSuccess:  () => { queryClient.invalidateQueries(["admin-products"]); setToDelete(null) },
   })
 
   const products   = data?.results   || data   || []
@@ -680,6 +639,17 @@ export default function AdminProducts() {
         />
       )}
 
+      <ConfirmationModal
+        open={!!toDelete}
+        title="¿Eliminar producto?"
+        description={toDelete ? `Se eliminará "${toDelete.name}" permanentemente.` : ""}
+        danger
+        loading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate(toDelete.id)}
+        onCancel={() => setToDelete(null)}
+        testId="delete-product-modal"
+      />
+
       <AdminPageHeader eyebrow="Catálogo" title="Productos"
         description={`${data?.count || products.length} productos`}
         actions={
@@ -738,9 +708,7 @@ export default function AdminProducts() {
         onRowClick={p => setModal(p)}
         rowActions={p => [
           { label:"Editar", icon:Pencil, onClick:() => setModal(p) },
-          { label:"Eliminar", icon:Trash2, danger:true, onClick:() => {
-            if (window.confirm(`¿Eliminar "${p.name}"?`)) deleteMutation.mutate(p.id)
-          }},
+          { label:"Eliminar", icon:Trash2, danger:true, onClick:() => setToDelete(p) },
         ]}
         emptyIcon={Package} emptyTitle="Sin productos"
         emptyDesc={search ? "No hay productos con esos términos." : "Crea el primer producto."}

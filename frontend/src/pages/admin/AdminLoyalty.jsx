@@ -6,7 +6,7 @@ import {
   updateLoyaltyConfig, adjustLoyaltyPoints,
 } from "../../api/admin.api"
 import { Users, Star, Sparkles, Gift, Medal, Award, Gem } from "lucide-react"
-import { StatCard, AdminPageHeader } from "../../components/admin/ui"
+import { StatCard, AdminPageHeader, FormModal, FormField, formInputStyle } from "../../components/admin/ui"
 
 const TABS   = ["Resumen","Top clientes","Configuración"]
 const NIVELES = {
@@ -41,84 +41,49 @@ function AdjustModal({ account, onClose }) {
   })
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)",
-      backdropFilter:"blur(8px)", zIndex:200, display:"flex",
-      alignItems:"center", justifyContent:"center", padding:"24px" }}
-      onClick={e => e.target===e.currentTarget && onClose()}>
-      <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-        borderRadius:"var(--r-2xl)", width:"100%", maxWidth:"380px",
-        animation:"scaleIn 200ms var(--ease)" }}>
-        <div style={{ padding:"20px 24px", borderBottom:"1px solid var(--border)",
-          display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <div>
-            <p style={{ fontSize:"15px", fontWeight:500 }}>Ajustar puntos</p>
-            <p style={{ fontSize:"12px", color:"var(--text-3)", marginTop:"2px" }}>
-              {account.user_email}
-            </p>
-          </div>
-          <button onClick={onClose} style={{ background:"none", border:"none",
-            cursor:"pointer", color:"var(--text-3)", fontSize:"22px" }}>×</button>
+    <FormModal
+      open
+      title="Ajustar puntos"
+      onClose={onClose}
+      onSave={() => mutation.mutate()}
+      saving={mutation.isPending}
+      saveLabel="Aplicar"
+      error={error}
+      maxWidth="380px"
+      testId="adjust-loyalty-modal"
+    >
+      <p style={{ fontSize:"12px", color:"var(--text-3)", marginTop:"-8px" }}>
+        {account.user_email}
+      </p>
+      <FormField label="Puntos (positivo = agregar, negativo = quitar)">
+        <input type="number" value={form.points}
+          onChange={e => setForm(p => ({ ...p, points:e.target.value }))}
+          style={formInputStyle} placeholder="Ej: 500 o -200" />
+      </FormField>
+      <FormField label="Razón">
+        <input value={form.reason}
+          onChange={e => setForm(p => ({ ...p, reason:e.target.value }))}
+          style={formInputStyle} placeholder="Ej: Ajuste manual, compensación..." />
+      </FormField>
+      <div style={{ padding:"12px 14px", borderRadius:"var(--r-lg)",
+        background:"var(--surface-2)", border:"1px solid var(--border)", fontSize:"13px" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"4px" }}>
+          <span style={{ color:"var(--text-3)" }}>Puntos actuales</span>
+          <span style={{ fontWeight:600 }}>
+            {account.puntos_disponibles?.toLocaleString("es-CL")}
+          </span>
         </div>
-        <div style={{ padding:"24px", display:"flex", flexDirection:"column", gap:"14px" }}>
-          {error && (
-            <div style={{ padding:"10px 14px", borderRadius:"var(--r-md)",
-              background:"rgba(255,77,77,0.08)", border:"1px solid rgba(255,77,77,0.2)",
-              color:"var(--danger)", fontSize:"13px" }}>{error}</div>
-          )}
-          <div>
-            <label style={{ display:"block", fontSize:"12px", fontWeight:500,
-              color:"var(--text-2)", marginBottom:"7px" }}>
-              Puntos (positivo = agregar, negativo = quitar)
-            </label>
-            <input type="number" value={form.points}
-              onChange={e => setForm(p => ({ ...p, points:e.target.value }))}
-              style={inputSt} placeholder="Ej: 500 o -200"
-              onFocus={e => e.target.style.borderColor="rgba(26,255,110,0.4)"}
-              onBlur={e => e.target.style.borderColor="var(--border)"} />
+        {form.points && !isNaN(form.points) && (
+          <div style={{ display:"flex", justifyContent:"space-between" }}>
+            <span style={{ color:"var(--text-3)" }}>Después del ajuste</span>
+            <span style={{ fontWeight:600,
+              color: parseInt(form.points) >= 0 ? "var(--accent-text)" : "#EF4444" }}>
+              {(account.puntos_disponibles + parseInt(form.points)).toLocaleString("es-CL")}
+            </span>
           </div>
-          <div>
-            <label style={{ display:"block", fontSize:"12px", fontWeight:500,
-              color:"var(--text-2)", marginBottom:"7px" }}>Razón</label>
-            <input value={form.reason}
-              onChange={e => setForm(p => ({ ...p, reason:e.target.value }))}
-              style={inputSt} placeholder="Ej: Ajuste manual, compensación..."
-              onFocus={e => e.target.style.borderColor="rgba(26,255,110,0.4)"}
-              onBlur={e => e.target.style.borderColor="var(--border)"} />
-          </div>
-          {/* Preview */}
-          <div style={{ padding:"12px 14px", borderRadius:"var(--r-lg)",
-            background:"var(--surface-2)", border:"1px solid var(--border)", fontSize:"13px" }}>
-            <div style={{ display:"flex", justifyContent:"space-between", marginBottom:"4px" }}>
-              <span style={{ color:"var(--text-3)" }}>Puntos actuales</span>
-              <span style={{ fontWeight:600 }}>
-                {account.puntos_disponibles?.toLocaleString("es-CL")}
-              </span>
-            </div>
-            {form.points && !isNaN(form.points) && (
-              <div style={{ display:"flex", justifyContent:"space-between" }}>
-                <span style={{ color:"var(--text-3)" }}>Después del ajuste</span>
-                <span style={{ fontWeight:600,
-                  color: parseInt(form.points) >= 0 ? "var(--accent-text)" : "#EF4444" }}>
-                  {(account.puntos_disponibles + parseInt(form.points)).toLocaleString("es-CL")}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-        <div style={{ padding:"16px 24px", borderTop:"1px solid var(--border)",
-          display:"flex", gap:"10px", justifyContent:"flex-end" }}>
-          <button onClick={onClose} className="btn btn-ghost"
-            style={{ padding:"9px 18px", fontSize:"13px" }}>Cancelar</button>
-          <button onClick={() => mutation.mutate()}
-            disabled={mutation.isPending || !form.points || !form.reason}
-            className="btn btn-accent"
-            style={{ padding:"9px 18px", fontSize:"13px",
-              opacity: mutation.isPending ? 0.7 : 1 }}>
-            {mutation.isPending ? "Ajustando..." : "Aplicar"}
-          </button>
-        </div>
+        )}
       </div>
-    </div>
+    </FormModal>
   )
 }
 

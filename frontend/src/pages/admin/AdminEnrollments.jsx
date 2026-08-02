@@ -5,17 +5,10 @@ import {
   getAdminEnrollments, createAdminEnrollment,
   getAdminCourses, getAdminUsers,
 } from "../../api/admin.api"
-
-const inputSt = {
-  width: "100%", padding: "10px 14px",
-  background: "var(--surface-2)", border: "1px solid var(--border)",
-  borderRadius: "var(--r-md)", color: "var(--text)",
-  fontSize: "13px", outline: "none",
-}
+import { FormModal, FormField, formInputStyle } from "../../components/admin/ui"
 
 function EnrollModal({ courses, users, onClose, onSave }) {
   const [form, setForm]     = useState({ user: "", course: "" })
-  const [saving, setSaving] = useState(false)
   const [error, setError]   = useState("")
   const queryClient         = useQueryClient()
 
@@ -29,65 +22,38 @@ function EnrollModal({ courses, users, onClose, onSave }) {
   })
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)",
-      backdropFilter: "blur(8px)", zIndex: 200, display: "flex",
-      alignItems: "center", justifyContent: "center", padding: "24px" }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-2xl)", width: "100%", maxWidth: "400px",
-        animation: "scaleIn 200ms var(--ease)" }}>
-        <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)",
-          display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <p style={{ fontSize: "15px", fontWeight: 500 }}>Inscripción manual</p>
-          <button onClick={onClose} style={{ background: "none", border: "none",
-            cursor: "pointer", color: "var(--text-3)", fontSize: "22px" }}>×</button>
-        </div>
-        <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "14px" }}>
-          {error && (
-            <div style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
-              background: "rgba(255,77,77,0.08)", border: "1px solid rgba(255,77,77,0.2)",
-              color: "var(--danger)", fontSize: "13px" }}>{error}</div>
-          )}
-          <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "7px" }}>Usuario *</label>
-            <select value={form.user} onChange={e => setForm(p => ({ ...p, user: e.target.value }))}
-              style={inputSt}>
-              <option value="">Seleccionar usuario</option>
-              {users.map(u => (
-                <option key={u.id} value={u.id}>
-                  {u.first_name} {u.last_name} — {u.email}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "7px" }}>Curso *</label>
-            <select value={form.course} onChange={e => setForm(p => ({ ...p, course: e.target.value }))}
-              style={inputSt}>
-              <option value="">Seleccionar curso</option>
-              {courses.map(c => (
-                <option key={c.id} value={c.id}>{c.title}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)",
-          display: "flex", gap: "10px", justifyContent: "flex-end" }}>
-          <button onClick={onClose} className="btn btn-ghost"
-            style={{ padding: "9px 18px", fontSize: "13px" }}>Cancelar</button>
-          <button
-            onClick={() => form.user && form.course && mutation.mutate(form)}
-            disabled={mutation.isPending || !form.user || !form.course}
-            className="btn btn-accent"
-            style={{ padding: "9px 18px", fontSize: "13px",
-              opacity: mutation.isPending ? 0.7 : 1 }}>
-            {mutation.isPending ? "Inscribiendo..." : "Inscribir"}
-          </button>
-        </div>
-      </div>
-    </div>
+    <FormModal
+      open
+      title="Inscripción manual"
+      onClose={onClose}
+      onSave={() => form.user && form.course && mutation.mutate(form)}
+      saving={mutation.isPending}
+      saveLabel="Inscribir"
+      error={error}
+      maxWidth="400px"
+      testId="enroll-modal"
+    >
+      <FormField label="Usuario *">
+        <select value={form.user} onChange={e => setForm(p => ({ ...p, user: e.target.value }))}
+          style={formInputStyle}>
+          <option value="">Seleccionar usuario</option>
+          {users.map(u => (
+            <option key={u.id} value={u.id}>
+              {u.first_name} {u.last_name} — {u.email}
+            </option>
+          ))}
+        </select>
+      </FormField>
+      <FormField label="Curso *">
+        <select value={form.course} onChange={e => setForm(p => ({ ...p, course: e.target.value }))}
+          style={formInputStyle}>
+          <option value="">Seleccionar curso</option>
+          {courses.map(c => (
+            <option key={c.id} value={c.id}>{c.title}</option>
+          ))}
+        </select>
+      </FormField>
+    </FormModal>
   )
 }
 

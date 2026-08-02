@@ -6,12 +6,7 @@ import {
   getAdminLessons, createAdminLesson,
   updateAdminLesson, deleteAdminLesson, getAdminModules,
 } from "../../api/admin.api"
-
-const inputSt = {
-  width: "100%", padding: "10px 14px",
-  background: "var(--surface-2)", border: "1px solid var(--border)",
-  borderRadius: "var(--r-md)", color: "var(--text)", fontSize: "13px", outline: "none",
-}
+import { FormModal, FormField, formInputStyle as inputSt, ConfirmationModal } from "../../components/admin/ui"
 
 function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
   const [form, setForm]     = useState({
@@ -82,50 +77,33 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)",
-      backdropFilter: "blur(8px)", zIndex: 200, display: "flex",
-      alignItems: "center", justifyContent: "center", padding: "24px" }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-2xl)", width: "100%", maxWidth: "500px",
-        maxHeight: "90vh", display: "flex", flexDirection: "column",
-        animation: "scaleIn 200ms var(--ease)" }}>
-        <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)",
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          flexShrink: 0 }}>
-          <p style={{ fontSize: "15px", fontWeight: 500 }}>
-            {lesson?.id ? "Editar lección" : "Nueva lección"}
-          </p>
-          <button onClick={onClose} style={{ background: "none", border: "none",
-            cursor: "pointer", color: "var(--text-3)", fontSize: "22px" }}>×</button>
-        </div>
-        <div style={{ flex: 1, overflowY: "auto", padding: "24px",
-          display: "flex", flexDirection: "column", gap: "14px" }}>
-          {error && (
-            <div style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
-              background: "rgba(255,77,77,0.08)", border: "1px solid rgba(255,77,77,0.2)",
-              color: "var(--danger)", fontSize: "13px" }}>{error}</div>
-          )}
-          <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "7px" }}>Título *</label>
-            <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
-              style={inputSt} placeholder="Nombre de la lección" />
-          </div>
-          <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "7px" }}>Módulo *</label>
-            <select value={form.module}
-              onChange={e => setForm(p => ({ ...p, module: e.target.value }))}
-              style={inputSt}>
-              <option value="">Seleccionar módulo</option>
-              {modules.map(m => (
-                <option key={m.id} value={m.id}>
-                  {m.course_title ? `${m.course_title} — ${m.title}` : m.title}
-                </option>
-              ))}
-            </select>
-          </div>
+    <FormModal
+      open
+      title={lesson?.id ? "Editar lección" : "Nueva lección"}
+      onClose={onClose}
+      onSave={submit}
+      saving={saving}
+      error={error}
+      maxWidth="500px"
+      scrollableBody
+      testId="lesson-modal"
+    >
+      <FormField label="Título *">
+        <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
+          style={inputSt} placeholder="Nombre de la lección" />
+      </FormField>
+      <FormField label="Módulo *">
+        <select value={form.module}
+          onChange={e => setForm(p => ({ ...p, module: e.target.value }))}
+          style={inputSt}>
+          <option value="">Seleccionar módulo</option>
+          {modules.map(m => (
+            <option key={m.id} value={m.id}>
+              {m.course_title ? `${m.course_title} — ${m.title}` : m.title}
+            </option>
+          ))}
+        </select>
+      </FormField>
 
           {/* Fuente de video: toggle local / URL */}
           <div>
@@ -240,69 +218,45 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
               </>
             )}
           </div>
-          <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "7px" }}>Descripción</label>
-            <textarea value={form.description} rows={3}
-              onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
-              style={{ ...inputSt, resize: "vertical" }}
-              onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
-              onBlur={e => e.target.style.borderColor = "var(--border)"} />
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-            <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-                color: "var(--text-2)", marginBottom: "7px" }}>Orden</label>
-              <input type="number" value={form.order} min="1"
-                onChange={e => setForm(p => ({ ...p, order: parseInt(e.target.value) || 1 }))}
-                style={inputSt}
-                onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
-                onBlur={e => e.target.style.borderColor = "var(--border)"} />
-            </div>
-            <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-                color: "var(--text-2)", marginBottom: "7px" }}>Duración (min)</label>
-              <input type="number" value={form.duration_minutes} min="0"
-                onChange={e => setForm(p => ({ ...p, duration_minutes: parseInt(e.target.value) || 0 }))}
-                style={inputSt}
-                onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
-                onBlur={e => e.target.style.borderColor = "var(--border)"} />
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: "20px" }}>
-            {[
-              { key: "is_free",   label: "Gratis (preview)" },
-            ].map(({ key, label }) => (
-              <label key={key} style={{ display: "flex", alignItems: "center",
-                gap: "8px", cursor: "pointer", fontSize: "13px" }}>
-                <input type="checkbox" checked={form[key]}
-                  onChange={e => setForm(p => ({ ...p, [key]: e.target.checked }))}
-                  style={{ accentColor: "var(--accent)" }} />
-                {label}
-              </label>
-            ))}
-          </div>
-        </div>
-        <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)",
-          display: "flex", gap: "10px", justifyContent: "flex-end", flexShrink: 0 }}>
-          <button onClick={onClose} className="btn btn-ghost"
-            style={{ padding: "9px 18px", fontSize: "13px" }}>Cancelar</button>
-          <button onClick={submit} disabled={saving}
-            className="btn btn-accent"
-            style={{ padding: "10px 22px", fontSize: "13px",
-              opacity: saving ? 0.6 : 1 }}>
-            {saving ? "Guardando..." : "Guardar"}
-          </button>
-        </div>
+      <FormField label="Descripción">
+        <textarea value={form.description} rows={3}
+          onChange={e => setForm(p => ({ ...p, description: e.target.value }))}
+          style={{ ...inputSt, resize: "vertical" }} />
+      </FormField>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+        <FormField label="Orden">
+          <input type="number" value={form.order} min="1"
+            onChange={e => setForm(p => ({ ...p, order: parseInt(e.target.value) || 1 }))}
+            style={inputSt} />
+        </FormField>
+        <FormField label="Duración (min)">
+          <input type="number" value={form.duration_minutes} min="0"
+            onChange={e => setForm(p => ({ ...p, duration_minutes: parseInt(e.target.value) || 0 }))}
+            style={inputSt} />
+        </FormField>
       </div>
-    </div>
+      <div style={{ display: "flex", gap: "20px" }}>
+        {[
+          { key: "is_free",   label: "Gratis (preview)" },
+        ].map(({ key, label }) => (
+          <label key={key} style={{ display: "flex", alignItems: "center",
+            gap: "8px", cursor: "pointer", fontSize: "13px" }}>
+            <input type="checkbox" checked={form[key]}
+              onChange={e => setForm(p => ({ ...p, [key]: e.target.checked }))}
+              style={{ accentColor: "var(--accent)" }} />
+            {label}
+          </label>
+        ))}
+      </div>
+    </FormModal>
   )
 }
 
 export default function AdminLessons() {
   const [searchParams]    = useSearchParams()
   const moduleFilter      = searchParams.get("module") || ""
-  const [modal, setModal] = useState(null)
+  const [modal, setModal]     = useState(null)
+  const [toDelete, setToDelete] = useState(null)
   const queryClient       = useQueryClient()
 
   const { data, isLoading } = useQuery({
@@ -314,7 +268,7 @@ export default function AdminLessons() {
   })
   const deleteMutation = useMutation({
     mutationFn: deleteAdminLesson,
-    onSuccess:  () => queryClient.invalidateQueries(["admin-lessons"]),
+    onSuccess:  () => { queryClient.invalidateQueries(["admin-lessons"]); setToDelete(null) },
   })
 
   const lessons = data?.results || data || []
@@ -331,6 +285,17 @@ export default function AdminLessons() {
           onSave={() => queryClient.invalidateQueries(["admin-lessons"])}
         />
       )}
+
+      <ConfirmationModal
+        open={!!toDelete}
+        title="¿Eliminar lección?"
+        description={toDelete ? `Se eliminará "${toDelete.title}" permanentemente.` : ""}
+        danger
+        loading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate(toDelete.id)}
+        onCancel={() => setToDelete(null)}
+        testId="delete-lesson-modal"
+      />
 
       <div style={{ display: "flex", justifyContent: "space-between",
         alignItems: "flex-start", marginBottom: "28px", gap: "16px" }}>
@@ -418,10 +383,7 @@ export default function AdminLessons() {
                   cursor: "pointer", color: "#60a5fa",
                   background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)",
                 }}>✎</button>
-                <button onClick={() => {
-                  if (window.confirm(`¿Eliminar "${lesson.title}"?`))
-                    deleteMutation.mutate(lesson.id)
-                }} style={{
+                <button onClick={() => setToDelete(lesson)} style={{
                   padding: "4px 8px", borderRadius: "var(--r-sm)", fontSize: "11px",
                   cursor: "pointer", color: "#EF4444",
                   background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)",

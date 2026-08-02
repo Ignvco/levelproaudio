@@ -3,7 +3,7 @@ import { useState }                             from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api                                       from "../../api/client"          // ← fix crítico
 import { TrendingUp, ArrowUpFromLine, Wallet, Pencil, Trash2, Inbox }   from "lucide-react"
-import { StatCard, AdminPageHeader, DataTable, PrimaryButton, SecondaryButton }  from "../../components/admin/ui"
+import { StatCard, AdminPageHeader, DataTable, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle, ConfirmationModal }  from "../../components/admin/ui"
 import {
   getFinanceSummary, getFinanceCategories,
   createFinanceCategory, updateFinanceCategory, deleteFinanceCategory,
@@ -99,120 +99,73 @@ function CategoryModal({ category, onClose, onSave }) {
   }
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)",
-      backdropFilter:"blur(8px)", zIndex:200, display:"flex",
-      alignItems:"center", justifyContent:"center", padding:"24px" }}
-      onClick={e => e.target===e.currentTarget && onClose()}>
-      <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-        borderRadius:"var(--r-2xl)", width:"100%", maxWidth:"420px",
-        animation:"scaleIn 200ms var(--ease)" }}>
+    <FormModal
+      open
+      title={category?.id ? "Editar categoría" : "Nueva categoría"}
+      onClose={onClose}
+      onSave={handleSave}
+      saving={saving}
+      error={error}
+      maxWidth="420px"
+      testId="finance-category-modal"
+    >
+      <FormField label="Tipo de categoría">
+        <select value={form.cat_type}
+          onChange={e => setForm(p => ({ ...p, cat_type:e.target.value }))}
+          style={formInputStyle}>
+          <option value="fixed">💰 Monto fijo — costo real del producto</option>
+          <option value="percent">% Porcentaje del precio de venta</option>
+          <option value="remainder">💵 Resto — utilidad neta (lo que sobra)</option>
+        </select>
+        <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"4px" }}>
+          {form.cat_type==="fixed"     && "Se toma del costo de capital de cada producto"}
+          {form.cat_type==="percent"   && "Se calcula como % del precio de venta"}
+          {form.cat_type==="remainder" && "Recibe lo que queda después de todos los costos"}
+        </p>
+      </FormField>
 
-        <div style={{ padding:"20px 24px", borderBottom:"1px solid var(--border)",
-          display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <p style={{ fontSize:"15px", fontWeight:500 }}>
-            {category?.id ? "Editar categoría" : "Nueva categoría"}
-          </p>
-          <button onClick={onClose} style={{ background:"none", border:"none",
-            cursor:"pointer", color:"var(--text-3)", fontSize:"22px" }}>×</button>
-        </div>
-
-        <div style={{ padding:"24px", display:"flex", flexDirection:"column", gap:"14px" }}>
-          {error && (
-            <div style={{ padding:"10px 14px", borderRadius:"var(--r-md)",
-              background:"rgba(255,77,77,0.08)", border:"1px solid rgba(255,77,77,0.2)",
-              color:"var(--danger)", fontSize:"13px" }}>{error}</div>
-          )}
-
-          {/* Tipo */}
-          <div>
-            <label style={{ display:"block", fontSize:"12px", fontWeight:500,
-              color:"var(--text-2)", marginBottom:"7px" }}>Tipo de categoría</label>
-            <select value={form.cat_type}
-              onChange={e => setForm(p => ({ ...p, cat_type:e.target.value }))}
-              style={inputSt}>
-              <option value="fixed">💰 Monto fijo — costo real del producto</option>
-              <option value="percent">% Porcentaje del precio de venta</option>
-              <option value="remainder">💵 Resto — utilidad neta (lo que sobra)</option>
-            </select>
-            <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"4px" }}>
-              {form.cat_type==="fixed"     && "Se toma del costo de capital de cada producto"}
-              {form.cat_type==="percent"   && "Se calcula como % del precio de venta"}
-              {form.cat_type==="remainder" && "Recibe lo que queda después de todos los costos"}
-            </p>
-          </div>
-
-          {/* Nombre + Ícono */}
-          <div style={{ display:"grid", gridTemplateColumns:"1fr 64px", gap:"10px" }}>
-            <div>
-              <label style={{ display:"block", fontSize:"12px", fontWeight:500,
-                color:"var(--text-2)", marginBottom:"7px" }}>Nombre *</label>
-              <input value={form.name}
-                onChange={e => setForm(p => ({ ...p, name:e.target.value }))}
-                style={inputSt} placeholder="Ej: IVA"
-                onFocus={e => e.target.style.borderColor="rgba(26,255,110,0.4)"}
-                onBlur={e => e.target.style.borderColor="var(--border)"} />
-            </div>
-            <div>
-              <label style={{ display:"block", fontSize:"12px", fontWeight:500,
-                color:"var(--text-2)", marginBottom:"7px" }}>Ícono</label>
-              <input value={form.icon}
-                onChange={e => setForm(p => ({ ...p, icon:e.target.value }))}
-                style={{ ...inputSt, textAlign:"center", fontSize:"20px" }} />
-            </div>
-          </div>
-
-          {/* Porcentaje — solo si "percent" */}
-          {form.cat_type==="percent" && (
-            <div>
-              <label style={{ display:"block", fontSize:"12px", fontWeight:500,
-                color:"var(--text-2)", marginBottom:"7px" }}>Porcentaje (%)</label>
-              <input type="number" value={form.percentage} min="0" max="100" step="0.5"
-                onChange={e => setForm(p => ({ ...p, percentage:parseFloat(e.target.value)||0 }))}
-                style={inputSt}
-                onFocus={e => e.target.style.borderColor="rgba(26,255,110,0.4)"}
-                onBlur={e => e.target.style.borderColor="var(--border)"} />
-            </div>
-          )}
-
-          {/* Color */}
-          <div>
-            <label style={{ display:"block", fontSize:"12px", fontWeight:500,
-              color:"var(--text-2)", marginBottom:"7px" }}>Color</label>
-            <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
-              <input type="color" value={form.color}
-                onChange={e => setForm(p => ({ ...p, color:e.target.value }))}
-                style={{ width:"44px", height:"44px", padding:"2px",
-                  borderRadius:"var(--r-sm)", border:"1px solid var(--border)",
-                  background:"var(--surface-2)", cursor:"pointer" }} />
-              <input value={form.color}
-                onChange={e => setForm(p => ({ ...p, color:e.target.value }))}
-                style={{ ...inputSt, fontFamily:"monospace" }} placeholder="#1aff6e"
-                onFocus={e => e.target.style.borderColor="rgba(26,255,110,0.4)"}
-                onBlur={e => e.target.style.borderColor="var(--border)"} />
-            </div>
-          </div>
-
-          {/* Activa */}
-          <label style={{ display:"flex", alignItems:"center", gap:"8px",
-            cursor:"pointer", fontSize:"13px" }}>
-            <input type="checkbox" checked={form.is_active}
-              onChange={e => setForm(p => ({ ...p, is_active:e.target.checked }))}
-              style={{ accentColor:"var(--accent)" }} />
-            Categoría activa
-          </label>
-        </div>
-
-        <div style={{ padding:"16px 24px", borderTop:"1px solid var(--border)",
-          display:"flex", gap:"10px", justifyContent:"flex-end" }}>
-          <button onClick={onClose} className="btn btn-ghost"
-            style={{ padding:"9px 18px", fontSize:"13px" }}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving} className="btn btn-accent"
-            style={{ padding:"9px 18px", fontSize:"13px", opacity:saving?0.7:1 }}>
-            {saving ? "Guardando..." : "Guardar"}
-          </button>
-        </div>
+      <div style={{ display:"grid", gridTemplateColumns:"1fr 64px", gap:"10px" }}>
+        <FormField label="Nombre *">
+          <input value={form.name}
+            onChange={e => setForm(p => ({ ...p, name:e.target.value }))}
+            style={formInputStyle} placeholder="Ej: IVA" />
+        </FormField>
+        <FormField label="Ícono">
+          <input value={form.icon}
+            onChange={e => setForm(p => ({ ...p, icon:e.target.value }))}
+            style={{ ...formInputStyle, textAlign:"center", fontSize:"20px" }} />
+        </FormField>
       </div>
-    </div>
+
+      {form.cat_type==="percent" && (
+        <FormField label="Porcentaje (%)">
+          <input type="number" value={form.percentage} min="0" max="100" step="0.5"
+            onChange={e => setForm(p => ({ ...p, percentage:parseFloat(e.target.value)||0 }))}
+            style={formInputStyle} />
+        </FormField>
+      )}
+
+      <FormField label="Color">
+        <div style={{ display:"flex", alignItems:"center", gap:"10px" }}>
+          <input type="color" value={form.color}
+            onChange={e => setForm(p => ({ ...p, color:e.target.value }))}
+            style={{ width:"44px", height:"44px", padding:"2px",
+              borderRadius:"var(--r-sm)", border:"1px solid var(--border)",
+              background:"var(--surface-2)", cursor:"pointer" }} />
+          <input value={form.color}
+            onChange={e => setForm(p => ({ ...p, color:e.target.value }))}
+            style={{ ...formInputStyle, fontFamily:"monospace" }} placeholder="#1aff6e" />
+        </div>
+      </FormField>
+
+      <label style={{ display:"flex", alignItems:"center", gap:"8px",
+        cursor:"pointer", fontSize:"13px" }}>
+        <input type="checkbox" checked={form.is_active}
+          onChange={e => setForm(p => ({ ...p, is_active:e.target.checked }))}
+          style={{ accentColor:"var(--accent)" }} />
+        Categoría activa
+      </label>
+    </FormModal>
   )
 }
 
@@ -247,93 +200,60 @@ function WithdrawalModal({ categories, onClose, onSave }) {
   }
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)",
-      backdropFilter:"blur(8px)", zIndex:200, display:"flex",
-      alignItems:"center", justifyContent:"center", padding:"24px" }}
-      onClick={e => e.target===e.currentTarget && onClose()}>
-      <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-        borderRadius:"var(--r-2xl)", width:"100%", maxWidth:"480px",
-        animation:"scaleIn 200ms var(--ease)" }}>
-
-        <div style={{ padding:"20px 24px", borderBottom:"1px solid var(--border)",
-          display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <p style={{ fontSize:"15px", fontWeight:500 }}>Registrar retiro</p>
-          <button onClick={onClose} style={{ background:"none", border:"none",
-            cursor:"pointer", color:"var(--text-3)", fontSize:"22px" }}>×</button>
-        </div>
-
-        <div style={{ padding:"24px", display:"flex", flexDirection:"column", gap:"14px" }}>
-          {error && (
-            <div style={{ padding:"10px 14px", borderRadius:"var(--r-md)",
-              background:"rgba(255,77,77,0.08)", border:"1px solid rgba(255,77,77,0.2)",
-              color:"var(--danger)", fontSize:"13px" }}>{error}</div>
-          )}
-
-          <div>
-            <label style={{ display:"block", fontSize:"12px", fontWeight:500,
-              color:"var(--text-2)", marginBottom:"7px" }}>Categoría *</label>
-            <select value={form.category_id}
-              onChange={e => setForm(p => ({ ...p, category_id:e.target.value }))}
-              style={inputSt}>
-              {categories.map(c => (
-                <option key={c.id} value={c.id}>
-                  {c.icon} {c.name} — disponible: {fmt(c.balance)}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {selectedCat && (
-            <div style={{ padding:"12px 14px", borderRadius:"var(--r-lg)",
-              background:"var(--surface-2)", border:"1px solid var(--border)" }}>
-              <p style={{ fontSize:"12px", color:"var(--text-3)", marginBottom:"4px" }}>
-                Saldo disponible en {selectedCat.name}
-              </p>
-              <p style={{ fontFamily:"var(--font-display)", fontSize:"1.4rem",
-                color: selectedCat.balance > 0 ? "var(--accent)" : "var(--danger)" }}>
-                {fmt(selectedCat.balance)}
-              </p>
-            </div>
-          )}
-
-          {[
-            { key:"amount",      label:"Monto a retirar *",           type:"number", placeholder:"0" },
-            { key:"destination", label:"Cuenta destino *",            type:"text",   placeholder:"Ej: Banco Estado — cta. cte 12345678" },
-            { key:"reference",   label:"N° de referencia (opcional)", type:"text",   placeholder:"Opcional" },
-          ].map(({ key, label, type, placeholder }) => (
-            <div key={key}>
-              <label style={{ display:"block", fontSize:"12px", fontWeight:500,
-                color:"var(--text-2)", marginBottom:"7px" }}>{label}</label>
-              <input type={type} value={form[key]}
-                onChange={e => setForm(p => ({ ...p, [key]:e.target.value }))}
-                style={inputSt} placeholder={placeholder}
-                onFocus={e => e.target.style.borderColor="rgba(26,255,110,0.4)"}
-                onBlur={e => e.target.style.borderColor="var(--border)"} />
-            </div>
+    <FormModal
+      open
+      title="Registrar retiro"
+      onClose={onClose}
+      onSave={handleSave}
+      saving={saving}
+      saveLabel="Registrar retiro"
+      error={error}
+      maxWidth="480px"
+      testId="withdrawal-modal"
+    >
+      <FormField label="Categoría *">
+        <select value={form.category_id}
+          onChange={e => setForm(p => ({ ...p, category_id:e.target.value }))}
+          style={formInputStyle}>
+          {categories.map(c => (
+            <option key={c.id} value={c.id}>
+              {c.icon} {c.name} — disponible: {fmt(c.balance)}
+            </option>
           ))}
+        </select>
+      </FormField>
 
-          <div>
-            <label style={{ display:"block", fontSize:"12px", fontWeight:500,
-              color:"var(--text-2)", marginBottom:"7px" }}>Notas</label>
-            <textarea value={form.notes} rows={3}
-              onChange={e => setForm(p => ({ ...p, notes:e.target.value }))}
-              style={{ ...inputSt, resize:"vertical" }} placeholder="Motivo del retiro..."
-              onFocus={e => e.target.style.borderColor="rgba(26,255,110,0.4)"}
-              onBlur={e => e.target.style.borderColor="var(--border)"} />
-          </div>
+      {selectedCat && (
+        <div style={{ padding:"12px 14px", borderRadius:"var(--r-lg)",
+          background:"var(--surface-2)", border:"1px solid var(--border)" }}>
+          <p style={{ fontSize:"12px", color:"var(--text-3)", marginBottom:"4px" }}>
+            Saldo disponible en {selectedCat.name}
+          </p>
+          <p style={{ fontFamily:"var(--font-display)", fontSize:"1.4rem",
+            color: selectedCat.balance > 0 ? "var(--accent)" : "var(--danger)" }}>
+            {fmt(selectedCat.balance)}
+          </p>
         </div>
+      )}
 
-        <div style={{ padding:"16px 24px", borderTop:"1px solid var(--border)",
-          display:"flex", gap:"10px", justifyContent:"flex-end" }}>
-          <button onClick={onClose} className="btn btn-ghost"
-            style={{ padding:"9px 18px", fontSize:"13px" }}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving} className="btn btn-accent"
-            style={{ padding:"9px 18px", fontSize:"13px", opacity:saving?0.7:1 }}>
-            {saving ? "Registrando..." : "Registrar retiro"}
-          </button>
-        </div>
-      </div>
-    </div>
+      {[
+        { key:"amount",      label:"Monto a retirar *",           type:"number", placeholder:"0" },
+        { key:"destination", label:"Cuenta destino *",            type:"text",   placeholder:"Ej: Banco Estado — cta. cte 12345678" },
+        { key:"reference",   label:"N° de referencia (opcional)", type:"text",   placeholder:"Opcional" },
+      ].map(({ key, label, type, placeholder }) => (
+        <FormField key={key} label={label}>
+          <input type={type} value={form[key]}
+            onChange={e => setForm(p => ({ ...p, [key]:e.target.value }))}
+            style={formInputStyle} placeholder={placeholder} />
+        </FormField>
+      ))}
+
+      <FormField label="Notas">
+        <textarea value={form.notes} rows={3}
+          onChange={e => setForm(p => ({ ...p, notes:e.target.value }))}
+          style={{ ...formInputStyle, resize:"vertical" }} placeholder="Motivo del retiro..." />
+      </FormField>
+    </FormModal>
   )
 }
 
@@ -341,6 +261,8 @@ function WithdrawalModal({ categories, onClose, onSave }) {
 export default function AdminFinance() {
   const [tab, setTab]   = useState("overview")
   const [modal, setModal] = useState(null)
+  const [toDeleteWithdrawal, setToDeleteWithdrawal] = useState(null)
+  const [toDeleteCategory, setToDeleteCategory]     = useState(null)
   const queryClient     = useQueryClient()
 
   const { data:summary, isLoading } = useQuery({
@@ -368,6 +290,7 @@ export default function AdminFinance() {
     onSuccess: () => {
       queryClient.invalidateQueries(["admin-finance-summary"])
       queryClient.invalidateQueries(["admin-finance-withdrawals"])
+      setToDeleteWithdrawal(null)
     },
   })
   const deleteCatMutation = useMutation({
@@ -375,6 +298,7 @@ export default function AdminFinance() {
     onSuccess: () => {
       queryClient.invalidateQueries(["admin-finance-categories"])
       queryClient.invalidateQueries(["admin-finance-summary"])
+      setToDeleteCategory(null)
     },
   })
 
@@ -411,6 +335,27 @@ export default function AdminFinance() {
         <WithdrawalModal categories={summaryCategories}
           onClose={() => setModal(null)} onSave={onSave} />
       )}
+
+      <ConfirmationModal
+        open={!!toDeleteWithdrawal}
+        title="¿Eliminar retiro?"
+        description="Esta acción no se puede deshacer."
+        danger
+        loading={deleteWithdrawalMutation.isPending}
+        onConfirm={() => deleteWithdrawalMutation.mutate(toDeleteWithdrawal.id)}
+        onCancel={() => setToDeleteWithdrawal(null)}
+        testId="delete-withdrawal-modal"
+      />
+      <ConfirmationModal
+        open={!!toDeleteCategory}
+        title="¿Eliminar categoría?"
+        description={toDeleteCategory ? `Se eliminará "${toDeleteCategory.name}" permanentemente.` : ""}
+        danger
+        loading={deleteCatMutation.isPending}
+        onConfirm={() => deleteCatMutation.mutate(toDeleteCategory.id)}
+        onCancel={() => setToDeleteCategory(null)}
+        testId="delete-finance-category-modal"
+      />
 
       <AdminPageHeader eyebrow="Contabilidad" title="Finanzas"
         description="Distribución automática de ingresos y retiros"
@@ -613,9 +558,7 @@ export default function AdminFinance() {
             </PrimaryButton>
           }
           rowActions={w => [
-            { label:"Eliminar", icon:Trash2, danger:true, onClick:() => {
-              if (window.confirm("¿Eliminar este retiro?")) deleteWithdrawalMutation.mutate(w.id)
-            }},
+            { label:"Eliminar", icon:Trash2, danger:true, onClick:() => setToDeleteWithdrawal(w) },
           ]}
           emptyIcon={Inbox} emptyTitle="Sin retiros registrados"
           emptyDesc="Registrá un retiro con el botón de arriba."
@@ -667,7 +610,7 @@ export default function AdminFinance() {
                     <button onClick={() => setModal({ type:"edit-category", item:cat })} title="Editar"
                       className="au-pill-btn au-pill-btn--edit" style={{ flex:"none", padding:"8px 10px" }}><Pencil size={13} /></button>
                     <button title="Eliminar"
-                      onClick={() => { if (window.confirm(`¿Eliminar "${cat.name}"?`)) deleteCatMutation.mutate(cat.id) }}
+                      onClick={() => setToDeleteCategory(cat)}
                       className="au-pill-btn au-pill-btn--del" style={{ flex:"none", padding:"8px 10px" }}><Trash2 size={13} /></button>
                   </div>
                 </div>
