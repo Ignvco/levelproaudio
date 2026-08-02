@@ -10,8 +10,14 @@ from .models import Enrollment
 def enroll_user_in_course(sender, instance, **kwargs):
     """
     Inscribe al usuario en el curso cuando el pedido se marca como pagado.
+
+    Antes solo aceptaba status == "paid" exacto, distinto al resto de
+    los signals del proyecto (loyalty, finanzas) que aceptan
+    paid/shipped/completed — por consistencia y para no perder la
+    inscripción si una orden se crea/edita directo en otro estado
+    "pagado" (ej: venta manual cargada como completada).
     """
-    if instance.status != "paid":
+    if instance.status not in ("paid", "shipped", "completed"):
         return
 
     for item in instance.items.all():

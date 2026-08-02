@@ -16,8 +16,7 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
     order:              lesson?.order              ?? 1,
     duration_minutes:   lesson?.duration_minutes   ?? 0,
     module:             lesson?.module             || moduleId || "",
-    is_active:          lesson?.is_active          ?? true,
-    is_free:            lesson?.is_free            ?? false,
+    is_free:            lesson?.is_free             ?? false,
   })
   const [videoFile, setVideoFile]     = useState(null)
   const [uploadProgress, setProgress] = useState(0)

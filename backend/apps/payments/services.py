@@ -80,11 +80,13 @@ def create_enrollment_if_course(order: Order) -> None:
                and item.product.course:
                 course = item.product.course
 
-            # Método 2 — busca por nombre como fallback
+            # Método 2 — busca por nombre como fallback (el product_name
+            # real que usa el checkout de cursos siempre tiene el prefijo
+            # "Curso: " — antes no se sacaba, así que este fallback nunca
+            # encontraba nada)
             if not course:
-                course = Course.objects.filter(
-                    title__iexact=item.product_name
-                ).first()
+                name = item.product_name.replace("Curso: ", "").strip()
+                course = Course.objects.filter(title__iexact=name).first()
 
             if course and order.user:
                 Enrollment.objects.get_or_create(
@@ -213,8 +215,10 @@ def process_mercadopago_webhook(data: dict, provider: str) -> None:
         payment.save(update_fields=["paid_at"])
         order.status = OrderStatus.PAID
         order.save(update_fields=["status"])
+        # ↑ este save() ya dispara el signal enroll_user_in_course de
+        # academy/signals.py — no hace falta (ni conviene) repetir esa
+        # lógica acá para cada proveedor de pago por separado.
         send_payment_confirmation_email(order)
-        create_enrollment_if_course(order)  # ← enrollment automático
 
 
 # ── PayPal ───────────────────────────────────────────────────
@@ -298,7 +302,7 @@ def capture_paypal_payment(paypal_payment_id: str, payer_id: str) -> bool:
             payment.order.status = OrderStatus.PAID
             payment.order.save(update_fields=["status"])
             send_payment_confirmation_email(payment.order)
-            create_enrollment_if_course(payment.order)  # ← enrollment automático
+            # El signal enroll_user_in_course ya se disparó con el save() de arriba.
 
         return True
 

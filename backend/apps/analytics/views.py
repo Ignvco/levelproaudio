@@ -83,6 +83,14 @@ class AdminModuleSerializer(drf_serializers.ModelSerializer):
 class AdminLessonSerializer(drf_serializers.ModelSerializer):
     module_title = drf_serializers.CharField(source="module.title", read_only=True)
     video_source = drf_serializers.CharField(read_only=True)
+    # Por default, el FileField auto-generado por ModelSerializer llama
+    # .url internamente al leer — con el bucket privado y sin URLs
+    # firmadas eso da 403 (mismo bug que ya encontramos en productos y
+    # servicios, acá lo genera DRF solo). use_url=False hace que en
+    # lectura devuelva el nombre del archivo en vez de la URL rota;
+    # para reproducir el video real, el frontend ya usa `video_source`
+    # (que sí pasa por el proxy /media/ correctamente).
+    video_file = drf_serializers.FileField(required=False, allow_null=True, use_url=False)
 
     class Meta:
         model  = Lesson
@@ -90,7 +98,6 @@ class AdminLessonSerializer(drf_serializers.ModelSerializer):
                   "description", "order", "is_free", "duration_minutes",
                   "module", "module_title"]
         extra_kwargs = {
-            "video_file": {"required": False, "allow_null": True},
             "video_url":  {"required": False, "allow_blank": True},
         }
 
@@ -1101,7 +1108,15 @@ def update_request_status(request, pk):
         return Response({"error": "No encontrado."}, status=404)
 
     old_status     = sr.status
-    sr.status      = request.data.get("status", sr.status)
+    new_status     = request.data.get("status", sr.status)
+    valid_statuses = dict(ServiceRequest.Status.choices)
+    if new_status not in valid_statuses:
+        return Response({
+            "error": f'"{new_status}" no es un estado válido. '
+                     f'Opciones: {", ".join(valid_statuses.keys())}.'
+        }, status=400)
+
+    sr.status      = new_status
     sr.admin_notes = request.data.get("admin_notes", sr.admin_notes)
     sr.save(update_fields=["status", "admin_notes"])
 

@@ -6,7 +6,7 @@ from core.media import media_url as _media_url
 
 class LessonSerializer(serializers.ModelSerializer):
     is_locked    = serializers.SerializerMethodField()
-    video_source = serializers.CharField(read_only=True)
+    video_source = serializers.SerializerMethodField()
     video_url    = serializers.SerializerMethodField()
     video_file   = serializers.SerializerMethodField()
 
@@ -28,10 +28,17 @@ class LessonSerializer(serializers.ModelSerializer):
     def get_is_locked(self, obj):
         return self._is_locked(obj)
 
-    # video_url y video_file solo se exponen si la lección NO está bloqueada.
-    # is_locked es un flag informativo para el frontend, pero el control de
-    # acceso real tiene que vivir acá — de lo contrario cualquiera puede leer
-    # la URL del video pago directo desde la respuesta del API.
+    # video_url, video_file y video_source solo se exponen si la lección
+    # NO está bloqueada. is_locked es un flag informativo para el
+    # frontend, pero el control de acceso real tiene que vivir acá — de
+    # lo contrario cualquiera puede leer la URL del video pago directo
+    # desde la respuesta del API.
+    #
+    # video_source ANTES era un CharField de solo lectura que reflejaba
+    # directo la property del modelo, sin pasar por _is_locked() — eso
+    # filtraba el video pago igual, por una puerta distinta a la que ya
+    # habíamos tapado en video_url/video_file. Ahora las tres pasan por
+    # el mismo chequeo.
     def get_video_url(self, obj):
         if self._is_locked(obj):
             return None
@@ -41,6 +48,11 @@ class LessonSerializer(serializers.ModelSerializer):
         if self._is_locked(obj):
             return None
         return _media_url(obj.video_file)
+
+    def get_video_source(self, obj):
+        if self._is_locked(obj):
+            return None
+        return obj.video_source
 
 
 class ModuleSerializer(serializers.ModelSerializer):
