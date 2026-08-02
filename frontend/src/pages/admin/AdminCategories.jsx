@@ -5,7 +5,7 @@
 import { useState, useRef, useCallback } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../../api/client"
-import { AdminPageHeader, PrimaryButton } from "../../components/admin/ui"
+import { AdminPageHeader, PrimaryButton, FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
 
 // ── API helpers ───────────────────────────────────────────────
 const getCategories   = ()           => api.get("/admin/categories/").then(r => r.data)
@@ -66,99 +66,52 @@ function CategoryModal({ category, roots, onClose, onSave }) {
     } finally { setSaving(false) }
   }
 
-  const inputSt = {
-    width:"100%", padding:"10px 14px",
-    background:"var(--surface-2)", border:"1px solid var(--border)",
-    borderRadius:"var(--r-md)", color:"var(--text)", fontSize:"13px", outline:"none",
-  }
-
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)",
-      backdropFilter:"blur(8px)", zIndex:200,
-      display:"flex", alignItems:"center", justifyContent:"center", padding:"24px" }}
-      onClick={e => e.target === e.currentTarget && onClose()}>
-      <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-        borderRadius:"var(--r-2xl)", width:"100%", maxWidth:"440px",
-        animation:"scaleIn 200ms var(--ease)" }}>
+    <FormModal
+      open
+      title={category?.id ? "Editar categoría" : "Nueva categoría"}
+      onClose={onClose}
+      onSave={handleSave}
+      saving={saving}
+      error={error}
+      maxWidth="440px"
+      testId="category-modal"
+    >
+      <FormField label="Nombre *">
+        <input value={form.name}
+          onChange={e => setForm(f => ({ ...f, name:e.target.value }))}
+          style={formInputStyle} placeholder="Nombre de la categoría" />
+      </FormField>
 
-        {/* Header */}
-        <div style={{ padding:"20px 24px", borderBottom:"1px solid var(--border)",
-          display:"flex", justifyContent:"space-between", alignItems:"center" }}>
-          <p style={{ fontSize:"15px", fontWeight:500 }}>
-            {category?.id ? "Editar categoría" : "Nueva categoría"}
-          </p>
-          <button onClick={onClose} style={{ background:"none", border:"none",
-            cursor:"pointer", color:"var(--text-3)", fontSize:"22px" }}>×</button>
-        </div>
+      <FormField label="Descripción">
+        <input value={form.description}
+          onChange={e => setForm(f => ({ ...f, description:e.target.value }))}
+          style={formInputStyle} placeholder="Descripción opcional" />
+      </FormField>
 
-        {/* Body */}
-        <div style={{ padding:"24px", display:"flex", flexDirection:"column", gap:"14px" }}>
-          {error && (
-            <div style={{ padding:"10px 14px", borderRadius:"var(--r-md)",
-              background:"rgba(255,77,77,0.08)", border:"1px solid rgba(255,77,77,0.2)",
-              color:"var(--danger)", fontSize:"13px" }}>{error}</div>
-          )}
+      <FormField label="Categoría padre (opcional)">
+        <select value={form.parent}
+          onChange={e => setForm(f => ({ ...f, parent:e.target.value }))}
+          style={formInputStyle}>
+          <option value="">Sin padre (categoría raíz)</option>
+          {roots
+            .filter(c => c.id !== category?.id)
+            .map(c => <option key={c.id} value={c.id}>{c.name}</option>)
+          }
+        </select>
+        <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"5px" }}>
+          El orden se ajusta arrastrando desde la lista principal.
+        </p>
+      </FormField>
 
-          <div>
-            <label style={{ display:"block", fontSize:"12px", fontWeight:500,
-              color:"var(--text-2)", marginBottom:"7px" }}>Nombre *</label>
-            <input value={form.name}
-              onChange={e => setForm(f => ({ ...f, name:e.target.value }))}
-              style={inputSt} placeholder="Nombre de la categoría"
-              onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
-              onBlur={e  => e.target.style.borderColor = "var(--border)"} />
-          </div>
-
-          <div>
-            <label style={{ display:"block", fontSize:"12px", fontWeight:500,
-              color:"var(--text-2)", marginBottom:"7px" }}>Descripción</label>
-            <input value={form.description}
-              onChange={e => setForm(f => ({ ...f, description:e.target.value }))}
-              style={inputSt} placeholder="Descripción opcional"
-              onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
-              onBlur={e  => e.target.style.borderColor = "var(--border)"} />
-          </div>
-
-          <div>
-            <label style={{ display:"block", fontSize:"12px", fontWeight:500,
-              color:"var(--text-2)", marginBottom:"7px" }}>
-              Categoría padre (opcional)
-            </label>
-            <select value={form.parent}
-              onChange={e => setForm(f => ({ ...f, parent:e.target.value }))}
-              style={inputSt}>
-              <option value="">Sin padre (categoría raíz)</option>
-              {roots
-                .filter(c => c.id !== category?.id)
-                .map(c => <option key={c.id} value={c.id}>{c.name}</option>)
-              }
-            </select>
-            <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"5px" }}>
-              El orden se ajusta arrastrando desde la lista principal.
-            </p>
-          </div>
-
-          <label style={{ display:"flex", alignItems:"center", gap:"8px",
-            cursor:"pointer", fontSize:"13px" }}>
-            <input type="checkbox" checked={form.is_active}
-              onChange={e => setForm(f => ({ ...f, is_active:e.target.checked }))}
-              style={{ accentColor:"var(--accent)" }} />
-            Categoría activa
-          </label>
-        </div>
-
-        {/* Footer */}
-        <div style={{ padding:"16px 24px", borderTop:"1px solid var(--border)",
-          display:"flex", gap:"10px", justifyContent:"flex-end" }}>
-          <button onClick={onClose} className="btn btn-ghost"
-            style={{ padding:"9px 18px", fontSize:"13px" }}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving} className="btn btn-accent"
-            style={{ padding:"9px 18px", fontSize:"13px", opacity:saving?0.7:1 }}>
-            {saving ? "Guardando..." : "Guardar"}
-          </button>
-        </div>
-      </div>
-    </div>
+      <label style={{ display:"flex", alignItems:"center", gap:"8px",
+        cursor:"pointer", fontSize:"13px" }}>
+        <input type="checkbox" checked={form.is_active}
+          onChange={e => setForm(f => ({ ...f, is_active:e.target.checked }))}
+          style={{ accentColor:"var(--accent)" }} />
+        Categoría activa
+      </label>
+    </FormModal>
   )
 }
 
@@ -286,6 +239,7 @@ function ChildrenList({ items, parentId, onEdit, onDelete, onChildReorder }) {
 // ── AdminCategories ───────────────────────────────────────────
 export default function AdminCategories() {
   const [modal, setModal]           = useState(null)
+  const [toDelete, setToDelete]     = useState(null)
   const [draggingIdx, setDraggingIdx] = useState(null)
   const [localRoots, setLocalRoots] = useState(null)
   const queryClient                 = useQueryClient()
@@ -343,16 +297,11 @@ export default function AdminCategories() {
     onSuccess:  () => {
       setLocalRoots(null)
       queryClient.invalidateQueries(["admin-categories"])
+      setToDelete(null)
     },
   })
 
-  const handleDelete = (cat) => {
-    const hasChildren = getChildren(cat.id).length > 0
-    const msg = hasChildren
-      ? `¿Eliminar "${cat.name}" y sus ${getChildren(cat.id).length} subcategorías?`
-      : `¿Eliminar "${cat.name}"?`
-    if (window.confirm(msg)) deleteMutation.mutate(cat)
-  }
+  const handleDelete = (cat) => setToDelete(cat)
 
   const handleSave = () => {
     setLocalRoots(null)
@@ -371,6 +320,19 @@ export default function AdminCategories() {
           onSave={handleSave}
         />
       )}
+
+      <ConfirmationModal
+        open={!!toDelete}
+        title="¿Eliminar categoría?"
+        description={toDelete && getChildren(toDelete.id).length > 0
+          ? `Se eliminará "${toDelete.name}" y sus ${getChildren(toDelete.id).length} subcategorías.`
+          : toDelete ? `Se eliminará "${toDelete.name}" permanentemente.` : ""}
+        danger
+        loading={deleteMutation.isPending}
+        onConfirm={() => deleteMutation.mutate(toDelete)}
+        onCancel={() => setToDelete(null)}
+        testId="delete-category-modal"
+      />
 
       {/* Header */}
       <div style={{ marginBottom:"28px" }}>
