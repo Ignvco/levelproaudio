@@ -135,7 +135,7 @@ export default function AdminInventory() {
             {/* Lista de productos */}
             {products.length > 0 && (
               <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-                borderRadius:"var(--r-xl)", overflow:"hidden" }}>
+                borderRadius:"var(--r-xl)", overflowX:"auto", WebkitOverflowScrolling:"touch" }}>
                 <div style={{ padding:"14px 20px", borderBottom:"1px solid var(--border)",
                   background:"var(--surface-2)" }}>
                   <p style={{ fontSize:"13px", fontWeight:500 }}>
@@ -143,7 +143,7 @@ export default function AdminInventory() {
                   </p>
                 </div>
                 <div style={{ display:"grid",
-                  gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr",
+                  gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr", minWidth:"560px",
                   padding:"10px 20px", borderBottom:"1px solid var(--border)",
                   fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
                   letterSpacing:"0.06em", fontWeight:500 }}>
@@ -152,7 +152,7 @@ export default function AdminInventory() {
                 </div>
                 {products.map((p,i) => (
                   <div key={p.id} style={{ display:"grid",
-                    gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr",
+                    gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr", minWidth:"560px",
                     padding:"12px 20px", alignItems:"center",
                     borderTop: i>0 ? "1px solid var(--border)" : "none",
                     transition:"background var(--dur) var(--ease)" }}
@@ -275,9 +275,9 @@ export default function AdminInventory() {
           </div>
         ) : (
           <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-            borderRadius:"var(--r-xl)", overflow:"hidden" }}>
+            borderRadius:"var(--r-xl)", overflowX:"auto", WebkitOverflowScrolling:"touch" }}>
             <div style={{ display:"grid",
-              gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr",
+              gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr", minWidth:"560px",
               padding:"10px 20px", borderBottom:"1px solid var(--border)",
               fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
               letterSpacing:"0.06em", fontWeight:500 }}>
@@ -286,7 +286,7 @@ export default function AdminInventory() {
             </div>
             {rotationList.map((p,i) => (
               <div key={i} style={{ display:"grid",
-                gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr",
+                gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr", minWidth:"560px",
                 padding:"13px 20px", alignItems:"center",
                 borderTop: i>0 ? "1px solid var(--border)" : "none",
                 transition:"background var(--dur) var(--ease)" }}

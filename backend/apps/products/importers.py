@@ -18,6 +18,8 @@ COLUMN_MAP = {
     "precio":               "price",
     "precio_comparacion":   "compare_price",
     "stock":                "stock",
+    "stock_minimo":         "stock_min",
+    "stock_min":            "stock_min",
     "sku":                  "sku",
     "categoria":            "category",
     "marca":                "brand",
@@ -133,7 +135,24 @@ def parse_rows(rows: list[dict]) -> dict:
             weight        = parse_decimal(row.get("weight", 0)) or None
             is_featured   = parse_bool(row.get("is_featured", False))
             is_active     = parse_bool(row.get("is_active", True))
-            product_type  = str(row.get("product_type", "physical")).strip() or "physical"
+
+            # product_type: antes el default era "physical", que no existe
+            # en las choices reales del modelo (stock/preorder/on_demand)
+            # — cualquier fila sin columna "tipo" quedaba con ese valor
+            # basura. Si la planilla trae un valor que tampoco es válido,
+            # cae a "stock" en vez de guardar cualquier texto sin validar.
+            valid_types  = {c[0] for c in Product.ProductType.choices}
+            product_type = str(row.get("product_type", "")).strip().lower()
+            if product_type not in valid_types:
+                product_type = Product.ProductType.STOCK
+
+            stock_min_raw = row.get("stock_min")
+            stock_min = None
+            if stock_min_raw not in (None, "", "None"):
+                try:
+                    stock_min = max(0, int(float(str(stock_min_raw).replace(",", "."))))
+                except (ValueError, TypeError):
+                    stock_min = None
 
             product, was_created = Product.objects.update_or_create(
                 name__iexact=name,
@@ -145,6 +164,7 @@ def parse_rows(rows: list[dict]) -> dict:
                     "price":             price,
                     "compare_price":     compare_price,
                     "stock":             stock,
+                    **({"stock_min": stock_min} if stock_min is not None else {}),
                     "sku":               str(row.get("sku", "")).strip() or None,
                     "category":          category,
                     "brand":             brand,

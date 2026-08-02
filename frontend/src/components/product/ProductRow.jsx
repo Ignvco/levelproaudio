@@ -19,7 +19,7 @@ export default function ProductRow({ product }) {
   const hasDiscount = product.compare_price && Number(product.compare_price) > Number(product.price)
   const discount = hasDiscount
     ? Math.round((1 - Number(product.price) / Number(product.compare_price)) * 100) : 0
-  const outOfStock = product.stock === 0
+  const outOfStock = product.stock === 0 && product.product_type === "stock"
 
   const goTo = () => navigate(`/shop/${product.slug}`)
   const buy = (e) => {
@@ -88,7 +88,10 @@ export default function ProductRow({ product }) {
             fontSize: "12.5px", color: outOfStock ? "#ff6b6b" : "var(--text-2)" }}>
             <span style={{ width: "7px", height: "7px", borderRadius: "50%",
               background: outOfStock ? "#ff6b6b" : "var(--accent)" }} />
-            {outOfStock ? "Sin stock" : "En stock"}
+            {outOfStock ? "Sin stock"
+              : product.stock === 0 && product.product_type === "preorder" ? "Preventa"
+              : product.stock === 0 && product.product_type === "on_demand" ? "A pedido"
+              : "En stock"}
           </span>
           <span style={{ display: "inline-flex", alignItems: "center", gap: "6px",
             fontSize: "12.5px", color: "var(--text-3)" }}>

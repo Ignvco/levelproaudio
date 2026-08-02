@@ -1393,7 +1393,7 @@ def product_images(request, product_id):
     images = ProductImage.objects.filter(product_id=product_id).order_by("order")
     return Response([{
         "id":         str(img.id),
-        "image":      img.image.url if img.image else None,  # ← relativa
+        "image":      f"/media/{img.image.name}" if img.image else None,
         "alt_text":   img.alt_text,
         "order":      img.order,
         "is_primary": img.is_primary,
@@ -1426,7 +1426,7 @@ def product_image_upload(request, product_id):
     )
     return Response({
         "id":         str(img.id),
-        "image":      img.image.url if img.image else None,  # ← relativa
+        "image":      f"/media/{img.image.name}" if img.image else None,
         "alt_text":   img.alt_text,
         "order":      img.order,
         "is_primary": img.is_primary,
@@ -1812,7 +1812,7 @@ def inventory_alerts(request):
             "cost_price": float(p.cost_price) if p.cost_price else None,
             "category":   p.category.name if p.category else None,
             "brand":      p.brand.name if p.brand else None,
-            "image":      primary_img.image.url if primary_img else None,
+            "image":      f"/media/{primary_img.image.name}" if primary_img else None,
             "status":     "sin_stock" if p.stock == 0 else "critico",
         })
 

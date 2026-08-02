@@ -31,10 +31,13 @@ class ProductImageInline(admin.TabularInline):
 
     def image_preview(self, obj):
         if obj.image:
+            # .url directo da 403 — el bucket es privado y sin URLs firmadas
+            # (GS_QUERYSTRING_AUTH=False). Hay que pasar por el proxy /media/,
+            # mismo patrón que ya usan los serializers de la API.
             return format_html(
-                '<img src="{}" style="width:60px;height:60px;'
+                '<img src="/media/{}" style="width:60px;height:60px;'
                 'object-fit:cover;border-radius:4px;" />',
-                obj.image.url
+                obj.image.name
             )
         return "Sin imagen"
     image_preview.short_description = "Preview"
@@ -82,9 +85,9 @@ class ProductAdmin(admin.ModelAdmin):
               or obj.images.order_by("order").first()
         if img and img.image:
             return format_html(
-                '<img src="{}" style="width:48px;height:48px;'
+                '<img src="/media/{}" style="width:48px;height:48px;'
                 'object-fit:cover;border-radius:4px;" />',
-                img.image.url
+                img.image.name
             )
         return "—"
     image_thumbnail.short_description = ""

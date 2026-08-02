@@ -130,23 +130,23 @@ export default function AdminProductImport() {
                 Importación completada
               </p>
               <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
-                {result.created} creados · {result.updated} actualizados
-                {result.errors > 0 && ` · ${result.errors} errores`}
+                {result.created?.length || 0} creados · {result.updated?.length || 0} actualizados
+                {result.errors?.length > 0 && ` · ${result.errors.length} errores`}
               </p>
             </div>
           </div>
 
-          {result.error_list?.length > 0 && (
+          {result.errors?.length > 0 && (
             <div style={{ padding: "12px 14px", borderRadius: "var(--r-lg)",
               background: "rgba(255,77,77,0.06)", border: "1px solid rgba(255,77,77,0.2)" }}>
               <p style={{ fontSize: "12px", fontWeight: 600, color: "#EF4444",
                 marginBottom: "8px" }}>
                 Filas con errores:
               </p>
-              {result.error_list.map((err, i) => (
+              {result.errors.map((err, i) => (
                 <p key={i} style={{ fontSize: "12px", color: "var(--text-2)",
                   marginBottom: "4px" }}>
-                  Fila {err.row}: {err.message}
+                  Fila {err.row} ({err.name}): {err.error}
                 </p>
               ))}
             </div>
