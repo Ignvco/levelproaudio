@@ -131,7 +131,7 @@ class AdminProductWriteSerializer(drf_serializers.ModelSerializer):
             "id", "name", "slug", "sku",
             "category", "brand",
             "short_description", "description",
-            "price", "compare_price", "stock",
+            "price", "compare_price", "cost_price", "stock", "stock_min",
             "product_type", "is_active", "is_featured",
             "weight", "seo_title", "seo_description",
         ]
@@ -260,7 +260,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         # ── Campos de texto ──────────────────────────────────────
         text_fields = [
             "name", "sku", "short_description", "description",
-            "product_type", "seo_title", "seo_description",
+            "seo_title", "seo_description",
         ]
         for field in text_fields:
             if field in data:
@@ -269,6 +269,21 @@ class AdminProductViewSet(viewsets.ModelViewSet):
                 if field == "sku" and val == "":
                     val = None
                 setattr(product, field, val)
+
+        # product_type: antes se guardaba como texto libre sin validar —
+        # el formulario mandaba valores ("physical"/"digital"/"service")
+        # que ni siquiera existen en las choices reales del modelo
+        # (stock/preorder/on_demand), y quedaban guardados tal cual,
+        # rompiendo en silencio cualquier lógica que comparara contra
+        # esos valores (ej: la validación de stock en el checkout).
+        if "product_type" in data:
+            valid_types = dict(Product.ProductType.choices)
+            if data["product_type"] not in valid_types:
+                raise ValueError(
+                    f'"{data["product_type"]}" no es un tipo de producto válido. '
+                    f'Opciones: {", ".join(valid_types.keys())}.'
+                )
+            product.product_type = data["product_type"]
 
         # ── Campos decimales — siempre convertir a Decimal ───────
         decimal_fields = ["price", "compare_price", "cost_price"]
@@ -289,6 +304,15 @@ class AdminProductViewSet(viewsets.ModelViewSet):
                 product.stock = int(data["stock"])
             except (ValueError, TypeError):
                 product.stock = 0
+
+        # stock_min: antes no se procesaba acá — el formulario lo mandaba
+        # pero quedaba pisado por el default del modelo (5) siempre,
+        # ignorando lo que el admin realmente configuraba.
+        if "stock_min" in data:
+            try:
+                product.stock_min = max(0, int(data["stock_min"]))
+            except (ValueError, TypeError):
+                pass
 
         # ── Booleanos ────────────────────────────────────────────
         bool_fields = ["is_active", "is_featured"]

@@ -35,7 +35,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
     brand:             product?.brand?.id         || "",
     is_active:         product?.is_active         ?? true,
     is_featured:       product?.is_featured       ?? false,
-    product_type:      product?.product_type      || "physical",
+    product_type:      product?.product_type      || "stock",
   })
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState("")
@@ -234,9 +234,9 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                   <select value={form.product_type}
                     onChange={e => setForm(p => ({ ...p, product_type: e.target.value }))}
                     style={inputSt}>
-                    <option value="physical">Físico</option>
-                    <option value="digital">Digital</option>
-                    <option value="service">Servicio</option>
+                    <option value="stock">En stock</option>
+                    <option value="preorder">Preorden</option>
+                    <option value="on_demand">A pedido</option>
                   </select>
                 </div>
                 <div>

@@ -264,3 +264,68 @@ class CategoryEditDoesNotRewriteHistoryTest(TestCase):
 
         dist = IncomeDistribution.objects.get(income_record=record, category=iva)
         self.assertEqual(dist.amount, Decimal("20000.00"))  # usa el 20% nuevo
+
+
+class AdminProductCreationTest(TestCase):
+    """
+    Antes, el selector de "Tipo de producto" del formulario admin mandaba
+    valores ("physical"/"digital"/"service") que NO EXISTEN en las choices
+    reales del modelo (stock/preorder/on_demand) — así que crear un
+    producto nuevo desde el admin fallaba el 100% de las veces con un 400,
+    a menos que ya viniera con un tipo válido cargado por otra vía.
+    También: cost_price y stock_min no estaban en el serializer de
+    escritura, así que se ignoraban en silencio aunque el formulario los
+    mandara (rompía la calculadora de margen y el indicador de stock bajo).
+    """
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="prodadmin@test.com", username="prodadmin", password="x")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_create_product_with_form_default_type_succeeds(self):
+        """Exactamente lo que el formulario manda hoy por defecto en un producto nuevo."""
+        resp = self.client.post("/api/v1/admin/products/", {
+            "name": "Micrófono de prueba",
+            "price": "80000",
+            "stock": 5,
+            "product_type": "stock",  # el default corregido
+            "is_active": True,
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+
+    def test_create_product_with_old_broken_default_fails(self):
+        """Confirma que el valor viejo ("physical") efectivamente rompía la creación."""
+        resp = self.client.post("/api/v1/admin/products/", {
+            "name": "Micrófono roto",
+            "price": "80000",
+            "stock": 5,
+            "product_type": "physical",
+            "is_active": True,
+        }, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_cost_price_and_stock_min_are_saved(self):
+        resp = self.client.post("/api/v1/admin/products/", {
+            "name": "Micrófono con costo",
+            "price": "80000",
+            "cost_price": "45000",
+            "stock": 5,
+            "stock_min": 2,
+            "product_type": "stock",
+            "is_active": True,
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+
+        from apps.products.models import Product
+        product = Product.objects.get(id=resp.data["id"])
+        self.assertEqual(product.cost_price, Decimal("45000.00"))
+        self.assertEqual(product.stock_min, 2)
+
+    def test_preorder_and_on_demand_types_are_valid(self):
+        for ptype in ["preorder", "on_demand"]:
+            resp = self.client.post("/api/v1/admin/products/", {
+                "name": f"Producto {ptype}",
+                "price": "10000", "stock": 0,
+                "product_type": ptype, "is_active": True,
+            }, format="json")
+            self.assertEqual(resp.status_code, 201, resp.data)
