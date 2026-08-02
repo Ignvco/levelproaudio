@@ -483,6 +483,7 @@ function ServiceModal({ service, onClose, onSaved }) {
                 <option value="quote">A cotizar</option>
                 <option value="fixed">Precio fijo</option>
                 <option value="hourly">Por hora</option>
+                <option value="project">Por proyecto</option>
               </select>
             </div>
             <div>

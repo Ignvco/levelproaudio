@@ -942,17 +942,36 @@ def admin_services_crud(request):
     # POST — crear servicio
     data = request.data
     name = data.get("name", "")
+
+    # price_type: mismo tipo de riesgo que ya nos mordió en Productos —
+    # sin esta validación, cualquier valor se guardaría tal cual sin
+    # avisar, rompiendo en silencio cualquier lógica que compare contra
+    # las choices reales (fixed/quote/hourly/project).
+    valid_price_types = dict(Service.PriceType.choices)
+    price_type = data.get("price_type", "quote")
+    if price_type not in valid_price_types:
+        return Response({
+            "error": f'"{price_type}" no es un tipo de precio válido. '
+                     f'Opciones: {", ".join(valid_price_types.keys())}.'
+        }, status=400)
+
+    dh_raw = str(data.get("duration_hours") or "").strip()
+    try:
+        duration_hours = int(dh_raw) if dh_raw else None
+    except (ValueError, TypeError):
+        return Response({"error": "Duración en horas debe ser un número."}, status=400)
+
     service = Service.objects.create(
         name             = name,
         slug             = slugify(name),
         short_description= data.get("short_description", ""),
         description      = data.get("description", ""),
-        price_type       = data.get("price_type", "quote"),
+        price_type       = price_type,
         price            = data.get("price") or None,
         is_active        = _svc_bool(data.get("is_active", True)),
         is_featured      = _svc_bool(data.get("is_featured", False)),
         order            = data.get("order") or 0,
-        duration_hours   = int(data["duration_hours"]) if str(data.get("duration_hours") or "").strip() else None,
+        duration_hours   = duration_hours,
         category         = _svc_resolve_category(data),
         thumbnail        = request.FILES.get("thumbnail"),
     )
@@ -978,6 +997,13 @@ def admin_service_detail(request, service_id):
     for field in allowed:
         if field in request.data:
             val = request.data[field]
+            if field == "price_type":
+                valid_price_types = dict(Service.PriceType.choices)
+                if val not in valid_price_types:
+                    return Response({
+                        "error": f'"{val}" no es un tipo de precio válido. '
+                                 f'Opciones: {", ".join(valid_price_types.keys())}.'
+                    }, status=400)
             if field == "price" and (val is None or str(val).strip() == ""):
                 val = None
             if field == "order" and (val is None or str(val).strip() == ""):
@@ -990,7 +1016,10 @@ def admin_service_detail(request, service_id):
 
     if "duration_hours" in request.data:
         dh = str(request.data["duration_hours"] or "").strip()
-        service.duration_hours = int(dh) if dh else None
+        try:
+            service.duration_hours = int(dh) if dh else None
+        except (ValueError, TypeError):
+            return Response({"error": "Duración en horas debe ser un número."}, status=400)
 
     if "category" in request.data or "category_name" in request.data:
         service.category = _svc_resolve_category(request.data)
