@@ -93,12 +93,20 @@ def my_favorites(request):
     favs = (Favorite.objects.filter(user=request.user)
             .select_related("product", "product__brand")
             .prefetch_related("product__images"))
-    products = [f.product for f in favs if f.product and f.product.is_active]
+    favs = [f for f in favs if f.product and f.product.is_active]
+    products = [f.product for f in favs]
     fav_ids = {p.id for p in products}
     data = ProductListSerializer(
         products, many=True,
         context={"request": request, "favorite_ids": fav_ids},
     ).data
+
+    # Agrega price_when_added a cada producto (para el badge de "bajó de
+    # precio" en el frontend, sin esperar al job diario de emails).
+    price_map = {str(f.product_id): f.price_when_added for f in favs}
+    for item in data:
+        item["price_when_added"] = price_map.get(str(item["id"]))
+
     return Response({"count": len(data), "results": data})
 
 
@@ -123,7 +131,11 @@ def toggle_favorite(request):
         fav.delete()
         favorited = False
     else:
-        Favorite.objects.create(user=request.user, product=product)
+        Favorite.objects.create(
+            user=request.user, product=product,
+            price_when_added=product.price,
+            was_in_stock=product.stock > 0,
+        )
         favorited = True
 
     return Response({"favorited": favorited, "product_id": product.id})

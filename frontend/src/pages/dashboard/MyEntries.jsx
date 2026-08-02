@@ -3,32 +3,24 @@ import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Ticket } from "lucide-react"
 import { getMyEntries } from "../../api/rewards.api"
+import { mediaUrl } from "../../utils/mediaUrl"
 
-// Imágenes de audio para los tickets (se elige una por código, determinista)
-const AUDIO_IMAGES = [
-  "https://images.unsplash.com/photo-1518972559570-7cc1309f3229?w=400&q=70&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1574517947730-55cb23e608c2?w=400&q=70&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1535406208535-1429839cfd13?w=400&q=70&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1618609377864-68609b857e90?w=400&q=70&auto=format&fit=crop",
-]
-
-function imageForCode(code) {
-  let h = 0
-  for (let i = 0; i < code.length; i++) h = (h * 31 + code.charCodeAt(i)) >>> 0
-  return AUDIO_IMAGES[h % AUDIO_IMAGES.length]
-}
-
-function TicketCard({ code }) {
+function TicketCard({ code, image }) {
   return (
     <div data-testid={`ticket-${code}`} style={{
       position: "relative", borderRadius: "14px", overflow: "hidden",
       border: "1px solid var(--border)", background: "#fff",
       aspectRatio: "1.6", display: "flex", flexDirection: "column", justifyContent: "flex-end",
     }}>
-      <img src={imageForCode(code)} alt="" loading="lazy" style={{
-        position: "absolute", inset: 0, width: "100%", height: "100%",
-        objectFit: "cover", opacity: 0.5,
-      }} />
+      {image ? (
+        <img src={image} alt="" loading="lazy" style={{
+          position: "absolute", inset: 0, width: "100%", height: "100%",
+          objectFit: "cover", opacity: 0.5,
+        }} />
+      ) : (
+        <div style={{ position: "absolute", inset: 0,
+          background: "linear-gradient(135deg, var(--surface-3) 0%, var(--surface-2) 100%)" }} />
+      )}
       <div style={{ position: "absolute", inset: 0,
         background: "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.85) 100%)" }} />
       <div style={{ position: "relative", padding: "12px 14px" }}>
@@ -119,7 +111,7 @@ function CampaignCard({ campaign }) {
         <div style={{ display:"grid",
           gridTemplateColumns:"repeat(auto-fill, minmax(150px, 1fr))",
           gap:"10px" }}>
-          {codes.map(code => <TicketCard key={code} code={code} />)}
+          {codes.map(code => <TicketCard key={code} code={code} image={campaign.image ? mediaUrl(campaign.image) : null} />)}
         </div>
       )}
 

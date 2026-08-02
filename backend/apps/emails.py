@@ -123,3 +123,29 @@ def send_password_reset(email, reset_url):
     html = _wrap("Restablecer tu contraseña", body,
                  cta={"label": "Crear nueva contraseña", "url": reset_url})
     send_email(email, "Restablecer tu contraseña — LevelPro Audio", html)
+
+
+def send_price_drop_email(user, product):
+    body = f"""
+      <p style="margin:0 0 16px;">Uno de tus favoritos bajó de precio 👀</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #1c1c1c;margin:8px 0;padding-top:16px;">
+        <tr>
+          <td style="padding:8px 0;color:#fff;font-size:15px;font-weight:600;">{product.name}</td>
+          <td style="padding:8px 0;color:{ACCENT};font-size:18px;font-weight:800;text-align:right;">
+            ${float(product.price):,.0f}</td>
+        </tr>
+      </table>
+    """
+    html = _wrap("¡Bajó de precio! 📉", body,
+                 cta={"label": "Ver producto", "url": f"{settings.FRONTEND_URL}/shop/{product.slug}"})
+    send_email(user.email, f"📉 {product.name} bajó de precio", html)
+
+
+def send_back_in_stock_email(user, product):
+    body = f"""
+      <p style="margin:0 0 16px;">Buenas noticias — uno de tus favoritos volvió a estar disponible.</p>
+      <p style="margin:0;color:#fff;font-size:15px;font-weight:600;">{product.name}</p>
+    """
+    html = _wrap("¡Volvió a stock! ✅", body,
+                 cta={"label": "Comprar ahora", "url": f"{settings.FRONTEND_URL}/shop/{product.slug}"})
+    send_email(user.email, f"✅ {product.name} volvió a stock", html)

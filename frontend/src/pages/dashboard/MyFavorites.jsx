@@ -62,11 +62,22 @@ export default function MyFavorites() {
 
       {!isLoading && products.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))", gap: "24px" }}>
-          {products.map(p => (
-            <div key={p.id} data-testid={`fav-item-${p.slug}`}>
-              <ProductCard product={p} />
-            </div>
-          ))}
+          {products.map(p => {
+            const priceDropped = p.price_when_added && Number(p.price) < Number(p.price_when_added)
+            return (
+              <div key={p.id} data-testid={`fav-item-${p.slug}`} style={{ position: "relative" }}>
+                {priceDropped && (
+                  <div style={{ position: "absolute", top: "12px", left: "12px", zIndex: 2,
+                    padding: "5px 12px", borderRadius: "var(--r-full)",
+                    background: "var(--accent)", color: "#000",
+                    fontSize: "11px", fontWeight: 700, letterSpacing: "0.02em" }}>
+                    ↓ Bajó de ${Number(p.price_when_added).toLocaleString("es-CL")}
+                  </div>
+                )}
+                <ProductCard product={p} />
+              </div>
+            )
+          })}
         </div>
       )}
     </div>

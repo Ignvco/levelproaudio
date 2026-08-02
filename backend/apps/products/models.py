@@ -185,6 +185,15 @@ class Favorite(TimeStampedModel):
         Product, on_delete=models.CASCADE, related_name="favorited_by"
     )
 
+    # ── Alertas de precio/stock ──
+    # price_when_added nunca cambia (es el precio de referencia "cuando lo
+    # guardaste"). lowest_notified_price evita mandar un email cada día por
+    # la misma bajada — solo se vuelve a avisar si el precio baja todavía
+    # más. was_in_stock detecta el flanco false→true (volvió a stock).
+    price_when_added     = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    lowest_notified_price = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    was_in_stock          = models.BooleanField(default=True)
+
     class Meta:
         verbose_name        = "Favorito"
         verbose_name_plural = "Favoritos"
