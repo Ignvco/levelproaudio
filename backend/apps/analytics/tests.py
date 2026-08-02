@@ -215,3 +215,52 @@ class CategoryDeletionTest(TestCase):
         self.assertTrue(resp.data["deactivated"])
         cat.refresh_from_db()
         self.assertFalse(cat.is_active)
+
+
+class CategoryEditDoesNotRewriteHistoryTest(TestCase):
+    """
+    Antes, editar el % de una categoría reescribía TODAS las distribuciones
+    históricas con el valor nuevo — si el IVA era 19% en una venta vieja y
+    lo cambiabas a 20%, esa venta vieja terminaba "pagando" 20% también.
+    Ahora: el historial queda fiel a lo que se distribuyó en su momento;
+    el cambio de % solo aplica a ventas futuras.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="edithist@test.com", username="edithist", password="x")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_editing_percentage_does_not_change_past_distributions(self):
+        iva = DistributionCategory.objects.create(name="IVA", cat_type="percent", percentage=Decimal("19"))
+        order = _order_with_product(price="100000", cost_price="0")
+        record = IncomeRecord.objects.create(order=order, amount=order.total, source="payment")
+        record.create_distributions()
+
+        dist_antes = IncomeDistribution.objects.get(income_record=record, category=iva)
+        self.assertEqual(dist_antes.amount, Decimal("19000.00"))
+
+        # Editar el % de IVA de 19 a 20
+        resp = self.client.patch(f"/api/v1/admin/finance/categories/{iva.id}/", {
+            "percentage": "20",
+        }, format="json")
+        self.assertEqual(resp.status_code, 200)
+
+        # La distribución de la venta VIEJA no debe haber cambiado
+        dist_despues = IncomeDistribution.objects.get(income_record=record, category=iva)
+        self.assertEqual(dist_despues.amount, Decimal("19000.00"))
+
+        # Pero la config de la categoría sí quedó en 20% para ventas futuras
+        iva.refresh_from_db()
+        self.assertEqual(iva.percentage, Decimal("20.00"))
+
+    def test_new_sale_after_edit_uses_new_percentage(self):
+        iva = DistributionCategory.objects.create(name="IVA", cat_type="percent", percentage=Decimal("19"))
+
+        self.client.patch(f"/api/v1/admin/finance/categories/{iva.id}/", {"percentage": "20"}, format="json")
+
+        order = _order_with_product(price="100000", cost_price="0")
+        record = IncomeRecord.objects.create(order=order, amount=order.total, source="payment")
+        record.create_distributions()
+
+        dist = IncomeDistribution.objects.get(income_record=record, category=iva)
+        self.assertEqual(dist.amount, Decimal("20000.00"))  # usa el 20% nuevo

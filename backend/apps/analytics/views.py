@@ -1519,12 +1519,13 @@ def admin_finance_category_detail(request, cat_id):
 
     cat.save()
 
-    # Recalcula distribuciones si cambiaron los %
-    if "percentage" in request.data or "cat_type" in request.data:
-        
-        IncomeDistribution.objects.all().delete()
-        for record in IncomeRecord.objects.all():
-            record.create_distributions()
+    # Importante: NO recalculamos IncomeDistribution existentes acá.
+    # Antes, cambiar el % de una categoría reescribía TODO el historial
+    # financiero con el valor nuevo (ej: si el IVA era 19% en enero y lo
+    # cambiás a 20% en marzo, enero terminaba "pagando" 20% también).
+    # El historial financiero tiene que reflejar lo que realmente se
+    # distribuyó en el momento de cada venta — un cambio de configuración
+    # de hoy en más solo afecta a las ventas que todavía no pasaron.
 
     return Response({
         "id":         str(cat.id),
