@@ -138,7 +138,7 @@
 .admin-root .au-select:focus { border-color:var(--admin-primary); box-shadow:0 0 0 3px rgba(26,255,110,.14); }
 
 /* ── DataTable ── */
-.admin-root .au-table-wrap { overflow:hidden; }
+.admin-root .au-table-wrap { overflow-x:auto; -webkit-overflow-scrolling:touch; }
 .admin-root .au-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; padding:16px 20px; border-bottom:1px solid var(--admin-border); }
 .admin-root .au-toolbar__left, .admin-root .au-toolbar__right { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .admin-root .au-tscroll { width:100%; overflow-x:auto; }
