@@ -195,7 +195,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
     try {
       await createWithdrawal(form); onSave(); onClose()
     } catch (e) {
-      setError(e?.response?.data?.detail || "Error al registrar.")
+      setError(e?.response?.data?.error || e?.response?.data?.detail || "Error al registrar.")
     } finally { setSaving(false) }
   }
 

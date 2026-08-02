@@ -1,0 +1,118 @@
+# apps/analytics/tests.py
+#
+# Cubre dos bugs reales encontrados en Finanzas:
+#   1. create_distributions() dependía del orden de CREACIÓN de las
+#      categorías (campo `order`, no editable desde el admin). Si la
+#      categoría "remainder" (utilidad neta) se creaba antes que las
+#      demás, el cálculo salía mal. Ahora el remainder siempre se
+#      calcula al final, sin importar el orden de creación.
+#   2. Los retiros no validaban contra el saldo disponible — se podía
+#      dejar una categoría en negativo con un typo.
+
+from decimal import Decimal
+from django.test import TestCase
+from django.contrib.auth import get_user_model
+from django.db.models import Sum
+from rest_framework.test import APIClient
+
+from apps.products.models import Category, Product
+from apps.orders.models import Order, OrderItem, OrderStatus
+from apps.analytics.models import DistributionCategory, IncomeRecord, IncomeDistribution, Withdrawal
+
+User = get_user_model()
+
+
+def _order_with_product(price, cost_price):
+    category = Category.objects.get_or_create(name="Mics", slug="mics-finance")[0]
+    product = Product.objects.create(
+        name="SM7B", slug=f"sm7b-finance-{price}-{cost_price}", category=category,
+        price=Decimal(str(price)), cost_price=Decimal(str(cost_price)), stock=5, is_active=True,
+    )
+    order = Order.objects.create(
+        status=OrderStatus.PAID, total=Decimal(str(price)),
+        email="test@test.com", shipping_address="Test 123",
+    )
+    OrderItem.objects.create(
+        order=order, product=product, product_name=product.name,
+        price=product.price, quantity=1,
+    )
+    return order
+
+
+class DistributionOrderingTest(TestCase):
+    """El remainder siempre se calcula al final, sin importar el orden de creación."""
+
+    def test_remainder_created_first_still_computes_correctly(self):
+        # Crea el remainder PRIMERO (el escenario que rompía antes)
+        remainder = DistributionCategory.objects.create(name="Utilidad neta", cat_type="remainder")
+        fijo = DistributionCategory.objects.create(name="Costo capital", cat_type="fixed")
+        iva = DistributionCategory.objects.create(name="IVA", cat_type="percent", percentage=Decimal("19"))
+
+        order = _order_with_product(price="100000", cost_price="30000")
+        record = IncomeRecord.objects.create(order=order, amount=order.total, source="payment")
+        record.create_distributions()
+
+        dist_fijo      = IncomeDistribution.objects.get(income_record=record, category=fijo)
+        dist_iva       = IncomeDistribution.objects.get(income_record=record, category=iva)
+        dist_remainder = IncomeDistribution.objects.get(income_record=record, category=remainder)
+
+        self.assertEqual(dist_fijo.amount, Decimal("30000.00"))
+        self.assertEqual(dist_iva.amount, Decimal("19000.00"))
+        # 100000 - 30000 - 19000 = 51000, NO 100000 (que es lo que daría
+        # el bug viejo si el remainder se calculaba antes que los demás)
+        self.assertEqual(dist_remainder.amount, Decimal("51000.00"))
+
+        # La suma de todo debe dar exactamente el total del ingreso
+        total_distribuido = dist_fijo.amount + dist_iva.amount + dist_remainder.amount
+        self.assertEqual(total_distribuido, record.amount)
+
+    def test_multiple_remainder_categories_do_not_double_count(self):
+        r1 = DistributionCategory.objects.create(name="Utilidad A", cat_type="remainder", order=1)
+        r2 = DistributionCategory.objects.create(name="Utilidad B", cat_type="remainder", order=2)
+
+        order = _order_with_product(price="50000", cost_price="0")
+        record = IncomeRecord.objects.create(order=order, amount=order.total, source="payment")
+        record.create_distributions()
+
+        total = IncomeDistribution.objects.filter(income_record=record).aggregate(
+            t=Sum("amount")
+        )["t"]
+        self.assertEqual(total, record.amount)  # nunca se duplica la utilidad
+
+
+class WithdrawalValidationTest(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            email="admin@test.com", username="admin", password="x"
+        )
+        self.category = DistributionCategory.objects.create(name="Marketing", cat_type="percent", percentage=10)
+        order = _order_with_product(price="100000", cost_price="0")
+        record = IncomeRecord.objects.create(order=order, amount=order.total, source="payment")
+        IncomeDistribution.objects.create(income_record=record, category=self.category, amount=Decimal("10000"))
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_withdrawal_within_balance_succeeds(self):
+        resp = self.client.post("/api/v1/admin/finance/withdrawals/", {
+            "category_id": str(self.category.id), "amount": "5000", "destination": "Banco Estado",
+        }, format="json")
+        self.assertEqual(resp.status_code, 201)
+
+    def test_withdrawal_exceeding_balance_rejected(self):
+        resp = self.client.post("/api/v1/admin/finance/withdrawals/", {
+            "category_id": str(self.category.id), "amount": "999999", "destination": "Banco Estado",
+        }, format="json")
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(Withdrawal.objects.filter(category=self.category).exists())
+
+    def test_negative_withdrawal_rejected(self):
+        resp = self.client.post("/api/v1/admin/finance/withdrawals/", {
+            "category_id": str(self.category.id), "amount": "-500", "destination": "Banco Estado",
+        }, format="json")
+        self.assertEqual(resp.status_code, 400)
+
+    def test_zero_withdrawal_rejected(self):
+        resp = self.client.post("/api/v1/admin/finance/withdrawals/", {
+            "category_id": str(self.category.id), "amount": "0", "destination": "Banco Estado",
+        }, format="json")
+        self.assertEqual(resp.status_code, 400)

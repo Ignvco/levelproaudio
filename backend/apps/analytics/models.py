@@ -66,8 +66,16 @@ class IncomeRecord(TimeStampedModel):
         Primero los costos fijos (capital = cost_price de cada producto),
         luego los porcentajes sobre el precio de venta,
         finalmente el remainder = utilidad neta real.
+
+        Importante: el remainder SIEMPRE se calcula al final, sin importar
+        en qué orden se hayan creado las categorías (antes dependía del
+        campo `order`, que se autoasigna por secuencia de creación y no
+        se puede editar desde el admin — si alguien creaba la categoría
+        "Utilidad neta" antes que las demás, el cálculo salía mal).
         """
         categories = DistributionCategory.objects.filter(is_active=True).order_by("order")
+        fixed_and_percent = [c for c in categories if c.cat_type in ("fixed", "percent")]
+        remainder_cats    = [c for c in categories if c.cat_type == "remainder"]
 
         fixed_total   = Decimal("0.00")
         percent_total = Decimal("0.00")
@@ -79,25 +87,28 @@ class IncomeRecord(TimeStampedModel):
                 product_cost = getattr(item.product, "cost_price", None) or Decimal("0.00")
                 capital_cost += product_cost * item.quantity
 
-        for cat in categories:
+        for cat in fixed_and_percent:
             if cat.cat_type == "fixed":
                 # Costo capital = lo que realmente costaron los productos
                 amount = capital_cost
                 fixed_total += amount
-
-            elif cat.cat_type == "percent":
+            else:  # percent
                 amount = (self.amount * cat.percentage / 100).quantize(Decimal("0.01"))
                 percent_total += amount
 
-            elif cat.cat_type == "remainder":
-                # Lo que queda = precio venta - costos fijos - porcentajes
-                amount = max(
-                    self.amount - fixed_total - percent_total,
-                    Decimal("0.00")
-                )
-            else:
-                amount = Decimal("0.00")
+            IncomeDistribution.objects.create(
+                income_record = self,
+                category      = cat,
+                amount        = amount,
+            )
 
+        # Remainder al final, ya con fixed_total y percent_total completos.
+        # Si hay más de una categoría "remainder" activa (caso raro), se
+        # reparte todo en la primera y las demás quedan en 0 — evita
+        # duplicar la utilidad neta contándola dos veces.
+        restante = max(self.amount - fixed_total - percent_total, Decimal("0.00"))
+        for i, cat in enumerate(remainder_cats):
+            amount = restante if i == 0 else Decimal("0.00")
             IncomeDistribution.objects.create(
                 income_record = self,
                 category      = cat,

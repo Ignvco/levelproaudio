@@ -1603,9 +1603,29 @@ def admin_finance_withdrawals(request):
     except DistributionCategory.DoesNotExist:
         return Response({"error": "Categoría no encontrada."}, status=400)
 
+    try:
+        amount = Decimal(str(request.data.get("amount", "0")))
+    except Exception:
+        return Response({"error": "Monto inválido."}, status=400)
+
+    if amount <= 0:
+        return Response({"error": "El monto debe ser mayor a 0."}, status=400)
+
+    # No permitir retirar más de lo que la categoría realmente tiene
+    # disponible (antes no había ningún chequeo — se podía dejar el
+    # saldo en negativo con un typo).
+    total_in  = IncomeDistribution.objects.filter(category=cat).aggregate(t=Sum("amount"))["t"] or Decimal("0")
+    total_out = Withdrawal.objects.filter(category=cat).aggregate(t=Sum("amount"))["t"] or Decimal("0")
+    balance   = Decimal(str(total_in)) - Decimal(str(total_out))
+    if amount > balance:
+        return Response(
+            {"error": f"Ese monto supera el saldo disponible en {cat.name} (${balance:,.0f})."},
+            status=400,
+        )
+
     w = Withdrawal.objects.create(
         category    = cat,
-        amount      = request.data.get("amount"),
+        amount      = amount,
         destination = request.data.get("destination", ""),
         notes       = request.data.get("notes", ""),
         reference   = request.data.get("reference", ""),
