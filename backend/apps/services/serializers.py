@@ -89,7 +89,7 @@ class ServiceRequestSerializer(serializers.ModelSerializer):
             "id", "service", "service_name",
             "name", "email", "phone",
             "message", "budget", "preferred_date",
-            "status", "status_display",
+            "status", "status_display", "admin_notes",
             "created_at",
         ]
         read_only_fields = ["status", "admin_notes"]

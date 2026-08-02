@@ -22,6 +22,8 @@ class User(AbstractUser):
     
     # Dirección de envío por defecto
     address_street   = models.CharField(max_length=200, blank=True, default="")
+    address_comuna   = models.CharField(max_length=100, blank=True, default="",
+        help_text="Comuna — necesaria para envíos precisos en Chile/Argentina")
     address_city     = models.CharField(max_length=100, blank=True, default="")
     address_province = models.CharField(max_length=100, blank=True, default="")
     address_zip      = models.CharField(max_length=20,  blank=True, default="")

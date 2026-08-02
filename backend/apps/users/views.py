@@ -22,6 +22,7 @@ from .models import User
 from .serializers import (
     UserRegisterSerializer, UserProfileSerializer,
     PasswordResetRequestSerializer, PasswordResetConfirmSerializer,
+    ChangePasswordSerializer,
 )
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes, force_str
@@ -178,3 +179,21 @@ class PasswordResetConfirmView(APIView):
         user.set_password(data["password"])
         user.save(update_fields=["password"])
         return Response({"detail": "Tu contraseña fue actualizada. Ya podés iniciar sesión."})
+
+
+class ChangePasswordView(APIView):
+    """POST /api/v1/auth/password/change/ — cambiar contraseña estando logueado."""
+    permission_classes = [permissions.IsAuthenticated]
+    throttle_classes = [PasswordResetRateThrottle]  # mismo límite: anti fuerza-bruta
+
+    def post(self, request):
+        serializer = ChangePasswordSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        if not request.user.check_password(data["current_password"]):
+            return Response({"error": "La contraseña actual no es correcta."}, status=400)
+
+        request.user.set_password(data["password"])
+        request.user.save(update_fields=["password"])
+        return Response({"detail": "Contraseña actualizada correctamente."})

@@ -71,7 +71,7 @@ class UserProfileSerializer(serializers.ModelSerializer):
         model = User
         fields = [
             "id", "email", "username", "first_name", "last_name",
-            "phone", "address_street", "address_city",
+            "phone", "address_street", "address_comuna", "address_city",
             "address_province", "address_zip",
             "is_staff",  
             "is_superuser", ]
@@ -108,6 +108,18 @@ class PasswordResetConfirmSerializer(serializers.Serializer):
     token = serializers.CharField()
     password = serializers.CharField(write_only=True, validators=[validate_password])
     password2 = serializers.CharField(write_only=True)
+
+    def validate(self, attrs):
+        if attrs["password"] != attrs["password2"]:
+            raise serializers.ValidationError({"password": "Las contraseñas no coinciden."})
+        return attrs
+
+
+class ChangePasswordSerializer(serializers.Serializer):
+    """Cambio de contraseña estando logueado: pide la contraseña actual."""
+    current_password = serializers.CharField(write_only=True)
+    password         = serializers.CharField(write_only=True, validators=[validate_password])
+    password2        = serializers.CharField(write_only=True)
 
     def validate(self, attrs):
         if attrs["password"] != attrs["password2"]:

@@ -16,10 +16,9 @@ const inputSt = formInputStyle
 
 const REQ_STATUS = {
   pending:   { label: "Pendiente",   color: "#D97706" },
-  reviewing: { label: "En revisión", color: "#60a5fa" },
+  contacted: { label: "Contactado",  color: "#60a5fa" },
   accepted:  { label: "Aceptado",    color: "#0F9940" },
   rejected:  { label: "Rechazado",   color: "#EF4444" },
-  completed: { label: "Completado",  color: "#0F9940" },
 }
 
 function StatusBadge({ status, map }) {
@@ -32,6 +31,88 @@ function StatusBadge({ status, map }) {
     }}>
       {c.label}
     </span>
+  )
+}
+
+function RequestCard({ req, reqMutation }) {
+  const [note, setNote] = useState(req.admin_notes || "")
+  const dirty = note !== (req.admin_notes || "")
+
+  return (
+    <div style={{
+      background: "var(--surface)", border: "1px solid var(--border)",
+      borderRadius: "var(--r-xl)", padding: "20px 24px",
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between",
+        alignItems: "flex-start", flexWrap: "wrap", gap: "12px",
+        marginBottom: "14px" }}>
+        <div>
+          <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "4px" }}>
+            {req.service_name}
+          </p>
+          <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+            {req.name} · {req.email}
+            {req.phone && ` · ${req.phone}`}
+          </p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <StatusBadge status={req.status} map={REQ_STATUS} />
+          <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
+            {new Date(req.created_at).toLocaleDateString("es-CL", {
+              day: "numeric", month: "short", year: "numeric"
+            })}
+          </span>
+        </div>
+      </div>
+
+      {req.message && (
+        <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6,
+          padding: "12px 14px", background: "var(--surface-2)",
+          borderRadius: "var(--r-md)", marginBottom: "14px",
+          border: "1px solid var(--border)" }}>
+          &quot;{req.message}&quot;
+        </p>
+      )}
+
+      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "14px" }}>
+        {Object.entries(REQ_STATUS).map(([s, { label, color }]) => (
+          s !== req.status && (
+            <button key={s}
+              onClick={() => reqMutation.mutate({ id: req.id, data: { status: s } })}
+              disabled={reqMutation.isPending}
+              style={{
+                padding: "5px 12px", borderRadius: "var(--r-full)",
+                fontSize: "12px", cursor: "pointer", fontWeight: 500,
+                color, background: `${color}10`, border: `1px solid ${color}25`,
+                transition: "all var(--dur) var(--ease)",
+                opacity: reqMutation.isPending ? 0.5 : 1,
+              }}>
+              → {label}
+            </button>
+          )
+        ))}
+      </div>
+
+      {/* Respuesta visible para el cliente */}
+      <div>
+        <label style={{ display: "block", fontSize: "11px", fontWeight: 600,
+          color: "var(--text-3)", letterSpacing: "0.06em", textTransform: "uppercase",
+          marginBottom: "6px" }}>
+          Respuesta (el cliente la ve en &quot;Mis servicios&quot;)
+        </label>
+        <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
+          placeholder="Ej: Te contactamos por email con la cotización..."
+          style={{ ...inputSt, resize: "vertical", fontSize: "13px" }} />
+        {dirty && (
+          <button
+            onClick={() => reqMutation.mutate({ id: req.id, data: { status: req.status, admin_notes: note } })}
+            disabled={reqMutation.isPending}
+            className="btn btn-accent" style={{ marginTop: "8px", padding: "7px 16px", fontSize: "12px" }}>
+            {reqMutation.isPending ? "Guardando..." : "Guardar respuesta"}
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -123,60 +204,7 @@ export default function AdminServices() {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {requests.map(req => (
-              <div key={req.id} style={{
-                background: "var(--surface)", border: "1px solid var(--border)",
-                borderRadius: "var(--r-xl)", padding: "20px 24px",
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between",
-                  alignItems: "flex-start", flexWrap: "wrap", gap: "12px",
-                  marginBottom: "14px" }}>
-                  <div>
-                    <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "4px" }}>
-                      {req.service_name}
-                    </p>
-                    <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                      {req.name} · {req.email}
-                      {req.phone && ` · ${req.phone}`}
-                    </p>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <StatusBadge status={req.status} map={REQ_STATUS} />
-                    <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                      {new Date(req.created_at).toLocaleDateString("es-CL", {
-                        day: "numeric", month: "short", year: "numeric"
-                      })}
-                    </span>
-                  </div>
-                </div>
-
-                {req.message && (
-                  <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6,
-                    padding: "12px 14px", background: "var(--surface-2)",
-                    borderRadius: "var(--r-md)", marginBottom: "14px",
-                    border: "1px solid var(--border)" }}>
-                    &quot;{req.message}&quot;
-                  </p>
-                )}
-
-                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                  {Object.entries(REQ_STATUS).map(([s, { label, color }]) => (
-                    s !== req.status && (
-                      <button key={s}
-                        onClick={() => reqMutation.mutate({ id: req.id, data: { status: s } })}
-                        disabled={reqMutation.isPending}
-                        style={{
-                          padding: "5px 12px", borderRadius: "var(--r-full)",
-                          fontSize: "12px", cursor: "pointer", fontWeight: 500,
-                          color, background: `${color}10`, border: `1px solid ${color}25`,
-                          transition: "all var(--dur) var(--ease)",
-                          opacity: reqMutation.isPending ? 0.5 : 1,
-                        }}>
-                        → {label}
-                      </button>
-                    )
-                  ))}
-                </div>
-              </div>
+              <RequestCard key={req.id} req={req} reqMutation={reqMutation} />
             ))}
           </div>
         )

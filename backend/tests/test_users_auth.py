@@ -87,3 +87,41 @@ def test_password_reset_same_response_for_existing_and_nonexisting_email():
     assert resp_existing.status_code == 200
     assert resp_missing.status_code == 200
     assert resp_existing.data == resp_missing.data
+
+
+@pytest.mark.django_db
+def test_change_password_requires_authentication():
+    client = APIClient()
+    resp = client.post(reverse("auth-password-change"), {
+        "current_password": "x", "password": "NuevaClave123!", "password2": "NuevaClave123!",
+    }, format="json")
+    assert resp.status_code == 401
+
+
+@pytest.mark.django_db
+def test_change_password_rejects_wrong_current_password():
+    user = User.objects.create_user(email="cp@test.com", username="cp", password="ClaveVieja123!")
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    resp = client.post(reverse("auth-password-change"), {
+        "current_password": "incorrecta", "password": "NuevaClave123!", "password2": "NuevaClave123!",
+    }, format="json")
+    assert resp.status_code == 400
+    user.refresh_from_db()
+    assert user.check_password("ClaveVieja123!")  # no cambió
+
+
+@pytest.mark.django_db
+def test_change_password_succeeds_with_correct_current_password():
+    user = User.objects.create_user(email="cp2@test.com", username="cp2", password="ClaveVieja123!")
+    client = APIClient()
+    client.force_authenticate(user=user)
+
+    resp = client.post(reverse("auth-password-change"), {
+        "current_password": "ClaveVieja123!", "password": "NuevaClave123!", "password2": "NuevaClave123!",
+    }, format="json")
+    assert resp.status_code == 200
+    user.refresh_from_db()
+    assert user.check_password("NuevaClave123!")
+    assert not user.check_password("ClaveVieja123!")
