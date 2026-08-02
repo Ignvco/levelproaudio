@@ -57,3 +57,69 @@ class AdminServiceValidationTest(TestCase):
             "duration_hours": "abc",
         }, format="json")
         self.assertEqual(resp.status_code, 400)
+
+
+class AdminBookingsTest(TestCase):
+    """
+    Antes no existía ningún endpoint para que el admin viera TODAS las
+    reservas (solo podía actualizar el estado si ya conocía el ID).
+    Cubre el listado nuevo, la validación de estado, y que confirmar/
+    cancelar registre confirmed_at/cancelled_at (antes no lo hacía).
+    """
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="bkadmin@test.com", username="bkadmin", password="x")
+        self.customer = User.objects.create_user(email="bkcustomer@test.com", username="bkcustomer", password="x")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+        self.service = Service.objects.create(name="Mezcla en vivo", price_type="hourly", description="x")
+
+    def _booking(self, status="pending"):
+        from apps.services.models import Booking
+        from django.utils import timezone
+        return Booking.objects.create(
+            user=self.customer, service=self.service,
+            scheduled_date=timezone.now(), status=status,
+        )
+
+    def test_admin_can_list_all_bookings(self):
+        self._booking()
+        self._booking()
+        resp = self.client.get("/api/v1/admin/bookings/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data["results"]), 2)
+
+    def test_admin_can_filter_bookings_by_status(self):
+        self._booking(status="pending")
+        self._booking(status="confirmed")
+        resp = self.client.get("/api/v1/admin/bookings/?status=confirmed")
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(len(resp.data["results"]), 1)
+
+    def test_confirming_booking_sets_confirmed_at(self):
+        booking = self._booking()
+        self.assertIsNone(booking.confirmed_at)
+        resp = self.client.patch(f"/api/v1/admin/bookings/{booking.id}/status/", {
+            "status": "confirmed",
+        }, format="json")
+        self.assertEqual(resp.status_code, 200)
+        booking.refresh_from_db()
+        self.assertIsNotNone(booking.confirmed_at)
+
+    def test_cancelling_booking_sets_cancelled_at(self):
+        booking = self._booking()
+        resp = self.client.patch(f"/api/v1/admin/bookings/{booking.id}/status/", {
+            "status": "cancelled",
+        }, format="json")
+        self.assertEqual(resp.status_code, 200)
+        booking.refresh_from_db()
+        self.assertIsNotNone(booking.cancelled_at)
+
+    def test_invalid_status_rejected(self):
+        booking = self._booking()
+        resp = self.client.patch(f"/api/v1/admin/bookings/{booking.id}/status/", {
+            "status": "no-existe",
+        }, format="json")
+        self.assertEqual(resp.status_code, 400)
+        booking.refresh_from_db()
+        self.assertEqual(booking.status, "pending")  # no cambió

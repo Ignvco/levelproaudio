@@ -4,10 +4,10 @@ import { useQuery, useMutation } from "@tanstack/react-query"
 import { useState, useEffect } from "react"
 import {
   Check, Clock, ArrowRight, MessageCircle, SearchX,
-  Tag, Layers, Zap, ShieldCheck, Sparkles, CreditCard, Globe,
+  Tag, Layers, Zap, ShieldCheck, Sparkles, CreditCard, Globe, Calendar, X,
 } from "lucide-react"
 import { getService, getServices } from "../api/services.api"
-import { createServiceRequest, checkoutService } from "../api/services.api"
+import { createServiceRequest, checkoutService, createBooking } from "../api/services.api"
 import { createPayment } from "../api/payments.api"
 import { useAuthStore } from "../store/authStore"
 import { RichText } from "../components/ui/RichText"
@@ -37,6 +37,96 @@ function Chip({ Icon, children }) {
   )
 }
 
+function BookingModal({ service, onClose }) {
+  const [date, setDate]   = useState("")
+  const [notes, setNotes] = useState("")
+  const [error, setError] = useState("")
+  const [sent, setSent]   = useState(false)
+
+  const mutation = useMutation({
+    mutationFn: () => createBooking({
+      service: service.id, scheduled_date: new Date(date).toISOString(), notes,
+    }),
+    onSuccess: () => setSent(true),
+    onError:   (err) => {
+      const data = err?.response?.data
+      setError(data ? Object.values(data).flat().join(" ") : "Error al reservar. Intenta de nuevo.")
+    },
+  })
+
+  // No se puede elegir una fecha en el pasado
+  const minDate = new Date(Date.now() + 60 * 60 * 1000).toISOString().slice(0, 16)
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 300,
+      background: "rgba(0,0,0,0.75)", backdropFilter: "blur(8px)",
+      display: "flex", alignItems: "center", justifyContent: "center", padding: "20px" }}
+      onClick={onClose}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: "var(--surface)", border: "1px solid var(--border)",
+        borderRadius: "22px", width: "100%", maxWidth: "440px", padding: "28px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
+          marginBottom: "20px" }}>
+          <p style={{ fontSize: "16px", fontWeight: 700 }}>Reservar {service.name}</p>
+          <button onClick={onClose} style={{ background: "none", border: "none",
+            color: "var(--text-3)", cursor: "pointer" }}><X size={20} /></button>
+        </div>
+
+        {sent ? (
+          <div style={{ textAlign: "center", padding: "24px 0" }}>
+            <div style={{ width: "56px", height: "56px", borderRadius: "50%",
+              background: "rgba(26,255,110,0.1)", border: "1px solid rgba(26,255,110,0.3)",
+              color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center",
+              margin: "0 auto 16px" }}>
+              <Check size={26} strokeWidth={3} />
+            </div>
+            <p style={{ fontSize: "14px", color: "var(--text-2)", marginBottom: "20px" }}>
+              Reserva enviada. Te vamos a confirmar la fecha por email.
+            </p>
+            <button onClick={onClose} className="btn btn-accent" style={{ width: "100%", justifyContent: "center" }}>
+              Cerrar
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+            {error && (
+              <div style={{ padding: "10px 14px", borderRadius: "10px",
+                background: "rgba(255,77,77,0.08)", border: "1px solid rgba(255,77,77,0.2)",
+                color: "#ff6b6b", fontSize: "13px" }}>{error}</div>
+            )}
+            <div>
+              <label style={{ display: "block", fontSize: "12px", color: "var(--text-3)", marginBottom: "6px" }}>
+                Fecha y hora preferida
+              </label>
+              <input type="datetime-local" value={date} min={minDate}
+                onChange={e => setDate(e.target.value)}
+                style={{ width: "100%", padding: "12px 14px", borderRadius: "12px",
+                  background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+                  color: "#fff", fontSize: "14px" }} />
+            </div>
+            <div>
+              <label style={{ display: "block", fontSize: "12px", color: "var(--text-3)", marginBottom: "6px" }}>
+                Notas (opcional)
+              </label>
+              <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={3}
+                placeholder="Contanos algo más sobre lo que necesitás..."
+                style={{ width: "100%", padding: "12px 14px", borderRadius: "12px",
+                  background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
+                  color: "#fff", fontSize: "14px", resize: "vertical" }} />
+            </div>
+            <button onClick={() => { setError(""); date ? mutation.mutate() : setError("Elegí una fecha.") }}
+              disabled={mutation.isPending}
+              className="btn btn-accent" style={{ width: "100%", justifyContent: "center",
+                padding: "13px", opacity: mutation.isPending ? 0.6 : 1 }}>
+              {mutation.isPending ? "Reservando..." : "Confirmar reserva"}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export default function ServiceDetail() {
   const { slug } = useParams()
   const { user, isAuthenticated } = useAuthStore()
@@ -50,6 +140,7 @@ export default function ServiceDetail() {
   const [sent, setSent] = useState(false)
   const [error, setError] = useState("")
   const [payLoading, setPayLoading] = useState(false)
+  const [showBooking, setShowBooking] = useState(false)
 
   // Precargar datos del usuario logueado (cuando el store hidrata)
   useEffect(() => {
@@ -525,6 +616,26 @@ export default function ServiceDetail() {
                 </div>
               )}
             </div>
+
+            {/* Reservar una fecha (agnóstico del tipo de precio) */}
+            <button data-testid="service-open-booking"
+              onClick={() => {
+                if (!isAuthenticated) {
+                  showToast("Iniciá sesión para reservar una fecha", "error")
+                  navigate(`/login?next=/services/${service.slug}`)
+                  return
+                }
+                setShowBooking(true)
+              }}
+              style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                width: "100%", padding: "13px", borderRadius: "14px", fontSize: "13px",
+                fontWeight: 600, color: "var(--text-2)", cursor: "pointer",
+                background: "rgba(255,255,255,0.03)", border: "1px dashed rgba(255,255,255,0.15)" }}>
+              <Calendar size={16} style={{ color: "var(--accent)" }} /> Reservar una fecha
+            </button>
+            {showBooking && (
+              <BookingModal service={service} onClose={() => setShowBooking(false)} />
+            )}
 
             {/* Fila de confianza */}
             <div style={{ display: "flex", flexDirection: "column", gap: "10px",

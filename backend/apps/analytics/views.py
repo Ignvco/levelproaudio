@@ -1030,15 +1030,65 @@ def admin_service_detail(request, service_id):
     service.save()
     return Response({"id": str(service.id), "name": service.name})
 
+@api_view(["GET"])
+@permission_classes([IsAdminOrStaff])
+def admin_bookings_list(request):
+    """
+    GET /api/v1/admin/bookings/
+    Antes no existía ningún endpoint para que el admin viera TODAS las
+    reservas — solo se podía actualizar el estado de una si ya sabías
+    su ID (BookingViewSet normal está filtrado a request.user, así que
+    el admin no podía usarlo para ver las de otros).
+    """
+    from django.utils import timezone as tz
+    bookings = Booking.objects.select_related("user", "service").order_by("-created_at")
+    status_filter = request.query_params.get("status")
+    if status_filter:
+        bookings = bookings.filter(status=status_filter)
+
+    return Response({
+        "results": [{
+            "id":              str(b.id),
+            "user_email":      b.user.email,
+            "service_name":    b.service.name if b.service else "—",
+            "scheduled_date":  b.scheduled_date.isoformat(),
+            "notes":           b.notes,
+            "status":          b.status,
+            "status_display":  b.get_status_display(),
+            "created_at":      b.created_at.isoformat(),
+        } for b in bookings]
+    })
+
+
 @api_view(["PATCH"])
 @permission_classes([IsAdminOrStaff])
 def update_booking_status(request, pk):
+    from django.utils import timezone as tz
     try:
         booking = Booking.objects.get(id=pk)
     except Booking.DoesNotExist:
         return Response({"error": "No encontrado."}, status=404)
-    booking.status = request.data.get("status", booking.status)
-    booking.save(update_fields=["status"])
+
+    new_status = request.data.get("status", booking.status)
+    valid_statuses = dict(Booking.Status.choices)
+    if new_status not in valid_statuses:
+        return Response({
+            "error": f'"{new_status}" no es un estado válido. '
+                     f'Opciones: {", ".join(valid_statuses.keys())}.'
+        }, status=400)
+
+    booking.status = new_status
+    update_fields = ["status"]
+    # Mismo patrón que ya usan las acciones del Django admin — registrar
+    # cuándo se confirmó/canceló, no solo el estado final.
+    if new_status == Booking.Status.CONFIRMED and not booking.confirmed_at:
+        booking.confirmed_at = tz.now()
+        update_fields.append("confirmed_at")
+    elif new_status == Booking.Status.CANCELLED and not booking.cancelled_at:
+        booking.cancelled_at = tz.now()
+        update_fields.append("cancelled_at")
+
+    booking.save(update_fields=update_fields)
     return Response({"status": booking.status})
 
 

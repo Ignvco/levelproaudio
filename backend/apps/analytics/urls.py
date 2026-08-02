@@ -31,6 +31,7 @@ from .views import (
     admin_finance_withdrawal_delete,
     admin_finance_by_product,
     update_booking_status,
+    admin_bookings_list,
     update_request_status,
     import_products,
     import_brands,
@@ -93,6 +94,7 @@ urlpatterns = [
     path("services/list/",            admin_services_crud,   name="admin-services-list"),
     path("services/<uuid:service_id>/", admin_service_detail, name="admin-service-detail"),
     path("service-requests/",  admin_service_requests, name="admin-service-requests"),
+    path("bookings/",                   admin_bookings_list,     name="admin-bookings-list"),
     path("bookings/<uuid:pk>/status/",  update_booking_status,   name="admin-booking-status"),
     path("requests/<uuid:pk>/status/",  update_request_status,   name="admin-request-status"),
 

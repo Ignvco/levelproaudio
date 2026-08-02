@@ -49,6 +49,7 @@ import MyCourses from "./pages/dashboard/MyCourses"
 
 import ServiceDetail from "./pages/ServiceDetail"
 import MyServices from "./pages/dashboard/MyServices"
+import MyBookings from "./pages/dashboard/MyBookings"
 
 // Imports nuevos
 import PaymentSuccess from "./pages/payment/PaymentSuccess"
@@ -247,6 +248,16 @@ function App() {
             <ProtectedRoute>
               <DashboardLayout>
                 <MyServices />
+              </DashboardLayout>
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/dashboard/bookings"
+          element={
+            <ProtectedRoute>
+              <DashboardLayout>
+                <MyBookings />
               </DashboardLayout>
             </ProtectedRoute>
           }

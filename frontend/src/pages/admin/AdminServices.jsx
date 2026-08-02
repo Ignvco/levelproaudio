@@ -3,7 +3,7 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   getAdminServiceRequests,
-  updateRequestStatus, updateBookingStatus,
+  updateRequestStatus, updateBookingStatus, getAdminBookings,
   listAdminServicesCrud, createAdminService,
   updateAdminService, deleteAdminService,
 } from "../../api/admin.api"
@@ -19,6 +19,13 @@ const REQ_STATUS = {
   contacted: { label: "Contactado",  color: "#60a5fa" },
   accepted:  { label: "Aceptado",    color: "#0F9940" },
   rejected:  { label: "Rechazado",   color: "#EF4444" },
+}
+
+const BOOKING_STATUS = {
+  pending:   { label: "Pendiente",   color: "#D97706" },
+  confirmed: { label: "Confirmada",  color: "#60a5fa" },
+  completed: { label: "Completada",  color: "#0F9940" },
+  cancelled: { label: "Cancelada",   color: "#EF4444" },
 }
 
 function StatusBadge({ status, map }) {
@@ -121,7 +128,7 @@ export default function AdminServices() {
   const [modal, setModal]     = useState(null)  // null | "new" | {service}
   const [toDelete, setToDelete] = useState(null)
   const queryClient           = useQueryClient()
-  const TABS                  = ["Solicitudes", "Servicios"]
+  const TABS                  = ["Solicitudes", "Servicios", "Reservas"]
 
   const { data: servicesData, isLoading: loadingServices } = useQuery({
     queryKey: ["admin-services-crud"], queryFn: listAdminServicesCrud,
@@ -129,10 +136,18 @@ export default function AdminServices() {
   const { data: requestsData, isLoading: loadingReqs } = useQuery({
     queryKey: ["admin-requests"], queryFn: getAdminServiceRequests,
   })
+  const { data: bookingsData, isLoading: loadingBookings } = useQuery({
+    queryKey: ["admin-bookings"], queryFn: getAdminBookings, enabled: tab === 2,
+  })
 
   const reqMutation = useMutation({
     mutationFn: ({ id, data }) => updateRequestStatus(id, data),
     onSuccess:  () => queryClient.invalidateQueries(["admin-requests"]),
+  })
+
+  const bookingMutation = useMutation({
+    mutationFn: ({ id, status }) => updateBookingStatus(id, status),
+    onSuccess:  () => queryClient.invalidateQueries(["admin-bookings"]),
   })
 
   const delMutation = useMutation({
@@ -146,6 +161,7 @@ export default function AdminServices() {
 
   const services = servicesData?.results || servicesData || []
   const requests = requestsData?.results || requestsData || []
+  const bookings = bookingsData?.results || bookingsData || []
 
   return (
     <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
@@ -180,6 +196,15 @@ export default function AdminServices() {
                 background: "#D97706", color: "#000", fontWeight: 700,
               }}>
                 {requests.filter(r => r.status === "pending").length}
+              </span>
+            )}
+            {i === 2 && bookings.filter(b => b.status === "pending").length > 0 && (
+              <span style={{
+                marginLeft: "6px", padding: "1px 6px",
+                borderRadius: "var(--r-full)", fontSize: "10px",
+                background: "#D97706", color: "#000", fontWeight: 700,
+              }}>
+                {bookings.filter(b => b.status === "pending").length}
               </span>
             )}
           </button>
@@ -277,6 +302,80 @@ export default function AdminServices() {
             </div>
           )}
         </>
+      )}
+
+      {/* TAB RESERVAS */}
+      {tab === 2 && (
+        loadingBookings ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="skeleton" style={{ height: "72px" }} />
+            ))}
+          </div>
+        ) : bookings.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "80px",
+            background: "var(--surface)", border: "1px solid var(--border)",
+            borderRadius: "var(--r-2xl)", color: "var(--text-3)" }}>
+            <p style={{ fontSize: "40px", marginBottom: "12px" }}>📅</p>
+            <p style={{ fontSize: "15px" }}>Sin reservas todavía</p>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+            {bookings.map(b => (
+              <div key={b.id} style={{
+                background: "var(--surface)", border: "1px solid var(--border)",
+                borderRadius: "var(--r-xl)", padding: "18px 24px",
+                display: "flex", justifyContent: "space-between",
+                alignItems: "center", flexWrap: "wrap", gap: "14px",
+              }}>
+                <div>
+                  <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "4px" }}>
+                    {b.service_name}
+                  </p>
+                  <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+                    {b.user_email} · {new Date(b.scheduled_date).toLocaleString("es-CL", {
+                      day: "numeric", month: "short", year: "numeric",
+                      hour: "2-digit", minute: "2-digit",
+                    })}
+                  </p>
+                  {b.notes && (
+                    <p style={{ fontSize: "12px", color: "var(--text-2)", marginTop: "6px" }}>
+                      &quot;{b.notes}&quot;
+                    </p>
+                  )}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <span style={{
+                    padding: "4px 12px", borderRadius: "var(--r-full)",
+                    fontSize: "12px", fontWeight: 500,
+                    color: BOOKING_STATUS[b.status]?.color || "#888",
+                    background: `${BOOKING_STATUS[b.status]?.color || "#888"}14`,
+                    border: `1px solid ${BOOKING_STATUS[b.status]?.color || "#888"}30`,
+                  }}>
+                    {BOOKING_STATUS[b.status]?.label || b.status}
+                  </span>
+                  <div style={{ display: "flex", gap: "6px" }}>
+                    {Object.entries(BOOKING_STATUS).map(([s, { label, color }]) => (
+                      s !== b.status && (
+                        <button key={s}
+                          onClick={() => bookingMutation.mutate({ id: b.id, status: s })}
+                          disabled={bookingMutation.isPending}
+                          style={{
+                            padding: "5px 12px", borderRadius: "var(--r-full)",
+                            fontSize: "12px", cursor: "pointer", fontWeight: 500,
+                            color, background: `${color}10`, border: `1px solid ${color}25`,
+                            opacity: bookingMutation.isPending ? 0.5 : 1,
+                          }}>
+                          → {label}
+                        </button>
+                      )
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )
       )}
 
       {/* Modal Nuevo/Editar */}
