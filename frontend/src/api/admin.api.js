@@ -137,7 +137,7 @@ export const updateFinanceCategory = (id, data) =>
   api.patch(`${BASE}/finance/categories/${id}/`, data).then(r => r.data)
 
 export const deleteFinanceCategory = (id) =>
-  api.delete(`${BASE}/finance/categories/${id}/`)
+  api.delete(`${BASE}/finance/categories/${id}/`).then(r => r.data)
 
 export const getWithdrawals        = () =>
   api.get(`${BASE}/finance/withdrawals/`).then(r => r.data)

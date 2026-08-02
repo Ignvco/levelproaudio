@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api                                       from "../../api/client"          // ← fix crítico
 import { TrendingUp, ArrowUpFromLine, Wallet, Pencil, Trash2, Inbox }   from "lucide-react"
 import { StatCard, AdminPageHeader, DataTable, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle, ConfirmationModal }  from "../../components/admin/ui"
+import { showToast } from "../../components/ui/ToastNotification"
 import {
   getFinanceSummary, getFinanceCategories,
   createFinanceCategory, updateFinanceCategory, deleteFinanceCategory,
@@ -295,10 +296,14 @@ export default function AdminFinance() {
   })
   const deleteCatMutation = useMutation({
     mutationFn: deleteFinanceCategory,
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries(["admin-finance-categories"])
       queryClient.invalidateQueries(["admin-finance-summary"])
       setToDeleteCategory(null)
+      if (data?.detail) showToast(data.detail)
+    },
+    onError: (e) => {
+      showToast(e?.response?.data?.error || "No se pudo eliminar la categoría.")
     },
   })
 

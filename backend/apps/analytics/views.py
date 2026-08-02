@@ -1479,7 +1479,34 @@ def admin_finance_category_detail(request, cat_id):
         return Response({"error": "No encontrada."}, status=404)
 
     if request.method == "DELETE":
-        cat.delete()
+        from django.db.models import ProtectedError
+        has_history = (
+            IncomeDistribution.objects.filter(category=cat).exists()
+            or Withdrawal.objects.filter(category=cat).exists()
+        )
+        if has_history:
+            # No se puede borrar de verdad sin perder historial financiero
+            # real (a propósito — on_delete=PROTECT). En vez de tirar un
+            # 500 crudo (que es lo que pasaba antes), la desactivamos:
+            # deja de usarse para nuevas ventas, pero el historial queda
+            # intacto y consultable.
+            cat.is_active = False
+            cat.save(update_fields=["is_active"])
+            return Response({
+                "deleted": False,
+                "deactivated": True,
+                "detail": (
+                    f'"{cat.name}" ya tiene movimientos registrados, así que no se '
+                    "puede borrar sin perder ese historial. La desactivamos en su lugar: "
+                    "ya no se va a usar en ventas nuevas, pero seguís viendo sus datos pasados."
+                ),
+            }, status=200)
+        try:
+            cat.delete()
+        except ProtectedError:
+            return Response({
+                "error": f'"{cat.name}" tiene movimientos asociados y no se puede borrar.',
+            }, status=400)
         return Response({"deleted": True})
 
     if request.method == "PATCH":

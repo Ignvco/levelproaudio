@@ -169,3 +169,49 @@ class IncomeRecordPaymentLinkingTest(TestCase):
 
         record = IncomeRecord.objects.get(order=order)
         self.assertEqual(record.payment_id, payment.id)
+
+
+class CategoryDeletionTest(TestCase):
+    """
+    Antes, borrar una categoría con movimientos históricos tiraba un 500
+    crudo (ProtectedError sin capturar) y el admin no entendía qué pasaba.
+    Ahora: sin historial se borra de verdad; con historial se desactiva
+    (nunca se pierde el dato financiero pasado) y avisa por qué.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="catdel@test.com", username="catdel", password="x")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_category_without_history_is_actually_deleted(self):
+        cat = DistributionCategory.objects.create(name="Sin uso", cat_type="percent", percentage=5)
+        resp = self.client.delete(f"/api/v1/admin/finance/categories/{cat.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data["deleted"])
+        self.assertFalse(DistributionCategory.objects.filter(id=cat.id).exists())
+
+    def test_category_with_income_distribution_is_deactivated_not_deleted(self):
+        cat = DistributionCategory.objects.create(name="IVA", cat_type="percent", percentage=19)
+        order = _order_with_product(price="50000", cost_price="0")
+        record = IncomeRecord.objects.create(order=order, amount=order.total, source="payment")
+        record.create_distributions()  # ahora `cat` tiene historial
+
+        resp = self.client.delete(f"/api/v1/admin/finance/categories/{cat.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(resp.data["deleted"])
+        self.assertTrue(resp.data["deactivated"])
+
+        cat.refresh_from_db()
+        self.assertFalse(cat.is_active)
+        # El historial financiero sigue intacto
+        self.assertTrue(IncomeDistribution.objects.filter(category=cat).exists())
+
+    def test_category_with_withdrawal_history_is_deactivated_not_deleted(self):
+        cat = DistributionCategory.objects.create(name="Marketing", cat_type="percent", percentage=10)
+        Withdrawal.objects.create(category=cat, amount=Decimal("5000"), destination="Banco Estado")
+
+        resp = self.client.delete(f"/api/v1/admin/finance/categories/{cat.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertTrue(resp.data["deactivated"])
+        cat.refresh_from_db()
+        self.assertFalse(cat.is_active)
