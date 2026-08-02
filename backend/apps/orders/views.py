@@ -124,10 +124,14 @@ class OrderViewSet(viewsets.ModelViewSet):
         # ── Canje de puntos de fidelización (opcional) ──
         loyalty_points_redeemed = int(data.get("loyalty_points_redeemed", 0) or 0)
         loyalty_discount        = 0
+        account = None
         if loyalty_points_redeemed > 0:
             from apps.loyalty.models import LoyaltyAccount, LoyaltyConfig
             config     = LoyaltyConfig.get()
             account, _ = LoyaltyAccount.objects.get_or_create(user=request.user)
+            # Validamos acá para devolver un mensaje claro; el canje real
+            # (con bloqueo de fila) se hace después de crear la orden,
+            # una vez que sabemos su id.
             if loyalty_points_redeemed < config.minimo_canje:
                 return Response(
                     {"error": f"Mínimo de canje: {config.minimo_canje} puntos."},
@@ -155,18 +159,23 @@ class OrderViewSet(viewsets.ModelViewSet):
             loyalty_discount=loyalty_discount,
         )
 
-        # Descontar puntos + registrar transacción, atado a esta orden
+        # Descontar puntos + registrar transacción, atado a esta orden.
+        # canjear_puntos() bloquea la fila de la cuenta (select_for_update),
+        # así que dos checkouts simultáneos del mismo usuario no pueden
+        # gastar más puntos de los que realmente tiene.
         if loyalty_points_redeemed > 0:
-            from apps.loyalty.models import LoyaltyTransaction
-            account.puntos_canjeados += loyalty_points_redeemed
-            account.save(update_fields=["puntos_canjeados"])
-            LoyaltyTransaction.objects.create(
-                account     = account,
-                tipo        = "redeem",
-                puntos      = -loyalty_points_redeemed,
-                descripcion = f"Canje en Orden #{str(order.id)[:8].upper()}",
-                orden       = order,
-            )
+            try:
+                account.canjear_puntos(
+                    loyalty_points_redeemed,
+                    descripcion=f"Canje en Orden #{str(order.id)[:8].upper()}",
+                    orden=order,
+                )
+            except ValueError as e:
+                # Alguien más gastó los puntos entre la validación y este punto
+                # (carrera real). Forzamos rollback de TODA la transacción
+                # (orden + descuento de stock ya hechos), no solo del canje.
+                transaction.set_rollback(True)
+                return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
         for item in validated_items:
             product = item["product"]

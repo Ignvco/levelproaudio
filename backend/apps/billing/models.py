@@ -1,6 +1,6 @@
 # apps/billing/models.py
 
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
 from core.models import TimeStampedModel
 
@@ -66,6 +66,11 @@ class BillingConfig(TimeStampedModel):
         """
         Devuelve (numero, folio) para un tipo de documento.
         Numeración por país + tipo, con prefijos claros.
+
+        Bloquea la fila de configuración (select_for_update) mientras
+        incrementa el contador: si dos documentos se generan al mismo
+        tiempo (ej. dos pagos confirmándose en simultáneo), esto evita
+        que ambos reciban el mismo número de folio.
         """
         prefix_map = {
             "boleta":       ("B",  "ultimo_numero_boleta"),
@@ -75,9 +80,12 @@ class BillingConfig(TimeStampedModel):
             "factura_c":    ("FC", "ultimo_numero_factura_c"),
         }
         prefix, field = prefix_map.get(tipo, ("B", "ultimo_numero_boleta"))
-        n = getattr(self, field) + 1
-        setattr(self, field, n)
-        self.save(update_fields=[field])
+        with transaction.atomic():
+            locked = BillingConfig.objects.select_for_update().get(pk=self.pk)
+            n = getattr(locked, field) + 1
+            setattr(locked, field, n)
+            locked.save(update_fields=[field])
+        self.refresh_from_db()
         return n, f"{prefix}-{n:06d}"
 
     # Compatibilidad hacia atrás

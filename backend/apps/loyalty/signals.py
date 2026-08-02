@@ -36,3 +36,42 @@ def award_points_on_purchase(sender, instance, **kwargs):
         descripcion = f"Compra — Orden #{str(instance.id)[:8].upper()}",
         orden       = instance,
     )
+
+
+@receiver(post_save, sender="orders.Order")
+def reverse_points_on_cancellation(sender, instance, **kwargs):
+    """
+    Si una orden que ya había dado puntos se cancela, le quita esos puntos
+    al cliente. Antes esto no pasaba: comprar, ganar puntos, cancelar/
+    devolver, y quedarse con los puntos igual.
+
+    Idempotente: solo revierte si todavía no hay una transacción de
+    reversión para esta orden.
+    """
+    if instance.status != "cancelled":
+        return
+    if not instance.user:
+        return
+
+    from apps.loyalty.models import LoyaltyAccount, LoyaltyTransaction
+
+    earn_tx = LoyaltyTransaction.objects.filter(orden=instance, tipo="earn").first()
+    if not earn_tx:
+        return  # esta orden nunca dio puntos (ej. se canceló antes de pagar)
+
+    ya_revertido = LoyaltyTransaction.objects.filter(
+        orden=instance, tipo="adjust", puntos__lt=0,
+    ).exists()
+    if ya_revertido:
+        return
+
+    try:
+        account = LoyaltyAccount.objects.get(user=instance.user)
+    except LoyaltyAccount.DoesNotExist:
+        return
+
+    account.revertir_puntos(
+        earn_tx.puntos,
+        descripcion=f"Reversión por cancelación — Orden #{str(instance.id)[:8].upper()}",
+        orden=instance,
+    )

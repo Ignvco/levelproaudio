@@ -1,6 +1,6 @@
 # apps/loyalty/models.py
 
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
 from core.models import TimeStampedModel
 import uuid
@@ -96,37 +96,75 @@ class LoyaltyAccount(TimeStampedModel):
         self.save(update_fields=["nivel"])
 
     def agregar_puntos(self, puntos, descripcion="", orden=None):
-        """Agrega puntos y registra la transacción"""
+        """Agrega puntos y registra la transacción. Bloquea la fila para
+        evitar que dos compras simultáneas del mismo usuario pisen el
+        contador de puntos entre sí."""
         if puntos <= 0:
             return
-        self.puntos_totales += puntos
-        self.save(update_fields=["puntos_totales"])
-        self.actualizar_nivel()
-        LoyaltyTransaction.objects.create(
-            account     = self,
-            tipo        = "earn",
-            puntos      = puntos,
-            descripcion = descripcion,
-            orden       = orden,
-        )
+        with transaction.atomic():
+            locked = LoyaltyAccount.objects.select_for_update().get(pk=self.pk)
+            locked.puntos_totales += puntos
+            locked.save(update_fields=["puntos_totales"])
+            locked.actualizar_nivel()
+            LoyaltyTransaction.objects.create(
+                account     = locked,
+                tipo        = "earn",
+                puntos      = puntos,
+                descripcion = descripcion,
+                orden       = orden,
+            )
+        self.refresh_from_db()
 
-    def canjear_puntos(self, puntos, descripcion=""):
-        """Canjea puntos si hay suficientes"""
-        config = LoyaltyConfig.get()
-        if puntos < config.minimo_canje:
-            raise ValueError(f"Mínimo de canje: {config.minimo_canje} puntos")
-        if puntos > self.puntos_disponibles:
-            raise ValueError("No tenés suficientes puntos")
-        self.puntos_canjeados += puntos
-        self.save(update_fields=["puntos_canjeados"])
-        LoyaltyTransaction.objects.create(
-            account     = self,
-            tipo        = "redeem",
-            puntos      = -puntos,
-            descripcion = descripcion,
-        )
-        config = LoyaltyConfig.get()
-        return int(puntos * float(config.peso_por_punto))
+    def canjear_puntos(self, puntos, descripcion="", orden=None):
+        """
+        Canjea puntos si hay suficientes. Bloquea la fila (select_for_update)
+        para que dos canjes simultáneos (doble clic, dos pestañas) no puedan
+        gastar más puntos de los que la cuenta realmente tiene.
+        """
+        with transaction.atomic():
+            locked = LoyaltyAccount.objects.select_for_update().get(pk=self.pk)
+            config = LoyaltyConfig.get()
+            if puntos < config.minimo_canje:
+                raise ValueError(f"Mínimo de canje: {config.minimo_canje} puntos")
+            if puntos > locked.puntos_disponibles:
+                raise ValueError("No tenés suficientes puntos")
+            locked.puntos_canjeados += puntos
+            locked.save(update_fields=["puntos_canjeados"])
+            LoyaltyTransaction.objects.create(
+                account     = locked,
+                tipo        = "redeem",
+                puntos      = -puntos,
+                descripcion = descripcion,
+                orden       = orden,
+            )
+            descuento = int(puntos * float(config.peso_por_punto))
+        self.refresh_from_db()
+        return descuento
+
+    def revertir_puntos(self, puntos, descripcion="", orden=None):
+        """
+        Le quita puntos a la cuenta (nunca por debajo de 0) — se usa cuando
+        una orden que ya había dado puntos se cancela o reembolsa. Bloquea
+        la fila igual que agregar_puntos/canjear_puntos.
+        """
+        if puntos <= 0:
+            return
+        with transaction.atomic():
+            locked = LoyaltyAccount.objects.select_for_update().get(pk=self.pk)
+            a_quitar = min(puntos, locked.puntos_totales)
+            if a_quitar <= 0:
+                return
+            locked.puntos_totales -= a_quitar
+            locked.save(update_fields=["puntos_totales"])
+            locked.actualizar_nivel()
+            LoyaltyTransaction.objects.create(
+                account     = locked,
+                tipo        = "adjust",
+                puntos      = -a_quitar,
+                descripcion = descripcion,
+                orden       = orden,
+            )
+        self.refresh_from_db()
 
 
 class LoyaltyTransaction(TimeStampedModel):
