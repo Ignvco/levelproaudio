@@ -152,8 +152,8 @@ export default function AdminModules() {
         </div>
       ) : (
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-xl)", overflow: "hidden" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "48px 3fr 2fr 1.4fr 80px",
+          borderRadius: "var(--r-xl)", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "48px 3fr 2fr 1.4fr 80px", minWidth: "600px",
             padding: "10px 20px", borderBottom: "1px solid var(--border)",
             fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
             textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -167,7 +167,7 @@ export default function AdminModules() {
             </div>
           ) : modules.map((mod, i) => (
             <div key={mod.id} style={{
-              display: "grid", gridTemplateColumns: "48px 3fr 2fr 1.4fr 80px",
+              display: "grid", gridTemplateColumns: "48px 3fr 2fr 1.4fr 80px", minWidth: "600px",
               padding: "13px 20px", alignItems: "center",
               borderTop: i > 0 ? "1px solid var(--border)" : "none", gap: "8px",
               transition: "background var(--dur) var(--ease)",

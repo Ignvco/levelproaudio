@@ -105,11 +105,11 @@ export default function AdminRewardsEntries() {
       {entries.length > 0 && (
         <div style={{
           background:"var(--surface)", border:"1px solid var(--border)",
-          borderRadius:"var(--r-lg)", overflow:"hidden",
+          borderRadius:"var(--r-lg)", overflowX:"auto", WebkitOverflowScrolling:"touch",
         }}>
           <div style={{
             display:"grid",
-            gridTemplateColumns:"140px 1fr 1fr 130px 100px 130px",
+            gridTemplateColumns:"140px 1fr 1fr 130px 100px 130px", minWidth:"760px",
             padding:"12px 18px",
             fontSize:"11px", color:"var(--text-3)",
             letterSpacing:"0.06em", textTransform:"uppercase",
@@ -125,7 +125,7 @@ export default function AdminRewardsEntries() {
           {entries.map(e => (
             <div key={e.id} style={{
               display:"grid",
-              gridTemplateColumns:"140px 1fr 1fr 130px 100px 130px",
+              gridTemplateColumns:"140px 1fr 1fr 130px 100px 130px", minWidth:"760px",
               padding:"12px 18px",
               fontSize:"13px",
               borderBottom:"1px solid var(--border)",

@@ -207,8 +207,8 @@ export default function AdminLoyalty() {
           </div>
         ) : (
           <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-            borderRadius:"var(--r-xl)", overflow:"hidden" }}>
-            <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",
+            borderRadius:"var(--r-xl)", overflowX:"auto", WebkitOverflowScrolling:"touch" }}>
+            <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px", minWidth:"620px",
               padding:"10px 20px", borderBottom:"1px solid var(--border)",
               fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
               letterSpacing:"0.06em", fontWeight:500 }}>
@@ -220,7 +220,7 @@ export default function AdminLoyalty() {
               const nivel = NIVELES[acc.nivel] || { label:acc.nivel, Icon: Star, color:"#888" }
               return (
                 <div key={acc.id} style={{ display:"grid",
-                  gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px",
+                  gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px", minWidth:"620px",
                   padding:"13px 20px", alignItems:"center",
                   borderTop: i>0 ? "1px solid var(--border)" : "none",
                   gap:"8px", transition:"background var(--dur) var(--ease)" }}

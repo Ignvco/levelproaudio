@@ -133,6 +133,7 @@ function DraggableRow({ cat, isChild, onEdit, onDelete,
       style={{
         display:     "grid",
         gridTemplateColumns: "28px 2.5fr 1.5fr 1fr 80px",
+        minWidth:    "560px",
         padding:     isChild ? "11px 20px 11px 36px" : "13px 20px",
         alignItems:  "center",
         gap:         "8px",
@@ -356,10 +357,10 @@ export default function AdminCategories() {
         </div>
       ) : (
         <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-          borderRadius:"var(--r-xl)", overflow:"hidden" }}>
+          borderRadius:"var(--r-xl)", overflowX:"auto", WebkitOverflowScrolling:"touch" }}>
 
           {/* Header tabla */}
-          <div style={{ display:"grid",
+          <div style={{ display:"grid", minWidth:"560px",
             gridTemplateColumns:"28px 2.5fr 1.5fr 1fr 80px",
             padding:"10px 20px", borderBottom:"1px solid var(--border)",
             fontSize:"11px", fontWeight:500, color:"var(--text-3)",

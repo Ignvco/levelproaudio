@@ -323,9 +323,9 @@ export default function AdminLessons() {
         </div>
       ) : (
         <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-xl)", overflow: "hidden" }}>
+          borderRadius: "var(--r-xl)", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
           <div style={{ display: "grid",
-            gridTemplateColumns: "40px 2.5fr 2fr 80px 80px 80px",
+            gridTemplateColumns: "40px 2.5fr 2fr 80px 80px 80px", minWidth: "680px",
             padding: "10px 20px", borderBottom: "1px solid var(--border)",
             fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
             textTransform: "uppercase", letterSpacing: "0.08em" }}>
@@ -340,7 +340,7 @@ export default function AdminLessons() {
           ) : lessons.map((lesson, i) => (
             <div key={lesson.id} style={{
               display: "grid",
-              gridTemplateColumns: "40px 2.5fr 2fr 80px 80px 80px",
+              gridTemplateColumns: "40px 2.5fr 2fr 80px 80px 80px", minWidth: "680px",
               padding: "12px 20px", alignItems: "center",
               borderTop: i > 0 ? "1px solid var(--border)" : "none", gap: "8px",
               transition: "background var(--dur) var(--ease)",
