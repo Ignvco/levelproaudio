@@ -1,6 +1,7 @@
 # apps/analytics/models.py
 
 from django.db import models
+from django.conf import settings
 from core.models import TimeStampedModel
 from decimal import Decimal
 
@@ -140,6 +141,38 @@ class Withdrawal(TimeStampedModel):
     destination = models.CharField(max_length=255)
     notes       = models.TextField(blank=True)
     reference   = models.CharField(max_length=100, blank=True)
+    created_by  = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="finance_withdrawals",
+        help_text="Quién registró el retiro (para trazabilidad).",
+    )
 
     class Meta:
         ordering = ["-created_at"]
+
+
+class WithdrawalDeletionLog(TimeStampedModel):
+    """
+    Registro de auditoría para retiros borrados. Antes, borrar un
+    Withdrawal no dejaba ningún rastro — ni quién lo hizo, ni qué
+    monto/categoría tenía. Esto guarda una copia mínima ANTES de que
+    el borrado la elimine para siempre.
+    """
+    original_id        = models.UUIDField()
+    category_name       = models.CharField(max_length=100)
+    amount               = models.DecimalField(max_digits=12, decimal_places=2)
+    destination          = models.CharField(max_length=255)
+    original_created_at  = models.DateTimeField()
+    original_created_by  = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="+",
+    )
+    deleted_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL,
+        null=True, blank=True, related_name="+",
+    )
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Retiro borrado (auditoría)"
+        verbose_name_plural = "Retiros borrados (auditoría)"

@@ -547,7 +547,10 @@ export default function AdminFinance() {
               <span style={{ fontWeight:700, color:"var(--admin-danger)" }}>−{fmt(w.amount)}</span>
             )},
             { key:"created_at", header:"Fecha", sortable:true, render:w => (
-              <span style={{ color:"var(--admin-text-muted)" }}>{w.created_at}</span>
+              <div>
+                <span style={{ color:"var(--admin-text-muted)" }}>{w.created_at}</span>
+                {w.created_by && <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{w.created_by}</p>}
+              </div>
             )},
           ]}
           data={withdrawals} getRowId={w => w.id}

@@ -190,6 +190,14 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
                 pago.paid_at = timezone.now()
                 pago.save(update_fields=["status", "paid_at"])
 
+            # El signal (disparado arriba, en order.save()) pudo haber
+            # creado el IncomeRecord ANTES de que el pago se aprobara acá
+            # — en ese caso queda con payment=None aunque el pago exista.
+            # Lo re-vinculamos para no perder la trazabilidad.
+            if pago:
+                IncomeRecord.objects.filter(order=order, payment__isnull=True) \
+                    .update(payment=pago)
+
         elif new_status == "cancelled":
             # Cancela el pago
             if pago and pago.status not in ["refunded"]:
@@ -1574,7 +1582,7 @@ def admin_finance_withdrawals(request):
     """GET/POST /api/v1/admin/finance/withdrawals/"""
     
     if request.method == "GET":
-        ws = Withdrawal.objects.select_related("category").order_by("-created_at")[:50]
+        ws = Withdrawal.objects.select_related("category", "created_by").order_by("-created_at")[:50]
         return Response([{
             "id":            str(w.id),
             "category_name": w.category.name,
@@ -1584,6 +1592,7 @@ def admin_finance_withdrawals(request):
             "destination":   w.destination,
             "notes":         w.notes,
             "reference":     w.reference,
+            "created_by":    w.created_by.email if w.created_by else None,
             "created_at":    w.created_at.strftime("%d/%m/%Y %H:%M"),
         } for w in ws])
 
@@ -1619,6 +1628,7 @@ def admin_finance_withdrawals(request):
         destination = request.data.get("destination", ""),
         notes       = request.data.get("notes", ""),
         reference   = request.data.get("reference", ""),
+        created_by  = request.user,
     )
     return Response({"id": str(w.id), "created": True}, status=201)
 
@@ -1627,14 +1637,26 @@ def admin_finance_withdrawals(request):
 @permission_classes([IsAdminOrStaff])
 def admin_finance_withdrawal_delete(request, withdrawal_id):
     """DELETE /api/v1/admin/finance/withdrawals/{id}/"""
-    
+    from apps.analytics.models import WithdrawalDeletionLog
+
     try:
-        w = Withdrawal.objects.get(id=withdrawal_id)
-        w.delete()
-        return Response({"deleted": True})
+        w = Withdrawal.objects.select_related("category", "created_by").get(id=withdrawal_id)
     except Withdrawal.DoesNotExist:
         return Response({"error": "No encontrado."}, status=404)
-    
+
+    # Guarda el rastro ANTES de borrar — si no, se pierde para siempre.
+    WithdrawalDeletionLog.objects.create(
+        original_id          = w.id,
+        category_name         = w.category.name,
+        amount                 = w.amount,
+        destination            = w.destination,
+        original_created_at    = w.created_at,
+        original_created_by    = w.created_by,
+        deleted_by              = request.user,
+    )
+    w.delete()
+    return Response({"deleted": True})
+
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_by_product(request):

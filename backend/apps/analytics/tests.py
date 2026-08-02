@@ -116,3 +116,56 @@ class WithdrawalValidationTest(TestCase):
             "category_id": str(self.category.id), "amount": "0", "destination": "Banco Estado",
         }, format="json")
         self.assertEqual(resp.status_code, 400)
+
+    def test_withdrawal_records_who_created_it(self):
+        self.client.post("/api/v1/admin/finance/withdrawals/", {
+            "category_id": str(self.category.id), "amount": "5000", "destination": "Banco Estado",
+        }, format="json")
+        w = Withdrawal.objects.get(category=self.category)
+        self.assertEqual(w.created_by, self.admin)
+
+    def test_deleting_withdrawal_creates_audit_log(self):
+        from apps.analytics.models import WithdrawalDeletionLog
+
+        w = Withdrawal.objects.create(
+            category=self.category, amount=Decimal("3000"),
+            destination="Banco Estado", created_by=self.admin,
+        )
+        deleter = User.objects.create_superuser(email="deleter@test.com", username="deleter", password="x")
+        client2 = APIClient()
+        client2.force_authenticate(user=deleter)
+
+        resp = client2.delete(f"/api/v1/admin/finance/withdrawals/{w.id}/")
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Withdrawal.objects.filter(id=w.id).exists())
+
+        log = WithdrawalDeletionLog.objects.get(original_id=w.id)
+        self.assertEqual(log.amount, Decimal("3000"))
+        self.assertEqual(log.category_name, "Marketing")
+        self.assertEqual(log.original_created_by, self.admin)
+        self.assertEqual(log.deleted_by, deleter)
+
+
+class IncomeRecordPaymentLinkingTest(TestCase):
+    """
+    Antes, IncomeRecord.payment podía quedar en None aunque el pago
+    existiera, porque el signal corre ANTES de que este endpoint apruebe
+    el pago. update_status ahora re-vincula el pago si quedó huérfano.
+    """
+    def test_income_record_gets_linked_to_payment_after_approval(self):
+        from apps.payments.models import Payment, PaymentProvider, PaymentStatus
+
+        admin = User.objects.create_superuser(email="fin@test.com", username="fin", password="x")
+        order = _order_with_product(price="80000", cost_price="0")
+        payment = Payment.objects.create(
+            order=order, provider=PaymentProvider.TRANSFER,
+            status=PaymentStatus.PENDING, amount=order.total,
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=admin)
+        resp = client.post(f"/api/v1/admin/orders/{order.id}/update_status/", {"status": "paid"}, format="json")
+        self.assertEqual(resp.status_code, 200)
+
+        record = IncomeRecord.objects.get(order=order)
+        self.assertEqual(record.payment_id, payment.id)
