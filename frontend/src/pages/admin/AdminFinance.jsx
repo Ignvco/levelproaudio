@@ -576,15 +576,23 @@ export default function AdminFinance() {
       {/* ── CONFIGURACIÓN (categorías) ── */}
       {tab==="categories" && (
         <div>
-          {/* Aviso si no suma 100% */}
+          {/* Aviso solo si las categorías de tipo PORCENTAJE, solas, superan
+              el 100% — ahí sí hay un problema real (se estaría prometiendo
+              más del 100% de cada venta antes de llegar al costo fijo).
+              Mezclar fijo + porcentaje + resto es el diseño esperado, así
+              que NO tiene sentido pedir que "todo" sume 100%. */}
           {(() => {
-            const total = categories.reduce((a,c) => a + parseFloat(c.percentage||0), 0)
-            return Math.abs(total-100) > 0.01 ? (
+            const percentOnly = categories
+              .filter(c => c.cat_type === "percent")
+              .reduce((a,c) => a + parseFloat(c.percentage||0), 0)
+            return percentOnly > 100 ? (
               <div style={{ padding:"12px 16px", borderRadius:"var(--r-xl)",
-                background:"rgba(250,204,21,0.08)",
-                border:"1px solid rgba(250,204,21,0.25)",
-                color:"#D97706", fontSize:"13px", marginBottom:"16px" }}>
-                ⚠️ Los porcentajes suman {total.toFixed(1)}% — deberían sumar 100%.
+                background:"rgba(239,68,68,0.08)",
+                border:"1px solid rgba(239,68,68,0.25)",
+                color:"#EF4444", fontSize:"13px", marginBottom:"16px" }}>
+                ⚠️ Las categorías de tipo "Porcentaje" suman {percentOnly.toFixed(1)}% —
+                eso es más del 100% de cada venta, antes de descontar costos fijos.
+                Revisá los porcentajes.
               </div>
             ) : null
           })()}
