@@ -97,6 +97,8 @@ export const updateAdminLesson = (id, data) =>
   api.patch(`${BASE}/academy/lessons/${id}/`, data).then(r => r.data)
 export const deleteAdminLesson = (id) =>
   api.delete(`${BASE}/academy/lessons/${id}/`).then(r => r.data)
+export const getLessonVideoUploadUrl = (filename, contentType) =>
+  api.post(`${BASE}/academy/lessons/upload-url/`, { filename, content_type: contentType }).then(r => r.data)
 
 // ── Academy — inscripciones ──────────────────────────────────
 export const getAdminEnrollments     = (params) =>

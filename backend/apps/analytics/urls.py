@@ -12,6 +12,7 @@ from .views import (
     AdminCourseViewSet,
     AdminModuleViewSet,
     AdminLessonViewSet,
+    admin_lesson_video_upload_url,
     admin_users,
     admin_payments,
     admin_update_payment_status,
@@ -118,6 +119,10 @@ urlpatterns = [
          product_image_delete,     name="product-image-delete"),
     path("images/<uuid:image_id>/primary/",
          product_image_set_primary, name="product-image-primary"),
+
+    # Subida directa de video de lección a GCS (evita el límite de 32MB de Cloud Run)
+    path("academy/lessons/upload-url/",
+         admin_lesson_video_upload_url, name="admin-lesson-video-upload-url"),
 
     # Router al final
     path("", include(router.urls)),

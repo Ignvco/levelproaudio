@@ -5,8 +5,32 @@ import { useSearchParams, Link } from "react-router-dom"
 import {
   getAdminLessons, createAdminLesson,
   updateAdminLesson, deleteAdminLesson, getAdminModules,
+  getLessonVideoUploadUrl,
 } from "../../api/admin.api"
+import api from "../../api/client"
 import { FormModal, FormField, formInputStyle as inputSt, ConfirmationModal } from "../../components/admin/ui"
+
+// PUT directo a la URL firmada de GCS — Cloud Run tiene un límite duro
+// de 32MB por request que no se puede subir con ninguna config de
+// Django, así que un video de lección real (varios minutos) nunca
+// llega si pasa por el backend. Usamos XHR (no fetch) para poder
+// trackear el progreso de subida, igual que antes.
+function uploadFileDirectToGCS(url, file, contentType, onProgress) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest()
+    xhr.open("PUT", url)
+    xhr.setRequestHeader("Content-Type", contentType)
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) onProgress(Math.round((e.loaded / e.total) * 100))
+    }
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve()
+      else reject(new Error(`No se pudo subir el video (${xhr.status}).`))
+    }
+    xhr.onerror = () => reject(new Error("Error de red subiendo el video."))
+    xhr.send(file)
+  })
+}
 
 function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
   const [form, setForm]     = useState({
@@ -30,38 +54,43 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
   const submit = async () => {
     setSaving(true); setError(""); setProgress(0)
     try {
-      const fd = new FormData()
-      fd.append("title",            form.title)
-      fd.append("module",           form.module)
-      fd.append("description",      form.description || "")
-      fd.append("order",            form.order || 1)
-      fd.append("duration_minutes", form.duration_minutes || 0)
-      fd.append("is_free",          form.is_free ? "true" : "false")
-      if (videoMode === "url") {
-        fd.append("video_url", form.video_url || "")
-      } else if (videoFile) {
-        fd.append("video_file", videoFile)
+      const payload = {
+        title:            form.title,
+        module:           form.module,
+        description:      form.description || "",
+        order:            form.order || 1,
+        duration_minutes: form.duration_minutes || 0,
+        is_free:          form.is_free,
       }
 
-      const { default: api } = await import("../../api/client")
+      if (videoMode === "url") {
+        payload.video_url = form.video_url || ""
+      } else if (videoFile) {
+        // 1) Pedimos una URL firmada de subida directa a GCS
+        const { upload_url, object_path, content_type } =
+          await getLessonVideoUploadUrl(videoFile.name, videoFile.type || "video/mp4")
+        // 2) Subimos el archivo DIRECTO a GCS (nunca pasa por Django/Cloud Run)
+        await uploadFileDirectToGCS(upload_url, videoFile, content_type, setProgress)
+        // 3) Recién ahora guardamos la lección, mandando la ruta ya subida
+        payload.video_file_path = object_path
+      }
+      // Si videoMode === "local" y no se eligió un archivo nuevo (edición
+      // sin cambiar el video), no mandamos nada de video — se mantiene el actual.
+
       const endpoint = lesson?.id
         ? `/admin/academy/lessons/${lesson.id}/`
         : `/admin/academy/lessons/`
       const method = lesson?.id ? "patch" : "post"
 
-      await api[method](endpoint, fd, {
-        headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (e) => {
-          if (e.total) setProgress(Math.round((e.loaded / e.total) * 100))
-        },
-      })
+      await api[method](endpoint, payload)
       queryClient.invalidateQueries({ queryKey:["admin-lessons"] })
       onSave?.(); onClose()
     } catch (e) {
       const data = e?.response?.data
-      let msg = "Error al guardar."
+      let msg = e?.message || "Error al guardar."
       if (data) {
         if (typeof data === "string") msg = data
+        else if (data.error) msg = data.error
         else if (data.detail) msg = data.detail
         else {
           const firstKey = Object.keys(data)[0]

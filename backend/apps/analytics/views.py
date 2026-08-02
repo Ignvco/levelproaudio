@@ -91,15 +91,38 @@ class AdminLessonSerializer(drf_serializers.ModelSerializer):
     # para reproducir el video real, el frontend ya usa `video_source`
     # (que sí pasa por el proxy /media/ correctamente).
     video_file = drf_serializers.FileField(required=False, allow_null=True, use_url=False)
+    # Video subido DIRECTO a GCS desde el navegador (con URL firmada,
+    # ver admin_lesson_video_upload_url) — Cloud Run tiene un límite
+    # duro de 32MB por request que ninguna config de Django puede subir,
+    # así que un video real de varios minutos nunca llegaría completo
+    # si pasara por acá. Este campo solo recibe la RUTA del archivo que
+    # ya está en el bucket, no el archivo en sí.
+    video_file_path = drf_serializers.CharField(write_only=True, required=False, allow_blank=True)
 
     class Meta:
         model  = Lesson
-        fields = ["id", "title", "video_url", "video_file", "video_source",
+        fields = ["id", "title", "video_url", "video_file", "video_file_path", "video_source",
                   "description", "order", "is_free", "duration_minutes",
                   "module", "module_title"]
         extra_kwargs = {
             "video_url":  {"required": False, "allow_blank": True},
         }
+
+    def _apply_video_file_path(self, instance, video_file_path):
+        if video_file_path:
+            instance.video_file.name = video_file_path
+            instance.save(update_fields=["video_file"])
+        return instance
+
+    def create(self, validated_data):
+        video_file_path = validated_data.pop("video_file_path", None)
+        instance = super().create(validated_data)
+        return self._apply_video_file_path(instance, video_file_path)
+
+    def update(self, instance, validated_data):
+        video_file_path = validated_data.pop("video_file_path", None)
+        instance = super().update(instance, validated_data)
+        return self._apply_video_file_path(instance, video_file_path)
 
 
 class CourseAdminSerializer(drf_serializers.ModelSerializer):
@@ -507,6 +530,71 @@ class AdminLessonViewSet(viewsets.ModelViewSet):
 # ═══════════════════════════════════════════════════════════
 # API VIEWS (funciones)
 # ═══════════════════════════════════════════════════════════
+
+@api_view(["POST"])
+@permission_classes([IsAdminOrStaff])
+def admin_lesson_video_upload_url(request):
+    """
+    POST /api/v1/admin/academy/lessons/upload-url/
+    body: { "filename": "leccion1.mp4", "content_type": "video/mp4" }
+
+    Genera una URL firmada de GCS (v4, método PUT) para que el
+    navegador suba el video DIRECTO al bucket, sin pasar por
+    Django/Cloud Run. Cloud Run tiene un límite duro de 32MB por
+    request (no configurable desde la app) — un video real de varios
+    minutos nunca llegaría completo si lo subiéramos a través del
+    backend, aunque DATA_UPLOAD_MAX_MEMORY_SIZE diga 500MB.
+
+    El frontend: 1) pide esta URL, 2) hace PUT del archivo directo acá,
+    3) recién ahí crea/edita la lección mandando `video_file_path`
+    (la ruta que devolvemos, no el archivo) al endpoint normal.
+    """
+    import uuid
+    import mimetypes
+    from datetime import timedelta
+
+    filename     = request.data.get("filename") or "video.mp4"
+    content_type = request.data.get("content_type") or mimetypes.guess_type(filename)[0] or "video/mp4"
+    ext          = filename.rsplit(".", 1)[-1].lower() if "." in filename else "mp4"
+
+    if ext not in ("mp4", "mov", "webm", "mkv", "avi", "m4v"):
+        return Response({"error": f'Formato ".{ext}" no soportado.'}, status=400)
+
+    object_path = f"academy/videos/{uuid.uuid4().hex}.{ext}"
+
+    try:
+        from django.conf import settings
+        from google.cloud import storage as gcs
+        import google.auth
+        from google.auth.transport import requests as gauth_requests
+
+        client = gcs.Client()
+        bucket = client.bucket(settings.GS_BUCKET_NAME)
+        blob   = bucket.blob(object_path)
+
+        # En Cloud Run no hay archivo de clave privada local — hay que
+        # firmar usando las credenciales de la cuenta de servicio activa
+        # (ADC) + la API de IAM (signBlob), pasando el token de acceso
+        # actual en vez de una private key.
+        credentials, _ = google.auth.default()
+        credentials.refresh(gauth_requests.Request())
+
+        upload_url = blob.generate_signed_url(
+            version="v4",
+            expiration=timedelta(minutes=30),
+            method="PUT",
+            content_type=content_type,
+            service_account_email=credentials.service_account_email,
+            access_token=credentials.token,
+        )
+    except Exception as e:
+        return Response({
+            "error": f"No se pudo generar la URL de subida: {e}. "
+                     f"Revisá que la cuenta de servicio tenga el permiso "
+                     f"'Service Account Token Creator' sobre sí misma."
+        }, status=500)
+
+    return Response({"upload_url": upload_url, "object_path": object_path, "content_type": content_type})
 
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
