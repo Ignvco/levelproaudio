@@ -10,13 +10,9 @@ import {
 import { getServiceCategories } from "../../api/services.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../components/ui/ToastNotification"
+import { FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
 
-const inputSt = {
-  width: "100%", padding: "10px 14px",
-  background: "var(--surface-2)", border: "1px solid var(--border)",
-  borderRadius: "var(--r-md)", color: "var(--text)",
-  fontSize: "13px", outline: "none",
-}
+const inputSt = formInputStyle
 
 const REQ_STATUS = {
   pending:   { label: "Pendiente",   color: "#D97706" },
@@ -42,6 +38,7 @@ function StatusBadge({ status, map }) {
 export default function AdminServices() {
   const [tab, setTab]         = useState(0)
   const [modal, setModal]     = useState(null)  // null | "new" | {service}
+  const [toDelete, setToDelete] = useState(null)
   const queryClient           = useQueryClient()
   const TABS                  = ["Solicitudes", "Servicios"]
 
@@ -62,6 +59,7 @@ export default function AdminServices() {
     onSuccess:  () => {
       queryClient.invalidateQueries({ queryKey:["admin-services-crud"] })
       showToast("Servicio eliminado")
+      setToDelete(null)
     },
   })
 
@@ -228,7 +226,7 @@ export default function AdminServices() {
                       <button onClick={() => setModal(s)} data-testid={`btn-edit-service-${s.id}`}
                         className="au-pill-btn au-pill-btn--edit" style={{ padding:"8px 14px" }}>Editar</button>
                       <button data-testid={`btn-delete-service-${s.id}`}
-                        onClick={() => { if (confirm(`¿Eliminar "${s.name}"?`)) delMutation.mutate(s.id) }}
+                        onClick={() => setToDelete(s)}
                         className="au-pill-btn au-pill-btn--del" style={{ padding:"8px 14px" }}>Eliminar</button>
                     </div>
                   </div>
@@ -260,6 +258,17 @@ export default function AdminServices() {
           onClose={() => setModal(null)}
           onSaved={() => queryClient.invalidateQueries({ queryKey:["admin-services-crud"] })} />
       )}
+
+      <ConfirmationModal
+        open={!!toDelete}
+        title="¿Eliminar servicio?"
+        description={toDelete ? `Se eliminará "${toDelete.name}" permanentemente.` : ""}
+        danger
+        loading={delMutation.isPending}
+        onConfirm={() => delMutation.mutate(toDelete.id)}
+        onCancel={() => setToDelete(null)}
+        testId="delete-service-modal"
+      />
     </div>
   )
 }
@@ -338,22 +347,18 @@ function ServiceModal({ service, onClose, onSaved }) {
   })
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:200,
-      background:"rgba(0,0,0,0.75)", backdropFilter:"blur(8px)",
-      display:"flex", alignItems:"center", justifyContent:"center",
-      padding:"20px" }} onClick={onClose}>
-      <div data-testid="service-modal"
-        onClick={e => e.stopPropagation()} style={{
-        background:"var(--surface)", border:"1px solid var(--border)",
-        borderRadius:"var(--r-2xl)", padding:"28px",
-        width:"100%", maxWidth:"520px", maxHeight:"85vh", overflowY:"auto",
-      }}>
-        <h2 style={{ fontSize:"20px", fontWeight:500, marginBottom:"22px" }}>
-          {isEdit ? "Editar servicio" : "Nuevo servicio"}
-        </h2>
-
-        <div style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
-          {/* Imagen / portada */}
+    <FormModal
+      open
+      title={isEdit ? "Editar servicio" : "Nuevo servicio"}
+      onClose={onClose}
+      onSave={() => save.mutate()}
+      saving={save.isPending}
+      saveLabel={isEdit ? "Guardar cambios" : "Crear servicio"}
+      maxWidth="520px"
+      scrollableBody
+      testId="service-modal"
+    >
+      {/* Imagen / portada */}
           <div>
             <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
               letterSpacing:"0.08em", textTransform:"uppercase" }}>Imagen / portada</label>
@@ -487,25 +492,6 @@ function ServiceModal({ service, onClose, onSaved }) {
               Destacado
             </label>
           </div>
-        </div>
-
-        <div style={{ display:"flex", gap:"10px", justifyContent:"flex-end",
-          marginTop:"24px" }}>
-          <button onClick={onClose} style={{
-            padding:"10px 22px", fontSize:"13px",
-            background:"transparent", border:"1px solid var(--border)",
-            color:"var(--text-2)", borderRadius:"var(--r-full)", cursor:"pointer",
-          }}>Cancelar</button>
-          <button onClick={() => save.mutate()}
-            disabled={!form.name || save.isPending}
-            data-testid="btn-save-service"
-            className="btn btn-accent"
-            style={{ padding:"10px 22px", fontSize:"13px",
-              opacity: (!form.name || save.isPending) ? 0.5 : 1 }}>
-            {save.isPending ? "Guardando…" : (isEdit ? "Guardar cambios" : "Crear servicio")}
-          </button>
-        </div>
-      </div>
-    </div>
+    </FormModal>
   )
 }

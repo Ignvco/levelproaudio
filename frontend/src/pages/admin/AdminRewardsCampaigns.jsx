@@ -11,6 +11,7 @@ import {
 import { showToast } from "../../components/ui/ToastNotification"
 import { getProducts } from "../../api/products.api"
 import { mediaUrl } from "../../utils/mediaUrl"
+import { FormModal, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
 
 const STATUS_STYLES = {
   draft:    { bg:"rgba(255,255,255,0.05)", color:"var(--text-3)", label:"Borrador"    },
@@ -150,30 +151,20 @@ function NewCampaignModal({ open, onClose }) {
       color:"var(--text-3)", letterSpacing:"0.08em",
       textTransform:"uppercase", marginBottom:"6px" }}>{t}</label>
   )
-  const input = {
-    width:"100%", padding:"11px 14px",
-    background:"var(--surface-2)", border:"1px solid var(--border)",
-    borderRadius:"var(--r-md)", color:"var(--text)",
-    fontSize:"14px", outline:"none",
-    fontFamily:"var(--font-sans)",
-  }
+  const input = formInputStyle
 
   return (
-    <div style={{
-      position:"fixed", inset:0, zIndex:200,
-      background:"rgba(0,0,0,0.7)", backdropFilter:"blur(8px)",
-      display:"flex", alignItems:"center", justifyContent:"center",
-      padding:"20px",
-    }} onClick={onClose}>
-      <div data-testid="new-campaign-modal" onClick={e=>e.stopPropagation()} style={{
-        background:"var(--surface)", border:"1px solid var(--border)",
-        borderRadius:"var(--r-2xl)", padding:"32px",
-        width:"100%", maxWidth:"560px", maxHeight:"85vh", overflowY:"auto",
-      }}>
-        <h2 style={{ fontSize:"20px", fontWeight:500, marginBottom:"24px" }}>
-          Nueva campaña
-        </h2>
-        <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
+    <FormModal
+      open
+      title="Nueva campaña"
+      onClose={onClose}
+      onSave={() => create.mutate()}
+      saving={create.isPending}
+      saveLabel="Crear campaña"
+      maxWidth="560px"
+      scrollableBody
+      testId="new-campaign-modal"
+    >        <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
           <div>
             {label("Nombre")}
             <input data-testid="input-campaign-name"
@@ -316,30 +307,14 @@ function NewCampaignModal({ open, onClose }) {
             </div>
           </div>
         </div>
-        <div style={{ display:"flex", gap:"10px", marginTop:"28px",
-          justifyContent:"flex-end" }}>
-          <button onClick={onClose} style={{
-            padding:"11px 22px", fontSize:"13px",
-            background:"transparent", border:"1px solid var(--border)",
-            color:"var(--text-2)", borderRadius:"var(--r-full)",
-            cursor:"pointer",
-          }}>Cancelar</button>
-          <button data-testid="btn-save-campaign"
-            onClick={() => create.mutate()}
-            disabled={!form.name || !form.main_prize || create.isPending}
-            className="btn btn-accent"
-            style={{ padding:"11px 22px", fontSize:"13px" }}>
-            {create.isPending ? "Creando…" : "Crear campaña"}
-          </button>
-        </div>
-      </div>
-    </div>
+    </FormModal>
   )
 }
 
 export default function AdminRewardsCampaigns() {
   const qc = useQueryClient()
   const [modalOpen, setModalOpen] = useState(false)
+  const [toDelete, setToDelete]   = useState(null)
 
   const { data: campaigns = [], isLoading } = useQuery({
     queryKey: ["admin-campaigns"],
@@ -358,6 +333,7 @@ export default function AdminRewardsCampaigns() {
     onSuccess:  () => {
       qc.invalidateQueries({ queryKey:["admin-campaigns"] })
       showToast("Campaña eliminada")
+      setToDelete(null)
     },
   })
 
@@ -403,13 +379,20 @@ export default function AdminRewardsCampaigns() {
         {campaigns.map(c => (
           <CampaignRow key={c.id} c={c}
             onDuplicate={id => dup.mutate(id)}
-            onDelete={id => {
-              if (confirm("¿Eliminar esta campaña? Se borran también sus participaciones.")) {
-                del.mutate(id)
-              }
-            }} />
+            onDelete={id => setToDelete(id)} />
         ))}
       </div>
+
+      <ConfirmationModal
+        open={!!toDelete}
+        title="¿Eliminar campaña?"
+        description="Se borran también sus participaciones."
+        danger
+        loading={del.isPending}
+        onConfirm={() => del.mutate(toDelete)}
+        onCancel={() => setToDelete(null)}
+        testId="delete-campaign-modal"
+      />
 
       <NewCampaignModal open={modalOpen} onClose={() => setModalOpen(false)} />
     </div>
