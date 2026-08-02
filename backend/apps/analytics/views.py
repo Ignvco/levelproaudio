@@ -348,11 +348,12 @@ class AdminCategoryViewSet(viewsets.ModelViewSet):
     filter_backends    = [filters.SearchFilter]
     search_fields      = ["name"]
 
-    # ← usa siempre AdminCategorySerializer (no lo pisa con get_serializer_class)
+    # Usa AdminCategorySerializer para todo (create/update/list) — antes
+    # había un get_serializer_class() que lo pisaba silenciosamente y
+    # devolvía el serializer público en su lugar, contradiciendo el
+    # comentario. No causaba un bug visible (los campos son casi
+    # idénticos) pero era código confuso.
     serializer_class   = AdminCategorySerializer
-    
-    def get_serializer_class(self):
-        return CategorySerializer
 
     def perform_create(self, serializer):
         serializer.save()

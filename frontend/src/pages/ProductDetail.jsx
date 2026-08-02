@@ -235,8 +235,11 @@ export default function ProductDetail() {
             <div style={{ textAlign: "right" }}>
               <p style={{ fontSize: "12px", fontWeight: 700,
                 color: product.stock > 5 ? "var(--accent)" : product.stock > 0 ? "var(--warning)" : "var(--danger)" }}>
-                {product.stock === 0 ? "Sin stock"
-                  : product.stock <= 5 ? `¡Solo ${product.stock} disponibles!` : "En stock"}
+                {product.stock > 0
+                  ? (product.stock <= 5 ? `¡Solo ${product.stock} disponibles!` : "En stock")
+                  : product.product_type === "preorder" ? "Preventa"
+                  : product.product_type === "on_demand" ? "A pedido"
+                  : "Sin stock"}
               </p>
               {product.sku && (
                 <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "4px" }}>
@@ -247,7 +250,7 @@ export default function ProductDetail() {
           </div>
 
           {/* Cantidad + Agregar */}
-          {product.stock > 0 && (
+          {(product.stock > 0 || product.product_type !== "stock") && (
             <div style={{ display: "flex", gap: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.05)",
                 border: "1px solid rgba(255,255,255,0.1)", borderRadius: "var(--r-full)",
@@ -256,17 +259,20 @@ export default function ProductDetail() {
                   style={qtyBtn}><Minus size={16} strokeWidth={2.5} /></button>
                 <span style={{ minWidth: "36px", textAlign: "center", fontSize: "15px",
                   fontWeight: 700, color: "var(--text)" }}>{qty}</span>
-                <button data-testid="pd-qty-plus" onClick={() => setQty(q => Math.min(product.stock, q + 1))}
+                <button data-testid="pd-qty-plus"
+                  onClick={() => setQty(q => Math.min(product.product_type === "stock" ? product.stock : 99, q + 1))}
                   style={qtyBtn}><Plus size={16} strokeWidth={2.5} /></button>
               </div>
               <button data-testid="pd-add-to-cart" onClick={handleAddToCart} style={{ ...accentPill, flex: 1,
                 justifyContent: "center", padding: "14px 14px 14px 24px", fontSize: "15px" }}>
-                Agregar al carrito {arrowSpan}
+                {product.stock > 0 ? "Agregar al carrito"
+                  : product.product_type === "preorder" ? "Reservar (preventa)"
+                  : "Pedir"} {arrowSpan}
               </button>
             </div>
           )}
 
-          {product.stock === 0 && (
+          {product.stock === 0 && product.product_type === "stock" && (
             <button disabled style={{ display: "inline-flex", justifyContent: "center",
               padding: "15px", borderRadius: "var(--r-full)", background: "rgba(255,255,255,0.04)",
               color: "var(--text-3)", border: "1px solid var(--border)", fontSize: "14px",

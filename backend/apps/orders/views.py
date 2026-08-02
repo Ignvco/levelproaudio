@@ -44,7 +44,11 @@ class CartViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
-        if product.stock < quantity:
+        # Los productos "preorden" y "a pedido" son, por definición, para
+        # vender sin stock físico disponible todavía — antes esta validación
+        # los bloqueaba igual que a un producto normal, lo cual los hacía
+        # imposibles de comprar (contradice el propósito del tipo).
+        if product.product_type == Product.ProductType.STOCK and product.stock < quantity:
             return Response(
                 {"error": "Stock insuficiente."},
                 status=status.HTTP_400_BAD_REQUEST
@@ -54,7 +58,10 @@ class CartViewSet(viewsets.ModelViewSet):
             cart=cart, product=product, defaults={"quantity": quantity}
         )
         if not created:
-            item.quantity = min(item.quantity + quantity, product.stock)
+            new_quantity = item.quantity + quantity
+            if product.product_type == Product.ProductType.STOCK:
+                new_quantity = min(new_quantity, product.stock)
+            item.quantity = new_quantity
             item.save()
 
         return Response(CartSerializer(cart).data)
@@ -105,7 +112,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                     {"error": f"Cantidad inválida para {product.name}."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
-            if product.stock < quantity:
+            if product.stock < quantity and product.product_type == Product.ProductType.STOCK:
                 return Response(
                     {"error": f"Stock insuficiente para {product.name}."},
                     status=status.HTTP_400_BAD_REQUEST

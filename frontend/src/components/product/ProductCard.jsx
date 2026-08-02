@@ -40,11 +40,13 @@ export default function ProductCard({ product }) {
 
   const badge = hasDiscount
     ? `-${discount}%`
+    : (product.stock === 0 && product.product_type === "preorder") ? "Preventa"
+    : (product.stock === 0 && product.product_type === "on_demand") ? "A pedido"
     : product.is_featured
       ? "Destacado"
       : null
 
-  const outOfStock = product.stock === 0
+  const outOfStock = product.stock === 0 && product.product_type === "stock"
 
   const goToDetail = () => navigate(`/shop/${product.slug}`)
 

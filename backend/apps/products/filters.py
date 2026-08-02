@@ -18,7 +18,12 @@ class ProductFilter(django_filters.FilterSet):
 
     def filter_in_stock(self, queryset, name, value):
         if value:
-            return queryset.filter(stock__gt=0)
+            # "Disponible" incluye preorden/a pedido, que se pueden comprar
+            # aunque stock sea 0 — mismo criterio que usamos en el checkout.
+            from django.db.models import Q
+            return queryset.filter(
+                Q(stock__gt=0) | ~Q(product_type="stock")
+            )
         return queryset
 
     def filter_on_sale(self, queryset, name, value):
