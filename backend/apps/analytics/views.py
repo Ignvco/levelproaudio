@@ -165,8 +165,6 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=["post"])
     def update_status(self, request, pk=None):
         from apps.analytics.models import IncomeRecord
-        from apps.payments.models import Payment
-        from decimal import Decimal
         from django.utils import timezone
 
         order      = self.get_object()
@@ -178,6 +176,9 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
 
         order.status = new_status
         order.save(update_fields=["status"])
+        # ↑ este save() ya dispara el signal create_income_on_order_paid,
+        # que crea el IncomeRecord + distribuciones si corresponde. No hace
+        # falta (ni hay que) repetir esa lógica acá abajo.
 
         # ── Sincroniza pagos ─────────────────────────────────────
         pago = order.payments.first()
@@ -189,24 +190,13 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
                 pago.paid_at = timezone.now()
                 pago.save(update_fields=["status", "paid_at"])
 
-            # ── Crea IncomeRecord si no existe ───────────────────
-            if not IncomeRecord.objects.filter(order=order).exists():
-                record = IncomeRecord.objects.create(
-                    order       = order,
-                    payment     = pago,
-                    amount      = Decimal(str(order.total)),
-                    description = f"Venta — Orden #{str(order.id)[:8].upper()}",
-                    source      = "payment",
-                )
-                record.create_distributions()
-
         elif new_status == "cancelled":
             # Cancela el pago
             if pago and pago.status not in ["refunded"]:
                 pago.status = "cancelled"
                 pago.save(update_fields=["status"])
 
-            # Elimina IncomeRecord
+            # Elimina IncomeRecord (y sus distribuciones, por CASCADE)
             IncomeRecord.objects.filter(order=order).delete()
 
         return Response({"status": new_status, "detail": "Estado actualizado."})
