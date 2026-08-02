@@ -1,12 +1,7 @@
 # apps/academy/serializers.py
 from rest_framework import serializers
 from .models import Course, Module, Lesson, Enrollment, LessonProgress
-
-
-def _media_url(image_field):
-    if not image_field or not image_field.name:
-        return None
-    return f"/media/{image_field.name}"
+from core.media import media_url as _media_url
 
 
 class LessonSerializer(serializers.ModelSerializer):

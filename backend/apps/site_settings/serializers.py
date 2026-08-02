@@ -1,9 +1,6 @@
 from rest_framework import serializers
 from .models import SiteSettings
-
-
-def _media_url(f):
-    return f"/media/{f.name}" if f and f.name else None
+from core.media import media_url as _media_url
 
 
 class SiteSettingsSerializer(serializers.ModelSerializer):

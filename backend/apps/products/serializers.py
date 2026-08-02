@@ -1,18 +1,7 @@
 # apps/products/serializers.py
 from rest_framework import serializers
 from .models import Category, Brand, Product, ProductImage
-
-
-def _media_url(image_field):
-    """
-    Devuelve la ruta relativa /media/... del archivo.
-    En producción: nginx proxea /media/ al backend Django → MediaProxyView → GCS.
-    En desarrollo: Django sirve /media/ desde MEDIA_ROOT local.
-    Nunca usa .url de GCS directamente (evita 403 en bucket privado).
-    """
-    if not image_field or not image_field.name:
-        return None
-    return f"/media/{image_field.name}"
+from core.media import media_url as _media_url
 
 
 class CategorySerializer(serializers.ModelSerializer):

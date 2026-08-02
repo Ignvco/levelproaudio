@@ -1,15 +1,7 @@
 # apps/services/serializers.py
-# ← duplicado eliminado, queda una sola definición de cada clase
-
 from rest_framework import serializers
 from .models import ServiceCategory, Service, Booking, ServiceRequest
-
-
-def _media_url(image_field):
-    """Ruta relativa /media/... (proxeada por Vite/nginx). Evita URLs absolutas al host interno."""
-    if not image_field or not image_field.name:
-        return None
-    return f"/media/{image_field.name}"
+from core.media import media_url as _media_url
 
 
 class ServiceCategorySerializer(serializers.ModelSerializer):
