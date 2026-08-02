@@ -1,8 +1,9 @@
 // pages/dashboard/MyLoyalty.jsx — Página completa de puntos
 import { Link } from "react-router-dom"
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Award } from "lucide-react"
-import { getMyLoyalty } from "../../api/loyalty.api"
+import { getMyLoyalty, getLoyaltyTransactions } from "../../api/loyalty.api"
 
 const NIVELES = {
   bronze:   { color:"#cd7f32", label:"Bronce",   emoji:"🥉", next: 1000 },
@@ -23,6 +24,21 @@ export default function MyLoyalty() {
     queryKey: ["my-loyalty-full"],
     queryFn:  getMyLoyalty,
   })
+
+  const [extraTx, setExtraTx]     = useState(null) // null = todavía mostrando el resumen de 10
+  const [nextPage, setNextPage]   = useState(null)
+  const [loadingMore, setLoadingMore] = useState(false)
+
+  const loadMore = async () => {
+    setLoadingMore(true)
+    try {
+      const page = await getLoyaltyTransactions(nextPage)
+      setExtraTx(prev => prev ? [...prev, ...page.results] : page.results)
+      setNextPage(page.next)
+    } finally {
+      setLoadingMore(false)
+    }
+  }
 
   if (isLoading || !data) return (
     <div style={{ padding:"clamp(32px, 5vw, 56px)" }}>
@@ -121,6 +137,21 @@ export default function MyLoyalty() {
         )}
       </div>
 
+      {/* Aviso de próxima expiración */}
+      {data.proxima_expiracion && (
+        <div style={{ marginTop:"16px", padding:"14px 18px",
+          background:"rgba(250,204,21,0.06)", border:"1px solid rgba(250,204,21,0.25)",
+          borderRadius:"var(--r-xl)", display:"flex", gap:"12px", alignItems:"center" }}>
+          <span style={{ fontSize:"18px", flexShrink:0 }}>⏳</span>
+          <p style={{ fontSize:"13px", color:"var(--text-2)" }}>
+            <strong style={{ color:"#facc15" }}>
+              {data.proxima_expiracion.puntos.toLocaleString("es-CL")} pts
+            </strong>{" "}
+            vencen el <strong style={{ color:"var(--text)" }}>{data.proxima_expiracion.fecha}</strong> si no los canjeás antes.
+          </p>
+        </div>
+      )}
+
       {/* Info stats */}
       <div style={{
         display:"grid",
@@ -152,10 +183,10 @@ export default function MyLoyalty() {
         <h3 style={{ fontSize:"13px", fontWeight:600, color:"var(--text-2)",
           letterSpacing:"0.08em", textTransform:"uppercase",
           marginBottom:"14px" }}>
-          Historial reciente
+          {extraTx === null ? "Historial reciente" : "Historial completo"}
         </h3>
 
-        {data.transactions.length === 0 ? (
+        {(extraTx ?? data.transactions).length === 0 ? (
           <div style={{ padding:"32px", background:"var(--surface)",
             border:"1px solid var(--border)", borderRadius:"var(--r-lg)",
             textAlign:"center", color:"var(--text-3)" }}>
@@ -170,13 +201,13 @@ export default function MyLoyalty() {
         ) : (
           <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
             borderRadius:"var(--r-lg)", overflow:"hidden" }}>
-            {data.transactions.map((t, i) => {
+            {(extraTx ?? data.transactions).map((t, i, arr) => {
               const s = TIPO_STYLE[t.tipo] || TIPO_STYLE.adjust
               return (
                 <div key={i} style={{
                   padding:"14px 18px",
                   display:"flex", justifyContent:"space-between", alignItems:"center",
-                  borderBottom: i < data.transactions.length - 1
+                  borderBottom: i < arr.length - 1
                     ? "1px solid var(--border)" : "none",
                 }}>
                   <div style={{ minWidth:0, flex:1 }}>
@@ -196,6 +227,16 @@ export default function MyLoyalty() {
               )
             })}
           </div>
+        )}
+
+        {data.transactions.length > 0 && (extraTx === null || nextPage) && (
+          <button onClick={loadMore} disabled={loadingMore}
+            style={{ marginTop:"12px", width:"100%", padding:"11px",
+              borderRadius:"var(--r-lg)", background:"var(--surface-2)",
+              border:"1px solid var(--border)", color:"var(--text-2)",
+              fontSize:"13px", cursor:"pointer", opacity: loadingMore ? 0.6 : 1 }}>
+            {loadingMore ? "Cargando…" : extraTx === null ? "Ver historial completo" : "Cargar más"}
+          </button>
         )}
       </div>
 

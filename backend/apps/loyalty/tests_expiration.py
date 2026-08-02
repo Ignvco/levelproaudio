@@ -85,3 +85,54 @@ class ExpireLoyaltyPointsTest(TestCase):
         call_command("expire_loyalty_points")
         self.account.refresh_from_db()
         self.assertEqual(self.account.puntos_expirados, 0)
+
+
+class ProximaExpiracionTest(TestCase):
+    """
+    Antes, el cliente no tenía ninguna forma de saber cuándo iban a vencer
+    sus puntos — solo se enteraba después, cuando ya habían vencido. Esto
+    prueba el cálculo que ahora expone /api/v1/loyalty/me/.
+    """
+    def setUp(self):
+        self.user = User.objects.create_user(
+            email="prox@test.com", username="prox", password="x"
+        )
+        self.account = LoyaltyAccount.objects.create(user=self.user)
+        config = LoyaltyConfig.get()
+        config.expiracion_dias = 365
+        config.save(update_fields=["expiracion_dias"])
+
+    def _earn(self, puntos, days_ago):
+        tx = LoyaltyTransaction.objects.create(
+            account=self.account, tipo="earn", puntos=puntos, descripcion="test",
+        )
+        LoyaltyTransaction.objects.filter(pk=tx.pk).update(
+            created_at=timezone.now() - timedelta(days=days_ago)
+        )
+        self.account.puntos_totales += puntos
+        self.account.save(update_fields=["puntos_totales"])
+
+    def test_returns_none_when_expiration_disabled(self):
+        config = LoyaltyConfig.get()
+        config.expiracion_dias = 0
+        config.save(update_fields=["expiracion_dias"])
+        self._earn(500, days_ago=10)
+        self.assertIsNone(self.account.proxima_expiracion())
+
+    def test_returns_none_when_no_earn_transactions(self):
+        self.assertIsNone(self.account.proxima_expiracion())
+
+    def test_next_expiration_is_the_oldest_unspent_batch(self):
+        self._earn(500, days_ago=300)   # vence en 65 días
+        self._earn(800, days_ago=100)   # vence en 265 días
+        result = self.account.proxima_expiracion()
+        self.assertEqual(result["puntos"], 500)
+        expected_date = (timezone.now() - timedelta(days=300) + timedelta(days=365)).date()
+        self.assertEqual(result["fecha"], expected_date)
+
+    def test_fully_redeemed_oldest_batch_is_skipped(self):
+        self._earn(500, days_ago=300)
+        self._earn(800, days_ago=100)
+        self.account.canjear_puntos(500, descripcion="gastó todo el lote viejo")
+        result = self.account.proxima_expiracion()
+        self.assertEqual(result["puntos"], 800)

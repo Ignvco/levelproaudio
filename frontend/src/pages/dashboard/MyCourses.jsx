@@ -113,24 +113,10 @@ export default function Courses() {
                     textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {course?.title}
                   </p>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                    <div style={{ flex: 1, height: "4px", borderRadius: "2px",
-                      background: "var(--surface-3)", overflow: "hidden" }}>
-                      <div style={{ width: `${progress}%`, height: "100%",
-                        background: "var(--accent)", borderRadius: "2px",
-                        transition: "width 1s var(--ease)" }} />
-                    </div>
-                    <span style={{ fontSize: "12px", color: "var(--accent)",
-                      fontWeight: 500, flexShrink: 0 }}>
-                      {progress}%
-                    </span>
-                  </div>
-                  {progress === 100 && (
-                    <p style={{ fontSize: "11px", color: "var(--accent)",
-                      marginTop: "4px", fontWeight: 500 }}>
-                      ✓ Completado
-                    </p>
-                  )}
+                  <p style={{ fontSize: "12px", color: progress === 100 ? "var(--accent)" : "var(--text-3)",
+                    fontWeight: progress === 100 ? 500 : 400 }}>
+                    {progress === 100 ? "✓ Completado" : progress === 0 ? "Sin empezar" : "En progreso"}
+                  </p>
                 </div>
 
                 {/* Progress ring */}

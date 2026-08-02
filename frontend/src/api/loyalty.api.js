@@ -6,3 +6,8 @@ export const getMyLoyalty  = () =>
 
 export const redeemPoints  = (puntos) =>
   api.post("/loyalty/redeem/", { puntos }).then(r => r.data)
+
+export const getLoyaltyTransactions = (nextUrl) => {
+  const query = nextUrl ? nextUrl.split("?")[1] : null
+  return api.get(query ? `/loyalty/transactions/?${query}` : "/loyalty/transactions/").then(r => r.data)
+}

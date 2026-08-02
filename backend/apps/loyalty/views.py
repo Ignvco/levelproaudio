@@ -3,7 +3,33 @@
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from rest_framework.pagination import PageNumberPagination
+from rest_framework.generics import ListAPIView
+from rest_framework import serializers as drf_serializers
 from .models import LoyaltyAccount, LoyaltyTransaction, LoyaltyConfig
+
+
+class LoyaltyTransactionSerializer(drf_serializers.ModelSerializer):
+    fecha = drf_serializers.DateTimeField(source="created_at", format="%d/%m/%Y")
+
+    class Meta:
+        model  = LoyaltyTransaction
+        fields = ["tipo", "puntos", "descripcion", "fecha"]
+
+
+class LoyaltyTransactionsView(ListAPIView):
+    """
+    GET /api/v1/loyalty/transactions/ — historial completo paginado
+    (20 por página). my_loyalty() solo trae los últimos 10 para el resumen;
+    esta vista es para "ver todo el historial" en Mis puntos.
+    """
+    serializer_class   = LoyaltyTransactionSerializer
+    permission_classes = [IsAuthenticated]
+    pagination_class    = PageNumberPagination
+
+    def get_queryset(self):
+        account, _ = LoyaltyAccount.objects.get_or_create(user=self.request.user)
+        return account.transactions.all()
 
 
 # ── Vista del cliente ─────────────────────────────────────────
@@ -27,6 +53,7 @@ def my_loyalty(request):
         )
 
     transactions = account.transactions.all()[:10]
+    proxima_exp  = account.proxima_expiracion()
 
     return Response({
         "nivel":              account.nivel,
@@ -38,6 +65,10 @@ def my_loyalty(request):
         "siguiente_nivel":    siguiente_nivel,
         "puntos_para_siguiente": puntos_para_siguiente,
         "progreso_nivel":     progreso,
+        "proxima_expiracion": {
+            "puntos": proxima_exp["puntos"],
+            "fecha":  proxima_exp["fecha"].strftime("%d/%m/%Y"),
+        } if proxima_exp else None,
         "transactions": [{
             "tipo":       t.tipo,
             "puntos":     t.puntos,

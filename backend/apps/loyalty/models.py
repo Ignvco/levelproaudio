@@ -166,6 +166,32 @@ class LoyaltyAccount(TimeStampedModel):
             )
         self.refresh_from_db()
 
+    def proxima_expiracion(self):
+        """
+        Calcula qué puntos son los próximos en vencer y cuándo, con el mismo
+        criterio FIFO que usa el comando expire_loyalty_points (se consumen
+        primero los puntos ganados más antiguos).
+
+        Devuelve None si el programa no hace expirar puntos (expiracion_dias=0)
+        o si no hay puntos pendientes de vencer. Si hay, devuelve
+        {"puntos": N, "fecha": date}.
+        """
+        import datetime
+        config = LoyaltyConfig.get()
+        if not config.expiracion_dias or config.expiracion_dias <= 0:
+            return None
+
+        consumido = self.puntos_canjeados + self.puntos_expirados
+        acumulado = 0
+        for tx in self.transactions.filter(tipo="earn").order_by("created_at"):
+            acumulado += tx.puntos
+            if acumulado <= consumido:
+                continue  # este lote ya fue gastado/expirado por completo
+            pendiente = acumulado - consumido
+            fecha = (tx.created_at + datetime.timedelta(days=config.expiracion_dias)).date()
+            return {"puntos": pendiente, "fecha": fecha}
+        return None
+
 
 class LoyaltyTransaction(TimeStampedModel):
     """Registro de cada movimiento de puntos"""

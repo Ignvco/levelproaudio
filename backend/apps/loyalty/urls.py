@@ -4,6 +4,7 @@ from django.urls import path
 from .views import (
     my_loyalty,
     redeem_points,
+    LoyaltyTransactionsView,
     admin_loyalty_summary,
     admin_loyalty_config,
     admin_adjust_points,
@@ -11,8 +12,9 @@ from .views import (
 
 urlpatterns = [
     # Cliente
-    path("me/",     my_loyalty,    name="loyalty-me"),
-    path("redeem/", redeem_points, name="loyalty-redeem"),
+    path("me/",           my_loyalty,               name="loyalty-me"),
+    path("redeem/",       redeem_points,             name="loyalty-redeem"),
+    path("transactions/", LoyaltyTransactionsView.as_view(), name="loyalty-transactions"),
 
     # Admin
     path("admin/summary/", admin_loyalty_summary, name="loyalty-admin-summary"),
