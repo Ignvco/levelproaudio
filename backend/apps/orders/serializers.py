@@ -63,6 +63,7 @@ class OrderSerializer(serializers.ModelSerializer):
             "total", "items_count",
             "loyalty_points_redeemed", "loyalty_discount",
             "email", "shipping_address", "notes",
+            "shipping_carrier", "tracking_number",
             "items", "payments",   # ← payments incluido
             "created_at",
         ]

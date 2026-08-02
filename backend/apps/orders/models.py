@@ -136,6 +136,16 @@ class Order(TimeStampedModel):
 
     shipping_address = models.TextField()
 
+    # ── Envío ──
+    shipping_carrier = models.CharField(
+        max_length=100, blank=True, default="",
+        help_text="Transportista (ej: Chilexpress, Starken, Correos de Chile)",
+    )
+    tracking_number = models.CharField(
+        max_length=100, blank=True, default="",
+        help_text="Número de guía / seguimiento",
+    )
+
     notes = models.TextField(
         blank=True,
         help_text="Notas del cliente"

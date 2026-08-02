@@ -48,3 +48,6 @@ export const purchaseCourse = async (slug) => {
   const response = await api.post(`/courses/${slug}/purchase/`)
   return response.data
 }
+
+export const downloadCertificate = (enrollmentId) =>
+  api.get(`/enrollments/${enrollmentId}/certificate/`, { responseType: "blob" })

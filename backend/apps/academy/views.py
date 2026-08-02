@@ -140,6 +140,26 @@ class EnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
             status=201 if created else 200
         )
 
+    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated])
+    def certificate(self, request, pk=None):
+        """
+        GET /api/v1/enrollments/{id}/certificate/ — PDF del certificado.
+        Solo si el curso está 100% completado (completed_at seteado).
+        """
+        enrollment = self.get_object()  # ya viene filtrado por user en get_queryset
+        if not enrollment.completed_at:
+            return Response(
+                {"error": "Todavía no completaste este curso."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        from django.http import HttpResponse
+        from .certificate_generator import generate_certificate_pdf
+        pdf_bytes = generate_certificate_pdf(enrollment)
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        filename = f"certificado-{enrollment.course.slug}.pdf"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response
+
 
 class LessonProgressViewSet(viewsets.ViewSet):
     permission_classes = [IsAuthenticated]
@@ -172,6 +192,19 @@ class LessonProgressViewSet(viewsets.ViewSet):
             lesson=lesson,
             defaults={"completed": completed}
         )
+
+        # Si el curso llegó al 100%, marcamos la fecha de finalización en el
+        # Enrollment (antes este campo existía pero nada lo seteaba nunca —
+        # el certificado se basa en esta fecha).
+        enrollment = Enrollment.objects.filter(
+            user=request.user, course=lesson.module.course
+        ).first()
+        if enrollment and not enrollment.completed_at:
+            from django.utils import timezone
+            if enrollment.progress_percentage == 100:
+                enrollment.completed_at = timezone.now()
+                enrollment.save(update_fields=["completed_at"])
+
         return Response(
             LessonProgressSerializer(progress).data,
             status=status.HTTP_200_OK

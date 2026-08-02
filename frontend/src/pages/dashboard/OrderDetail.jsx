@@ -231,6 +231,19 @@ export default function OrderDetail() {
         <div style={{ ...card, padding: "28px" }}>
           <p style={{ ...eyebrow, marginBottom: "24px" }}>· Estado</p>
           <Timeline status={order.status} />
+          {order.tracking_number && (
+            <div style={{ marginTop: "24px", paddingTop: "20px", borderTop: "1px solid var(--border)",
+              display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "10px" }}>
+              <div>
+                <p style={{ fontSize: "12px", color: "var(--text-3)", marginBottom: "3px" }}>
+                  {order.shipping_carrier || "Transportista"}
+                </p>
+                <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--text)", fontFamily: "monospace" }}>
+                  {order.tracking_number}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
 
         {order.status === "pending" && (

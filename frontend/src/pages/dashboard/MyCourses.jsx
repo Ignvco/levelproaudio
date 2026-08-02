@@ -1,9 +1,25 @@
 // pages/dashboard/Courses.jsx
 import { useQuery } from "@tanstack/react-query"
-import { Link } from "react-router-dom"
-import { GraduationCap, Film } from "lucide-react"
-import { getEnrollments } from "../../api/academy.api"
+import { Link, useNavigate } from "react-router-dom"
+import { GraduationCap, Film, Download } from "lucide-react"
+import { getEnrollments, downloadCertificate } from "../../api/academy.api"
 import { mediaUrl } from "../../utils/mediaUrl"
+import { showToast } from "../../components/ui/ToastNotification"
+
+async function handleDownloadCertificate(e, enrollmentId, courseSlug) {
+  e.preventDefault()
+  e.stopPropagation()
+  try {
+    const resp = await downloadCertificate(enrollmentId)
+    const url  = window.URL.createObjectURL(new Blob([resp.data], { type: "application/pdf" }))
+    const a    = document.createElement("a")
+    a.href = url; a.setAttribute("download", `certificado-${courseSlug}.pdf`)
+    document.body.appendChild(a); a.click(); a.remove()
+    window.URL.revokeObjectURL(url)
+  } catch {
+    showToast("No se pudo descargar el certificado")
+  }
+}
 
 function ProgressRing({ percentage, size = 56 }) {
   const r   = (size - 6) / 2
@@ -29,6 +45,7 @@ function ProgressRing({ percentage, size = 56 }) {
 }
 
 export default function Courses() {
+  const navigate = useNavigate()
   const { data, isLoading } = useQuery({
     queryKey: ["enrollments"], queryFn: getEnrollments,
   })
@@ -81,12 +98,14 @@ export default function Courses() {
             const thumb = course?.thumbnail ? mediaUrl(course.thumbnail) : null
 
             return (
-              <Link key={enrollment.id}
-                to={`/academy/${course?.slug}`}
+              <div key={enrollment.id}
+                role="link" tabIndex={0}
+                onClick={() => navigate(`/academy/${course?.slug}`)}
+                onKeyDown={e => { if (e.key === "Enter") navigate(`/academy/${course?.slug}`) }}
                 style={{ display: "flex", alignItems: "center", gap: "20px",
                   background: "var(--surface)", border: "1px solid var(--border)",
                   borderRadius: "var(--r-xl)", padding: "20px 24px",
-                  textDecoration: "none",
+                  cursor: "pointer",
                   transition: "all var(--dur-slow) var(--ease)" }}
                 className="card card-glow"
               >
@@ -121,7 +140,20 @@ export default function Courses() {
 
                 {/* Progress ring */}
                 <ProgressRing percentage={progress} />
-              </Link>
+
+                {progress === 100 && (
+                  <button
+                    onClick={e => handleDownloadCertificate(e, enrollment.id, course?.slug)}
+                    title="Descargar certificado"
+                    data-testid={`btn-certificate-${enrollment.id}`}
+                    style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: "6px",
+                      padding: "8px 14px", borderRadius: "var(--r-full)",
+                      background: "var(--accent-dim)", border: "1px solid var(--accent-glow)",
+                      color: "var(--accent)", fontSize: "12px", fontWeight: 500, cursor: "pointer" }}>
+                    <Download size={13} /> Certificado
+                  </button>
+                )}
+              </div>
             )
           })}
         </div>

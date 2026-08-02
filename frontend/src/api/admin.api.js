@@ -13,6 +13,8 @@ export const getAdminOrders     = (params) => api.get(`${BASE}/orders/`, { param
 export const getAdminOrder      = (id) => api.get(`${BASE}/orders/${id}/`).then(r => r.data)
 export const updateOrderStatus  = (id, status) =>
   api.post(`${BASE}/orders/${id}/update_status/`, { status }).then(r => r.data)
+export const updateOrderShipping = (id, data) =>
+  api.patch(`${BASE}/orders/${id}/`, data).then(r => r.data)
 
 // ── Products ─────────────────────────────────────────────────
 export const getAdminProducts   = (params) => api.get(`${BASE}/products/`, { params }).then(r => r.data)

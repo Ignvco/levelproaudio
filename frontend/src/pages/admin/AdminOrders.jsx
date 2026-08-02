@@ -2,11 +2,11 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
-  getAdminOrders, updateOrderStatus,
+  getAdminOrders, updateOrderStatus, updateOrderShipping,
   generateDocumentFromOrder, downloadDocument,
 } from "../../api/admin.api"
-import { Eye, Inbox } from "lucide-react"
-import { DataTable, StatusBadge, AdminPageHeader } from "../../components/admin/ui"
+import { Eye, Inbox, Truck } from "lucide-react"
+import { DataTable, StatusBadge, AdminPageHeader, formInputStyle } from "../../components/admin/ui"
 
 const STATUS = {
   pending:   { label:"Pendiente",  color:"#D97706" },
@@ -32,6 +32,18 @@ function Badge({ status }) {
 function OrderPanel({ order, onClose }) {
   const queryClient      = useQueryClient()
   const [docResult, setDocResult] = useState(null)
+  const [carrier, setCarrier]   = useState(order.shipping_carrier || "")
+  const [tracking, setTracking] = useState(order.tracking_number || "")
+
+  const shippingMutation = useMutation({
+    mutationFn: () => updateOrderShipping(order.id, {
+      shipping_carrier: carrier, tracking_number: tracking,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries(["admin-orders"])
+    },
+  })
+  const shippingDirty = carrier !== (order.shipping_carrier || "") || tracking !== (order.tracking_number || "")
 
   const statusMutation = useMutation({
     mutationFn: (s) => updateOrderStatus(order.id, s),
@@ -126,6 +138,42 @@ function OrderPanel({ order, onClose }) {
                 ✓ Estado actualizado
               </p>
             )}
+          </div>
+
+          {/* Envío */}
+          <div style={{ background:"var(--surface-2)", border:"1px solid var(--border)",
+            borderRadius:"var(--r-xl)", padding:"18px" }}>
+            <p style={{ fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
+              letterSpacing:"0.08em", marginBottom:"12px", display:"flex", alignItems:"center", gap:"6px" }}>
+              <Truck size={13} /> Envío
+            </p>
+            <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
+              <div>
+                <label style={{ display:"block", fontSize:"11px", color:"var(--text-3)", marginBottom:"5px" }}>
+                  Transportista
+                </label>
+                <input value={carrier} onChange={e => setCarrier(e.target.value)}
+                  placeholder="Ej: Chilexpress, Starken..."
+                  style={{ ...formInputStyle, fontSize:"13px", padding:"9px 12px" }} />
+              </div>
+              <div>
+                <label style={{ display:"block", fontSize:"11px", color:"var(--text-3)", marginBottom:"5px" }}>
+                  Número de seguimiento
+                </label>
+                <input value={tracking} onChange={e => setTracking(e.target.value)}
+                  placeholder="Ej: CL123456789"
+                  style={{ ...formInputStyle, fontSize:"13px", padding:"9px 12px" }} />
+              </div>
+              {shippingDirty && (
+                <button onClick={() => shippingMutation.mutate()} disabled={shippingMutation.isPending}
+                  className="btn btn-accent" style={{ padding:"8px 16px", fontSize:"12px" }}>
+                  {shippingMutation.isPending ? "Guardando..." : "Guardar envío"}
+                </button>
+              )}
+              {shippingMutation.isSuccess && !shippingDirty && (
+                <p style={{ fontSize:"12px", color:"var(--accent-text)" }}>✓ Envío actualizado</p>
+              )}
+            </div>
           </div>
 
           {/* Cliente */}
