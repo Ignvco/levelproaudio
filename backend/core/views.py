@@ -73,23 +73,35 @@ class MediaProxyView(View):
 
     # ── GCS (producción) ──────────────────────────────────────
     #
-    # IMPORTANTE: nunca usar blob.download_as_bytes() para servir el
-    # archivo completo — eso carga TODO en memoria de una sola vez antes
-    # de mandar ni un byte de respuesta. Con una imagen de unos KB nunca
-    # se nota; con un video real de cientos de MB, tira el worker (por
-    # timeout o por memoria) y el cliente recibe un 500 vacío sin ningún
-    # mensaje de error — exactamente lo que pasaba acá.
+    # IMPORTANTE: nunca usar blob.download_as_bytes() SIN start/end para
+    # servir el archivo completo — eso carga TODO en memoria de una sola
+    # vez antes de mandar ni un byte de respuesta. Con una imagen de
+    # unos KB nunca se nota; con un video real de cientos de MB, tira el
+    # worker (por timeout o por memoria) y el cliente recibe un 500
+    # vacío sin ningún mensaje de error — exactamente lo que pasaba acá.
     #
     # Además: un pedido típico de un reproductor de video pide
     # "Range: bytes=0-" (sin fin) como primer probe — _parse_range ya
     # resolvía eso como "todo el archivo", así que el problema de arriba
     # también se disparaba en el camino "con range", no solo sin range.
     #
-    # La solución: transmitir por chunks (StreamingHttpResponse +
-    # blob.open("rb")), nunca más de CHUNK_SIZE en memoria a la vez.
+    # La solución: transmitir por chunks. Probamos primero con
+    # blob.open("rb") (BlobReader con seek/read) pero eso falló en
+    # producción con un 500 sin ningún log — el error pasa DENTRO del
+    # generador, que Django ejecuta recién cuando el servidor WSGI
+    # empieza a mandar la respuesta, ya fuera del try/except de esta
+    # función, así que se nos escapaba sin loguearse.
+    #
+    # Ahora usamos download_as_bytes(start=, end=) en un bucle — la
+    # misma llamada que YA funcionaba antes para servir imágenes
+    # completas, solo que repetida en pedazos chicos en vez de pedirse
+    # entera de una vez. Menos elegante que un BlobReader, pero es la
+    # API que sabemos que anda bien contra este bucket.
     CHUNK_SIZE = 256 * 1024  # 256 KB por chunk
 
     def _serve_gcs(self, request, path):
+        import logging
+        logger = logging.getLogger(__name__)
         try:
             from google.cloud import storage as gcs
             client = gcs.Client()
@@ -111,37 +123,33 @@ class MediaProxyView(View):
                 resp["Content-Range"] = f"bytes */{file_size}"
                 return resp
 
+            start, end = rng if rng else (0, file_size - 1)
+            length = end - start + 1
+
+            def stream_chunks():
+                pos = start
+                try:
+                    while pos <= end:
+                        chunk_end = min(pos + self.CHUNK_SIZE - 1, end)
+                        yield blob.download_as_bytes(start=pos, end=chunk_end)
+                        pos = chunk_end + 1
+                except Exception as e:
+                    # Ya empezamos a mandar la respuesta — no podemos
+                    # cambiar el status acá, pero al menos queda logueado
+                    # en vez de perderse en silencio (que es lo que pasaba
+                    # con el enfoque anterior de blob.open()).
+                    logger.error(f"MediaProxy: error transmitiendo '{path}' en byte {pos}: {e}")
+                    raise
+
             if rng:
-                start, end = rng
-                length = end - start + 1
-
-                def stream_range():
-                    with blob.open("rb") as f:
-                        f.seek(start)
-                        remaining = length
-                        while remaining > 0:
-                            chunk = f.read(min(self.CHUNK_SIZE, remaining))
-                            if not chunk:
-                                break
-                            remaining -= len(chunk)
-                            yield chunk
-
-                resp = StreamingHttpResponse(stream_range(), status=206, content_type=content_type)
+                resp = StreamingHttpResponse(stream_chunks(), status=206, content_type=content_type)
                 resp["Content-Range"] = f"bytes {start}-{end}/{file_size}"
                 resp["Content-Length"] = str(length)
                 resp["Accept-Ranges"] = "bytes"
                 resp["Cache-Control"] = "public, max-age=86400"
                 return resp
 
-            def stream_all():
-                with blob.open("rb") as f:
-                    while True:
-                        chunk = f.read(self.CHUNK_SIZE)
-                        if not chunk:
-                            break
-                        yield chunk
-
-            resp = StreamingHttpResponse(stream_all(), content_type=content_type)
+            resp = StreamingHttpResponse(stream_chunks(), content_type=content_type)
             resp["Content-Length"] = str(file_size)
             resp["Accept-Ranges"] = "bytes"
             resp["Cache-Control"] = "public, max-age=86400"
