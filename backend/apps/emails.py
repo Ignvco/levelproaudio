@@ -1,6 +1,7 @@
 """Servicio de emails transaccionales (Resend) con plantilla de marca LevelPro."""
 import logging
 from django.conf import settings
+from django.utils.html import escape
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ def _wrap(title, body_html, cta=None):
           </span>
         </td></tr>
         <tr><td style="padding:32px 32px 12px;">
-          <h1 style="margin:0 0 12px;font-size:24px;color:#fff;font-weight:800;">{title}</h1>
+          <h1 style="margin:0 0 12px;font-size:24px;color:#fff;font-weight:800;">{escape(title)}</h1>
         </td></tr>
         <tr><td style="padding:0 32px 8px;color:#b8b8b8;font-size:15px;line-height:1.65;">
           {body_html}
@@ -47,24 +48,50 @@ def _wrap(title, body_html, cta=None):
 </body></html>"""
 
 
-def send_email(to, subject, html):
-    """Envía un email. Usa Resend si RESEND_API_KEY está configurada; si no, cae a Django (consola)."""
+def send_email(to, subject, html, attachments=None):
+    """
+    Envía un email. Usa Resend si RESEND_API_KEY está configurada; si no,
+    cae a Django (consola en desarrollo — EMAIL_BACKEND nunca se sobreescribe
+    a un backend real en producción, así que esto NUNCA entrega de verdad).
+
+    attachments: lista opcional de dicts {"filename": str, "content": bytes}.
+    Devuelve True/False según si el envío se intentó sin error — la
+    mayoría de los llamadores lo ignoran (best-effort, no debe romper el
+    flujo principal si un email falla), pero algunos SÍ necesitan saber
+    si realmente se mandó antes de marcar algo como "enviado".
+    """
     api_key = getattr(settings, "RESEND_API_KEY", "") or ""
     sender  = getattr(settings, "RESEND_FROM_EMAIL", "") or getattr(settings, "DEFAULT_FROM_EMAIL", "onboarding@resend.dev")
     if not to:
-        return
+        return False
     try:
         if api_key:
             import resend
+            import base64
             resend.api_key = api_key
-            resend.Emails.send({"from": sender, "to": [to], "subject": subject, "html": html})
+            payload = {"from": sender, "to": [to], "subject": subject, "html": html}
+            if attachments:
+                payload["attachments"] = [
+                    {
+                        "filename": a["filename"],
+                        "content": base64.b64encode(a["content"]).decode()
+                                   if isinstance(a["content"], (bytes, bytearray))
+                                   else a["content"],
+                    }
+                    for a in attachments
+                ]
+            resend.Emails.send(payload)
         else:
             from django.core.mail import EmailMultiAlternatives
             msg = EmailMultiAlternatives(subject, "Ver este email en HTML.", sender, [to])
             msg.attach_alternative(html, "text/html")
+            for a in (attachments or []):
+                msg.attach(a["filename"], a["content"], "application/pdf")
             msg.send(fail_silently=True)
+        return True
     except Exception as e:
         logger.error(f"[emails] Falló envío a {to}: {e}")
+        return False
 
 
 # ── Emails específicos ────────────────────────────────────────
@@ -74,7 +101,7 @@ def send_order_confirmation(order):
     rows = ""
     for it in order.items.all():
         rows += f"""<tr>
-          <td style="padding:8px 0;color:#e8e8e8;font-size:14px;">{it.product_name} × {it.quantity}</td>
+          <td style="padding:8px 0;color:#e8e8e8;font-size:14px;">{escape(it.product_name)} × {it.quantity}</td>
           <td style="padding:8px 0;color:#e8e8e8;font-size:14px;text-align:right;">${float(it.price)*it.quantity:,.0f}</td>
         </tr>"""
     body = f"""
@@ -103,7 +130,7 @@ def send_ticket_email(email, campaign, codes):
     )
     draw = campaign.draw_date.strftime("%d/%m/%Y") if getattr(campaign, "draw_date", None) else ""
     body = f"""
-      <p style="margin:0 0 16px;">¡Ya estás participando en <strong style="color:#fff;">{campaign.name}</strong>!
+      <p style="margin:0 0 16px;">¡Ya estás participando en <strong style="color:#fff;">{escape(campaign.name)}</strong>!
         Estos son tus {len(codes)} ticket(s):</p>
       <div style="margin:8px 0 16px;">{chips}</div>
       <p style="margin:0;">El sorteo se realiza el <strong style="color:#fff;">{draw}</strong>.
@@ -130,7 +157,7 @@ def send_price_drop_email(user, product):
       <p style="margin:0 0 16px;">Uno de tus favoritos bajó de precio 👀</p>
       <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #1c1c1c;margin:8px 0;padding-top:16px;">
         <tr>
-          <td style="padding:8px 0;color:#fff;font-size:15px;font-weight:600;">{product.name}</td>
+          <td style="padding:8px 0;color:#fff;font-size:15px;font-weight:600;">{escape(product.name)}</td>
           <td style="padding:8px 0;color:{ACCENT};font-size:18px;font-weight:800;text-align:right;">
             ${float(product.price):,.0f}</td>
         </tr>
@@ -144,7 +171,7 @@ def send_price_drop_email(user, product):
 def send_back_in_stock_email(user, product):
     body = f"""
       <p style="margin:0 0 16px;">Buenas noticias — uno de tus favoritos volvió a estar disponible.</p>
-      <p style="margin:0;color:#fff;font-size:15px;font-weight:600;">{product.name}</p>
+      <p style="margin:0;color:#fff;font-size:15px;font-weight:600;">{escape(product.name)}</p>
     """
     html = _wrap("¡Volvió a stock! ✅", body,
                  cta={"label": "Comprar ahora", "url": f"{settings.FRONTEND_URL}/shop/{product.slug}"})

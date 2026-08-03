@@ -131,29 +131,45 @@ def send_document_email(request, doc_id):
     except TributaryDocument.DoesNotExist:
         return Response({"error": "Documento no encontrado"}, status=404)
 
-    from django.core.mail import EmailMessage
-    from django.conf import settings
     from django.utils import timezone
+    from django.utils.html import escape
+    from apps.emails import send_email, _wrap
 
     try:
-        email = EmailMessage(
-            subject=f"Tu {doc.get_tipo_display()} N° {doc.folio} — LevelPro Audio",
-            body=(
-                f"Hola,\n\n"
-                f"Adjuntamos tu {doc.get_tipo_display()} N° {doc.folio} "
-                f"por un total de ${float(doc.total):,.0f}.\n\n"
-                f"Gracias por tu compra.\n\n"
-                f"Equipo LevelPro Audio"
-            ),
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[doc.receptor_email or doc.order.email],
-        )
+        tipo_display = doc.get_tipo_display()
+        body = f"""
+          <p style="margin:0 0 16px;">Hola,</p>
+          <p style="margin:0 0 16px;">Adjuntamos tu {escape(tipo_display)}
+            N° {escape(str(doc.folio))} por un total de
+            <strong style="color:#fff;">${float(doc.total):,.0f}</strong>.</p>
+          <p style="margin:0;">Gracias por tu compra.</p>
+        """
+        html = _wrap(f"Tu {tipo_display} N° {doc.folio}", body)
 
+        attachments = None
         if doc.pdf_file:
             doc.pdf_file.seek(0)
-            email.attach(f"{doc.folio}.pdf", doc.pdf_file.read(), "application/pdf")
+            attachments = [{"filename": f"{doc.folio}.pdf", "content": doc.pdf_file.read()}]
 
-        email.send()
+        # send_email() acá arriba es el MISMO canal que usan el resto de
+        # los emails de la plataforma (Resend si está configurado) — antes
+        # esta función usaba django.core.mail.EmailMessage() directo, que
+        # SIEMPRE usa EMAIL_BACKEND (consola, nunca sobreescrito en
+        # producción) sin importar si Resend estaba configurado. El admin
+        # veía "Documento enviado por email" y quedaba marcado como
+        # ENVIADO en la base, pero el cliente nunca recibía nada.
+        sent = send_email(
+            to=doc.receptor_email or doc.order.email,
+            subject=f"Tu {tipo_display} N° {doc.folio} — LevelPro Audio",
+            html=html,
+            attachments=attachments,
+        )
+        if not sent:
+            return Response(
+                {"error": "No se pudo enviar el email. Revisá la configuración de Resend."},
+                status=502,
+            )
+
         doc.estado     = TributaryDocument.Estado.ENVIADO
         doc.enviado_at = timezone.now()
         doc.save(update_fields=["estado", "enviado_at"])
