@@ -29,7 +29,7 @@ steps:
         pip install --quiet --no-cache-dir -r requirements/base.txt -r requirements/development.txt
         DJANGO_SECRET_KEY=ci-dummy-key DB_NAME=x DB_USER=x DB_PASSWORD=x \
           DJANGO_SETTINGS_MODULE=config.settings.test \
-          python -m pytest tests/ apps/loyalty/ apps/billing/ apps/products/ apps/analytics/ apps/orders/ apps/services/ apps/academy/ apps/rewards/ apps/payments/ apps/users/ core/ -v
+          python -m pytest tests/ apps/loyalty/ apps/billing/ apps/products/ apps/analytics/ apps/orders/ apps/services/ apps/academy/ apps/rewards/ apps/payments/ apps/users/ apps/seo/ core/ -v
 
   # ── 1. Build Backend ─────────────────────────────────────────
   - name: "gcr.io/cloud-builders/docker"

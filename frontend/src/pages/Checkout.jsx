@@ -5,6 +5,7 @@ import { useNavigate, Link } from "react-router-dom"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
+import Seo from "../components/Seo"
 import {
   ArrowLeft, ArrowRight, User, MapPin, CreditCard,
   Globe, Landmark, ShieldCheck, ShoppingBag,
@@ -144,6 +145,7 @@ export default function Checkout() {
 
   if (!items.length) return (
     <div style={pageWrap}>
+      <Seo title="Finalizar compra" noindex />
       <div className="lp-container" style={{ display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center", gap: "22px",
         textAlign: "center", minHeight: "50vh" }} data-testid="checkout-empty">
@@ -169,6 +171,7 @@ export default function Checkout() {
 
   return (
     <div style={pageWrap} data-testid="checkout-page">
+      <Seo title="Finalizar compra" noindex />
       <div className="lp-container">
 
         {/* Header */}

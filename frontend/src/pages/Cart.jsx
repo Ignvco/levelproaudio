@@ -11,6 +11,7 @@ import { getOrders } from "../api/orders.api"
 import { previewCartEntries } from "../api/rewards.api"
 import { getMyLoyalty } from "../api/loyalty.api"
 import { mediaUrl } from "../utils/mediaUrl"
+import Seo from "../components/Seo"
 
 // ─────────────────────────────────────────────────────────────
 // Eyebrow reutilizable
@@ -248,6 +249,7 @@ export default function Cart() {
   if (!items.length && isAuthenticated && pendingOrder) {
     return (
       <div style={pageWrap}>
+        <Seo title="Carrito" noindex />
         <div className="lp-container" style={{
           display: "flex", flexDirection: "column", alignItems: "center",
           justifyContent: "center", gap: "24px", textAlign: "center",
@@ -300,6 +302,7 @@ export default function Cart() {
   // ── Carrito vacío normal ───────────────────────────────
   if (!items.length) return (
     <div style={pageWrap}>
+      <Seo title="Carrito" noindex />
       <div className="lp-container" style={{
         display: "flex", flexDirection: "column", alignItems: "center",
         justifyContent: "center", gap: "22px", textAlign: "center",
@@ -329,6 +332,7 @@ export default function Cart() {
   // ── Carrito con items ──────────────────────────────────
   return (
     <div style={pageWrap} data-testid="cart-page">
+      <Seo title="Carrito" noindex />
       <div className="lp-container">
 
         {/* Encabezado */}

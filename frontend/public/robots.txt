@@ -16,4 +16,4 @@ Disallow: /cart
 Disallow: /*?q=
 Disallow: /*?ref=
 
-Sitemap: https://levelproaudio.com/sitemap.xml
+Sitemap: https://levelproaudio.com/api/v1/seo/sitemap.xml
