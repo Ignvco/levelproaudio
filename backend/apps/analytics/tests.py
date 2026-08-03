@@ -329,3 +329,190 @@ class AdminProductCreationTest(TestCase):
                 "product_type": ptype, "is_active": True,
             }, format="json")
             self.assertEqual(resp.status_code, 201, resp.data)
+
+
+class AdminUserManagementPrivilegeEscalationTest(TestCase):
+    """
+    IsAdminOrStaff acepta cualquier is_staff=True, no solo superusuarios
+    — sin estas protecciones, un staff común podía otorgarse (o
+    otorgarle a cualquiera) permisos de administrador, o borrar/
+    desactivar la cuenta de un superusuario.
+    """
+    def setUp(self):
+        self.superuser = User.objects.create_superuser(
+            email="owner@test.com", username="owner", password="x"
+        )
+        self.staff = User.objects.create_user(
+            email="staffmember@test.com", username="staffmember", password="x", is_staff=True
+        )
+        self.regular = User.objects.create_user(
+            email="regularuser@test.com", username="regularuser", password="x"
+        )
+        self.client = APIClient()
+
+    def test_regular_staff_cannot_grant_is_staff_to_another_user(self):
+        self.client.force_authenticate(user=self.staff)
+        resp = self.client.patch(f"/api/v1/admin/users/{self.regular.id}/", {
+            "is_staff": True,
+        }, format="json")
+        self.assertEqual(resp.status_code, 403)
+        self.regular.refresh_from_db()
+        self.assertFalse(self.regular.is_staff)
+
+    def test_regular_staff_cannot_modify_another_staff_account(self):
+        other_staff = User.objects.create_user(
+            email="other@test.com", username="other", password="x", is_staff=True
+        )
+        self.client.force_authenticate(user=self.staff)
+        resp = self.client.patch(f"/api/v1/admin/users/{other_staff.id}/", {
+            "first_name": "Cambiado",
+        }, format="json")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_regular_staff_cannot_delete_superuser(self):
+        self.client.force_authenticate(user=self.staff)
+        resp = self.client.delete(f"/api/v1/admin/users/{self.superuser.id}/")
+        self.assertEqual(resp.status_code, 403)
+        self.assertTrue(User.objects.filter(id=self.superuser.id).exists())
+
+    def test_superuser_cannot_delete_another_superuser_either(self):
+        """Protección adicional: borrar un superusuario nunca se permite
+        desde este endpoint, ni siquiera otro superusuario lo puede hacer
+        (para eso está el admin de Django directo)."""
+        other_super = User.objects.create_superuser(
+            email="other-owner@test.com", username="otherowner", password="x"
+        )
+        self.client.force_authenticate(user=self.superuser)
+        resp = self.client.delete(f"/api/v1/admin/users/{other_super.id}/")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_superuser_can_grant_is_staff(self):
+        self.client.force_authenticate(user=self.superuser)
+        resp = self.client.patch(f"/api/v1/admin/users/{self.regular.id}/", {
+            "is_staff": True,
+        }, format="json")
+        self.assertEqual(resp.status_code, 200)
+        self.regular.refresh_from_db()
+        self.assertTrue(self.regular.is_staff)
+
+    def test_superuser_can_delete_regular_staff(self):
+        self.client.force_authenticate(user=self.superuser)
+        resp = self.client.delete(f"/api/v1/admin/users/{self.staff.id}/")
+        self.assertEqual(resp.status_code, 204)
+        self.assertFalse(User.objects.filter(id=self.staff.id).exists())
+
+    def test_nobody_can_modify_their_own_account_via_this_endpoint(self):
+        self.client.force_authenticate(user=self.superuser)
+        resp = self.client.patch(f"/api/v1/admin/users/{self.superuser.id}/", {
+            "first_name": "Yo mismo",
+        }, format="json")
+        self.assertEqual(resp.status_code, 403)
+
+    def test_nobody_can_delete_their_own_account_via_this_endpoint(self):
+        self.client.force_authenticate(user=self.staff)
+        resp = self.client.delete(f"/api/v1/admin/users/{self.staff.id}/")
+        self.assertEqual(resp.status_code, 403)
+        self.assertTrue(User.objects.filter(id=self.staff.id).exists())
+
+    def test_superuser_can_still_update_regular_users_normally(self):
+        self.client.force_authenticate(user=self.superuser)
+        resp = self.client.patch(f"/api/v1/admin/users/{self.regular.id}/", {
+            "is_active": False,
+        }, format="json")
+        self.assertEqual(resp.status_code, 200)
+        self.regular.refresh_from_db()
+        self.assertFalse(self.regular.is_active)
+
+
+class LowStockThresholdConsistencyTest(TestCase):
+    """
+    Antes, "stock bajo" se calculaba con 3 criterios distintos según la
+    pantalla: un umbral fijo de 5 en el dashboard principal, uno fijo de
+    10 en analytics_full, y el umbral real por producto (stock_min) solo
+    en inventory_alerts. Un mismo producto podía aparecer como "stock
+    bajo" en una pantalla y no en otra. Ahora las tres usan el mismo
+    criterio: stock_min configurado por producto.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="stockadmin@test.com", username="stockadmin", password="x")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+        cat = Category.objects.create(name="Mics", slug="mics-stockthreshold")
+
+        # Antes: con umbral fijo de 5, este NO aparecía como "stock bajo"
+        # (stock=7 > 5) — pero con su propio stock_min=10 configurado,
+        # sí debería aparecer.
+        self.high_threshold_product = Product.objects.create(
+            name="Producto con umbral alto", slug="alto-umbral", category=cat,
+            price=Decimal("50000"), stock=7, stock_min=10, is_active=True,
+        )
+        # Este SÍ estaba por debajo del umbral fijo de 5, y también está
+        # por debajo de su propio stock_min=3 — debería seguir apareciendo.
+        self.normal_product = Product.objects.create(
+            name="Producto normal", slug="normal-umbral", category=cat,
+            price=Decimal("30000"), stock=2, stock_min=3, is_active=True,
+        )
+        # Fuera de stock — no debe contar como "bajo", es su propia categoría.
+        self.out_of_stock_product = Product.objects.create(
+            name="Sin stock", slug="sin-stock-umbral", category=cat,
+            price=Decimal("20000"), stock=0, stock_min=5, is_active=True,
+        )
+
+    def test_dashboard_overview_uses_real_stock_min(self):
+        resp = self.client.get("/api/v1/admin/dashboard/")
+        self.assertEqual(resp.status_code, 200)
+        # Antes daba 1 (solo normal_product, por el umbral fijo de 5) — ahora
+        # también cuenta high_threshold_product (7 <= su propio stock_min=10)
+        self.assertEqual(resp.data["products"]["low_stock"], 2)
+        self.assertEqual(resp.data["products"]["out_of_stock"], 1)
+
+    def test_inventory_alerts_total_matches_dashboard_low_plus_out_of_stock(self):
+        """inventory_alerts junta "bajo" + "sin stock" en una sola lista
+        (con un campo status que los distingue) — el dashboard los separa
+        en dos contadores. La suma de los dos debe dar el mismo total."""
+        resp_dashboard = self.client.get("/api/v1/admin/dashboard/")
+        resp_alerts = self.client.get("/api/v1/admin/inventory/alerts/")
+
+        alert_names = {p["name"] for p in resp_alerts.data}
+        self.assertIn("Producto con umbral alto", alert_names)
+        self.assertIn("Producto normal", alert_names)
+        self.assertIn("Sin stock", alert_names)  # inventory_alerts SÍ la incluye
+
+        total_dashboard = (
+            resp_dashboard.data["products"]["low_stock"]
+            + resp_dashboard.data["products"]["out_of_stock"]
+        )
+        self.assertEqual(total_dashboard, len(resp_alerts.data))
+
+
+class ExecutiveDashboardUtilidadMesTest(TestCase):
+    """
+    executive_dashboard calculaba "utilidad neta del mes" con un nombre
+    de campo que no existe (record en vez de income_record) — el
+    try/except alrededor lo tragaba en silencio y siempre devolvía $0,
+    sin ningún error visible en ningún lado.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_superuser(email="execadmin@test.com", username="execadmin", password="x")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_utilidad_mes_computes_real_value_not_always_zero(self):
+        from apps.orders.models import Order, OrderStatus
+        from apps.analytics.models import DistributionCategory, IncomeRecord
+
+        utilidad_cat = DistributionCategory.objects.create(
+            name="Utilidad neta", cat_type="remainder"
+        )
+        order = Order.objects.create(
+            status=OrderStatus.PAID, total=Decimal("100000"),
+            email="test@test.com", shipping_address="Test 123",
+        )
+        record = IncomeRecord.objects.create(order=order, amount=order.total, source="payment")
+        record.create_distributions()  # crea la distribución real, incluida la de "utilidad_cat"
+
+        resp = self.client.get("/api/v1/admin/executive/")
+        self.assertEqual(resp.status_code, 200)
+        # Antes esto SIEMPRE daba 0 por el bug — ahora debe reflejar la
+        # distribución real que se acaba de crear.
+        self.assertGreater(resp.data["utilidad_mes"], 0)

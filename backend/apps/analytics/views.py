@@ -625,7 +625,7 @@ def dashboard_overview(request):
     new_users_week  = User.objects.filter(date_joined__gte=last_7).count()
 
     total_products = Product.objects.filter(is_active=True).count()
-    low_stock      = Product.objects.filter(is_active=True, stock__lte=5).count()
+    low_stock      = Product.objects.filter(is_active=True, stock__gt=0, stock__lte=F("stock_min")).count()
     out_of_stock   = Product.objects.filter(is_active=True, stock=0).count()
 
     total_enrollments = Enrollment.objects.count()
@@ -658,7 +658,7 @@ def dashboard_overview(request):
     ).select_related("user").order_by("-created_at")[:5]
 
     low_stock_products = Product.objects.filter(
-        is_active=True, stock__lte=5
+        is_active=True, stock__gt=0, stock__lte=F("stock_min")
     ).order_by("stock")[:6]
 
     unread_service_requests = 0
@@ -779,14 +779,47 @@ def admin_users(request):
 @api_view(["PATCH", "DELETE"])
 @permission_classes([IsAdminOrStaff])
 def admin_user_detail(request, user_id):
-    """PATCH/DELETE /api/v1/admin/users/{id}/"""
+    """
+    PATCH/DELETE /api/v1/admin/users/{id}/
+
+    IsAdminOrStaff acepta cualquier is_staff=True, no solo superusuarios
+    — así que sin las protecciones de acá abajo, CUALQUIER cuenta de
+    staff (aunque tenga permisos pensados para ser limitados) podría
+    otorgarse is_staff a sí misma o a otra cuenta, o borrar/desactivar
+    la cuenta de un superusuario. Nunca se pudo hacer eso a propósito,
+    pero tampoco había nada que lo impidiera.
+    """
     try:
         user = User.objects.get(id=user_id)
     except User.DoesNotExist:
         return Response({"error": "Usuario no encontrado."}, status=404)
 
+    # Nadie modifica ni borra su propia cuenta por acá — evita
+    # bloqueos accidentales (ej: un staff se desactiva a sí mismo).
+    if user.id == request.user.id:
+        return Response(
+            {"error": "No podés modificar tu propia cuenta desde acá."},
+            status=403,
+        )
+
+    # Solo un superusuario puede tocar cuentas de otro superusuario o
+    # de staff — evita que un staff común "gestione" a sus superiores.
+    if (user.is_superuser or user.is_staff) and not request.user.is_superuser:
+        return Response(
+            {"error": "Solo un superusuario puede modificar cuentas de staff/admin."},
+            status=403,
+        )
+
     if request.method == "PATCH":
         allowed = ["first_name", "last_name", "phone", "is_active", "is_staff"]
+        # is_staff (otorgar o quitar permisos de administrador) es
+        # exclusivo de superusuarios — un staff común no puede crear
+        # más cuentas de staff ni tocar las existentes.
+        if "is_staff" in request.data and not request.user.is_superuser:
+            return Response(
+                {"error": "Solo un superusuario puede otorgar o quitar permisos de administrador."},
+                status=403,
+            )
         for field in allowed:
             if field in request.data:
                 setattr(user, field, request.data[field])
@@ -794,6 +827,11 @@ def admin_user_detail(request, user_id):
         return Response({"detail": "Usuario actualizado."})
 
     if request.method == "DELETE":
+        if user.is_superuser:
+            return Response(
+                {"error": "No se puede eliminar una cuenta de superusuario desde acá."},
+                status=403,
+            )
         user.delete()
         return Response({"detail": "Usuario eliminado."}, status=204)
 
@@ -1309,7 +1347,7 @@ def analytics_full(request):
 
     low_stock_products = (
         Product.objects
-        .filter(is_active=True, stock__lte=10)
+        .filter(is_active=True, stock__gt=0, stock__lte=F("stock_min"))
         .order_by("stock")
         .values("name", "stock", "sku")[:15]
     )
@@ -1507,7 +1545,7 @@ def download_template(request):
         "0.3",
         "Si",
         "Si",
-        "physical",
+        "stock",
         "https://ejemplo.com/imagen.jpg",
         "Shure SM58 - Micrófono Vocal Profesional",
         "Compra el Shure SM58, el micrófono más confiable del mercado.",
@@ -1538,7 +1576,7 @@ def download_template(request):
         ("• peso                → Peso en kg. Ej: 0.5", False),
         ("• destacado           → Si / No (muestra en home)", False),
         ("• activo              → Si / No (visible en tienda)", False),
-        ("• tipo                → physical / digital / course", False),
+        ("• tipo                → stock (en stock) / preorder (preventa) / on_demand (a pedido)", False),
         ("• imagen_url          → URL de imagen principal", False),
         ("• seo_titulo          → Título para Google (máx 70 caracteres)", False),
         ("• seo_descripcion     → Descripción para Google (máx 160 caracteres)", False),
@@ -2126,9 +2164,11 @@ def executive_dashboard(request):
         ).first()
         utilidad_mes = IncomeDistribution.objects.filter(
             category=utilidad_cat,
-            record__order__created_at__gte=mes_inicio,
+            income_record__order__created_at__gte=mes_inicio,
         ).aggregate(t=Sum("amount"))["t"] or 0
-    except Exception:
+    except Exception as e:
+        import logging
+        logging.getLogger(__name__).error(f"executive_dashboard: error calculando utilidad_mes: {e}")
         utilidad_mes = 0
 
     # ── Gráfico ventas 7 días ────────────────────────────────
