@@ -4,3 +4,12 @@ ipython==8.26.0
 pytest==8.3.3
 pytest-django==4.9.0
 requests==2.32.3
+# Necesarias para que los tests puedan importar/mockear google.cloud.storage
+# y google.auth (usados en MediaProxyView y en la subida directa de video a
+# GCS) — antes solo estaban en production.txt, así que CI fallaba con
+# "ModuleNotFoundError: No module named 'google'" apenas un test intentaba
+# mockear ese módulo (unittest.mock.patch necesita poder importar el
+# módulo real para poder reemplazarlo, aunque después nunca se llame de
+# verdad a GCP).
+google-cloud-storage==2.18.2
+google-auth==2.34.0
