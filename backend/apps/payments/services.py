@@ -55,7 +55,20 @@ def verify_mp_webhook_signature(request, provider: str) -> bool:
     if not ts or not v1:
         return False
 
-    data_id = request.query_params.get("data.id") or request.data.get("data", {}).get("id", "")
+    # MercadoPago manda notificaciones en DOS formatos distintos de URL:
+    #   ?id=X&topic=payment          (formato viejo)
+    #   ?data.id=X&type=payment      (formato nuevo)
+    # Antes solo se revisaba "data.id" — para el formato viejo el id
+    # quedaba vacío, el manifest se armaba mal, y la firma NUNCA
+    # coincidía aunque el secreto estuviera bien configurado. Esto tapó
+    # en producción el webhook real de una compra real con plata real.
+    # (mismo orden que usa el propio SDK de referencia de MP: id primero)
+    data_id = (
+        request.query_params.get("id")
+        or request.query_params.get("data.id")
+        or request.data.get("data", {}).get("id", "")
+    )
+    data_id = str(data_id).lower()  # MP pide minúsculas si es alfanumérico
 
     manifest = f"id:{data_id};request-id:{x_request_id};ts:{ts};"
     computed = hmac.new(
@@ -162,6 +175,12 @@ def create_mercadopago_preference(order: Order, provider: str) -> dict:
 
 
 def process_mercadopago_webhook(data: dict, provider: str) -> None:
+    # MercadoPago manda el topic/type y el id A VECES en el cuerpo, A VECES
+    # solo en los query params de la URL (ej: "?id=X&topic=merchant_order").
+    # Antes esta función solo miraba el cuerpo — si venía vacío (algo común
+    # en estos avisos), se salía sin hacer nada aunque la notificación
+    # trajera todo lo necesario en la URL. Esto tapó en producción el
+    # webhook real de una compra real con plata real.
     topic = data.get("type") or data.get("topic")
     if topic not in ["payment", "merchant_order"]:
         return

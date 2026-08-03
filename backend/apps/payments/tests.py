@@ -11,7 +11,7 @@ from decimal import Decimal
 from unittest.mock import patch, MagicMock
 
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from rest_framework.test import APIClient
 
 from apps.orders.models import Order, OrderStatus
@@ -227,3 +227,136 @@ class AdminManualPaymentApprovalTest(TestCase):
 
         order.refresh_from_db()
         self.assertEqual(order.status, "cancelled")
+
+
+class WebhookSignatureRealFormatsTest(TestCase):
+    """
+    CRÍTICO — bug real encontrado en producción con una compra real: MP
+    manda notificaciones en distintos formatos de URL:
+      ?id=X&topic=payment            (formato viejo)
+      ?data.id=X&type=payment        (formato nuevo)
+      ?id=X&topic=merchant_order     (otro tipo de evento)
+    Antes, verify_mp_webhook_signature solo buscaba "data.id" en la URL,
+    así que para el formato viejo (?id=...) el id quedaba vacío, el
+    manifest se armaba mal, y la firma NUNCA coincidía — el webhook se
+    rechazaba con 401 aunque el secreto estuviera bien configurado.
+    """
+    def setUp(self):
+        self.secret = "test-secret-key"
+
+    def _make_signature(self, data_id, request_id, ts):
+        import hmac, hashlib
+        manifest = f"id:{data_id};request-id:{request_id};ts:{ts};"
+        return hmac.new(self.secret.encode(), manifest.encode(), hashlib.sha256).hexdigest()
+
+    @override_settings(MP_CL_WEBHOOK_SECRET="test-secret-key")
+    def test_old_format_id_query_param_validates_correctly(self):
+        """El formato que rompía: ?id=X&topic=payment (sin data.id)."""
+        from apps.payments.services import verify_mp_webhook_signature
+        from apps.payments.models import PaymentProvider
+        from rest_framework.test import APIRequestFactory
+
+        ts = "1234567890"
+        request_id = "req-abc-123"
+        data_id = "171025041287"
+        v1 = self._make_signature(data_id, request_id, ts)
+
+        factory = APIRequestFactory()
+        request = factory.post(
+            f"/api/v1/payments/webhook/mercadopago/cl/?id={data_id}&topic=payment",
+            HTTP_X_SIGNATURE=f"ts={ts},v1={v1}",
+            HTTP_X_REQUEST_ID=request_id,
+        )
+        from rest_framework.request import Request
+        drf_request = Request(request)
+
+        self.assertTrue(verify_mp_webhook_signature(drf_request, PaymentProvider.MERCADOPAGO_CL))
+
+    @override_settings(MP_CL_WEBHOOK_SECRET="test-secret-key")
+    def test_new_format_data_id_query_param_still_validates(self):
+        """El formato nuevo (?data.id=X&type=payment) — confirma que no rompimos esto."""
+        from apps.payments.services import verify_mp_webhook_signature
+        from apps.payments.models import PaymentProvider
+        from rest_framework.test import APIRequestFactory
+        from rest_framework.request import Request
+
+        ts = "1234567890"
+        request_id = "req-xyz-456"
+        data_id = "171025041287"
+        v1 = self._make_signature(data_id, request_id, ts)
+
+        factory = APIRequestFactory()
+        request = factory.post(
+            f"/api/v1/payments/webhook/mercadopago/cl/?data.id={data_id}&type=payment",
+            HTTP_X_SIGNATURE=f"ts={ts},v1={v1}",
+            HTTP_X_REQUEST_ID=request_id,
+        )
+        drf_request = Request(request)
+
+        self.assertTrue(verify_mp_webhook_signature(drf_request, PaymentProvider.MERCADOPAGO_CL))
+
+    @override_settings(MP_CL_WEBHOOK_SECRET="test-secret-key")
+    def test_wrong_signature_still_rejected(self):
+        """Confirma que el fix no abrió la puerta a firmas inválidas."""
+        from apps.payments.services import verify_mp_webhook_signature
+        from apps.payments.models import PaymentProvider
+        from rest_framework.test import APIRequestFactory
+        from rest_framework.request import Request
+
+        factory = APIRequestFactory()
+        request = factory.post(
+            "/api/v1/payments/webhook/mercadopago/cl/?id=171025041287&topic=payment",
+            HTTP_X_SIGNATURE="ts=1234567890,v1=firma_invalida_a_proposito",
+            HTTP_X_REQUEST_ID="req-1",
+        )
+        drf_request = Request(request)
+
+        self.assertFalse(verify_mp_webhook_signature(drf_request, PaymentProvider.MERCADOPAGO_CL))
+
+
+class WebhookQueryParamsFallbackTest(TestCase):
+    """
+    Segundo bug encontrado en el mismo incidente: process_mercadopago_webhook
+    solo miraba el CUERPO del request para topic/id — pero MP a veces manda
+    esa info solo en los query params de la URL. Confirma que ahora se
+    combinan ambas fuentes antes de procesar.
+    """
+    def setUp(self):
+        self.user = User.objects.create_user(email="qpbuyer@test.com", username="qpbuyer", password="x")
+
+    @patch("apps.payments.services.get_mp_sdk")
+    def test_topic_and_id_from_query_params_only_still_processes(self, mock_get_sdk):
+        from apps.payments.services import process_mercadopago_webhook
+
+        order = _pending_order(self.user, total="1500")
+        mock_sdk = MagicMock()
+        mock_sdk.payment().get.return_value = {
+            "status": 200,
+            "response": {
+                "id": "171025041287", "status": "approved",
+                "external_reference": str(order.id),
+                "transaction_amount": 1500,
+            },
+        }
+        mock_get_sdk.return_value = mock_sdk
+
+        # Simula exactamente lo que arma la vista: query params + body (vacío)
+        data = {"id": "171025041287", "topic": "payment"}
+        process_mercadopago_webhook(data, PaymentProvider.MERCADOPAGO_CL)
+
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.PAID)
+
+    @patch("apps.payments.services.get_mp_sdk")
+    def test_merchant_order_topic_without_matching_id_is_ignored_safely(self, mock_get_sdk):
+        """merchant_order con un id que no corresponde a ningún pago real
+        — no debe romper, solo no encontrar nada que procesar."""
+        from apps.payments.services import process_mercadopago_webhook
+
+        mock_sdk = MagicMock()
+        mock_sdk.payment().get.return_value = {"status": 404, "response": {}}
+        mock_get_sdk.return_value = mock_sdk
+
+        data = {"id": "43307324538", "topic": "merchant_order"}
+        # No debe lanzar ninguna excepción
+        process_mercadopago_webhook(data, PaymentProvider.MERCADOPAGO_CL)

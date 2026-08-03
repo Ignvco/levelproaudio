@@ -131,7 +131,10 @@ def webhook_mercadopago_cl(request):
         logger.warning("Firma inválida en webhook MP CL, request rechazado.")
         return Response({"status": "invalid signature"}, status=401)
     try:
-        data = request.data
+        # MP manda topic/type e id a veces en el cuerpo, a veces solo en
+        # los query params de la URL — combinamos ambos, el cuerpo gana
+        # si hay conflicto (viene de la fuente más confiable).
+        data = {**request.query_params.dict(), **request.data}
         process_mercadopago_webhook(data, PaymentProvider.MERCADOPAGO_CL)
         return Response({"status": "ok"})
     except Exception as e:
@@ -151,7 +154,7 @@ def webhook_mercadopago_ar(request):
         logger.warning("Firma inválida en webhook MP AR, request rechazado.")
         return Response({"status": "invalid signature"}, status=401)
     try:
-        data = request.data
+        data = {**request.query_params.dict(), **request.data}
         process_mercadopago_webhook(data, PaymentProvider.MERCADOPAGO_AR)
         return Response({"status": "ok"})
     except Exception as e:
