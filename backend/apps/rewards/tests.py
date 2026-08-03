@@ -121,3 +121,113 @@ class RewardsFlowTest(TestCase):
     def test_draw_requires_entries(self):
         with self.assertRaises(DrawError):
             run_draw(self.campaign, self.admin)
+
+
+class RewardEntriesMixedFlowTest(TestCase):
+    """
+    Cobertura del fix: antes, comprar un producto participante NUNCA
+    generaba entries — solo la compra de stickers funcionaba, a pesar
+    de que el modelo, el admin y hasta un endpoint de preview para el
+    carrito ya existían para "productos participantes". Estos tests
+    cubren el camino que antes estaba completamente roto, más el caso
+    de una orden que dispara ambos caminos a la vez.
+    """
+    def setUp(self):
+        self.user = User.objects.create_user(email="mixed@lp.com", username="mixed", password="x")
+        cat = Category.objects.create(name="Mics", slug="mics-mixed")
+        self.product = Product.objects.create(
+            name="SM7B", slug="sm7b-mixed", price=Decimal("100000"), stock=10, category=cat
+        )
+        now = timezone.now()
+        self.campaign = Campaign.objects.create(
+            name="Sorteo Mixto", main_prize="Premio",
+            start_date=now - timedelta(days=1), end_date=now + timedelta(days=30),
+            draw_date=now + timedelta(days=31), status=CampaignStatus.ACTIVE,
+        )
+        self.rp = RewardProduct.objects.create(
+            campaign=self.campaign, product=self.product, entries_per_purchase=3,
+        )
+
+    def test_order_with_both_sticker_and_product_generates_both(self):
+        from apps.rewards.models import StickerPurchase
+
+        order = Order.objects.create(
+            user=self.user, email=self.user.email, shipping_address="dir",
+            total=Decimal("100000") + self.campaign.sticker_price,
+            status=OrderStatus.PENDING,
+        )
+        OrderItem.objects.create(
+            order=order, product=self.product, product_name=self.product.name,
+            price=self.product.price, quantity=1,
+        )
+        StickerPurchase.objects.create(order=order, campaign=self.campaign, quantity=2)
+
+        order.status = OrderStatus.PAID
+        order.save()
+
+        # 3 (producto participante) + 2 (stickers) = 5
+        self.assertEqual(Entry.objects.filter(order=order).count(), 5)
+        self.assertEqual(Entry.objects.filter(order=order, product=self.product).count(), 3)
+        self.assertEqual(Entry.objects.filter(order=order, product__isnull=True).count(), 2)
+
+    def test_expired_campaign_does_not_generate_entries(self):
+        """El producto participa en una campaña cuyo end_date ya pasó —
+        no debería generar entries aunque status siga en 'active'."""
+        now = timezone.now()
+        self.campaign.end_date = now - timedelta(days=1)
+        self.campaign.save(update_fields=["end_date"])
+
+        order = Order.objects.create(
+            user=self.user, email=self.user.email, shipping_address="dir",
+            total=self.product.price, status=OrderStatus.PENDING,
+        )
+        OrderItem.objects.create(
+            order=order, product=self.product, product_name=self.product.name,
+            price=self.product.price, quantity=1,
+        )
+        order.status = OrderStatus.PAID
+        order.save()
+
+        self.assertEqual(Entry.objects.filter(order=order).count(), 0)
+
+    def test_inactive_reward_product_does_not_generate_entries(self):
+        self.rp.is_active = False
+        self.rp.save(update_fields=["is_active"])
+
+        order = Order.objects.create(
+            user=self.user, email=self.user.email, shipping_address="dir",
+            total=self.product.price, status=OrderStatus.PENDING,
+        )
+        OrderItem.objects.create(
+            order=order, product=self.product, product_name=self.product.name,
+            price=self.product.price, quantity=1,
+        )
+        order.status = OrderStatus.PAID
+        order.save()
+
+        self.assertEqual(Entry.objects.filter(order=order).count(), 0)
+
+    def test_product_in_two_active_campaigns_generates_entries_for_both(self):
+        now = timezone.now()
+        campaign2 = Campaign.objects.create(
+            name="Sorteo Mixto 2", main_prize="Otro premio",
+            start_date=now - timedelta(days=1), end_date=now + timedelta(days=30),
+            draw_date=now + timedelta(days=31), status=CampaignStatus.ACTIVE,
+        )
+        RewardProduct.objects.create(
+            campaign=campaign2, product=self.product, entries_per_purchase=2,
+        )
+
+        order = Order.objects.create(
+            user=self.user, email=self.user.email, shipping_address="dir",
+            total=self.product.price, status=OrderStatus.PENDING,
+        )
+        OrderItem.objects.create(
+            order=order, product=self.product, product_name=self.product.name,
+            price=self.product.price, quantity=1,
+        )
+        order.status = OrderStatus.PAID
+        order.save()
+
+        self.assertEqual(Entry.objects.filter(order=order, campaign=self.campaign).count(), 3)
+        self.assertEqual(Entry.objects.filter(order=order, campaign=campaign2).count(), 2)

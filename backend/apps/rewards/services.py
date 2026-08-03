@@ -34,44 +34,81 @@ def _gen_unique_code(length: int = 8) -> str:
 # GENERACIÓN DE ENTRIES (desde signal de Order)
 # ═══════════════════════════════════════════════════════════════
 
+def _send_ticket_email_safe(email, campaign, codes):
+    if not codes:
+        return
+    try:
+        from apps.emails import send_ticket_email
+        send_ticket_email(email, campaign, codes)
+    except Exception:
+        pass
+
+
 @transaction.atomic
 def generate_entries_for_order(order):
     """
-    Genera las Entries (tickets) de una orden de compra de stickers.
-    Cada sticker comprado = 1 Entry con código único.
-    Idempotente: si ya se generaron entries para esta orden/campaña, no duplica.
+    Genera las Entries (tickets) que corresponden a una orden pagada.
+    Idempotente: nunca duplica entries si el signal se dispara de nuevo
+    (ej: paid → shipped → completed).
 
-    Retorna una lista de Entries creadas.
+    Hay DOS caminos independientes, y una orden puede disparar ambos:
+
+    1. Compra de stickers (StickerPurchase) — cada sticker = 1 Entry.
+
+    2. Producto participante (RewardProduct) — cada unidad comprada de
+       un producto configurado en una campaña activa genera N Entries
+       (entries_per_purchase × cantidad). ANTES, esta función solo
+       manejaba el camino 1 — el modelo, el admin completo (con su
+       propia UI de "productos participantes"), y hasta un endpoint de
+       preview para el carrito existían, pero comprar un producto
+       participante nunca generaba ninguna participación real.
     """
     if not order.user_id:
         return []
 
-    sp = getattr(order, "sticker_purchase", None)
-    if not sp:
-        return []
-
-    # Idempotencia
-    if Entry.objects.filter(order=order, campaign=sp.campaign).exists():
-        return []
-
     created = []
-    for _ in range(sp.quantity):
-        entry = Entry.objects.create(
-            campaign     = sp.campaign,
-            user         = order.user,
-            order        = order,
-            product      = None,
-            unique_code  = _gen_unique_code(),
-        )
-        created.append(entry)
 
-    # Email con los tickets al usuario
-    if created:
-        try:
-            from apps.emails import send_ticket_email
-            send_ticket_email(order.email, sp.campaign, [e.unique_code for e in created])
-        except Exception:
-            pass
+    # ── 1. Stickers ──────────────────────────────────────────
+    sp = getattr(order, "sticker_purchase", None)
+    if sp and not Entry.objects.filter(order=order, campaign=sp.campaign, product__isnull=True).exists():
+        sticker_entries = [
+            Entry.objects.create(
+                campaign=sp.campaign, user=order.user, order=order,
+                product=None, unique_code=_gen_unique_code(),
+            )
+            for _ in range(sp.quantity)
+        ]
+        created.extend(sticker_entries)
+        _send_ticket_email_safe(order.email, sp.campaign, [e.unique_code for e in sticker_entries])
+
+    # ── 2. Productos participantes ───────────────────────────
+    now = timezone.now()
+    for item in order.items.select_related("product"):
+        if not item.product_id:
+            continue
+        rps = RewardProduct.objects.filter(
+            product_id=item.product_id, is_active=True,
+            campaign__status=CampaignStatus.ACTIVE,
+            campaign__start_date__lte=now,
+            campaign__end_date__gte=now,
+        ).select_related("campaign")
+
+        for rp in rps:
+            # Idempotencia por (order, campaign, product)
+            if Entry.objects.filter(order=order, campaign=rp.campaign, product_id=item.product_id).exists():
+                continue
+            n = rp.entries_per_purchase * item.quantity
+            if n <= 0:
+                continue
+            product_entries = [
+                Entry.objects.create(
+                    campaign=rp.campaign, user=order.user, order=order,
+                    product_id=item.product_id, unique_code=_gen_unique_code(),
+                )
+                for _ in range(n)
+            ]
+            created.extend(product_entries)
+            _send_ticket_email_safe(order.email, rp.campaign, [e.unique_code for e in product_entries])
 
     return created
 
