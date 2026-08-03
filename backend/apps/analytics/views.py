@@ -862,23 +862,16 @@ def admin_update_payment_status(request, payment_id):
     payment.save()
 
     # ── Sincroniza la orden ──────────────────────────────────
+    # El guardado de arriba (payment.save()) ya disparó el signal
+    # update_order_status de apps/payments/signals.py, que marca
+    # order.status="paid" automáticamente cuando corresponde — y ESO
+    # a su vez dispara toda la cadena real (IncomeRecord en finanzas,
+    # inscripción a curso en academia, puntos en loyalty). No hace
+    # falta (ni conviene) repetir "order.status = paid" + "crear
+    # IncomeRecord" acá — es la misma lógica duplicada que ya
+    # limpiamos antes en el update_status de órdenes.
     order = payment.order
-    if new_status == "approved":
-        order.status = "paid"
-        order.save(update_fields=["status"])
-
-        # ── Crea IncomeRecord si no existe ───────────────────
-        if not IncomeRecord.objects.filter(order=order).exists():
-            record = IncomeRecord.objects.create(
-                payment     = payment,
-                order       = order,
-                amount      = Decimal(str(payment.amount)),
-                description = f"Pago aprobado — Orden #{str(order.id)[:8].upper()}",
-                source      = "payment",
-            )
-            record.create_distributions()
-
-    elif new_status in ["rejected", "cancelled"]:
+    if new_status in ["rejected", "cancelled"]:
         # Cancela la orden si no hay otro pago aprobado
         other_approved = order.payments.filter(
             status="approved"

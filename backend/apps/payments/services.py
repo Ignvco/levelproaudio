@@ -198,6 +198,29 @@ def process_mercadopago_webhook(data: dict, provider: str) -> None:
 
     internal_status = status_map.get(mp_status, PaymentStatus.PENDING)
 
+    # Si MP dice "aprobado" pero el monto realmente cobrado no coincide
+    # con el total de la orden, NO lo aprobamos automáticamente — misma
+    # clase de riesgo que ya tapamos en la creación de órdenes (nunca
+    # confiar en un monto sin validarlo contra lo que el sistema espera).
+    # Un mismatch legítimo puede pasar por redondeo de moneda o un
+    # descuento aplicado del lado de MP que no se reflejó acá — en esos
+    # casos preferimos que un humano lo revise antes de dar el pedido
+    # por pagado, en vez de aprobar en automático algo que no cuadra.
+    mp_amount = mp_payment.get("transaction_amount")
+    amount_mismatch = False
+    if internal_status == PaymentStatus.APPROVED and mp_amount is not None:
+        expected = float(order.total)
+        tolerance = max(expected * 0.01, 1.0)  # 1% o $1, lo que sea mayor
+        if abs(float(mp_amount) - expected) > tolerance:
+            amount_mismatch = True
+            internal_status = PaymentStatus.IN_REVIEW
+            import logging
+            logging.getLogger(__name__).error(
+                f"MP webhook: monto no coincide para orden {order.id} — "
+                f"esperado ${expected}, MP reporta ${mp_amount}. "
+                f"Pago queda en revisión, NO se marca la orden como pagada."
+            )
+
     payment, _ = Payment.objects.update_or_create(
         external_id=str(mp_id),
         defaults={
@@ -209,7 +232,7 @@ def process_mercadopago_webhook(data: dict, provider: str) -> None:
         }
     )
 
-    if internal_status == PaymentStatus.APPROVED:
+    if internal_status == PaymentStatus.APPROVED and not amount_mismatch:
         from django.utils import timezone
         payment.paid_at = timezone.now()
         payment.save(update_fields=["paid_at"])
@@ -293,10 +316,38 @@ def capture_paypal_payment(paypal_payment_id: str, payer_id: str) -> bool:
         ).first()
 
         if payment:
+            # Mismo criterio que en MercadoPago: verificar que lo
+            # realmente capturado coincida con lo que se creó acá antes
+            # de dar el pago por aprobado.
+            captured_amount = None
+            try:
+                captured_amount = float(paypal_payment.transactions[0].amount.total)
+            except (AttributeError, IndexError, ValueError, TypeError):
+                pass
+
+            expected = float(payment.amount)
+            tolerance = max(expected * 0.01, 0.01)
+            amount_mismatch = (
+                captured_amount is not None
+                and abs(captured_amount - expected) > tolerance
+            )
+
             from django.utils import timezone
-            payment.status      = PaymentStatus.APPROVED
-            payment.paid_at     = timezone.now()
             payment.raw_response = paypal_payment.to_dict()
+
+            if amount_mismatch:
+                payment.status = PaymentStatus.IN_REVIEW
+                payment.save()
+                import logging
+                logging.getLogger(__name__).error(
+                    f"PayPal capture: monto no coincide para orden {payment.order_id} — "
+                    f"esperado ${expected}, PayPal capturó ${captured_amount}. "
+                    f"Pago queda en revisión, NO se marca la orden como pagada."
+                )
+                return False
+
+            payment.status  = PaymentStatus.APPROVED
+            payment.paid_at = timezone.now()
             payment.save()
 
             payment.order.status = OrderStatus.PAID
