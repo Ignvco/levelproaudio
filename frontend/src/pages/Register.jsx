@@ -31,8 +31,7 @@ export default function Register() {
     setLoading(true)
     setError("")
     try {
-      const username = form.email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "") + Math.floor(Math.random() * 9000 + 1000)
-      await register({ ...form, username })
+      await register(form)
       navigate("/")
     } catch (err) {
       const data = err?.response?.data

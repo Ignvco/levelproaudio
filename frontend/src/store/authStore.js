@@ -38,9 +38,16 @@ export const useAuthStore = create(
       },
 
       register: async (formData) => {
+        // Único lugar donde se genera el username — antes Register.jsx
+        // también generaba el suyo, pero acá se pisaba siempre (esta
+        // versión gana porque se arma después del spread), dejando ese
+        // otro cálculo como código muerto. De paso, ensanchamos el rango
+        // aleatorio (antes 0-999, ahora 1000-9999) para bajar la
+        // probabilidad de colisión de dos personas con el mismo prefijo
+        // de email.
         const username =
-          formData.email.split("@")[0].replace(/[^a-zA-Z0-9]/g, "") +
-          Math.floor(Math.random() * 1000)
+          formData.email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "") +
+          Math.floor(Math.random() * 9000 + 1000)
         await authAxios.post("/auth/register/", { ...formData, username })
         await authAxios.post("/auth/login/", {
           email: formData.email,

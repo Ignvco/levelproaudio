@@ -28,7 +28,7 @@ class UserAdmin(BaseUserAdmin):
         ('Información adicional', {
             'fields': (
                 'phone',
-                'address_street', 'address_city',
+                'address_street', 'address_comuna', 'address_city',
                 'address_province', 'address_zip'
             )
         }),
