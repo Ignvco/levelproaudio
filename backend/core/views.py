@@ -97,7 +97,22 @@ class MediaProxyView(View):
     # completas, solo que repetida en pedazos chicos en vez de pedirse
     # entera de una vez. Menos elegante que un BlobReader, pero es la
     # API que sabemos que anda bien contra este bucket.
-    CHUNK_SIZE = 256 * 1024  # 256 KB por chunk
+    CHUNK_SIZE = 256 * 1024  # 256 KB por lectura interna a GCS
+
+    # Cloud Run tiene un límite DURO de 32MB para el tamaño total de
+    # CUALQUIER respuesta — no solo de subida. El streaming por chunks
+    # de arriba evita cargar todo en memoria, pero si el navegador pide
+    # un rango grande (algo que los reproductores de video hacen todo
+    # el tiempo, ej. "bytes=0-34000000"), igual armábamos una respuesta
+    # de ESE tamaño total, superando el límite igual.
+    #
+    # La solución: nunca mandar más de MAX_RESPONSE_SIZE en una sola
+    # respuesta, sin importar cuánto pida el navegador. Esto es HTTP
+    # válido — el servidor puede devolver MENOS de lo pedido en un
+    # range request, reflejando en Content-Range lo que realmente
+    # mandó. El navegador simplemente pide el resto en la próxima
+    # tanda — así funciona cualquier streaming de video real.
+    MAX_RESPONSE_SIZE = 16 * 1024 * 1024  # 16 MB — bien por debajo del límite de 32MB
 
     def _serve_gcs(self, request, path):
         import logging
@@ -123,8 +138,14 @@ class MediaProxyView(View):
                 resp["Content-Range"] = f"bytes */{file_size}"
                 return resp
 
-            start, end = rng if rng else (0, file_size - 1)
+            start, requested_end = rng if rng else (0, file_size - 1)
+            # Recortamos el final al tope, sin importar cuánto se pidió.
+            end = min(requested_end, start + self.MAX_RESPONSE_SIZE - 1)
             length = end - start + 1
+            # Es "parcial" (206) si el cliente pidió un range, O si
+            # nuestro propio tope nos obligó a cortar antes del final
+            # real del archivo (el navegador va a pedir el resto después).
+            is_partial = bool(rng) or (end < file_size - 1)
 
             def stream_chunks():
                 pos = start
@@ -141,7 +162,7 @@ class MediaProxyView(View):
                     logger.error(f"MediaProxy: error transmitiendo '{path}' en byte {pos}: {e}")
                     raise
 
-            if rng:
+            if is_partial:
                 resp = StreamingHttpResponse(stream_chunks(), status=206, content_type=content_type)
                 resp["Content-Range"] = f"bytes {start}-{end}/{file_size}"
                 resp["Content-Length"] = str(length)
@@ -149,8 +170,9 @@ class MediaProxyView(View):
                 resp["Cache-Control"] = "public, max-age=86400"
                 return resp
 
+            # Archivo entero, sin recortar (nunca pasa de MAX_RESPONSE_SIZE)
             resp = StreamingHttpResponse(stream_chunks(), content_type=content_type)
-            resp["Content-Length"] = str(file_size)
+            resp["Content-Length"] = str(length)
             resp["Accept-Ranges"] = "bytes"
             resp["Cache-Control"] = "public, max-age=86400"
             return resp
