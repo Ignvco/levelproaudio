@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query"
 import { Gift, Ticket, Users, DollarSign } from "lucide-react"
 import { adminGetRewardsDashboard } from "../../api/rewards.api"
 import { StatCard, AdminPageHeader } from "../../components/admin/ui"
+import { useSiteSettings } from "../../hooks/useSiteSettings"
 
 function KpiCard({ label, value, subtitle, accent, testId, Icon }) {
   return <StatCard variant={accent ? "primary" : "dark"} Icon={Icon} label={label} value={value} sub={subtitle} testId={testId} />
@@ -26,6 +27,7 @@ function useCountdownDisplay(seconds) {
 }
 
 export default function AdminRewards() {
+  const { siteName } = useSiteSettings()
   const { data, isLoading } = useQuery({
     queryKey: ["admin-rewards-dashboard"],
     queryFn:  adminGetRewardsDashboard,
@@ -44,7 +46,7 @@ export default function AdminRewards() {
     <div style={{ padding:"clamp(28px, 4vw, 40px)" }}>
       {/* Header */}
       <div style={{ marginBottom:"32px" }}>
-        <AdminPageHeader eyebrow="LevelPro Rewards" title="Dashboard de campañas"
+        <AdminPageHeader eyebrow={`${siteName} Rewards`} title="Dashboard de campañas"
           actions={
             <Link to="/admin/rewards/campaigns" data-testid="btn-manage-campaigns"
               className="au-btn au-btn--primary" style={{ textDecoration:"none" }}>

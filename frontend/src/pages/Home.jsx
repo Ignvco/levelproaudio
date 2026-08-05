@@ -202,7 +202,7 @@ export default function Home() {
 
           {/* LEFT — headline + tags */}
           <div className="hero-left" style={{ alignSelf: "center" }}>
-            <img src={logoImg} alt="LevelPro Audio" className="hero-logo-mobile" />
+            <img src={settings?.logo_url || logoImg} alt={settings?.site_name || "LevelPro Audio"} className="hero-logo-mobile" />
             <LED color="green" label={s.tagline || "Chile & Argentina"} />
 
             <h1 data-testid="hero-headline" style={{

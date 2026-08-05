@@ -6,7 +6,7 @@ import { getOrder } from "../../api/orders.api"
 import { useSiteSettings } from "../../hooks/useSiteSettings"
 
 export default function TransferInstructions() {
-  const { whatsappUrl } = useSiteSettings()
+  const { whatsappUrl, siteName } = useSiteSettings()
   const { id }         = useParams()
   const { state }      = useLocation()
   const transferData   = state?.transferData
@@ -67,7 +67,7 @@ export default function TransferInstructions() {
           <div style={{ padding: "8px 24px 16px" }}>
             {[
               { label: "Alias / Cuenta",  value: transferData?.alias        || "levelproaudio" },
-              { label: "Nombre",          value: transferData?.account_name  || "LevelPro Audio" },
+              { label: "Nombre",          value: transferData?.account_name  || siteName },
               { label: "Banco",           value: transferData?.bank          || "Global66"       },
               { label: "Monto exacto",    value: `$${Number(transferData?.amount || order?.total || 0).toLocaleString("es-CL")}`, accent: true },
               { label: "Referencia",      value: transferData?.reference     || `LEVELPRO-${id?.slice(0,8).toUpperCase()}`, mono: true },

@@ -72,7 +72,7 @@ function CategoryModal({ category, onClose, onSave }) {
     name:       category?.name       || "",
     cat_type:   category?.cat_type   || "percent",
     percentage: category?.percentage !== undefined ? Number(category.percentage) : 0,
-    color:      category?.color      || "#1aff6e",
+    color:      category?.color      || "var(--accent)",
     icon:       category?.icon       || "💰",
     is_active:  category?.is_active  ?? true,
   })

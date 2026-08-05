@@ -5,6 +5,7 @@
 import { Link } from "react-router-dom"
 import { Check } from "lucide-react"
 import logo from "../../assets/logo.png"
+import { useSiteSettings } from "../../hooks/useSiteSettings"
 
 const STUDIO_IMG = "https://images.unsplash.com/photo-1517273006195-51fa3364bce2?crop=entropy&cs=srgb&fm=jpg&q=80&w=1400"
 
@@ -36,6 +37,7 @@ export function AuthField({ label, testId, placeholder, ...props }) {
 }
 
 export default function AuthShell({ eyebrow, title, subtitle, children, footer }) {
+  const { siteName, logoUrl } = useSiteSettings()
   return (
     <div className="auth-shell" style={{ minHeight: "100vh", display: "grid",
       gridTemplateColumns: "1fr 1.05fr", background: "var(--bg)" }}>
@@ -49,8 +51,8 @@ export default function AuthShell({ eyebrow, title, subtitle, children, footer }
 
           {/* Logo (solo mobile) */}
           <Link to="/" className="auth-mobile-logo" style={{ display: "none", justifyContent: "center" }}>
-            <img src={logo} alt="LevelPro Audio" style={{ height: "28px",
-              filter: "brightness(0) invert(1)" }} />
+            <img src={logoUrl || logo} alt={siteName} style={{ height: "28px",
+              filter: logoUrl ? "none" : "brightness(0) invert(1)" }} />
           </Link>
 
           <div>
@@ -93,8 +95,8 @@ export default function AuthShell({ eyebrow, title, subtitle, children, footer }
             background: "linear-gradient(160deg, rgba(8,8,8,0.82) 0%, rgba(8,8,8,0.72) 40%, rgba(8,8,8,0.92) 100%)" }} />
 
           <Link to="/" style={{ position: "relative", zIndex: 1 }}>
-            <img src={logo} alt="LevelPro Audio" style={{ height: "30px",
-              filter: "brightness(0) invert(1)" }} />
+            <img src={logoUrl || logo} alt={siteName} style={{ height: "30px",
+              filter: logoUrl ? "none" : "brightness(0) invert(1)" }} />
           </Link>
 
           <div style={{ position: "relative", zIndex: 1, maxWidth: "440px" }}>

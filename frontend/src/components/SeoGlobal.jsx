@@ -5,18 +5,10 @@ import { SITE_URL, absUrl } from "../utils/seo"
 import { useSiteSettings } from "../hooks/useSiteSettings"
 
 const GSC = import.meta.env.VITE_GOOGLE_SITE_VERIFICATION
-const LOGO = absUrl("/favicon.png")
-
-const WEBSITE = {
-  "@context": "https://schema.org",
-  "@type": "WebSite",
-  name: "LevelPro Audio",
-  url: SITE_URL,
-  inLanguage: "es",
-}
+const FALLBACK_LOGO = absUrl("/favicon.png")
 
 export default function SeoGlobal() {
-  const { instagramUrl, settings } = useSiteSettings()
+  const { instagramUrl, siteName, logoUrl, settings } = useSiteSettings()
 
   // Antes, cambiar el color de marca desde Configuración del sitio no
   // hacía nada — el verde de acento seguía fijo en el CSS. Ahora, si
@@ -31,19 +23,27 @@ export default function SeoGlobal() {
   const organization = {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "LevelPro Audio",
+    name: siteName,
     url: SITE_URL,
-    logo: LOGO,
+    logo: logoUrl ? absUrl(logoUrl) : FALLBACK_LOGO,
     description: "Equipamiento de audio profesional, academia y servicios de mezcla y mastering en Chile y Argentina.",
     areaServed: ["CL", "AR"],
     sameAs: [instagramUrl],
+  }
+
+  const website = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: siteName,
+    url: SITE_URL,
+    inLanguage: "es",
   }
 
   return (
     <>
       {GSC && <meta name="google-site-verification" content={GSC} />}
       <JsonLd data={organization} />
-      <JsonLd data={WEBSITE} />
+      <JsonLd data={website} />
     </>
   )
 }

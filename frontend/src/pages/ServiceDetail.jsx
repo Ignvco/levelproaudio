@@ -129,7 +129,7 @@ function BookingModal({ service, onClose }) {
 }
 
 export default function ServiceDetail() {
-  const { whatsappUrl } = useSiteSettings()
+  const { whatsappUrl, siteName } = useSiteSettings()
   const { slug } = useParams()
   const { user, isAuthenticated } = useAuthStore()
   const navigate = useNavigate()
@@ -269,7 +269,7 @@ export default function ServiceDetail() {
         ...(service.short_description || service.description
           ? { description: (service.short_description || service.description).replace(/<[^>]+>/g, "").slice(0, 300) }
           : {}),
-        provider: { "@type": "Organization", name: "LevelPro Audio", url: SITE_URL },
+        provider: { "@type": "Organization", name: siteName, url: SITE_URL },
         areaServed: ["CL", "AR"],
         ...(service.category ? { serviceType: service.category.name } : {}),
         ...(isFixed ? { offers: {

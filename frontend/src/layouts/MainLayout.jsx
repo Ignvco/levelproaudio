@@ -50,6 +50,7 @@ function NavIcon({ name, size = 20, filled = false }) {
 // ═════════════════════════════════════════════════════════════
 function Navbar() {
   const { isAuthenticated, user, logout } = useAuthStore()
+  const { siteName, logoUrl } = useSiteSettings()
   const cartCount = useCartStore(s => s.getCount())
   const location  = useLocation()
   const navigate  = useNavigate()
@@ -119,7 +120,7 @@ function Navbar() {
         <Link to="/" data-testid="nav-logo-right" aria-label="Inicio"
           style={{ position: "fixed", top: "20px", right: "24px", zIndex: 100, height: "52px",
             display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <img src={logoImg} alt="LevelPro Audio" style={{ height: "30px", objectFit: "contain",
+          <img src={logoUrl || logoImg} alt={siteName} style={{ height: "30px", objectFit: "contain",
             filter: "brightness(0) invert(1)", maxWidth: "160px" }} />
         </Link>
       )}
@@ -157,7 +158,7 @@ function Navbar() {
           marginRight: "18px",
           flexShrink: 0,
         }}>
-          <img src={logoImg} alt="LevelPro Audio" style={{
+          <img src={logoUrl || logoImg} alt={siteName} style={{
             height: "22px", objectFit: "contain",
             filter: "brightness(0) invert(1)",
             maxWidth: "110px",
@@ -382,6 +383,7 @@ function Navbar() {
 // ═════════════════════════════════════════════════════════════
 function MobileDock() {
   const location = useLocation()
+  const { siteName, logoUrl } = useSiteSettings()
   const { isAuthenticated, user } = useAuthStore()
   const cartCount = useCartStore(s => s.getCount())
 
@@ -409,7 +411,7 @@ function MobileDock() {
         transform: "translateX(-50%)", zIndex: 100,
         display: "flex", alignItems: "center", justifyContent: "center",
       }}>
-      <img src={logoImg} alt="LevelPro Audio" style={{
+      <img src={logoUrl || logoImg} alt={siteName} style={{
         height: "34px", objectFit: "contain",
         filter: "brightness(0) invert(1)", maxWidth: "190px",
       }} />
@@ -499,7 +501,7 @@ function MobileDock() {
 // Footer (preservado del layout anterior)
 // ═════════════════════════════════════════════════════════════
 function Footer() {
-  const { whatsappUrl, instagramUrl, contactEmail } = useSiteSettings()
+  const { whatsappUrl, instagramUrl, contactEmail, siteName, logoUrl } = useSiteSettings()
   return (
     <footer style={{ background:"var(--bg)", marginTop:"auto",
       borderTop:"1px solid var(--border)" }}>
@@ -514,7 +516,7 @@ function Footer() {
 
           {/* Brand */}
           <div>
-            <img src={logoImg} alt="LevelPro Audio" style={{
+            <img src={logoUrl || logoImg} alt={siteName} style={{
               height:"22px", objectFit:"contain",
               filter:"brightness(0) invert(1)", marginBottom:"18px",
             }} />
@@ -594,7 +596,7 @@ function Footer() {
           alignItems:"center", flexWrap:"wrap", gap:"12px",
         }}>
           <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
-            © 2026 LevelPro Audio. Todos los derechos reservados.
+            © {new Date().getFullYear()} {siteName}. Todos los derechos reservados.
           </p>
           <div style={{ display:"flex", gap:"20px", alignItems:"center", flexWrap:"wrap" }}>
             {[

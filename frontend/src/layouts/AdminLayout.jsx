@@ -6,6 +6,7 @@ import { useAuthStore }                                      from "../store/auth
 import { getAdminDashboard }                                 from "../api/admin.api"
 import AdminSearch                                           from "../components/admin/AdminSearch"
 import logoImg                                               from "../assets/logo.png"
+import { useSiteSettings }                                   from "../hooks/useSiteSettings"
 import {
   LayoutDashboard, LineChart, BarChart3, ChevronRight, ChevronsLeft,
   ShoppingBag, CreditCard, Users, Package, Boxes, GraduationCap,
@@ -255,6 +256,7 @@ function NavGroup({ item, collapsed }) {
 
 export default function AdminLayout() {
   const { user, logout } = useAuthStore()
+  const { siteName, logoUrl } = useSiteSettings()
   const navigate  = useNavigate()
   const location  = useLocation()
   const [collapsed, setCollapsed] = useState(false)
@@ -287,11 +289,14 @@ export default function AdminLayout() {
         justifyContent: collapsed ? "center" : "flex-start" }}>
         <Link to="/" style={{ display:"flex", alignItems:"center", gap:"9px" }}>
           {collapsed
-            ? <span style={{ width:"34px", height:"34px", borderRadius:"10px", background:"#1AFF6E",
+            ? <span style={{ width:"34px", height:"34px", borderRadius:"10px", background:"var(--accent)",
                 display:"flex", alignItems:"center", justifyContent:"center", color:"#000",
-                fontWeight:800, fontSize:"16px" }}>L</span>
-            : <img src={logoImg} alt="LevelPro Audio"
-                style={{ height:"24px", filter:"brightness(0) invert(1)", maxWidth:"120px" }} />}
+                fontWeight:800, fontSize:"16px" }}>{siteName.charAt(0).toUpperCase()}</span>
+            : logoUrl
+              ? <img src={logoUrl} alt={siteName}
+                  style={{ height:"24px", maxWidth:"120px", objectFit:"contain" }} />
+              : <img src={logoImg} alt={siteName}
+                  style={{ height:"24px", filter:"brightness(0) invert(1)", maxWidth:"120px" }} />}
         </Link>
       </div>
 
@@ -318,7 +323,7 @@ export default function AdminLayout() {
       <div style={{ padding:"10px 12px 14px", borderTop:"1px solid rgba(255,255,255,0.06)" }}>
         {!collapsed && (
           <div style={{ display:"flex", alignItems:"center", gap:"10px", padding:"8px 6px 10px" }}>
-            <span style={{ width:"34px", height:"34px", borderRadius:"50%", background:"#1AFF6E",
+            <span style={{ width:"34px", height:"34px", borderRadius:"50%", background:"var(--accent)",
               color:"#000", flexShrink:0, display:"flex", alignItems:"center",
               justifyContent:"center", fontSize:"14px", fontWeight:800 }}>{initial}</span>
             <div style={{ minWidth:0 }}>
@@ -380,7 +385,7 @@ export default function AdminLayout() {
             <div style={{ display:"flex", alignItems:"center", gap:"10px", background:"#fff",
               padding:"6px 14px 6px 6px", borderRadius:"100px", border:"1px solid #ECEEF2",
               boxShadow:"0 4px 12px rgba(20,30,24,0.05)" }} data-testid="admin-user-chip">
-              <span style={{ width:"34px", height:"34px", borderRadius:"50%", background:"#1AFF6E",
+              <span style={{ width:"34px", height:"34px", borderRadius:"50%", background:"var(--accent)",
                 color:"#000", display:"flex", alignItems:"center", justifyContent:"center",
                 fontSize:"14px", fontWeight:800, flexShrink:0 }}>{initial}</span>
               <div style={{ lineHeight:1.2 }} className="a-user-meta">

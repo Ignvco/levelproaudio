@@ -7,6 +7,7 @@ import {
 } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
 import logoImg from "../assets/logo.png"
+import { useSiteSettings } from "../hooks/useSiteSettings"
 
 const navItems = [
   { sep: "Panel" },
@@ -27,6 +28,7 @@ const navItems = [
 
 export default function DashboardLayout({ children }) {
   const { user, logout } = useAuthStore()
+  const { siteName, logoUrl } = useSiteSettings()
   const navigate = useNavigate()
   const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -42,11 +44,11 @@ export default function DashboardLayout({ children }) {
         justifyContent: collapsed ? "center" : "flex-start" }}>
         <Link to="/" data-testid="dash-logo-home" style={{ display: "flex", alignItems: "center", gap: "9px" }}>
           {collapsed
-            ? <span style={{ width: "34px", height: "34px", borderRadius: "10px", background: "#1AFF6E",
+            ? <span style={{ width: "34px", height: "34px", borderRadius: "10px", background: "var(--accent)",
                 display: "flex", alignItems: "center", justifyContent: "center", color: "#000",
-                fontWeight: 800, fontSize: "16px" }}>L</span>
-            : <img src={logoImg} alt="LevelPro Audio"
-                style={{ height: "24px", filter: "brightness(0) invert(1)", maxWidth: "120px" }} />}
+                fontWeight: 800, fontSize: "16px" }}>{siteName.charAt(0).toUpperCase()}</span>
+            : <img src={logoUrl || logoImg} alt={siteName}
+                style={{ height: "24px", filter: logoUrl ? "none" : "brightness(0) invert(1)", maxWidth: "120px" }} />}
         </Link>
       </div>
 

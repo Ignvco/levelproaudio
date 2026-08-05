@@ -3,8 +3,10 @@ import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { useAuthStore } from "../../store/authStore"
 import logo from "../../assets/logo.png"
+import { useSiteSettings } from "../../hooks/useSiteSettings"
 
 export default function AdminLogin() {
+  const { siteName, logoUrl } = useSiteSettings()
   const [email, setEmail]       = useState("")
   const [password, setPassword] = useState("")
   const [error, setError]       = useState("")
@@ -39,7 +41,7 @@ export default function AdminLogin() {
 
         {/* Logo */}
         <div style={{ textAlign: "center", marginBottom: "40px" }}>
-          <img src={logo} alt="LevelPro"
+          <img src={logoUrl || logo} alt={siteName}
             style={{ height: "32px", margin: "0 auto 16px" }} />
           <div style={{ display: "inline-flex", alignItems: "center", gap: "8px",
             padding: "4px 12px", borderRadius: "var(--r-full)",

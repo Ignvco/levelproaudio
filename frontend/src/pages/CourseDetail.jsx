@@ -13,6 +13,7 @@ import { mediaUrl } from "../utils/mediaUrl"
 import Seo from "../components/Seo"
 import JsonLd from "../components/JsonLd"
 import { SITE_URL, absUrl } from "../utils/seo"
+import { useSiteSettings } from "../hooks/useSiteSettings"
 import {
   Lock, Check, Play, Film, Frown, CreditCard, Globe, Landmark,
   Video, Clock, Smartphone, Infinity as InfinityIcon, ArrowRight,
@@ -149,6 +150,7 @@ function ProgressBar({ pct }) {
 }
 
 export default function CourseDetail() {
+  const { siteName } = useSiteSettings()
   const { slug }    = useParams()
   const navigate    = useNavigate()
   const queryClient = useQueryClient()
@@ -270,7 +272,7 @@ export default function CourseDetail() {
         "@type": "Course",
         name: course.title,
         ...(course.description ? { description: course.description.replace(/<[^>]+>/g, "").slice(0, 300) } : {}),
-        provider: { "@type": "Organization", name: "LevelPro Audio", url: SITE_URL },
+        provider: { "@type": "Organization", name: siteName, url: SITE_URL },
         ...(course.thumbnail ? { image: absUrl(mediaUrl(course.thumbnail)) } : {}),
         offers: {
           "@type": "Offer",

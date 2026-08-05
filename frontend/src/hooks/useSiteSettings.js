@@ -18,6 +18,7 @@ import { getSiteSettings } from "../api/siteSettings.api"
 const FALLBACK_WHATSAPP_NUMBER = "+5492622635045"
 const FALLBACK_INSTAGRAM_USER  = "levelproar"
 const FALLBACK_EMAIL           = "ventas@levelproaudio.com"
+const FALLBACK_SITE_NAME       = "LevelPro Audio"
 
 export function useSiteSettings() {
   const { data, isLoading } = useQuery({
@@ -37,5 +38,12 @@ export function useSiteSettings() {
     whatsappUrl: `https://wa.me/${whatsappNumber.replace(/[^\d]/g, "")}`,
     instagramUrl: `https://instagram.com/${instagramUser.replace(/^@/, "")}`,
     contactEmail,
+    siteName: data?.site_name || FALLBACK_SITE_NAME,
+    tagline: data?.tagline || "",
+    // logoUrl es null si nunca se subió un logo propio — cada lugar que
+    // lo use decide su propio fallback (el logo estático de siempre),
+    // porque el fallback correcto depende del contexto (fondo claro vs
+    // oscuro, tamaño, etc.)
+    logoUrl: data?.logo_url || null,
   }
 }

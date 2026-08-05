@@ -222,7 +222,7 @@ export default function AdminAcademy() {
                 <div className="au-acard__head">
                   <span className="au-acard__tag" style={{ background: lvl.color, color: "#000" }}>{lvl.label}</span>
                   <div style={{ display: "flex", gap: "6px" }}>
-                    {course.is_free && <span className="au-acard__tag" style={{ background: "#1AFF6E", color: "#00160b" }}>Gratis</span>}
+                    {course.is_free && <span className="au-acard__tag" style={{ background: "var(--accent)", color: "#00160b" }}>Gratis</span>}
                     {!course.is_published && <span className="au-acard__tag" style={{ background: "#f59e0b", color: "#000" }}>Borrador</span>}
                   </div>
                 </div>
