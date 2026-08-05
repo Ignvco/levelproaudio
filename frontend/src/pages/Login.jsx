@@ -3,7 +3,8 @@ import { useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { ArrowRight } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
-import AuthShell, { AuthField, AuthSubmit } from "../components/auth/AuthShell"
+import AuthShell, { AuthField, AuthSubmit, AuthDivider } from "../components/auth/AuthShell"
+import GoogleSignInButton from "../components/auth/GoogleSignInButton"
 import Seo from "../components/Seo"
 
 export default function Login() {
@@ -12,10 +13,24 @@ export default function Login() {
   const [error, setError]       = useState("")
   const [loading, setLoading]   = useState(false)
 
-  const { login } = useAuthStore()
+  const { login, loginWithGoogle } = useAuthStore()
   const navigate        = useNavigate()
   const [searchParams]  = useSearchParams()
   const next            = searchParams.get("next") || "/"
+
+  const handleGoogleSuccess = async (credential) => {
+    setError("")
+    setLoading(true)
+    try {
+      await loginWithGoogle(credential)
+      const currentUser = useAuthStore.getState().user
+      navigate(currentUser?.is_staff || currentUser?.is_superuser ? "/admin" : next)
+    } catch (err) {
+      setError(err?.response?.data?.error || "No se pudo iniciar sesión con Google.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -47,6 +62,8 @@ export default function Login() {
         <Link to="/register" style={{ color: "var(--accent)", fontWeight: 600 }}>Registrate gratis</Link>
       </>}
     >
+      <GoogleSignInButton onSuccess={handleGoogleSuccess} onError={(e) => setError(e.message)} />
+      <AuthDivider />
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
         {error && (
           <div data-testid="login-error" style={{ padding: "12px 16px", borderRadius: "14px",

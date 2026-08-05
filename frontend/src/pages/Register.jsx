@@ -3,7 +3,8 @@ import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { ArrowRight } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
-import AuthShell, { AuthField, AuthSubmit } from "../components/auth/AuthShell"
+import AuthShell, { AuthField, AuthSubmit, AuthDivider } from "../components/auth/AuthShell"
+import GoogleSignInButton from "../components/auth/GoogleSignInButton"
 import AcceptCheckbox from "../components/legal/AcceptCheckbox"
 import Seo from "../components/Seo"
 
@@ -15,8 +16,21 @@ export default function Register() {
   const [accepted, setAccepted] = useState(false)
   const [error, setError]   = useState("")
   const [loading, setLoading] = useState(false)
-  const { register }        = useAuthStore()
+  const { register, loginWithGoogle } = useAuthStore()
   const navigate            = useNavigate()
+
+  const handleGoogleSuccess = async (credential) => {
+    setError("")
+    setLoading(true)
+    try {
+      await loginWithGoogle(credential)
+      navigate("/")
+    } catch (err) {
+      setError(err?.response?.data?.error || "No se pudo crear la cuenta con Google.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -60,6 +74,14 @@ export default function Register() {
         <Link to="/login" style={{ color: "var(--accent)", fontWeight: 600 }}>Iniciar sesión</Link>
       </>}
     >
+      <GoogleSignInButton onSuccess={handleGoogleSuccess} onError={(e) => setError(e.message)} text="signup_with" />
+      <p style={{ textAlign: "center", fontSize: "12px", color: "var(--text-3)", marginTop: "-14px" }}>
+        Al continuar con Google, aceptás los{" "}
+        <Link to="/terminos" target="_blank" style={{ color: "var(--text-3)", textDecoration: "underline" }}>Términos</Link>
+        {" "}y la{" "}
+        <Link to="/privacidad" target="_blank" style={{ color: "var(--text-3)", textDecoration: "underline" }}>Privacidad</Link>.
+      </p>
+      <AuthDivider />
       <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
         {error && (
           <div data-testid="register-error" style={{ padding: "12px 16px", borderRadius: "14px",

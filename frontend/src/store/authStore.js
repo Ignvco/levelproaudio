@@ -37,6 +37,15 @@ export const useAuthStore = create(
         return user
       },
 
+      // credential = el ID token que devuelve Google Identity Services.
+      // El backend verifica la firma contra Google antes de crear/loguear.
+      loginWithGoogle: async (credential) => {
+        await authAxios.post("/auth/google/", { credential })
+        const { data: user } = await authAxios.get("/auth/profile/")
+        set({ isAuthenticated: true, user })
+        return user
+      },
+
       register: async (formData) => {
         // Único lugar donde se genera el username — antes Register.jsx
         // también generaba el suyo, pero acá se pisaba siempre (esta

@@ -39,9 +39,49 @@ export function AuthField({ label, testId, ...props }) {
 export default function AuthShell({ eyebrow, title, subtitle, children, footer }) {
   return (
     <div className="auth-shell" style={{ minHeight: "100vh", display: "grid",
-      gridTemplateColumns: "1.05fr 1fr", background: "var(--bg)" }}>
+      gridTemplateColumns: "1fr 1.05fr", background: "var(--bg)" }}>
 
-      {/* Panel de marca (desktop) */}
+      {/* Panel del formulario (izquierda) */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center",
+        padding: "clamp(32px, 5vw, 60px)", position: "relative",
+        background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(26,255,110,0.04) 0%, transparent 70%), var(--bg)" }}>
+        <div className="animate-fade-up" style={{ width: "100%", maxWidth: "400px",
+          display: "flex", flexDirection: "column", gap: "26px" }}>
+
+          {/* Logo (solo mobile) */}
+          <Link to="/" className="auth-mobile-logo" style={{ display: "none", justifyContent: "center" }}>
+            <img src={logo} alt="LevelPro Audio" style={{ height: "28px",
+              filter: "brightness(0) invert(1)" }} />
+          </Link>
+
+          <div>
+            {eyebrow && (
+              <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent)",
+                textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "12px" }}>
+                {eyebrow}
+              </p>
+            )}
+            <h1 className="display-bold" style={{ fontFamily: "var(--font-display)",
+              fontSize: "clamp(2rem, 3.4vw, 2.6rem)", fontWeight: 800,
+              letterSpacing: "-0.03em", lineHeight: 1, color: "var(--text)", marginBottom: "10px" }}>
+              {title}
+            </h1>
+            <p style={{ color: "var(--text-2)", fontSize: "14.5px", lineHeight: 1.6 }}>
+              {subtitle}
+            </p>
+          </div>
+
+          {children}
+
+          {footer && (
+            <p style={{ textAlign: "center", fontSize: "14px", color: "var(--text-3)" }}>
+              {footer}
+            </p>
+          )}
+        </div>
+      </div>
+
+      {/* Panel de marca (derecha, desktop) */}
       <div className="auth-brand" style={{ position: "relative", overflow: "hidden",
         display: "flex", flexDirection: "column", justifyContent: "space-between",
         padding: "clamp(40px, 4vw, 64px)" }}>
@@ -83,46 +123,6 @@ export default function AuthShell({ eyebrow, title, subtitle, children, footer }
         </div>
       </div>
 
-      {/* Panel del formulario */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "clamp(32px, 5vw, 60px)", position: "relative",
-        background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(26,255,110,0.04) 0%, transparent 70%), var(--bg)" }}>
-        <div className="animate-fade-up" style={{ width: "100%", maxWidth: "400px",
-          display: "flex", flexDirection: "column", gap: "26px" }}>
-
-          {/* Logo (solo mobile) */}
-          <Link to="/" className="auth-mobile-logo" style={{ display: "none", justifyContent: "center" }}>
-            <img src={logo} alt="LevelPro Audio" style={{ height: "28px",
-              filter: "brightness(0) invert(1)" }} />
-          </Link>
-
-          <div>
-            {eyebrow && (
-              <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent)",
-                textTransform: "uppercase", letterSpacing: "0.15em", marginBottom: "12px" }}>
-                {eyebrow}
-              </p>
-            )}
-            <h1 className="display-bold" style={{ fontFamily: "var(--font-display)",
-              fontSize: "clamp(2rem, 3.4vw, 2.6rem)", fontWeight: 800,
-              letterSpacing: "-0.03em", lineHeight: 1, color: "var(--text)", marginBottom: "10px" }}>
-              {title}
-            </h1>
-            <p style={{ color: "var(--text-2)", fontSize: "14.5px", lineHeight: 1.6 }}>
-              {subtitle}
-            </p>
-          </div>
-
-          {children}
-
-          {footer && (
-            <p style={{ textAlign: "center", fontSize: "14px", color: "var(--text-3)" }}>
-              {footer}
-            </p>
-          )}
-        </div>
-      </div>
-
       <style>{`
         @media (max-width: 900px) {
           .auth-shell { grid-template-columns: 1fr !important; }
@@ -130,6 +130,16 @@ export default function AuthShell({ eyebrow, title, subtitle, children, footer }
           .auth-mobile-logo { display: flex !important; margin-bottom: 4px; }
         }
       `}</style>
+    </div>
+  )
+}
+
+export function AuthDivider() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "14px", margin: "2px 0" }}>
+      <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
+      <span style={{ fontSize: "12.5px", color: "var(--text-3)", fontWeight: 600 }}>o</span>
+      <div style={{ flex: 1, height: "1px", background: "rgba(255,255,255,0.08)" }} />
     </div>
   )
 }

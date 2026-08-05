@@ -6,6 +6,9 @@
 # confirma empíricamente, no solo leyendo el código — es el mismo
 # criterio que se usó en el resto de la auditoría de esta sesión).
 
+from unittest.mock import patch
+
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 from django.test import TestCase
@@ -111,3 +114,70 @@ class ProfilePrivilegeEscalationTest(TestCase):
         anon_client = APIClient()
         resp = anon_client.get("/api/v1/auth/profile/")
         self.assertEqual(resp.status_code, 401)
+
+
+class GoogleAuthTest(TestCase):
+    """
+    Login con Google — el backend nunca confía en datos que mande el
+    cliente directamente, siempre verifica la firma del token contra
+    Google antes de crear o loguear a alguien.
+    """
+    def setUp(self):
+        cache.clear()
+        self.client = APIClient()
+
+    def _mock_idinfo(self, **overrides):
+        base = {
+            "email": "googleuser@test.com",
+            "email_verified": True,
+            "given_name": "Juan",
+            "family_name": "Pérez",
+        }
+        base.update(overrides)
+        return base
+
+    @patch("google.oauth2.id_token.verify_oauth2_token")
+    def test_creates_new_user_on_first_google_login(self, mock_verify):
+        mock_verify.return_value = self._mock_idinfo()
+
+        resp = self.client.post("/api/v1/auth/google/", {"credential": "fake-token"}, format="json")
+
+        self.assertEqual(resp.status_code, 200)
+        user = User.objects.get(email="googleuser@test.com")
+        self.assertEqual(user.first_name, "Juan")
+        self.assertFalse(user.has_usable_password())  # no puede loguearse con contraseña
+        # Cookies HTTPOnly seteadas, no tokens en el body
+        self.assertIn(settings.AUTH_COOKIE_ACCESS, resp.cookies)
+        self.assertNotIn("access", resp.data)
+
+    @patch("google.oauth2.id_token.verify_oauth2_token")
+    def test_existing_user_logs_in_without_duplicating(self, mock_verify):
+        User.objects.create_user(email="googleuser@test.com", username="ya_existe", password="x")
+        mock_verify.return_value = self._mock_idinfo()
+
+        resp = self.client.post("/api/v1/auth/google/", {"credential": "fake-token"}, format="json")
+
+        self.assertEqual(resp.status_code, 200)
+        self.assertEqual(User.objects.filter(email="googleuser@test.com").count(), 1)
+
+    @patch("google.oauth2.id_token.verify_oauth2_token")
+    def test_invalid_token_rejected(self, mock_verify):
+        mock_verify.side_effect = ValueError("token inválido")
+
+        resp = self.client.post("/api/v1/auth/google/", {"credential": "token-trucho"}, format="json")
+
+        self.assertEqual(resp.status_code, 401)
+        self.assertFalse(User.objects.filter(email="googleuser@test.com").exists())
+
+    @patch("google.oauth2.id_token.verify_oauth2_token")
+    def test_unverified_email_rejected(self, mock_verify):
+        mock_verify.return_value = self._mock_idinfo(email_verified=False)
+
+        resp = self.client.post("/api/v1/auth/google/", {"credential": "fake-token"}, format="json")
+
+        self.assertEqual(resp.status_code, 400)
+        self.assertFalse(User.objects.filter(email="googleuser@test.com").exists())
+
+    def test_missing_credential_rejected(self):
+        resp = self.client.post("/api/v1/auth/google/", {}, format="json")
+        self.assertEqual(resp.status_code, 400)

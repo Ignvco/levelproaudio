@@ -76,6 +76,66 @@ class CookieTokenObtainPairView(TokenObtainPairView):
         return response
 
 
+# ── Login con Google ────────────────────────────────────────
+class GoogleAuthRateThrottle(AnonRateThrottle):
+    scope = "login"  # mismo límite anti fuerza-bruta que el login normal
+
+
+class GoogleAuthView(APIView):
+    """
+    POST /api/v1/auth/google/  { "credential": "<id_token de Google>" }
+
+    El frontend usa Google Identity Services para obtener un ID token
+    firmado por Google, y lo manda acá. Nunca confiamos en el email/nombre
+    que mande el cliente directamente — se verifica la firma del token
+    contra las claves públicas de Google, y los datos salen de ahí.
+    """
+    permission_classes = [permissions.AllowAny]
+    throttle_classes = [GoogleAuthRateThrottle]
+
+    def post(self, request):
+        credential = request.data.get("credential")
+        if not credential:
+            return Response({"error": "Falta el token de Google."}, status=400)
+
+        from google.oauth2 import id_token as google_id_token
+        from google.auth.transport import requests as google_requests
+
+        try:
+            idinfo = google_id_token.verify_oauth2_token(
+                credential, google_requests.Request(), settings.GOOGLE_CLIENT_ID,
+            )
+        except ValueError:
+            return Response({"error": "Token de Google inválido o expirado."}, status=401)
+
+        if not idinfo.get("email_verified"):
+            return Response({"error": "Tu cuenta de Google no tiene el email verificado."}, status=400)
+
+        email = idinfo["email"]
+        user, created = User.objects.get_or_create(
+            email=email,
+            defaults={
+                "username": f"{email.split('@')[0][:20]}{_rand_suffix()}",
+                "first_name": idinfo.get("given_name", "") or "",
+                "last_name": idinfo.get("family_name", "") or "",
+            },
+        )
+        if created:
+            user.set_unusable_password()  # esta cuenta solo entra por Google
+            user.save(update_fields=["password"])
+
+        refresh  = RefreshToken.for_user(user)
+        response = Response({"detail": "ok"})
+        set_access_cookie(response, refresh.access_token)
+        set_refresh_cookie(response, refresh)
+        return response
+
+
+def _rand_suffix():
+    import random
+    return random.randint(1000, 9999)
+
+
 # ── Refresh: lee el refresh de la cookie y renueva el access ──
 class CookieTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):

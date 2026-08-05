@@ -201,6 +201,10 @@ SPECTACULAR_SETTINGS = {
 # ── Pagos ────────────────────────────────────────────────────
 MP_CL_ACCESS_TOKEN  = env("MP_CL_ACCESS_TOKEN",  default="")
 MP_CL_PUBLIC_KEY    = env("MP_CL_PUBLIC_KEY",    default="")
+
+# Login con Google — el Client ID es público (va también en el frontend),
+# no es un secreto; lo que valida la seguridad es la firma del token.
+GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID", default="")
 MP_AR_ACCESS_TOKEN  = env("MP_AR_ACCESS_TOKEN",  default="")
 MP_AR_PUBLIC_KEY    = env("MP_AR_PUBLIC_KEY",    default="")
 
