@@ -499,6 +499,7 @@ function MobileDock() {
 // Footer (preservado del layout anterior)
 // ═════════════════════════════════════════════════════════════
 function Footer() {
+  const { whatsappUrl, instagramUrl, contactEmail } = useSiteSettings()
   return (
     <footer style={{ background:"var(--bg)", marginTop:"auto",
       borderTop:"1px solid var(--border)" }}>
@@ -648,7 +649,6 @@ function Footer() {
 // MainLayout — responsive con detección de viewport via JS
 // ═════════════════════════════════════════════════════════════
 export default function MainLayout({ children }) {
-  const { whatsappUrl, instagramUrl, contactEmail } = useSiteSettings()
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" && window.innerWidth <= 900
   )
