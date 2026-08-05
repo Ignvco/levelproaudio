@@ -73,10 +73,30 @@ class CartViewSet(viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+from rest_framework.throttling import UserRateThrottle
+
+
+class OrderCreateThrottle(UserRateThrottle):
+    """
+    Antes, crear una orden no tenía ningún límite de velocidad — y como
+    crear una orden DESCUENTA STOCK de inmediato (antes de que se pague),
+    alguien podía spamear pedidos falsos de un producto con poco stock
+    para agotarlo artificialmente y bloquear a clientes reales, sin
+    gastar un peso. 20/hora es generoso para compras reales (varios
+    intentos, reintentos de pago fallido) pero corta un ataque de spam.
+    """
+    scope = "order_create"
+
+
 class OrderViewSet(viewsets.ModelViewSet):
     serializer_class   = OrderSerializer
     permission_classes = [IsAuthenticated]
     http_method_names  = ["get", "post", "delete", "head", "options"]
+
+    def get_throttles(self):
+        if self.action == "create":
+            return [OrderCreateThrottle()]
+        return super().get_throttles()
 
     def get_queryset(self):
         return Order.objects.filter(

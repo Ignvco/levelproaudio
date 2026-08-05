@@ -81,6 +81,7 @@ REST_FRAMEWORK = {
         "login": "10/min",
         "register": "5/min",
         "password_reset": "5/min",
+        "order_create": "20/hour",
     },
 }
 
