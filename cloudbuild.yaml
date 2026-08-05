@@ -5,7 +5,14 @@ substitutions:
   _BACKEND_SERVICE:  "levelproaudio-backend"
   _FRONTEND_SERVICE: "levelproaudio-frontend"
   _SQL_INSTANCE:     "levelproaudio:us-central1:levelproaudio-db"
-  _SA_EMAIL:         "levelproaudio-run@levelproaudio.iam.gserviceaccount.com"
+  # Cuenta de servicio de RUNTIME — permisos mínimos (cloudsql, secretos,
+  # storage del bucket de medios). Separada de la cuenta que usa este
+  # mismo build para construir/pushear/desplegar (esa la maneja Cloud
+  # Build automáticamente con su propia cuenta de servicio del proyecto,
+  # no necesita estar acá). Antes esta variable apuntaba a
+  # levelproaudio-run, la misma cuenta amplia usada para todo — quedó
+  # separada tras la auditoría de permisos.
+  _SA_EMAIL:         "levelproaudio-app@levelproaudio.iam.gserviceaccount.com"
   _TAG:              "latest"
   _REPO:             "us-central1-docker.pkg.dev/levelproaudio/levelproaudio-docker"
   # Client ID de Google Sign-In — es público (va en el JS del frontend,
