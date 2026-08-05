@@ -1,7 +1,6 @@
 // pages/Login.jsx
 import { useState } from "react"
 import { Link, useNavigate, useSearchParams } from "react-router-dom"
-import { ArrowRight } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
 import AuthShell, { AuthField, AuthSubmit, AuthDivider } from "../components/auth/AuthShell"
 import GoogleSignInButton from "../components/auth/GoogleSignInButton"
@@ -78,27 +77,20 @@ export default function Login() {
           required autoComplete="email" autoFocus />
 
         <div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "9px" }}>
-            <label style={{ fontSize: "13px", fontWeight: 600, color: "var(--text)" }}>Contraseña</label>
+          <AuthField label="" testId="login-password" type="password" value={password}
+            onChange={e => setPassword(e.target.value)} placeholder="Contraseña"
+            required autoComplete="current-password" />
+          <div style={{ textAlign: "right", marginTop: "9px" }}>
             <Link to="/forgot-password" style={{ fontSize: "12px", color: "var(--text-3)", textDecoration: "none" }}
               onMouseEnter={e => e.currentTarget.style.color = "var(--accent)"}
               onMouseLeave={e => e.currentTarget.style.color = "var(--text-3)"}>
               ¿Olvidaste tu contraseña?
             </Link>
           </div>
-          <AuthField label="" testId="login-password" type="password" value={password}
-            onChange={e => setPassword(e.target.value)} placeholder="••••••••"
-            required autoComplete="current-password" />
         </div>
 
         <AuthSubmit loading={loading}>
           {loading ? "Ingresando..." : "Iniciar sesión"}
-          {!loading && (
-            <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: "#000",
-              color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <ArrowRight size={13} strokeWidth={2.5} />
-            </span>
-          )}
         </AuthSubmit>
       </form>
     </AuthShell>

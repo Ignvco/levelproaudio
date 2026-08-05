@@ -1,7 +1,6 @@
 // pages/Register.jsx
 import { useState } from "react"
 import { Link, useNavigate } from "react-router-dom"
-import { ArrowRight } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
 import AuthShell, { AuthField, AuthSubmit, AuthDivider } from "../components/auth/AuthShell"
 import GoogleSignInButton from "../components/auth/GoogleSignInButton"
@@ -122,12 +121,6 @@ export default function Register() {
 
         <AuthSubmit loading={loading}>
           {loading ? "Creando cuenta..." : "Crear cuenta gratis"}
-          {!loading && (
-            <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: "#000",
-              color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <ArrowRight size={13} strokeWidth={2.5} />
-            </span>
-          )}
         </AuthSubmit>
       </form>
     </AuthShell>
