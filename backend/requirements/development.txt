@@ -3,7 +3,6 @@ django-extensions==3.2.3
 ipython==8.26.0
 pytest==8.3.3
 pytest-django==4.9.0
-requests==2.32.3
 # Necesarias para que los tests puedan importar/mockear google.cloud.storage
 # y google.auth (usados en MediaProxyView y en la subida directa de video a
 # GCS) — antes solo estaban en production.txt, así que CI fallaba con
