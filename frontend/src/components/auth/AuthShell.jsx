@@ -38,12 +38,18 @@ export function AuthField({ label, testId, ...props }) {
 
 export default function AuthShell({ eyebrow, title, subtitle, children, footer }) {
   return (
-    <div className="auth-shell" style={{ minHeight: "100vh", display: "grid",
-      gridTemplateColumns: "1fr 1.05fr", background: "var(--bg)" }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center",
+      justifyContent: "center", padding: "clamp(14px, 3vw, 40px)", background: "#000" }}>
+    <div className="auth-shell" style={{ width: "100%", maxWidth: "1360px",
+      minHeight: "min(720px, calc(100vh - 40px))", display: "grid",
+      gridTemplateColumns: "1fr 1.05fr", background: "var(--bg)",
+      borderRadius: "28px", overflow: "hidden",
+      border: "1px solid rgba(255,255,255,0.06)",
+      boxShadow: "0 30px 80px rgba(0,0,0,0.5)" }}>
 
       {/* Panel del formulario (izquierda) */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center",
-        padding: "clamp(32px, 5vw, 60px)", position: "relative",
+        padding: "clamp(32px, 5vw, 60px)", position: "relative", overflowY: "auto",
         background: "radial-gradient(ellipse 70% 50% at 50% 0%, rgba(26,255,110,0.04) 0%, transparent 70%), var(--bg)" }}>
         <div className="animate-fade-up" style={{ width: "100%", maxWidth: "400px",
           display: "flex", flexDirection: "column", gap: "26px" }}>
@@ -125,11 +131,12 @@ export default function AuthShell({ eyebrow, title, subtitle, children, footer }
 
       <style>{`
         @media (max-width: 900px) {
-          .auth-shell { grid-template-columns: 1fr !important; }
+          .auth-shell { grid-template-columns: 1fr !important; min-height: auto !important; }
           .auth-brand { display: none !important; }
           .auth-mobile-logo { display: flex !important; margin-bottom: 4px; }
         }
       `}</style>
+    </div>
     </div>
   )
 }
