@@ -55,3 +55,7 @@ credentials.json
 # Credenciales de prueba — nunca deben versionarse en texto plano
 memory/test_credentials.md
 *.patch
+
+# Output de collectstatic — se regenera en cada build de Docker,
+# nunca debe versionarse (infla el repo con archivos de terceros)
+backend/staticfiles/

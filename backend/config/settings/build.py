@@ -72,6 +72,15 @@ DATABASES = {
  
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+# CRÍTICO: tiene que ser EXACTAMENTE el mismo storage que usa
+# production.py en runtime. Antes este archivo no lo definía, así que
+# collectstatic corría con el storage plano por default (sin manifiesto)
+# — pero en runtime, production.py SÍ exige el manifiesto para resolver
+# cualquier {% static %} (como el CSS del propio admin de Django), y
+# como nunca se generó, cualquier página que lo usara tiraba 500
+# ("Missing staticfiles manifest entry"). Esto rompía /admin/login/
+# de punta a punta, silenciosamente, desde que se armó el Dockerfile.
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
  
