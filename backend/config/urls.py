@@ -9,6 +9,7 @@ from drf_spectacular.views import (
     SpectacularRedocView,
 )
 from core.views import MediaProxyView
+from core.admin_permissions import IsAdminOrStaff
 
 urlpatterns = [
     # Panel admin Django
@@ -48,9 +49,9 @@ urlpatterns = [
     path("api/v1/admin/rewards/", include("apps.rewards.urls_admin")),
 
     # API docs
-    path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
-    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema"), name="redoc"),
+    path("api/schema/", SpectacularAPIView.as_view(permission_classes=[IsAdminOrStaff]), name="schema"),
+    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema", permission_classes=[IsAdminOrStaff]), name="swagger-ui"),
+    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema", permission_classes=[IsAdminOrStaff]), name="redoc"),
 
     # Proxy de media — sirve imágenes desde GCS usando credenciales del SA
     # En producción: lee desde GCS con Compute Engine credentials
