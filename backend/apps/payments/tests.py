@@ -360,3 +360,39 @@ class WebhookQueryParamsFallbackTest(TestCase):
         data = {"id": "43307324538", "topic": "merchant_order"}
         # No debe lanzar ninguna excepción
         process_mercadopago_webhook(data, PaymentProvider.MERCADOPAGO_CL)
+
+
+class Global66WhatsappUsesRealSettingsTest(TestCase):
+    """
+    Antes, el número de WhatsApp de las instrucciones de transferencia
+    Global66 estaba hardcodeado en el backend — cambiarlo desde
+    Configuración del sitio no movía nada acá.
+    """
+    def setUp(self):
+        self.user = User.objects.create_user(email="transferbuyer@test.com", username="transferbuyer", password="x")
+
+    def test_whatsapp_reflects_site_settings(self):
+        from apps.payments.services import get_global66_info
+        from apps.site_settings.models import SiteSettings
+
+        site = SiteSettings.get()
+        site.contact_whatsapp = "+56912345678"
+        site.save(update_fields=["contact_whatsapp"])
+
+        order = _pending_order(self.user, total="10000")
+        info = get_global66_info(order)
+
+        self.assertEqual(info["whatsapp"], "https://wa.me/56912345678")
+
+    def test_falls_back_to_default_if_not_configured(self):
+        from apps.payments.services import get_global66_info
+        from apps.site_settings.models import SiteSettings
+
+        site = SiteSettings.get()
+        site.contact_whatsapp = ""
+        site.save(update_fields=["contact_whatsapp"])
+
+        order = _pending_order(self.user, total="10000")
+        info = get_global66_info(order)
+
+        self.assertEqual(info["whatsapp"], "https://wa.me/5492622635045")

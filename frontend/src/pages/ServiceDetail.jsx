@@ -18,6 +18,7 @@ import { serviceCover } from "../utils/serviceCover"
 import Seo from "../components/Seo"
 import JsonLd from "../components/JsonLd"
 import { SITE_URL, absUrl } from "../utils/seo"
+import { useSiteSettings } from "../hooks/useSiteSettings"
 
 const CARD = {
   background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
@@ -128,6 +129,7 @@ function BookingModal({ service, onClose }) {
 }
 
 export default function ServiceDetail() {
+  const { whatsappUrl } = useSiteSettings()
   const { slug } = useParams()
   const { user, isAuthenticated } = useAuthStore()
   const navigate = useNavigate()
@@ -414,7 +416,7 @@ export default function ServiceDetail() {
                       </span>
                     </button>
                   ) : (
-                    <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+                    <a href={whatsappUrl} target="_blank" rel="noreferrer"
                       data-testid="service-promo-cta"
                       style={{ display: "inline-flex", alignItems: "center", gap: "10px",
                         padding: "13px 22px", borderRadius: "var(--r-full)",
@@ -494,7 +496,7 @@ export default function ServiceDetail() {
                   <p style={{ fontSize: "12px", color: "var(--text-3)", textAlign: "center", marginTop: "6px" }}>
                     {payLoading ? "Redirigiendo al pago…" : `Total a pagar: ${service.price_display}`}
                   </p>
-                  <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+                  <a href={whatsappUrl} target="_blank" rel="noreferrer"
                     style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
                       padding: "12px", borderRadius: "14px", fontSize: "13px", fontWeight: 600,
                       color: "#25d166", textDecoration: "none", background: "rgba(37,211,102,0.06)",
@@ -563,7 +565,7 @@ export default function ServiceDetail() {
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: "12px", marginTop: "8px" }}>
-                    <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+                    <a href={whatsappUrl} target="_blank" rel="noreferrer"
                       style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center",
                         gap: "8px", padding: "14px", borderRadius: "var(--r-full)", fontSize: "14px",
                         fontWeight: 700, color: "#000", textDecoration: "none", background: "#25d366",

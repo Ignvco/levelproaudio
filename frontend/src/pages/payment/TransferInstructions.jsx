@@ -3,8 +3,10 @@ import { useParams, useLocation, Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Landmark, MessageCircle, ArrowRight } from "lucide-react"
 import { getOrder } from "../../api/orders.api"
+import { useSiteSettings } from "../../hooks/useSiteSettings"
 
 export default function TransferInstructions() {
+  const { whatsappUrl } = useSiteSettings()
   const { id }         = useParams()
   const { state }      = useLocation()
   const transferData   = state?.transferData
@@ -112,7 +114,7 @@ export default function TransferInstructions() {
         </div>
 
         {/* Acciones */}
-        <a href={transferData?.whatsapp || "https://wa.me/5492622635045"}
+        <a href={transferData?.whatsapp || whatsappUrl}
           target="_blank" rel="noreferrer" data-testid="transfer-whatsapp"
           style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "10px",
             padding: "14px 14px 14px 24px", borderRadius: "var(--r-full)",

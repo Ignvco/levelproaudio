@@ -392,6 +392,10 @@ def get_global66_info(order: Order) -> dict:
         }
     )
 
+    from apps.site_settings.models import SiteSettings
+    site = SiteSettings.get()
+    whatsapp_number = "".join(c for c in (site.contact_whatsapp or "+5492622635045") if c.isdigit())
+
     return {
         "alias":        settings.GLOBAL66_ALIAS,
         "account_name": settings.GLOBAL66_ACCOUNT_NAME,
@@ -405,7 +409,7 @@ def get_global66_info(order: Order) -> dict:
             "Una vez realizada, envíanos el comprobante por WhatsApp "
             "o email y procesaremos tu pedido en menos de 24hs."
         ),
-        "whatsapp": "https://wa.me/5492622635045",
+        "whatsapp": f"https://wa.me/{whatsapp_number}",
     }
 
 

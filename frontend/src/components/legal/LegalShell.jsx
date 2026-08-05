@@ -1,8 +1,10 @@
 // components/legal/LegalShell.jsx — Layout editorial premium para páginas legales
 import { useState, useEffect } from "react"
 import Seo from "../Seo"
+import { useSiteSettings } from "../../hooks/useSiteSettings"
 
 export default function LegalShell({ eyebrow, title, updated, intro, sections, seoDescription }) {
+  const { whatsappUrl, instagramUrl, settings } = useSiteSettings()
   const [active, setActive] = useState(sections[0]?.id)
 
   useEffect(() => {
@@ -115,11 +117,11 @@ export default function LegalShell({ eyebrow, title, updated, intro, sections, s
             background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)" }}>
             <p style={{ fontSize: "13.5px", lineHeight: 1.7, color: "var(--text-3)" }}>
               ¿Tenés dudas sobre este documento? Escribinos por WhatsApp al{" "}
-              <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+              <a href={whatsappUrl} target="_blank" rel="noreferrer"
                 style={{ color: "var(--accent)", textDecoration: "none" }}>+54 9 2622 63-5045</a>{" "}
               o a través de nuestro Instagram{" "}
-              <a href="https://instagram.com/levelproar" target="_blank" rel="noreferrer"
-                style={{ color: "var(--accent)", textDecoration: "none" }}>@levelproar</a>.
+              <a href={instagramUrl} target="_blank" rel="noreferrer"
+                style={{ color: "var(--accent)", textDecoration: "none" }}>@{settings?.contact_instagram || "levelproar"}</a>.
             </p>
           </div>
         </div>

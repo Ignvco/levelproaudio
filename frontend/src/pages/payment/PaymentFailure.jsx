@@ -1,8 +1,10 @@
 // pages/payment/PaymentFailure.jsx
 import { useSearchParams, Link } from "react-router-dom"
 import { X, MessageCircle, ArrowRight } from "lucide-react"
+import { useSiteSettings } from "../../hooks/useSiteSettings"
 
 export default function PaymentFailure() {
+  const { whatsappUrl } = useSiteSettings()
   const [searchParams] = useSearchParams()
   const orderId        = searchParams.get("order")
 
@@ -54,7 +56,7 @@ export default function PaymentFailure() {
           </Link>
         </div>
 
-        <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+        <a href={whatsappUrl} target="_blank" rel="noreferrer"
           style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
             padding: "14px", borderRadius: "var(--r-xl)", background: "rgba(37,211,102,0.06)",
             border: "1px solid rgba(37,211,102,0.15)", color: "#25d166", fontSize: "13px",

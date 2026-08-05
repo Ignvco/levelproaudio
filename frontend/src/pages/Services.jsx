@@ -4,11 +4,13 @@ import { useQuery } from "@tanstack/react-query"
 import { MessageCircle, ArrowRight } from "lucide-react"
 import { getServices, getServiceCategories } from "../api/services.api"
 import { useScrollReveal } from "../hooks/useScrollReveal"
+import { useSiteSettings } from "../hooks/useSiteSettings"
 import ServiceCard from "../components/services/ServiceCard"
 import ServiceProcess from "../components/services/ServiceProcess"
 import Seo from "../components/Seo"
 
 export default function Services() {
+  const { whatsappUrl } = useSiteSettings()
   const headerRef = useScrollReveal()
   const ctaRef    = useScrollReveal({ delay: 0, scaleIn: true })
   const [category, setCategory] = useState("")
@@ -153,7 +155,7 @@ export default function Services() {
             marginBottom: "32px", position: "relative", maxWidth: "520px", margin: "0 auto 32px" }}>
             Consultanos sin compromiso. Te asesoramos según tus necesidades y presupuesto.
           </p>
-          <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+          <a href={whatsappUrl} target="_blank" rel="noreferrer"
             className="btn btn-accent" style={{ fontSize: "15px", padding: "14px 30px",
               position: "relative", gap: "10px" }}>
             <MessageCircle size={18} /> Consultar por WhatsApp

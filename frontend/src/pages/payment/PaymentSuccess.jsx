@@ -7,6 +7,7 @@ import { Check, Clock, Mail, Package, GraduationCap, MessageCircle } from "lucid
 import { getOrder } from "../../api/orders.api"
 import { capturePayPal } from "../../api/payments.api"
 import { useCartStore } from "../../store/cartStore"
+import { useSiteSettings } from "../../hooks/useSiteSettings"
 
 function Confetti() {
   const colors = ["#1aff6e","#facc15","#60a5fa","#f87171","#c084fc","#fb923c"]
@@ -40,6 +41,7 @@ function Confetti() {
 }
 
 export default function PaymentSuccess() {
+  const { whatsappUrl } = useSiteSettings()
   const [searchParams]    = useSearchParams()
   const navigate          = useNavigate()
   const orderId           = searchParams.get("order")
@@ -267,7 +269,7 @@ export default function PaymentSuccess() {
         </div>
 
         {/* WhatsApp */}
-        <a href="https://wa.me/5492622635045" target="_blank" rel="noreferrer"
+        <a href={whatsappUrl} target="_blank" rel="noreferrer"
           style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
             padding: "14px", borderRadius: "var(--r-xl)", background: "rgba(37,211,102,0.06)",
             border: "1px solid rgba(37,211,102,0.15)", color: "#25d166", fontSize: "13px",
