@@ -8,6 +8,10 @@ substitutions:
   _SA_EMAIL:         "levelproaudio-run@levelproaudio.iam.gserviceaccount.com"
   _TAG:              "latest"
   _REPO:             "us-central1-docker.pkg.dev/levelproaudio/levelproaudio-docker"
+  # Client ID de Google Sign-In — es público (va en el JS del frontend,
+  # no es un secreto), por eso alcanza con una substitution simple en
+  # vez de pasarlo por Secret Manager.
+  _GOOGLE_CLIENT_ID: "147540000801-hpvtbt57k27bpa1un5brevnjipoqgita.apps.googleusercontent.com"
 
 steps:
 
@@ -50,6 +54,8 @@ steps:
       - build
       - -t
       - "${_REPO}/frontend:${_TAG}"
+      - --build-arg
+      - "VITE_GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}"
       - -f
       - frontend/Dockerfile.prod
       - ./frontend

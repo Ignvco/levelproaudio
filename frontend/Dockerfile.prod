@@ -4,6 +4,11 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install
 COPY . .
+# Vite solo incluye las variables VITE_* que existan en tiempo de BUILD
+# (quedan compiladas dentro del JS, no se pueden cambiar después sin
+# rebuildear). El ARG se recibe desde --build-arg en cloudbuild.yaml.
+ARG VITE_GOOGLE_CLIENT_ID
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
 RUN npm run build
 
 FROM nginx:alpine
