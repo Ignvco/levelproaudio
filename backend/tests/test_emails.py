@@ -114,3 +114,71 @@ class DocumentEmailUsesRealChannelTest(TestCase):
         self.assertEqual(resp.status_code, 502)
         doc.refresh_from_db()
         self.assertNotEqual(doc.estado, "enviado")
+
+
+class EmailBrandingDynamicTest(TestCase):
+    """
+    Antes, el nombre "LevelPro Audio" y el color verde de acento estaban
+    fijos en todas las plantillas de email (header, footer, asuntos,
+    montos destacados) — cambiarlos desde Configuración del sitio no
+    afectaba a los emails que salían. Ahora se leen de ahí, igual que
+    en el resto del sitio.
+    """
+    def _configure_brand(self, name="Acme Audio", color="#ff00ff"):
+        from apps.site_settings.models import SiteSettings
+        site = SiteSettings.get()
+        site.site_name = name
+        site.accent_color = color
+        site.save(update_fields=["site_name", "accent_color"])
+
+    @patch("apps.emails.send_email")
+    def test_password_reset_subject_uses_real_brand_name(self, mock_send):
+        from apps.emails import send_password_reset
+        self._configure_brand(name="Acme Audio")
+
+        send_password_reset("cliente@test.com", "https://x.com/reset/token")
+
+        subject = mock_send.call_args.args[1]
+        self.assertIn("Acme Audio", subject)
+        self.assertNotIn("LevelPro", subject)
+
+    @patch("apps.emails.send_email")
+    def test_order_confirmation_uses_real_accent_color(self, mock_send):
+        from apps.emails import send_order_confirmation
+        from apps.orders.models import Order, OrderStatus
+        self._configure_brand(color="#ff00ff")
+
+        order = Order.objects.create(
+            status=OrderStatus.PAID, total=Decimal("10000"),
+            email="test@test.com", shipping_address="Test 123",
+        )
+        send_order_confirmation(order)
+
+        html_sent = mock_send.call_args.args[2]
+        self.assertIn("#ff00ff", html_sent)
+        self.assertNotIn("#1aff6e", html_sent)
+
+    @patch("apps.emails.send_email")
+    def test_email_header_uses_real_site_name_not_hardcoded_logo(self, mock_send):
+        from apps.emails import send_password_reset
+        self._configure_brand(name="Acme Audio")
+
+        send_password_reset("cliente@test.com", "https://x.com/reset/token")
+
+        html_sent = mock_send.call_args.args[2]
+        self.assertIn("Acme Audio", html_sent)
+        self.assertNotIn("levelpro", html_sent.lower())
+
+    @patch("apps.emails.send_email")
+    def test_falls_back_to_default_if_not_configured(self, mock_send):
+        from apps.emails import send_password_reset
+        from apps.site_settings.models import SiteSettings
+        site = SiteSettings.get()
+        site.site_name = ""
+        site.accent_color = ""
+        site.save(update_fields=["site_name", "accent_color"])
+
+        send_password_reset("cliente@test.com", "https://x.com/reset/token")
+
+        subject = mock_send.call_args.args[1]
+        self.assertIn("LevelPro Audio", subject)

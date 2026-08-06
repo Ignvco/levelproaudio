@@ -6,9 +6,19 @@ RUN npm install
 COPY . .
 # Vite solo incluye las variables VITE_* que existan en tiempo de BUILD
 # (quedan compiladas dentro del JS, no se pueden cambiar después sin
-# rebuildear). El ARG se recibe desde --build-arg en cloudbuild.yaml.
+# rebuildear). Los ARG se reciben desde --build-arg en cloudbuild.yaml.
 ARG VITE_GOOGLE_CLIENT_ID
-ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID
+ARG VITE_SITE_NAME
+ARG VITE_SITE_TAGLINE
+ARG VITE_SITE_DESCRIPTION
+ARG VITE_SITE_URL
+ARG VITE_GA_ID
+ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID \
+    VITE_SITE_NAME=$VITE_SITE_NAME \
+    VITE_SITE_TAGLINE=$VITE_SITE_TAGLINE \
+    VITE_SITE_DESCRIPTION=$VITE_SITE_DESCRIPTION \
+    VITE_SITE_URL=$VITE_SITE_URL \
+    VITE_GA_ID=$VITE_GA_ID
 RUN npm run build
 
 FROM nginx:alpine

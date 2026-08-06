@@ -2,31 +2,36 @@
 <html lang="es">
   <head>
     <meta charset="UTF-8" />
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-34L6J30WM5"></script>
+    <!-- Google tag (gtag.js) — cada instalación/cliente debería tener su
+         propia cuenta de Analytics, no compartir la de LevelPro -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=%VITE_GA_ID%"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-34L6J30WM5');
+      gtag('config', '%VITE_GA_ID%');
     </script>
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2" />
     <link rel="icon" type="image/png" sizes="512x512" href="/favicon.png?v=2" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0a0a0a" />
-    <title>LevelPro Audio — Equipamiento, Academia y Servicios de Audio</title>
-    <meta name="description" content="LevelPro Audio: tienda de equipamiento profesional, academia con cursos y certificaciones, servicios y sorteos exclusivos. Envíos en Chile y Argentina." />
-    <meta property="og:site_name" content="LevelPro Audio" />
+    <!-- Estos meta tags son el "primer vistazo" del sitio — los bots de
+         WhatsApp/Facebook/Twitter los leen SIN ejecutar JavaScript, así
+         que el <Seo> dinámico de React no les llega. Se completan en
+         el build con las variables VITE_SITE_* (ver .env.example). -->
+    <title>%VITE_SITE_NAME% — %VITE_SITE_TAGLINE%</title>
+    <meta name="description" content="%VITE_SITE_DESCRIPTION%" />
+    <meta property="og:site_name" content="%VITE_SITE_NAME%" />
     <meta property="og:type" content="website" />
-    <meta property="og:title" content="LevelPro Audio — Audio Profesional" />
-    <meta property="og:description" content="Equipamiento, academia y servicios de audio profesional. Chile & Argentina." />
-    <meta property="og:image" content="https://levelproaudio.com/og-image.png" />
+    <meta property="og:title" content="%VITE_SITE_NAME% — %VITE_SITE_TAGLINE%" />
+    <meta property="og:description" content="%VITE_SITE_DESCRIPTION%" />
+    <meta property="og:image" content="%VITE_SITE_URL%/og-image.png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="LevelPro Audio" />
+    <meta property="og:image:alt" content="%VITE_SITE_NAME%" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://levelproaudio.com/og-image.png" />
+    <meta name="twitter:image" content="%VITE_SITE_URL%/og-image.png" />
   </head>
   <body>
     <div id="root"></div>

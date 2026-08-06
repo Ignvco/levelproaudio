@@ -19,6 +19,16 @@ substitutions:
   # no es un secreto), por eso alcanza con una substitution simple en
   # vez de pasarlo por Secret Manager.
   _GOOGLE_CLIENT_ID: "147540000801-hpvtbt57k27bpa1un5brevnjipoqgita.apps.googleusercontent.com"
+  # Branding del index.html (title, meta tags de redes sociales, GA) —
+  # se inyecta en el build porque esas etiquetas las leen bots que no
+  # ejecutan JS (WhatsApp, Facebook), así que no alcanza con el <Seo>
+  # dinámico de React. Para un cliente nuevo, esto es lo que cambia al
+  # "clonar y personalizar" antes del primer deploy.
+  _SITE_NAME:        "LevelPro Audio"
+  _SITE_TAGLINE:     "Equipamiento, Academia y Servicios de Audio"
+  _SITE_DESCRIPTION: "LevelPro Audio: tienda de equipamiento profesional, academia con cursos y certificaciones, servicios y sorteos exclusivos. Envíos en Chile y Argentina."
+  _SITE_URL:         "https://levelproaudio.com"
+  _GA_ID:            "G-34L6J30WM5"
 
 steps:
 
@@ -63,6 +73,16 @@ steps:
       - "${_REPO}/frontend:${_TAG}"
       - --build-arg
       - "VITE_GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}"
+      - --build-arg
+      - "VITE_SITE_NAME=${_SITE_NAME}"
+      - --build-arg
+      - "VITE_SITE_TAGLINE=${_SITE_TAGLINE}"
+      - --build-arg
+      - "VITE_SITE_DESCRIPTION=${_SITE_DESCRIPTION}"
+      - --build-arg
+      - "VITE_SITE_URL=${_SITE_URL}"
+      - --build-arg
+      - "VITE_GA_ID=${_GA_ID}"
       - -f
       - frontend/Dockerfile.prod
       - ./frontend

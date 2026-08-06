@@ -1,21 +1,37 @@
-"""Servicio de emails transaccionales (Resend) con plantilla de marca LevelPro."""
+"""Servicio de emails transaccionales (Resend) con plantilla de marca."""
 import logging
 from django.conf import settings
 from django.utils.html import escape
 
 logger = logging.getLogger(__name__)
 
-ACCENT = "#1aff6e"
-BG     = "#0a0a0a"
+DEFAULT_ACCENT = "#1aff6e"
+BG             = "#0a0a0a"
+
+
+def _brand():
+    """
+    Nombre y color reales de Configuración del sitio, con respaldo si
+    todavía no se configuró nada. Antes esto estaba fijo como "LevelPro
+    Audio" en todos los emails — ahora sigue el mismo patrón dinámico
+    que ya usa el resto del sitio.
+    """
+    try:
+        from apps.site_settings.models import SiteSettings
+        site = SiteSettings.get()
+        return site.site_name or "LevelPro Audio", site.accent_color or DEFAULT_ACCENT
+    except Exception:
+        return "LevelPro Audio", DEFAULT_ACCENT
 
 
 def _wrap(title, body_html, cta=None):
     """Envuelve el contenido en una plantilla HTML de marca (inline CSS)."""
+    site_name, accent = _brand()
     cta_html = ""
     if cta:
         cta_html = f"""
         <tr><td style="padding:8px 32px 32px;">
-          <a href="{cta['url']}" style="display:inline-block;background:{ACCENT};color:#000;
+          <a href="{cta['url']}" style="display:inline-block;background:{accent};color:#000;
             text-decoration:none;font-weight:700;font-size:15px;padding:14px 28px;border-radius:999px;">
             {cta['label']}
           </a>
@@ -28,7 +44,7 @@ def _wrap(title, body_html, cta=None):
         background:{BG};border:1px solid #1c1c1c;border-radius:20px;overflow:hidden;">
         <tr><td style="padding:28px 32px 8px;border-bottom:1px solid #1c1c1c;">
           <span style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px;">
-            level<span style="color:{ACCENT};">pro</span> audio
+            {escape(site_name)}
           </span>
         </td></tr>
         <tr><td style="padding:32px 32px 12px;">
@@ -39,7 +55,7 @@ def _wrap(title, body_html, cta=None):
         </td></tr>
         {cta_html}
         <tr><td style="padding:24px 32px;border-top:1px solid #1c1c1c;color:#6a6a6a;font-size:12px;">
-          LevelPro Audio · Audio Profesional · Chile &amp; Argentina<br/>
+          {escape(site_name)}<br/>
           Este es un email automático, por favor no respondas a esta dirección.
         </td></tr>
       </table>
@@ -97,6 +113,7 @@ def send_email(to, subject, html, attachments=None):
 # ── Emails específicos ────────────────────────────────────────
 
 def send_order_confirmation(order):
+    _, accent = _brand()
     ref = str(order.id)[:8].upper()
     rows = ""
     for it in order.items.all():
@@ -110,7 +127,7 @@ def send_order_confirmation(order):
       <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #1c1c1c;margin:8px 0;">
         {rows}
         <tr><td style="padding:12px 0 0;border-top:1px solid #1c1c1c;color:#fff;font-weight:700;">Total</td>
-        <td style="padding:12px 0 0;border-top:1px solid #1c1c1c;color:{ACCENT};font-weight:800;text-align:right;">
+        <td style="padding:12px 0 0;border-top:1px solid #1c1c1c;color:{accent};font-weight:800;text-align:right;">
           ${float(order.total):,.0f}</td></tr>
       </table>
       <p style="margin:16px 0 0;">Nos pondremos en contacto para coordinar la entrega.</p>
@@ -122,9 +139,10 @@ def send_order_confirmation(order):
 def send_ticket_email(email, campaign, codes):
     if not codes:
         return
+    _, accent = _brand()
     chips = "".join(
         f'<span style="display:inline-block;background:#111;border:1px solid #2a2a2a;'
-        f'color:{ACCENT};font-family:monospace;font-size:14px;font-weight:700;'
+        f'color:{accent};font-family:monospace;font-size:14px;font-weight:700;'
         f'padding:8px 14px;border-radius:10px;margin:4px;">{c}</span>'
         for c in codes
     )
@@ -142,6 +160,7 @@ def send_ticket_email(email, campaign, codes):
 
 
 def send_password_reset(email, reset_url):
+    site_name, _ = _brand()
     body = f"""
       <p style="margin:0 0 16px;">Recibimos una solicitud para restablecer tu contraseña.</p>
       <p style="margin:0;">Hacé clic en el botón de abajo para crear una nueva. El enlace vence en 1 hora.
@@ -149,16 +168,17 @@ def send_password_reset(email, reset_url):
     """
     html = _wrap("Restablecer tu contraseña", body,
                  cta={"label": "Crear nueva contraseña", "url": reset_url})
-    send_email(email, "Restablecer tu contraseña — LevelPro Audio", html)
+    send_email(email, f"Restablecer tu contraseña — {site_name}", html)
 
 
 def send_price_drop_email(user, product):
+    _, accent = _brand()
     body = f"""
       <p style="margin:0 0 16px;">Uno de tus favoritos bajó de precio 👀</p>
       <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #1c1c1c;margin:8px 0;padding-top:16px;">
         <tr>
           <td style="padding:8px 0;color:#fff;font-size:15px;font-weight:600;">{escape(product.name)}</td>
-          <td style="padding:8px 0;color:{ACCENT};font-size:18px;font-weight:800;text-align:right;">
+          <td style="padding:8px 0;color:{accent};font-size:18px;font-weight:800;text-align:right;">
             ${float(product.price):,.0f}</td>
         </tr>
       </table>
