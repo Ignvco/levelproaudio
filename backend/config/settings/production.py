@@ -56,7 +56,6 @@ DATABASES = {
 # ── Archivos estáticos — WhiteNoise ───────────────────────────
 STATIC_URL  = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"  # noqa: F405 — definida en base.py
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 # ── Google Cloud Storage — media ──────────────────────────────
 # GS_QUERYSTRING_AUTH = False: la URL que genera GCS no tiene firma.
@@ -71,7 +70,25 @@ GS_QUERYSTRING_AUTH  = False   # Sin URLs firmadas — Django sirve el media
 GS_FILE_OVERWRITE    = False
 GS_OBJECT_PARAMETERS = {"CacheControl": "public, max-age=86400"}
 
-DEFAULT_FILE_STORAGE = "storages.backends.gcloud.GoogleCloudStorage"
+# CRÍTICO: DEFAULT_FILE_STORAGE y STATICFILES_STORAGE como strings sueltos
+# fueron ELIMINADOS por completo en Django 5.1 (venían deprecados desde
+# 4.2). Hasta Django 5.0.x, este proyecto usaba ese formato viejo y
+# funcionaba — pero al subir a Django 5.2.16 (por las vulnerabilidades de
+# seguridad), Django empezó a IGNORAR esos dos settings en silencio, sin
+# ningún error, y cayó en su storage local por defecto para los archivos
+# subidos por el admin (logo, imágenes de Configuración del sitio, etc.).
+# Como el filesystem de Cloud Run es efímero, esos archivos "se guardaban"
+# (200 OK, sin excepción) pero desaparecían apenas el contenedor se
+# reciclaba — nunca llegaban a GCS de verdad. Migrado al diccionario
+# STORAGES, la forma soportada desde Django 4.2 en adelante.
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.gcloud.GoogleCloudStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 # MEDIA_URL apunta al backend Django — que sirve /media/ como proxy
 # Nginx proxea /api/ al backend, y el backend sirve las imágenes
