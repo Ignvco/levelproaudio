@@ -7,6 +7,7 @@ import {
 } from "../../api/admin.api"
 import { Eye, Inbox, Truck } from "lucide-react"
 import { DataTable, StatusBadge, AdminPageHeader, formInputStyle } from "../../components/admin/ui"
+import { showToast } from "../../components/ui/ToastNotification"
 
 const STATUS = {
   pending:   { label:"Pendiente",  color:"#D97706" },
@@ -42,6 +43,9 @@ function OrderPanel({ order, onClose }) {
     onSuccess: () => {
       queryClient.invalidateQueries(["admin-orders"])
     },
+    onError: (e) => {
+      showToast(e?.response?.data?.detail || "No se pudo guardar el envío.", "error")
+    },
   })
   const shippingDirty = carrier !== (order.shipping_carrier || "") || tracking !== (order.tracking_number || "")
 
@@ -53,12 +57,15 @@ function OrderPanel({ order, onClose }) {
       queryClient.invalidateQueries(["admin-payments"])
       queryClient.invalidateQueries(["admin-finance-summary"])
     },
+    onError: (e) => {
+      showToast(e?.response?.data?.detail || "No se pudo actualizar el estado de la orden.", "error")
+    },
   })
 
   const docMutation = useMutation({
     mutationFn: (tipo) => generateDocumentFromOrder(order.id, tipo),
     onSuccess:  (data) => setDocResult(data),
-    onError:    (e)    => alert(e?.response?.data?.error || "Error al generar."),
+    onError:    (e)    => showToast(e?.response?.data?.error || "Error al generar.", "error"),
   })
 
   const handleDownload = async (id, folio) => {

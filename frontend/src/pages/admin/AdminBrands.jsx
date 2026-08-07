@@ -6,6 +6,7 @@ import { Tag, ArrowUpRight } from "lucide-react"
 import { mediaUrl } from "../../utils/mediaUrl"
 import BulkImportPanel from "../../components/admin/BulkImportPanel"
 import { FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { showToast } from "../../components/ui/ToastNotification"
 
 function BrandModal({ brand, onClose, onSave }) {
   const [form, setForm]     = useState({
@@ -122,6 +123,10 @@ export default function AdminBrands() {
   const deleteMutation = useMutation({
     mutationFn: deleteAdminBrand,
     onSuccess:  () => { queryClient.invalidateQueries(["admin-brands"]); setToDelete(null) },
+    onError:    (e) => {
+      showToast(e?.response?.data?.detail || "No se pudo eliminar la marca. Puede tener productos asociados.", "error")
+      setToDelete(null)
+    },
   })
   const brands = data?.results || data || []
 

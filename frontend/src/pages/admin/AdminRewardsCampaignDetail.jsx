@@ -50,6 +50,7 @@ export default function AdminRewardsCampaignDetail() {
       qc.invalidateQueries({ queryKey:["admin-campaign", id] })
       showToast("Actualizado")
     },
+    onError: (e) => showToast(e?.response?.data?.detail || "No se pudo actualizar la campaña.", "error"),
   })
 
   const addProduct = useMutation({
@@ -58,15 +59,17 @@ export default function AdminRewardsCampaignDetail() {
       qc.invalidateQueries({ queryKey:["admin-campaign", id] })
       showToast("Producto agregado")
     },
-    onError: () => showToast("Ya está agregado a la campaña"),
+    onError: () => showToast("Ya está agregado a la campaña", "error"),
   })
   const delProduct = useMutation({
     mutationFn: adminDeleteRewardProduct,
     onSuccess:  () => qc.invalidateQueries({ queryKey:["admin-campaign", id] }),
+    onError:    (e) => showToast(e?.response?.data?.detail || "No se pudo quitar el producto.", "error"),
   })
   const patchProduct = useMutation({
     mutationFn: ({rpid, payload}) => adminUpdateRewardProduct(rpid, payload),
     onSuccess:  () => qc.invalidateQueries({ queryKey:["admin-campaign", id] }),
+    onError:    (e) => showToast(e?.response?.data?.detail || "No se pudo actualizar el producto.", "error"),
   })
   const draw = useMutation({
     mutationFn: () => adminDrawCampaign(id),
@@ -75,11 +78,12 @@ export default function AdminRewardsCampaignDetail() {
       qc.invalidateQueries({ queryKey:["admin-campaign-winners", id] })
       showToast("🎉 Sorteo ejecutado")
     },
-    onError: (err) => showToast(err?.response?.data?.error || "Error"),
+    onError: (err) => showToast(err?.response?.data?.error || "Error", "error"),
   })
   const finish = useMutation({
     mutationFn: () => adminFinishCampaign(id),
     onSuccess:  () => qc.invalidateQueries({ queryKey:["admin-campaign", id] }),
+    onError:    (e) => showToast(e?.response?.data?.detail || "No se pudo finalizar la campaña. Verificá antes de asumir que se cerró.", "error"),
   })
 
   if (isLoading || !c) return (

@@ -3,12 +3,12 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useSearchParams, Link } from "react-router-dom"
 import {
-  getAdminLessons, createAdminLesson,
-  updateAdminLesson, deleteAdminLesson, getAdminModules,
+  getAdminLessons, deleteAdminLesson, getAdminModules,
   getLessonVideoUploadUrl,
 } from "../../api/admin.api"
 import api from "../../api/client"
 import { FormModal, FormField, formInputStyle as inputSt, ConfirmationModal } from "../../components/admin/ui"
+import { showToast } from "../../components/ui/ToastNotification"
 
 // PUT directo a la URL firmada de GCS — Cloud Run tiene un límite duro
 // de 32MB por request que no se puede subir con ninguna config de
@@ -297,6 +297,10 @@ export default function AdminLessons() {
   const deleteMutation = useMutation({
     mutationFn: deleteAdminLesson,
     onSuccess:  () => { queryClient.invalidateQueries(["admin-lessons"]); setToDelete(null) },
+    onError:    (e) => {
+      showToast(e?.response?.data?.detail || "No se pudo eliminar la lección.", "error")
+      setToDelete(null)
+    },
   })
 
   const lessons = data?.results || data || []

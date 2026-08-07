@@ -143,11 +143,13 @@ export default function AdminServices() {
   const reqMutation = useMutation({
     mutationFn: ({ id, data }) => updateRequestStatus(id, data),
     onSuccess:  () => queryClient.invalidateQueries(["admin-requests"]),
+    onError:    (err) => showToast(err?.response?.data?.error || "No se pudo actualizar la solicitud.", "error"),
   })
 
   const bookingMutation = useMutation({
     mutationFn: ({ id, status }) => updateBookingStatus(id, status),
     onSuccess:  () => queryClient.invalidateQueries(["admin-bookings"]),
+    onError:    (err) => showToast(err?.response?.data?.error || "No se pudo actualizar la reserva.", "error"),
   })
 
   const delMutation = useMutation({
@@ -155,6 +157,10 @@ export default function AdminServices() {
     onSuccess:  () => {
       queryClient.invalidateQueries({ queryKey:["admin-services-crud"] })
       showToast("Servicio eliminado")
+      setToDelete(null)
+    },
+    onError:    (err) => {
+      showToast(err?.response?.data?.detail || "No se pudo eliminar el servicio.", "error")
       setToDelete(null)
     },
   })
@@ -434,7 +440,7 @@ function ServiceModal({ service, onClose, onSaved }) {
     const file = e.target.files?.[0]
     if (!file) return
     if (file.size > 8 * 1024 * 1024) {
-      showToast("La imagen supera 8MB. Usa una más liviana.")
+      showToast("La imagen supera 8MB. Usa una más liviana.", "error")
       return
     }
     setThumbFile(file)

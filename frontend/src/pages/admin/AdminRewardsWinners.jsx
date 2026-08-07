@@ -22,6 +22,7 @@ function WinnerCard({ w }) {
       showToast("Ganador actualizado")
       setFile(null)
     },
+    onError: (e) => showToast(e?.response?.data?.detail || "No se pudo guardar. Intentá de nuevo.", "error"),
   })
 
   return (

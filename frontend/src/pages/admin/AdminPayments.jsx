@@ -3,6 +3,7 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminPayments, updatePaymentStatus } from "../../api/admin.api"
 import { StatCard, DataTable, StatusBadge, AdminPageHeader } from "../../components/admin/ui"
+import { showToast } from "../../components/ui/ToastNotification"
 import { Inbox } from "lucide-react"
 
 const STATUS = {
@@ -40,6 +41,9 @@ function StatusSelector({ paymentId, current }) {
       queryClient.invalidateQueries(["admin-orders"])
       queryClient.invalidateQueries(["admin-dashboard"])
       queryClient.invalidateQueries(["admin-finance-summary"])
+    },
+    onError: (e) => {
+      showToast(e?.response?.data?.detail || "No se pudo actualizar el estado del pago. Verificá antes de asumir que se marcó.", "error")
     },
   })
   return (

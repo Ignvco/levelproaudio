@@ -6,6 +6,7 @@ import {
   generateDocument, downloadDocument, voidDocument,
 } from "../../api/admin.api"
 import { AdminPageHeader, DataTable, StatusBadge } from "../../components/admin/ui"
+import { showToast } from "../../components/ui/ToastNotification"
 import { Download, Ban, FileText } from "lucide-react"
 
 const TABS   = ["Documentos","Generar","Configuración"]
@@ -72,6 +73,7 @@ export default function AdminBilling() {
   const voidMutation = useMutation({
     mutationFn: voidDocument,
     onSuccess:  () => queryClient.invalidateQueries(["billing-documents"]),
+    onError:    (e) => showToast(e?.response?.data?.detail || "No se pudo anular el documento. Verificá antes de asumir que se anuló.", "error"),
   })
 
   /* ── UUID validation ── */

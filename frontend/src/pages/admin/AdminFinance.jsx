@@ -293,6 +293,10 @@ export default function AdminFinance() {
       queryClient.invalidateQueries(["admin-finance-withdrawals"])
       setToDeleteWithdrawal(null)
     },
+    onError: (e) => {
+      showToast(e?.response?.data?.detail || "No se pudo eliminar el retiro.", "error")
+      setToDeleteWithdrawal(null)
+    },
   })
   const deleteCatMutation = useMutation({
     mutationFn: deleteFinanceCategory,

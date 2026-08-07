@@ -7,6 +7,7 @@ import {
   uploadProductImage, deleteProductImage, setPrimaryImage,
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
+import { showToast } from "../../components/ui/ToastNotification"
 import { DataTable, StatusBadge, AdminPageHeader, PrimaryButton, FormModal, ConfirmationModal } from "../../components/admin/ui"
 import { Pencil, Trash2, Package } from "lucide-react"
 
@@ -67,7 +68,12 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
       onSave?.()
       onClose()
     } catch (e) {
-      setError(e?.response?.data?.detail || JSON.stringify(e?.response?.data) || "Error al guardar.")
+      const data = e?.response?.data
+      const msg = data?.detail || (data && typeof data === "object"
+        ? Object.entries(data).map(([field, msgs]) =>
+            `${field}: ${Array.isArray(msgs) ? msgs.join(", ") : msgs}`).join(" · ")
+        : "Error al guardar.")
+      setError(msg)
     } finally { setSaving(false) }
   }
 
@@ -82,18 +88,28 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
       const newImg = await uploadProductImage(product.id, fd)
       setImages(prev => [...prev, newImg])
       queryClient.invalidateQueries(["admin-products"])
+    } catch (e) {
+      showToast(e?.response?.data?.detail || "No se pudo subir la imagen. Intentá de nuevo.", "error")
     } finally { setUploadingImg(false) }
   }
 
   const handleDeleteImg = async (imgId) => {
     if (!window.confirm("¿Eliminar imagen?")) return
-    await deleteProductImage(imgId)
-    setImages(prev => prev.filter(i => i.id !== imgId))
+    try {
+      await deleteProductImage(imgId)
+      setImages(prev => prev.filter(i => i.id !== imgId))
+    } catch {
+      showToast("No se pudo eliminar la imagen. Intentá de nuevo.", "error")
+    }
   }
 
   const handleSetPrimary = async (imgId) => {
-    await setPrimaryImage(imgId)
-    setImages(prev => prev.map(i => ({ ...i, is_primary: i.id === imgId })))
+    try {
+      await setPrimaryImage(imgId)
+      setImages(prev => prev.map(i => ({ ...i, is_primary: i.id === imgId })))
+    } catch {
+      showToast("No se pudo cambiar la imagen principal. Intentá de nuevo.", "error")
+    }
   }
 
   // Calculadora de precios
@@ -570,6 +586,10 @@ export default function AdminProducts() {
   const deleteMutation = useMutation({
     mutationFn: deleteAdminProduct,
     onSuccess:  () => { queryClient.invalidateQueries(["admin-products"]); setToDelete(null) },
+    onError:    (e) => {
+      showToast(e?.response?.data?.detail || "No se pudo eliminar el producto. Puede estar referenciado en pedidos existentes.", "error")
+      setToDelete(null)
+    },
   })
 
   const products   = data?.results   || data   || []

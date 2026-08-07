@@ -6,6 +6,7 @@ import {
   updateAdminCourse, deleteAdminCourse,
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
+import { showToast } from "../../components/ui/ToastNotification"
 import { Link } from "react-router-dom"
 import { Pencil, Trash2 } from "lucide-react"
 import BulkImportPanel from "../../components/admin/BulkImportPanel"
@@ -37,7 +38,10 @@ function CourseModal({ course, onClose, onSave }) {
       else await createAdminCourse(fd)
       onSave(); onClose()
     } catch (e) {
-      setError(e?.response?.data?.detail || "Error al guardar.")
+      const data = e?.response?.data
+      setError(data?.detail || (data && typeof data === "object"
+        ? Object.entries(data).map(([f, m]) => `${f}: ${Array.isArray(m) ? m.join(", ") : m}`).join(" · ")
+        : "Error al guardar."))
     } finally { setSaving(false) }
   }
 
@@ -124,6 +128,10 @@ export default function AdminAcademy() {
   const deleteMutation = useMutation({
     mutationFn: deleteAdminCourse,
     onSuccess:  () => { queryClient.invalidateQueries(["admin-courses"]); setToDelete(null) },
+    onError:    (e) => {
+      showToast(e?.response?.data?.detail || "No se pudo eliminar el curso.", "error")
+      setToDelete(null)
+    },
   })
   const courses = data?.results || data || []
 

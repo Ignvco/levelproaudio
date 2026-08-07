@@ -327,12 +327,17 @@ export default function AdminRewardsCampaigns() {
       qc.invalidateQueries({ queryKey:["admin-campaigns"] })
       showToast("Campaña duplicada")
     },
+    onError:    (e) => showToast(e?.response?.data?.detail || "No se pudo duplicar la campaña.", "error"),
   })
   const del = useMutation({
     mutationFn: adminDeleteCampaign,
     onSuccess:  () => {
       qc.invalidateQueries({ queryKey:["admin-campaigns"] })
       showToast("Campaña eliminada")
+      setToDelete(null)
+    },
+    onError:    (e) => {
+      showToast(e?.response?.data?.detail || "No se pudo eliminar la campaña.", "error")
       setToDelete(null)
     },
   })

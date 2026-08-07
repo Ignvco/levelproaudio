@@ -5,6 +5,7 @@
 import { useState, useRef, useCallback } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../../api/client"
+import { showToast } from "../../components/ui/ToastNotification"
 import { AdminPageHeader, PrimaryButton, FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
 
 // ── API helpers ───────────────────────────────────────────────
@@ -298,6 +299,10 @@ export default function AdminCategories() {
     onSuccess:  () => {
       setLocalRoots(null)
       queryClient.invalidateQueries(["admin-categories"])
+      setToDelete(null)
+    },
+    onError: (e) => {
+      showToast(e?.response?.data?.detail || "No se pudo eliminar la categoría. Puede tener productos asociados.", "error")
       setToDelete(null)
     },
   })

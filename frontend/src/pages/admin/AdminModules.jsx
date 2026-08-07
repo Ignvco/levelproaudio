@@ -7,6 +7,7 @@ import {
   updateAdminModule, deleteAdminModule, getAdminCourses,
 } from "../../api/admin.api"
 import { FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { showToast } from "../../components/ui/ToastNotification"
 
 function ModuleModal({ module, courseId, courses = [], onClose, onSave }) {
   const [form, setForm]     = useState({
@@ -84,6 +85,10 @@ export default function AdminModules() {
   const deleteMutation = useMutation({
     mutationFn: deleteAdminModule,
     onSuccess:  () => { queryClient.invalidateQueries(["admin-modules"]); setToDelete(null) },
+    onError:    (e) => {
+      showToast(e?.response?.data?.detail || "No se pudo eliminar el módulo.", "error")
+      setToDelete(null)
+    },
   })
 
   const modules = data?.results || data || []

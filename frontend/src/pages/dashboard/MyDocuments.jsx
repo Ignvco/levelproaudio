@@ -21,7 +21,7 @@ function DocRow({ doc }) {
       document.body.appendChild(a); a.click(); a.remove()
       window.URL.revokeObjectURL(url)
     } catch {
-      showToast("No se pudo descargar el documento")
+      showToast("No se pudo descargar el documento", "error")
     }
   }
 

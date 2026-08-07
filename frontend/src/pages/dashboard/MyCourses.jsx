@@ -17,7 +17,7 @@ async function handleDownloadCertificate(e, enrollmentId, courseSlug) {
     document.body.appendChild(a); a.click(); a.remove()
     window.URL.revokeObjectURL(url)
   } catch {
-    showToast("No se pudo descargar el certificado")
+    showToast("No se pudo descargar el certificado", "error")
   }
 }
 
