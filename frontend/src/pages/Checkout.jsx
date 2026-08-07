@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import api from "../api/client"
 import { createPayment } from "../api/payments.api"
+import { cancelOrder } from "../api/orders.api"
 import { useCartStore } from "../store/cartStore"
 import { useAuthStore } from "../store/authStore"
 
@@ -120,7 +121,23 @@ export default function Checkout() {
           quantity:     i.quantity,
         })),
       })
-      const paymentData = await createPayment(order.id, selectedMethod)
+
+      let paymentData
+      try {
+        paymentData = await createPayment(order.id, selectedMethod)
+      } catch (paymentError) {
+        // La orden ya descontó stock — si la pasarela falla acá, hay
+        // que cancelarla de inmediato (devuelve el stock) para que el
+        // reintento del cliente empiece limpio, en vez de quedar una
+        // orden huérfana sumándose cada vez que reintenta.
+        try {
+          await cancelOrder(order.id)
+        } catch {
+          // Si ni la cancelación funciona, seguimos igual al catch de
+          // afuera — el mensaje de error ya avisa que hay que reintentar.
+        }
+        throw paymentError
+      }
 
       if (selectedMethod === "global66") {
         clearCart()

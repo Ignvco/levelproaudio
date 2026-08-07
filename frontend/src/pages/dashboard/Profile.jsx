@@ -135,6 +135,13 @@ export default function Profile() {
       showToast("Perfil actualizado")
       setTimeout(() => setSaved(false), 3000)
     },
+    onError: (e) => {
+      const data = e?.response?.data
+      const msg = data && typeof data === "object"
+        ? Object.values(data).flat().join(" ")
+        : "No se pudo guardar. Intentá de nuevo."
+      showToast(msg, "error")
+    },
   })
 
   const set = (key) => (e) => setForm(p => ({ ...p, [key]: e.target.value }))

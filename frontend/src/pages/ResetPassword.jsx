@@ -1,7 +1,7 @@
 // pages/ResetPassword.jsx — Setear nueva contraseña con uid + token
 import { useState } from "react"
 import { Link, useSearchParams, useNavigate } from "react-router-dom"
-import { ArrowRight, CheckCircle2 } from "lucide-react"
+import { CheckCircle2 } from "lucide-react"
 import api from "../api/client"
 import AuthShell, { AuthField, AuthSubmit } from "../components/auth/AuthShell"
 
@@ -104,12 +104,6 @@ export default function ResetPassword() {
 
         <AuthSubmit loading={loading}>
           {loading ? "Guardando..." : "Cambiar contraseña"}
-          {!loading && (
-            <span style={{ width: "24px", height: "24px", borderRadius: "50%", background: "#000",
-              color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <ArrowRight size={13} strokeWidth={2.5} />
-            </span>
-          )}
         </AuthSubmit>
       </form>
     </AuthShell>
