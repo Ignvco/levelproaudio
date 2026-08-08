@@ -294,7 +294,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                     color: "var(--text-2)", marginBottom: "7px" }}>
                     Precio de venta * (CLP)
                   </label>
-                  <input type="number" value={form.price}
+                  <input type="number" min="0" value={form.price}
                     onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
                     style={inputSt} placeholder="0"
                     onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
@@ -305,7 +305,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                     color: "var(--text-2)", marginBottom: "7px" }}>
                     Precio tachado (opcional)
                   </label>
-                  <input type="number" value={form.compare_price}
+                  <input type="number" min="0" value={form.compare_price}
                     onChange={e => setForm(p => ({ ...p, compare_price: e.target.value }))}
                     style={inputSt} placeholder="0"
                     onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
@@ -318,7 +318,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                   color: "var(--text-2)", marginBottom: "7px" }}>
                   Costo / Precio de compra (CLP)
                 </label>
-                <input type="number" value={form.cost_price}
+                <input type="number" min="0" value={form.cost_price}
                   onChange={e => setForm(p => ({ ...p, cost_price: e.target.value }))}
                   style={inputSt} placeholder="0"
                   onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}

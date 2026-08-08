@@ -1,7 +1,9 @@
 # apps/services/models.py
 
+from decimal import Decimal
 from django.db import models
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.utils.text import slugify
 from core.models import TimeStampedModel
 
@@ -54,7 +56,8 @@ class Service(TimeStampedModel):
     )
     price       = models.DecimalField(
         max_digits=10, decimal_places=2,
-        null=True, blank=True
+        null=True, blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
     )
     price_type  = models.CharField(
         max_length=20,

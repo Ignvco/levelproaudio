@@ -71,7 +71,7 @@ function CourseModal({ course, onClose, onSave }) {
           </select>
         </FormField>
         <FormField label="Precio (CLP)">
-          <input type="number" value={form.price}
+          <input type="number" min="0" value={form.price}
             onChange={e => setForm(p => ({ ...p, price: e.target.value }))}
             disabled={form.is_free}
             style={{ ...formInputStyle, opacity: form.is_free ? 0.4 : 1 }}

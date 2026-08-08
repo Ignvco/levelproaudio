@@ -1,7 +1,9 @@
 # apps/academy/models.py
 
+from decimal import Decimal
 from django.db import models
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.utils.text import slugify
 from core.models import TimeStampedModel
 
@@ -19,7 +21,10 @@ class Course(TimeStampedModel):
     short_description = models.CharField(max_length=500, blank=True)
     thumbnail    = models.ImageField(upload_to="courses/", blank=True, null=True)
     preview_url  = models.URLField(blank=True, help_text="Video de preview público")
-    price        = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    price        = models.DecimalField(
+        max_digits=10, decimal_places=2, default=0,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
     level        = models.CharField(
         max_length=20, choices=Level.choices, default=Level.BEGINNER
     )

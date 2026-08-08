@@ -594,7 +594,7 @@ function ServiceModal({ service, onClose, onSaved }) {
             <div>
               <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
                 letterSpacing:"0.08em", textTransform:"uppercase" }}>Precio</label>
-              <input type="number" value={form.price || ""}
+              <input type="number" min="0" value={form.price || ""}
                 disabled={form.price_type === "quote"}
                 onChange={e => setForm(p => ({ ...p, price:e.target.value }))}
                 style={{ ...inputSt, marginTop:"6px",

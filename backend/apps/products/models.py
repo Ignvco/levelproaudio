@@ -1,7 +1,9 @@
 # apps/products/models.py
 
+from decimal import Decimal
 from django.db import models
 from django.conf import settings
+from django.core.validators import MinValueValidator
 from django.utils.text import slugify
 from core.models import TimeStampedModel
 
@@ -80,15 +82,20 @@ class Product(TimeStampedModel):
     description       = models.TextField(blank=True)
     short_description = models.CharField(max_length=500, blank=True)
 
-    price         = models.DecimalField(max_digits=12, decimal_places=2, verbose_name="Precio")
+    price         = models.DecimalField(
+        max_digits=12, decimal_places=2, verbose_name="Precio",
+        validators=[MinValueValidator(Decimal("0"))],
+    )
     compare_price = models.DecimalField(
-        max_digits=12, decimal_places=2, null=True, blank=True
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
     )
 
     cost_price = models.DecimalField(
         max_digits=12, decimal_places=2,
         null=True, blank=True,
-        help_text="Costo real del producto (capital invertido)"
+        help_text="Costo real del producto (capital invertido)",
+        validators=[MinValueValidator(Decimal("0"))],
     )
 
     product_type = models.CharField(
