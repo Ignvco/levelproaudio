@@ -340,8 +340,18 @@ export default function AdminSettings() {
 
         {tab === "contact" && (
           <>
-            <Field label="WhatsApp" helper="Formato internacional con +. Ej: +5492622635045">
-              <input style={inputSt} value={form.contact_whatsapp || ""}
+            <Field label="WhatsApp"
+              helper={
+                form.contact_whatsapp && !/^\+\d{8,15}$/.test(form.contact_whatsapp)
+                  ? "⚠️ Formato raro — debería ser +código país y número, solo dígitos. Ej: +5492622635045. Así como está, el botón de WhatsApp puede quedar roto en todo el sitio."
+                  : "Formato internacional con +. Ej: +5492622635045"
+              }>
+              <input style={{
+                  ...inputSt,
+                  borderColor: form.contact_whatsapp && !/^\+\d{8,15}$/.test(form.contact_whatsapp)
+                    ? "#D97706" : inputSt.borderColor,
+                }}
+                value={form.contact_whatsapp || ""}
                 onChange={e => set("contact_whatsapp", e.target.value)} />
             </Field>
             <Field label="Usuario Instagram" helper="Sin @. Ej: levelproar">

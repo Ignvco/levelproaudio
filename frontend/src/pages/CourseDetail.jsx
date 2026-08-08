@@ -8,6 +8,8 @@ import {
   markLessonComplete, getCourseProgress,
 } from "../api/academy.api"
 import { createPayment } from "../api/payments.api"
+import { cancelOrder } from "../api/orders.api"
+import { showToast } from "../components/ui/ToastNotification"
 import { useAuthStore } from "../store/authStore"
 import { mediaUrl } from "../utils/mediaUrl"
 import Seo from "../components/Seo"
@@ -193,6 +195,7 @@ export default function CourseDetail() {
       setShowSuccess(true)
       queryClient.invalidateQueries(["course", slug])
     },
+    onError: (e) => showToast(e?.response?.data?.error || "No se pudo completar la inscripción. Intentá de nuevo.", "error"),
   })
 
   const purchaseMutation = useMutation({
@@ -201,6 +204,7 @@ export default function CourseDetail() {
       setPurchaseOrderId(data.order_id)
       setShowPayment(true)
     },
+    onError: (e) => showToast(e?.response?.data?.error || "No se pudo iniciar la compra. Intentá de nuevo.", "error"),
   })
 
   const payMutation = useMutation({
@@ -211,6 +215,16 @@ export default function CourseDetail() {
       else if (paymentMethod === "paypal")
         window.location.href = data.approve_url
       else navigate(`/payment/transfer/${purchaseOrderId}`)
+    },
+    onError: async (e) => {
+      // La orden ya se creó del lado del curso — si la pasarela falla
+      // acá, la cancelamos para no dejar un pedido pendiente fantasma
+      // en los reportes financieros (mismo criterio que en Checkout).
+      if (purchaseOrderId) {
+        try { await cancelOrder(purchaseOrderId) } catch { /* seguimos igual al error de abajo */ }
+      }
+      showToast(e?.response?.data?.error || "No se pudo procesar el pago. Intentá de nuevo.", "error")
+      setShowPayment(false)
     },
   })
 

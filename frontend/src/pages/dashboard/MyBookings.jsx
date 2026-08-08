@@ -5,6 +5,7 @@ import { Link } from "react-router-dom"
 import { Calendar, X } from "lucide-react"
 import { getBookings, cancelBooking } from "../../api/services.api"
 import { ConfirmationModal } from "../../components/admin/ui"
+import { showToast } from "../../components/ui/ToastNotification"
 
 const statusColors = {
   pending:   { color: "#facc15", label: "Pendiente"  },
@@ -26,6 +27,10 @@ export default function MyBookings() {
     mutationFn: cancelBooking,
     onSuccess: () => {
       queryClient.invalidateQueries(["my-bookings"])
+      setToCancel(null)
+    },
+    onError: (e) => {
+      showToast(e?.response?.data?.detail || "No se pudo cancelar la reserva. Intentá de nuevo.", "error")
       setToCancel(null)
     },
   })
