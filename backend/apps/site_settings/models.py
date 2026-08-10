@@ -42,6 +42,7 @@ class SiteSettings(TimeStampedModel):
     show_products    = models.BooleanField(default=True)
     show_courses     = models.BooleanField(default=True)
     show_services    = models.BooleanField(default=True)
+    show_about       = models.BooleanField(default=True)
     show_testimonial = models.BooleanField(default=True)
     show_brands      = models.BooleanField(default=True)
     show_final_cta   = models.BooleanField(default=True)
@@ -56,6 +57,15 @@ class SiteSettings(TimeStampedModel):
     testimonial_name  = models.CharField(max_length=80,  default="Diego Ramírez")
     testimonial_role  = models.CharField(max_length=120, default="Productor · Santiago de Chile")
     testimonial_quote = models.TextField(default="La asesoría técnica marcó la diferencia. Compré exactamente lo que necesitaba para mi estudio y encima aprendí a mezclarlo con los cursos.")
+
+    about_title = models.CharField(
+        max_length=200, blank=True,
+        default="No vendemos audio por vender.",
+    )
+    about_body = models.TextField(
+        blank=True,
+        default="Creemos que comprar equipamiento profesional debería empezar con una buena decisión técnica. Por eso combinamos equipamiento, formación y asesoría para ayudarte a construir un sistema que realmente funcione.",
+    )
 
     class Meta:
         verbose_name        = "Configuración del sitio"

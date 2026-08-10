@@ -16,8 +16,10 @@ import { RichText } from "../components/ui/RichText"
 import Seo from "../components/Seo"
 import JsonLd from "../components/JsonLd"
 import { SITE_URL, absUrl } from "../utils/seo"
+import { useSiteSettings } from "../hooks/useSiteSettings"
 
 export default function ProductDetail() {
+  const { whatsappUrl } = useSiteSettings()
   const { slug }  = useParams()
   const { addItem } = useCartStore()
   const [qty, setQty]           = useState(1)
@@ -280,6 +282,29 @@ export default function ProductDetail() {
               Sin stock disponible
             </button>
           )}
+
+          {/* ¿No sabés si es para vos? — asesoría directa por WhatsApp */}
+          <a href={`${whatsappUrl}?text=${encodeURIComponent(`Hola! Quería consultar sobre ${product.name}`)}`}
+            target="_blank" rel="noreferrer"
+            style={{ display: "flex", alignItems: "center", gap: "12px", padding: "14px 18px",
+              borderRadius: "var(--r-xl)", background: "rgba(255,255,255,0.03)",
+              border: "1px solid var(--border)", textDecoration: "none",
+              transition: "border-color 200ms var(--ease), background 200ms var(--ease)" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.background = "rgba(26,255,110,0.05)" }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.background = "rgba(255,255,255,0.03)" }}>
+            <span style={{ width: "36px", height: "36px", borderRadius: "50%", flexShrink: 0,
+              background: "rgba(26,255,110,0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <MessageCircle size={17} color="var(--accent)" />
+            </span>
+            <span>
+              <span style={{ display: "block", fontSize: "13.5px", fontWeight: 700, color: "var(--text)" }}>
+                ¿No sabés si es para vos?
+              </span>
+              <span style={{ display: "block", fontSize: "12px", color: "var(--text-3)" }}>
+                Hablá con un especialista LevelPro
+              </span>
+            </span>
+          </a>
 
           {/* Descripción completa */}
           {product.description && (

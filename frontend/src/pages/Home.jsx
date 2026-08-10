@@ -695,6 +695,35 @@ export default function Home() {
 
       {/* Brands strip movido al hero */}
 
+      {/* Conoce LevelPro */}
+      {s.show_about !== false && (
+      <section data-testid="about-levelpro" style={{
+        padding: "clamp(32px, 4vw, 60px)",
+        background: "var(--surface)",
+        border: "1px solid var(--border)",
+        borderRadius: "var(--r-2xl)",
+        textAlign: "center",
+      }}>
+        <div style={{ maxWidth: "680px", margin: "0 auto" }}>
+          <LED color="green" label="Conoce LevelPro" />
+          <h2 style={{
+            fontFamily: "var(--font-display)",
+            fontSize: "clamp(1.5rem, 2.6vw, 2.1rem)",
+            fontWeight: 800, color: "var(--text)",
+            lineHeight: 1.25, letterSpacing: "-0.02em",
+            marginTop: "18px", marginBottom: "16px",
+          }}>
+            {s.about_title || "No vendemos audio por vender."}
+          </h2>
+          <p style={{
+            fontFamily: "var(--font-sans)", fontSize: "15.5px",
+            color: "var(--text-2)", lineHeight: 1.7,
+          }}>
+            {s.about_body || "Creemos que comprar equipamiento profesional debería empezar con una buena decisión técnica. Por eso combinamos equipamiento, formación y asesoría para ayudarte a construir un sistema que realmente funcione."}
+          </p>
+        </div>
+      </section>
+      )}
 
       {/* Final CTA */}
       {s.show_final_cta !== false && (

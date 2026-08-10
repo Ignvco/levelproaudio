@@ -375,6 +375,20 @@ export default function AdminSettings() {
             <Toggle label="Productos destacados"     checked={!!form.show_products}    onChange={v => set("show_products", v)} />
             <Toggle label="Cursos destacados"        checked={!!form.show_courses}     onChange={v => set("show_courses", v)} />
             <Toggle label="Servicios destacados"     checked={!!form.show_services}    onChange={v => set("show_services", v)} />
+            <Toggle label="Conoce LevelPro"          checked={!!form.show_about}       onChange={v => set("show_about", v)} />
+            <div style={{ margin: "8px 0 16px 0", paddingLeft: "2px" }}>
+              <Field label="Título — Conoce LevelPro">
+                <input style={inputSt} value={form.about_title || ""}
+                  onChange={e => set("about_title", e.target.value)}
+                  placeholder="No vendemos audio por vender." />
+              </Field>
+              <Field label="Texto — Conoce LevelPro">
+                <textarea style={{ ...inputSt, minHeight: "80px" }}
+                  value={form.about_body || ""}
+                  onChange={e => set("about_body", e.target.value)}
+                  placeholder="Creemos que comprar equipamiento profesional debería..." />
+              </Field>
+            </div>
             <Toggle label="Testimonial destacado"    checked={!!form.show_testimonial} onChange={v => set("show_testimonial", v)} />
             <Toggle label="Marcas partner (marquee)" checked={!!form.show_brands}      onChange={v => set("show_brands", v)} />
             <Toggle label="CTA final"                checked={!!form.show_final_cta}   onChange={v => set("show_final_cta", v)} />
