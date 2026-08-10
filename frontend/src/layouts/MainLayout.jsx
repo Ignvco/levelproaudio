@@ -84,6 +84,7 @@ function Navbar() {
   const userRef = useRef(null)
   const [shopOpen, setShopOpen] = useState(false)
   const shopCloseTimer = useRef(null)
+  const navPillRef = useRef(null)
 
   const { data: categoriesData } = useQuery({
     queryKey: ["categories"], queryFn: getCategories,
@@ -96,7 +97,23 @@ function Navbar() {
 
   useEffect(() => {
     setUserOpen(false)
+    setShopOpen(false)
   }, [location.pathname])
+
+  // Cerrar el mega menu al hacer click afuera del navbar, o con Escape
+  useEffect(() => {
+    if (!shopOpen) return
+    const onClickOutside = (e) => {
+      if (navPillRef.current && !navPillRef.current.contains(e.target)) setShopOpen(false)
+    }
+    const onEscape = (e) => { if (e.key === "Escape") setShopOpen(false) }
+    document.addEventListener("mousedown", onClickOutside)
+    document.addEventListener("keydown", onEscape)
+    return () => {
+      document.removeEventListener("mousedown", onClickOutside)
+      document.removeEventListener("keydown", onEscape)
+    }
+  }, [shopOpen])
 
   useEffect(() => {
     const fn = (e) => {
@@ -161,6 +178,7 @@ function Navbar() {
         </Link>
       )}
     <header
+      ref={navPillRef}
       className="lp-navbar-desktop"
       style={{
         position:  "fixed",
@@ -179,8 +197,8 @@ function Navbar() {
         backdropFilter:  "blur(20px) saturate(1.6)",
         WebkitBackdropFilter: "blur(20px) saturate(1.6)",
         border:          "1px solid rgba(255,255,255,0.08)",
-        borderRadius:    "var(--r-full)",
-        transition:      "background 320ms var(--ease)",
+        borderRadius:    shopOpen ? "var(--r-full) var(--r-full) 0 0" : "var(--r-full)",
+        transition:      "background 320ms var(--ease), border-radius 240ms cubic-bezier(.2,.8,.2,1)",
         boxShadow: `
           0 20px 60px rgba(0,0,0,0.55),
           0 0 0 1px rgba(255,255,255,0.04) inset,
@@ -239,48 +257,9 @@ function Navbar() {
             if (!isShop || categoryTree.length === 0) return linkEl
 
             return (
-              <div key={item.to} style={{ position: "relative" }}
+              <div key={item.to}
                 onMouseEnter={openShopMenu} onMouseLeave={closeShopMenu}>
                 {linkEl}
-                {shopOpen && (
-                  <div style={{
-                    position: "absolute", top: "calc(100% + 12px)", left: "50%",
-                    transform: "translateX(-50%)", minWidth: "560px",
-                    background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.1)",
-                    borderRadius: "var(--r-xl)", boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
-                    padding: "22px 24px", display: "flex", gap: "32px", flexWrap: "wrap",
-                    zIndex: 200,
-                  }}>
-                    {categoryTree.map(cat => (
-                      <div key={cat.id} style={{ minWidth: "140px" }}>
-                        <Link to={`/shop?category=${cat.slug}`}
-                          style={{ display: "block", fontSize: "12px", fontWeight: 700,
-                            color: "var(--accent)", textTransform: "uppercase",
-                            letterSpacing: "0.06em", textDecoration: "none", marginBottom: "10px" }}>
-                          {cat.name}
-                        </Link>
-                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                          {cat.children.length > 0
-                            ? cat.children.map(ch => (
-                              <Link key={ch.id} to={`/shop?category=${ch.slug}`}
-                                style={{ fontSize: "13px", color: "rgba(255,255,255,0.7)",
-                                  textDecoration: "none" }}
-                                onMouseEnter={e => e.currentTarget.style.color = "#fff"}
-                                onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.7)"}>
-                                {ch.name}
-                              </Link>
-                            ))
-                            : (
-                              <Link to={`/shop?category=${cat.slug}`}
-                                style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", textDecoration: "none" }}>
-                                Ver todo
-                              </Link>
-                            )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             )
           })}
@@ -457,6 +436,75 @@ function Navbar() {
           )}
         </div>
       </div>
+
+      {/* Mega menu — anclado al wrapper completo del navbar (no a un
+          item individual), mismo ancho real que el pill, integrado
+          visualmente sin costura (radios que se completan entre sí). */}
+      {categoryTree.length > 0 && (
+        <div
+          onMouseEnter={openShopMenu} onMouseLeave={closeShopMenu}
+          style={{
+            position: "absolute", top: "calc(100% - 1px)", left: 0, width: "100%",
+            background: "rgba(10,10,10,0.97)",
+            backdropFilter: "blur(22px) saturate(1.4)",
+            WebkitBackdropFilter: "blur(22px) saturate(1.4)",
+            border: "1px solid rgba(255,255,255,0.07)", borderTop: "none",
+            borderRadius: "0 0 var(--r-2xl) var(--r-2xl)",
+            boxShadow: "0 30px 70px rgba(0,0,0,0.45)",
+            padding: "clamp(28px, 3vw, 40px) clamp(28px, 4vw, 48px) clamp(32px, 3.4vw, 46px)",
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 200px))",
+            gap: "16px 40px",
+            justifyContent: "start",
+            opacity: shopOpen ? 1 : 0,
+            visibility: shopOpen ? "visible" : "hidden",
+            transform: shopOpen ? "translateY(0)" : "translateY(-6px)",
+            transition: "opacity 240ms cubic-bezier(.2,.8,.2,1), transform 240ms cubic-bezier(.2,.8,.2,1), visibility 240ms",
+            pointerEvents: shopOpen ? "auto" : "none",
+            zIndex: 99,
+          }}>
+          {categoryTree.map(cat => (
+            <div key={cat.id}>
+              <Link to={`/shop?category=${cat.slug}`}
+                style={{ display: "block", fontSize: "11.5px", fontWeight: 700,
+                  color: "var(--accent)", textTransform: "uppercase",
+                  letterSpacing: "0.07em", textDecoration: "none", marginBottom: "14px" }}>
+                {cat.name}
+              </Link>
+              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                {cat.children.length > 0
+                  ? cat.children.map(ch => (
+                    <Link key={ch.id} to={`/shop?category=${ch.slug}`}
+                      style={{ fontSize: "14px", color: "rgba(255,255,255,0.70)",
+                        textDecoration: "none", padding: "6px 8px", margin: "0 -8px",
+                        borderRadius: "8px",
+                        transition: "background 160ms var(--ease), color 160ms var(--ease), transform 160ms var(--ease)" }}
+                      onMouseEnter={e => {
+                        e.currentTarget.style.color = "#fff"
+                        e.currentTarget.style.background = "rgba(255,255,255,0.04)"
+                        e.currentTarget.style.transform = "translateX(2px)"
+                      }}
+                      onMouseLeave={e => {
+                        e.currentTarget.style.color = "rgba(255,255,255,0.70)"
+                        e.currentTarget.style.background = "transparent"
+                        e.currentTarget.style.transform = "translateX(0)"
+                      }}>
+                      {ch.name}
+                    </Link>
+                  ))
+                  : (
+                    <Link to={`/shop?category=${cat.slug}`}
+                      style={{ fontSize: "14px", color: "rgba(255,255,255,0.5)",
+                        textDecoration: "none", padding: "6px 8px", margin: "0 -8px",
+                        borderRadius: "8px" }}>
+                      Ver todo
+                    </Link>
+                  )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </header>
     </>,
     document.body
