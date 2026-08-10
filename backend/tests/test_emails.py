@@ -129,7 +129,8 @@ class EmailBrandingDynamicTest(TestCase):
         site = SiteSettings.get()
         site.site_name = name
         site.accent_color = color
-        site.save(update_fields=["site_name", "accent_color"])
+        site.contact_email = "hola@acmeaudio.com"
+        site.save(update_fields=["site_name", "accent_color", "contact_email"])
 
     @patch("apps.emails.send_email")
     def test_password_reset_subject_uses_real_brand_name(self, mock_send):

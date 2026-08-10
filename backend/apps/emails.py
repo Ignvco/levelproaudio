@@ -11,22 +11,41 @@ BG             = "#0a0a0a"
 
 def _brand():
     """
-    Nombre y color reales de Configuración del sitio, con respaldo si
-    todavía no se configuró nada. Antes esto estaba fijo como "LevelPro
-    Audio" en todos los emails — ahora sigue el mismo patrón dinámico
-    que ya usa el resto del sitio.
+    Datos reales de Configuración del sitio, con respaldo si todavía no
+    se configuró nada — mismo patrón dinámico que usa el resto del sitio.
     """
     try:
         from apps.site_settings.models import SiteSettings
+        from core.media import media_url
         site = SiteSettings.get()
-        return site.site_name or "LevelPro Audio", site.accent_color or DEFAULT_ACCENT
+        logo_url = media_url(site.logo)
+        if logo_url:
+            logo_url = f"{settings.FRONTEND_URL.rstrip('/')}{logo_url}" if not logo_url.startswith("http") else logo_url
+        return {
+            "name":      site.site_name or "LevelPro Audio",
+            "accent":    site.accent_color or DEFAULT_ACCENT,
+            "logo_url":  logo_url,
+            "whatsapp":  site.contact_whatsapp or "",
+            "email":     site.contact_email or "",
+        }
     except Exception:
-        return "LevelPro Audio", DEFAULT_ACCENT
+        return {"name": "LevelPro Audio", "accent": DEFAULT_ACCENT, "logo_url": None, "whatsapp": "", "email": ""}
 
 
-def _wrap(title, body_html, cta=None):
-    """Envuelve el contenido en una plantilla HTML de marca (inline CSS)."""
-    site_name, accent = _brand()
+def _wrap(title, body_html, cta=None, icon="✨"):
+    """
+    Envuelve el contenido en una plantilla HTML de marca (inline CSS,
+    tablas — así se ve bien en Gmail/Outlook/Apple Mail). icon es el
+    emoji que acompaña al título, para dar de un vistazo el tipo de
+    aviso (pago, reserva, confirmación, etc.) sin tener que leer todo.
+    """
+    brand  = _brand()
+    accent = brand["accent"]
+    header_logo = (
+        f'<img src="{brand["logo_url"]}" alt="{escape(brand["name"])}" height="28" style="display:block;max-height:28px;width:auto;" />'
+        if brand["logo_url"] else
+        f'<span style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px;">{escape(brand["name"])}</span>'
+    )
     cta_html = ""
     if cta:
         cta_html = f"""
@@ -36,26 +55,38 @@ def _wrap(title, body_html, cta=None):
             {cta['label']}
           </a>
         </td></tr>"""
+
+    contact_bits = []
+    if brand["whatsapp"]:
+        wa_number = "".join(c for c in brand["whatsapp"] if c.isdigit())
+        contact_bits.append(f'<a href="https://wa.me/{wa_number}" style="color:#8a8a8a;text-decoration:none;">WhatsApp</a>')
+    if brand["email"]:
+        contact_bits.append(f'<a href="mailto:{escape(brand["email"])}" style="color:#8a8a8a;text-decoration:none;">{escape(brand["email"])}</a>')
+    contact_line = " · ".join(contact_bits)
+
     return f"""\
-<!doctype html><html><body style="margin:0;background:#050505;font-family:Arial,Helvetica,sans-serif;">
+<!doctype html><html><body style="margin:0;background:#050505;font-family:-apple-system,Segoe UI,Roboto,Arial,Helvetica,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#050505;padding:32px 0;">
     <tr><td align="center">
       <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;
         background:{BG};border:1px solid #1c1c1c;border-radius:20px;overflow:hidden;">
-        <tr><td style="padding:28px 32px 8px;border-bottom:1px solid #1c1c1c;">
-          <span style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px;">
-            {escape(site_name)}
-          </span>
+        <tr><td style="height:3px;background:linear-gradient(90deg,{accent},transparent);"></td></tr>
+        <tr><td style="padding:24px 32px 20px;border-bottom:1px solid #1c1c1c;">
+          {header_logo}
         </td></tr>
         <tr><td style="padding:32px 32px 12px;">
-          <h1 style="margin:0 0 12px;font-size:24px;color:#fff;font-weight:800;">{escape(title)}</h1>
+          <div style="width:44px;height:44px;border-radius:12px;background:{accent}22;
+            border:1px solid {accent}44;display:flex;align-items:center;justify-content:center;
+            font-size:20px;margin-bottom:16px;line-height:44px;text-align:center;">{icon}</div>
+          <h1 style="margin:0 0 12px;font-size:23px;color:#fff;font-weight:800;letter-spacing:-0.3px;">{escape(title)}</h1>
         </td></tr>
         <tr><td style="padding:0 32px 8px;color:#b8b8b8;font-size:15px;line-height:1.65;">
           {body_html}
         </td></tr>
         {cta_html}
-        <tr><td style="padding:24px 32px;border-top:1px solid #1c1c1c;color:#6a6a6a;font-size:12px;">
-          {escape(site_name)}<br/>
+        <tr><td style="padding:24px 32px;border-top:1px solid #1c1c1c;color:#6a6a6a;font-size:12px;line-height:1.8;">
+          <strong style="color:#8a8a8a;">{escape(brand["name"])}</strong><br/>
+          {contact_line}<br/>
           Este es un email automático, por favor no respondas a esta dirección.
         </td></tr>
       </table>
@@ -113,7 +144,7 @@ def send_email(to, subject, html, attachments=None):
 # ── Emails específicos ────────────────────────────────────────
 
 def send_order_confirmation(order):
-    _, accent = _brand()
+    accent = _brand()["accent"]
     ref = str(order.id)[:8].upper()
     rows = ""
     for it in order.items.all():
@@ -132,14 +163,14 @@ def send_order_confirmation(order):
       </table>
       <p style="margin:16px 0 0;">Nos pondremos en contacto para coordinar la entrega.</p>
     """
-    html = _wrap(f"Pago confirmado — Orden #{ref}", body)
+    html = _wrap(f"Pago confirmado — Orden #{ref}", body, icon="✅")
     send_email(order.email, f"✅ Pago confirmado — Orden #{ref}", html)
 
 
 def send_ticket_email(email, campaign, codes):
     if not codes:
         return
-    _, accent = _brand()
+    accent = _brand()["accent"]
     chips = "".join(
         f'<span style="display:inline-block;background:#111;border:1px solid #2a2a2a;'
         f'color:{accent};font-family:monospace;font-size:14px;font-weight:700;'
@@ -154,25 +185,25 @@ def send_ticket_email(email, campaign, codes):
       <p style="margin:0;">El sorteo se realiza el <strong style="color:#fff;">{draw}</strong>.
         Podés ver tus tickets en cualquier momento desde tu cuenta.</p>
     """
-    html = _wrap("🎟️ Tus tickets del sorteo", body,
+    html = _wrap("Tus tickets del sorteo", body, icon="🎟️",
                  cta={"label": "Ver mis participaciones", "url": f"{settings.FRONTEND_URL}/dashboard/rewards"})
     send_email(email, f"🎟️ Tus tickets para {campaign.name}", html)
 
 
 def send_password_reset(email, reset_url):
-    site_name, _ = _brand()
+    site_name = _brand()["name"]
     body = f"""
       <p style="margin:0 0 16px;">Recibimos una solicitud para restablecer tu contraseña.</p>
       <p style="margin:0;">Hacé clic en el botón de abajo para crear una nueva. El enlace vence en 1 hora.
         Si no fuiste vos, ignorá este email.</p>
     """
-    html = _wrap("Restablecer tu contraseña", body,
+    html = _wrap("Restablecer tu contraseña", body, icon="🔑",
                  cta={"label": "Crear nueva contraseña", "url": reset_url})
     send_email(email, f"Restablecer tu contraseña — {site_name}", html)
 
 
 def send_price_drop_email(user, product):
-    _, accent = _brand()
+    accent = _brand()["accent"]
     body = f"""
       <p style="margin:0 0 16px;">Uno de tus favoritos bajó de precio 👀</p>
       <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #1c1c1c;margin:8px 0;padding-top:16px;">
@@ -183,7 +214,7 @@ def send_price_drop_email(user, product):
         </tr>
       </table>
     """
-    html = _wrap("¡Bajó de precio! 📉", body,
+    html = _wrap("¡Bajó de precio!", body, icon="📉",
                  cta={"label": "Ver producto", "url": f"{settings.FRONTEND_URL}/shop/{product.slug}"})
     send_email(user.email, f"📉 {product.name} bajó de precio", html)
 
@@ -193,6 +224,90 @@ def send_back_in_stock_email(user, product):
       <p style="margin:0 0 16px;">Buenas noticias — uno de tus favoritos volvió a estar disponible.</p>
       <p style="margin:0;color:#fff;font-size:15px;font-weight:600;">{escape(product.name)}</p>
     """
-    html = _wrap("¡Volvió a stock! ✅", body,
+    html = _wrap("¡Volvió a stock!", body, icon="📦",
                  cta={"label": "Comprar ahora", "url": f"{settings.FRONTEND_URL}/shop/{product.slug}"})
     send_email(user.email, f"✅ {product.name} volvió a stock", html)
+
+
+# ── Servicios: reservas y solicitudes ──────────────────────────
+# Antes, agendar un servicio, reservar un turno, y que te lo confirmen
+# solo se veía reflejado dentro de la plataforma — nunca se mandaba
+# ningún email, a diferencia de las compras de productos (que sí
+# tenían su confirmación). Esto cierra ese hueco.
+
+def send_booking_received(booking):
+    fecha = booking.scheduled_date.strftime("%d/%m/%Y %H:%M")
+    body = f"""
+      <p style="margin:0 0 16px;">Recibimos tu reserva para <strong style="color:#fff;">{escape(booking.service.name)}</strong>.</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #1c1c1c;margin:8px 0;padding-top:16px;">
+        <tr><td style="padding:6px 0;color:#8a8a8a;font-size:13px;">Fecha solicitada</td>
+        <td style="padding:6px 0;color:#fff;font-size:14px;font-weight:600;text-align:right;">{fecha}</td></tr>
+      </table>
+      <p style="margin:16px 0 0;">Te vamos a avisar apenas la confirmemos. Podés ver el estado de tu reserva en
+        cualquier momento desde tu cuenta.</p>
+    """
+    html = _wrap("Recibimos tu reserva", body, icon="📅",
+                 cta={"label": "Ver mis reservas", "url": f"{settings.FRONTEND_URL}/dashboard/bookings"})
+    send_email(booking.user.email, f"📅 Recibimos tu reserva — {booking.service.name}", html)
+
+
+def send_booking_confirmed(booking):
+    fecha = booking.scheduled_date.strftime("%d/%m/%Y %H:%M")
+    body = f"""
+      <p style="margin:0 0 16px;">¡Tu reserva quedó <strong style="color:#fff;">confirmada</strong>!</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #1c1c1c;margin:8px 0;padding-top:16px;">
+        <tr><td style="padding:6px 0;color:#8a8a8a;font-size:13px;">Servicio</td>
+        <td style="padding:6px 0;color:#fff;font-size:14px;font-weight:600;text-align:right;">{escape(booking.service.name)}</td></tr>
+        <tr><td style="padding:6px 0;color:#8a8a8a;font-size:13px;">Fecha</td>
+        <td style="padding:6px 0;color:#fff;font-size:14px;font-weight:600;text-align:right;">{fecha}</td></tr>
+      </table>
+      <p style="margin:16px 0 0;">Nos vemos pronto. Si necesitás reprogramar o cancelar, hacelo desde tu cuenta.</p>
+    """
+    html = _wrap("Reserva confirmada", body, icon="✅",
+                 cta={"label": "Ver detalle", "url": f"{settings.FRONTEND_URL}/dashboard/bookings"})
+    send_email(booking.user.email, f"✅ Reserva confirmada — {booking.service.name}", html)
+
+
+def send_booking_cancelled(booking):
+    fecha = booking.scheduled_date.strftime("%d/%m/%Y %H:%M")
+    body = f"""
+      <p style="margin:0 0 16px;">Tu reserva para <strong style="color:#fff;">{escape(booking.service.name)}</strong>
+        del {fecha} fue cancelada.</p>
+      <p style="margin:0;">Si fue un error o querés reagendar, escribinos o volvé a reservar desde el sitio.</p>
+    """
+    html = _wrap("Reserva cancelada", body, icon="🚫",
+                 cta={"label": "Reservar de nuevo", "url": f"{settings.FRONTEND_URL}/services"})
+    send_email(booking.user.email, f"Reserva cancelada — {booking.service.name}", html)
+
+
+def send_service_request_received(sr):
+    service_name = sr.service.name if sr.service else "tu proyecto"
+    body = f"""
+      <p style="margin:0 0 16px;">Recibimos tu solicitud sobre <strong style="color:#fff;">{escape(service_name)}</strong>.</p>
+      <p style="margin:0;">Te vamos a contactar a la brevedad para coordinar los detalles. Podés ver el estado
+        de tu solicitud en cualquier momento desde tu cuenta.</p>
+    """
+    html = _wrap("Recibimos tu solicitud", body, icon="📨",
+                 cta={"label": "Ver mis solicitudes", "url": f"{settings.FRONTEND_URL}/dashboard/services"})
+    send_email(sr.email or sr.user.email, f"📨 Recibimos tu solicitud — {service_name}", html)
+
+
+_REQUEST_STATUS_COPY = {
+    "contacted": ("Te contactamos", "💬", "Ya nos pusimos en contacto por tu solicitud. Revisá tu WhatsApp o email."),
+    "accepted":  ("¡Solicitud aceptada!", "✅", "Aceptamos tu solicitud — en breve vas a ver la reserva confirmada en tu cuenta."),
+    "rejected":  ("Sobre tu solicitud", "📋", "No vamos a poder tomar esta solicitud por ahora. Cualquier duda, escribinos."),
+}
+
+def send_service_request_status_update(sr):
+    copy = _REQUEST_STATUS_COPY.get(sr.status)
+    if not copy:
+        return
+    title, icon, msg = copy
+    service_name = sr.service.name if sr.service else "tu solicitud"
+    body = f"""
+      <p style="margin:0 0 16px;">Sobre tu solicitud de <strong style="color:#fff;">{escape(service_name)}</strong>:</p>
+      <p style="margin:0;">{msg}</p>
+    """
+    html = _wrap(title, body, icon=icon,
+                 cta={"label": "Ver mis solicitudes", "url": f"{settings.FRONTEND_URL}/dashboard/services"})
+    send_email(sr.email or sr.user.email, f"{icon} {title} — {service_name}", html)

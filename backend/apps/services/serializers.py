@@ -76,7 +76,10 @@ class BookingSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["user"] = self.context["request"].user
-        return super().create(validated_data)
+        booking = super().create(validated_data)
+        from apps.emails import send_booking_received
+        send_booking_received(booking)
+        return booking
 
 
 class ServiceRequestSerializer(serializers.ModelSerializer):
@@ -96,4 +99,7 @@ class ServiceRequestSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         validated_data["user"] = self.context["request"].user
-        return super().create(validated_data)
+        sr = super().create(validated_data)
+        from apps.emails import send_service_request_received
+        send_service_request_received(sr)
+        return sr

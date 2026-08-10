@@ -1195,6 +1195,7 @@ def update_booking_status(request, pk):
     except Booking.DoesNotExist:
         return Response({"error": "No encontrado."}, status=404)
 
+    old_status = booking.status
     new_status = request.data.get("status", booking.status)
     valid_statuses = dict(Booking.Status.choices)
     if new_status not in valid_statuses:
@@ -1215,6 +1216,17 @@ def update_booking_status(request, pk):
         update_fields.append("cancelled_at")
 
     booking.save(update_fields=update_fields)
+
+    # Solo si realmente CAMBIÓ de estado — si el admin re-guarda el
+    # mismo estado sin querer, no hay que mandar el email de nuevo.
+    if new_status != old_status:
+        if new_status == Booking.Status.CONFIRMED:
+            from apps.emails import send_booking_confirmed
+            send_booking_confirmed(booking)
+        elif new_status == Booking.Status.CANCELLED:
+            from apps.emails import send_booking_cancelled
+            send_booking_cancelled(booking)
+
     return Response({"status": booking.status})
 
 
@@ -1259,6 +1271,10 @@ def update_request_status(request, pk):
                 "status":         "confirmed",
             }
         )
+
+    if sr.status != old_status:
+        from apps.emails import send_service_request_status_update
+        send_service_request_status_update(sr)
 
     return Response({"status": sr.status})
 
