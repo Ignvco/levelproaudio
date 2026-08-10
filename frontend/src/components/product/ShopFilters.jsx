@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react"
 import { Check, X, SlidersHorizontal } from "lucide-react"
 import { mediaUrl } from "../../utils/mediaUrl"
+import { buildCategoryTree } from "../../utils/categoryTree"
 
 const money = (v) => `$${Number(v).toLocaleString("es-CL")}`
 
@@ -130,12 +131,27 @@ export default function ShopFilters({
         <div style={{ display: "flex", flexDirection: "column", gap: "3px" }}>
           <RowButton active={!values.category} testid="filter-cat-all"
             onClick={() => onSet({ category: null })}>Todas</RowButton>
-          {categories.map(cat => (
-            <RowButton key={cat.id} active={values.category === cat.slug}
-              testid={`filter-cat-${cat.slug}`} count={cat.product_count}
-              onClick={() => onSet({ category: values.category === cat.slug ? null : cat.slug })}>
-              {cat.name}
-            </RowButton>
+          {buildCategoryTree(categories).map(cat => (
+            <div key={cat.id} style={{ marginTop: "6px" }}>
+              <RowButton active={values.category === cat.slug}
+                testid={`filter-cat-${cat.slug}`} count={cat.product_count || undefined}
+                onClick={() => onSet({ category: values.category === cat.slug ? null : cat.slug })}>
+                <span style={{ fontWeight: 700 }}>{cat.name}</span>
+              </RowButton>
+              {cat.children.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "3px",
+                  marginTop: "3px", paddingLeft: "16px",
+                  borderLeft: "1px solid var(--border)", marginLeft: "12px" }}>
+                  {cat.children.map(ch => (
+                    <RowButton key={ch.id} active={values.category === ch.slug}
+                      testid={`filter-cat-${ch.slug}`} count={ch.product_count}
+                      onClick={() => onSet({ category: values.category === ch.slug ? null : ch.slug })}>
+                      {ch.name}
+                    </RowButton>
+                  ))}
+                </div>
+              )}
+            </div>
           ))}
         </div>
       </Section>

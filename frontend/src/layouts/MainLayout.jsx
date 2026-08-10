@@ -7,6 +7,7 @@ import { ArrowLeft } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
 import { useCartStore } from "../store/cartStore"
 import { getCategories } from "../api/products.api"
+import { buildCategoryTree } from "../utils/categoryTree"
 import logoImg from "../assets/logo.png"
 import { useSiteSettings } from "../hooks/useSiteSettings"
 
@@ -49,30 +50,6 @@ function NavIcon({ name, size = 20, filled = false }) {
 
 // ═════════════════════════════════════════════════════════════
 // Desktop Navbar — Floating dark pill centered at top
-// ═════════════════════════════════════════════════════════════
-// Arma el árbol padre → hijas a partir del listado plano que devuelve
-// la API — así el menú refleja SIEMPRE las categorías reales del admin,
-// sin tener que tocar código cada vez que se agrega una nueva.
-// Categorías sin productos (ni propios ni de sus hijas) se ocultan,
-// para no llevar a páginas de resultados vacías.
-function buildCategoryTree(categories) {
-  if (!categories?.length) return []
-  const byParent = {}
-  categories.forEach(c => {
-    const key = c.parent || "root"
-    if (!byParent[key]) byParent[key] = []
-    byParent[key].push(c)
-  })
-  const withProducts = (cat) => {
-    const children = byParent[cat.id] || []
-    const childCount = children.reduce((sum, ch) => sum + ch.product_count, 0)
-    return cat.product_count > 0 || childCount > 0
-  }
-  return (byParent.root || [])
-    .filter(withProducts)
-    .map(top => ({ ...top, children: (byParent[top.id] || []).filter(c => c.product_count > 0) }))
-}
-
 function Navbar() {
   const { isAuthenticated, user, logout } = useAuthStore()
   const { siteName, logoUrl } = useSiteSettings()

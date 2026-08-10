@@ -2,7 +2,7 @@
 // Drag & drop nativo (sin librerías) para reordenar categorías padre e hijas.
 // Al soltar, guarda el nuevo orden en el backend (campo "order") automáticamente.
 
-import { useState, useRef, useCallback } from "react"
+import { useState, useRef, useCallback, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../../api/client"
 import { showToast } from "../../components/ui/ToastNotification"
@@ -207,8 +207,12 @@ function ChildrenList({ items, parentId, onEdit, onDelete, onChildReorder }) {
   const [localChildren, setLocalChildren] = useState(items)
   const [draggingIdx, setDraggingIdx]     = useState(null)
 
-  // Sync si cambian desde afuera
-  useState(() => { setLocalChildren(items) }, [items])
+  // Sync si cambian desde afuera — antes esto usaba useState(fn, [items]),
+  // que NO es un patrón real de React (useState no tiene segundo argumento
+  // de dependencias, se ignoraba en silencio). La lista de hijas quedaba
+  // congelada desde el primer render y nunca reflejaba cambios reales
+  // (mover una categoría a otro padre, por ejemplo).
+  useEffect(() => { setLocalChildren(items) }, [items])
 
   const { onDragStart, onDragOver, onDrop, onDragEnd } = useDragSort({
     items: localChildren,
@@ -226,7 +230,7 @@ function ChildrenList({ items, parentId, onEdit, onDelete, onChildReorder }) {
           cat={child}
           isChild
           isDragging={draggingIdx === i}
-          onEdit={onEdit}
+          onEdit={() => onEdit(child)}
           onDelete={onDelete}
           onDragStart={() => { setDraggingIdx(i); onDragStart(i)() }}
           onDragOver={onDragOver(i)}
@@ -397,7 +401,7 @@ export default function AdminCategories() {
                   <ChildrenList
                     items={children}
                     parentId={cat.id}
-                    onEdit={() => setModal(cat)}
+                    onEdit={(child) => setModal(child)}
                     onDelete={handleDelete}
                     onChildReorder={handleChildReorder}
                   />
