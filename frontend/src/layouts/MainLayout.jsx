@@ -2,9 +2,11 @@
 import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { Link, useNavigate, useLocation } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
 import { useCartStore } from "../store/cartStore"
+import { getCategories } from "../api/products.api"
 import logoImg from "../assets/logo.png"
 import { useSiteSettings } from "../hooks/useSiteSettings"
 
@@ -48,6 +50,29 @@ function NavIcon({ name, size = 20, filled = false }) {
 // ═════════════════════════════════════════════════════════════
 // Desktop Navbar — Floating dark pill centered at top
 // ═════════════════════════════════════════════════════════════
+// Arma el árbol padre → hijas a partir del listado plano que devuelve
+// la API — así el menú refleja SIEMPRE las categorías reales del admin,
+// sin tener que tocar código cada vez que se agrega una nueva.
+// Categorías sin productos (ni propios ni de sus hijas) se ocultan,
+// para no llevar a páginas de resultados vacías.
+function buildCategoryTree(categories) {
+  if (!categories?.length) return []
+  const byParent = {}
+  categories.forEach(c => {
+    const key = c.parent || "root"
+    if (!byParent[key]) byParent[key] = []
+    byParent[key].push(c)
+  })
+  const withProducts = (cat) => {
+    const children = byParent[cat.id] || []
+    const childCount = children.reduce((sum, ch) => sum + ch.product_count, 0)
+    return cat.product_count > 0 || childCount > 0
+  }
+  return (byParent.root || [])
+    .filter(withProducts)
+    .map(top => ({ ...top, children: (byParent[top.id] || []).filter(c => c.product_count > 0) }))
+}
+
 function Navbar() {
   const { isAuthenticated, user, logout } = useAuthStore()
   const { siteName, logoUrl } = useSiteSettings()
@@ -57,6 +82,17 @@ function Navbar() {
 
   const [userOpen, setUserOpen] = useState(false)
   const userRef = useRef(null)
+  const [shopOpen, setShopOpen] = useState(false)
+  const shopCloseTimer = useRef(null)
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ["categories"], queryFn: getCategories,
+    staleTime: 5 * 60 * 1000, // el árbol no cambia seguido
+  })
+  const categoryTree = buildCategoryTree(categoriesData?.results || categoriesData || [])
+
+  const openShopMenu  = () => { clearTimeout(shopCloseTimer.current); setShopOpen(true) }
+  const closeShopMenu = () => { shopCloseTimer.current = setTimeout(() => setShopOpen(false), 150) }
 
   useEffect(() => {
     setUserOpen(false)
@@ -169,7 +205,8 @@ function Navbar() {
         <nav style={{ display: "flex", alignItems: "center", gap: "2px" }}>
           {NAV_LINKS.map(item => {
             const isActive = location.pathname.startsWith(item.to)
-            return (
+            const isShop = item.to === "/shop"
+            const linkEl = (
               <Link key={item.to}
                 to={item.to}
                 data-testid={`nav-${item.label.toLowerCase()}`}
@@ -197,6 +234,54 @@ function Navbar() {
                 }}>
                 {item.label}
               </Link>
+            )
+
+            if (!isShop || categoryTree.length === 0) return linkEl
+
+            return (
+              <div key={item.to} style={{ position: "relative" }}
+                onMouseEnter={openShopMenu} onMouseLeave={closeShopMenu}>
+                {linkEl}
+                {shopOpen && (
+                  <div style={{
+                    position: "absolute", top: "calc(100% + 12px)", left: "50%",
+                    transform: "translateX(-50%)", minWidth: "560px",
+                    background: "#0d0d0d", border: "1px solid rgba(255,255,255,0.1)",
+                    borderRadius: "var(--r-xl)", boxShadow: "0 20px 50px rgba(0,0,0,0.5)",
+                    padding: "22px 24px", display: "flex", gap: "32px", flexWrap: "wrap",
+                    zIndex: 200,
+                  }}>
+                    {categoryTree.map(cat => (
+                      <div key={cat.id} style={{ minWidth: "140px" }}>
+                        <Link to={`/shop?category=${cat.slug}`}
+                          style={{ display: "block", fontSize: "12px", fontWeight: 700,
+                            color: "var(--accent)", textTransform: "uppercase",
+                            letterSpacing: "0.06em", textDecoration: "none", marginBottom: "10px" }}>
+                          {cat.name}
+                        </Link>
+                        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                          {cat.children.length > 0
+                            ? cat.children.map(ch => (
+                              <Link key={ch.id} to={`/shop?category=${ch.slug}`}
+                                style={{ fontSize: "13px", color: "rgba(255,255,255,0.7)",
+                                  textDecoration: "none" }}
+                                onMouseEnter={e => e.currentTarget.style.color = "#fff"}
+                                onMouseLeave={e => e.currentTarget.style.color = "rgba(255,255,255,0.7)"}>
+                                {ch.name}
+                              </Link>
+                            ))
+                            : (
+                              <Link to={`/shop?category=${cat.slug}`}
+                                style={{ fontSize: "13px", color: "rgba(255,255,255,0.5)", textDecoration: "none" }}>
+                                Ver todo
+                              </Link>
+                            )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )
           })}
         </nav>
