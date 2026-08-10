@@ -35,6 +35,7 @@ import ResetPassword from "./pages/ResetPassword"
 import Terminos from "./pages/legal/Terminos"
 import Privacidad from "./pages/legal/Privacidad"
 import BasesSorteo from "./pages/legal/BasesSorteo"
+import PoliticaGarantia from "./pages/legal/PoliticaGarantia"
 
 // Páginas protegidas
 import Dashboard from "./pages/Dashboard"
@@ -158,6 +159,7 @@ function App() {
         <Route path="/terminos" element={<MainLayout><Terminos /></MainLayout>} />
         <Route path="/privacidad" element={<MainLayout><Privacidad /></MainLayout>} />
         <Route path="/bases-sorteo" element={<MainLayout><BasesSorteo /></MainLayout>} />
+        <Route path="/garantia" element={<MainLayout><PoliticaGarantia /></MainLayout>} />
 
         <Route path="/admin" element={<AdminRoute><Suspense fallback={<AdminLoading />}><AdminLayout /></Suspense></AdminRoute>}>
           <Route index element={<Suspense fallback={<AdminLoading />}><AdminDashboard /></Suspense>} />

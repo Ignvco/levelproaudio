@@ -389,6 +389,7 @@ export default function AdminSettings() {
                   placeholder="Creemos que comprar equipamiento profesional debería..." />
               </Field>
             </div>
+            <Toggle label="Confianza (garantía / envíos / pago / soporte)" checked={!!form.show_trust_details} onChange={v => set("show_trust_details", v)} />
             <Toggle label="Testimonial destacado"    checked={!!form.show_testimonial} onChange={v => set("show_testimonial", v)} />
             <Toggle label="Marcas partner (marquee)" checked={!!form.show_brands}      onChange={v => set("show_brands", v)} />
             <Toggle label="CTA final"                checked={!!form.show_final_cta}   onChange={v => set("show_final_cta", v)} />

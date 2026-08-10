@@ -43,6 +43,7 @@ class SiteSettings(TimeStampedModel):
     show_courses     = models.BooleanField(default=True)
     show_services    = models.BooleanField(default=True)
     show_about       = models.BooleanField(default=True)
+    show_trust_details = models.BooleanField(default=True)
     show_testimonial = models.BooleanField(default=True)
     show_brands      = models.BooleanField(default=True)
     show_final_cta   = models.BooleanField(default=True)

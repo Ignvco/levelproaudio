@@ -32,7 +32,7 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
             "contact_whatsapp", "contact_instagram", "contact_email",
             # Sections toggles
             "show_trust_strip", "show_pillars", "show_products",
-            "show_courses", "show_services", "show_about", "show_testimonial",
+            "show_courses", "show_services", "show_about", "show_trust_details", "show_testimonial",
             "show_brands", "show_final_cta",
             # SEO
             "seo_title", "seo_description", "og_image_url",

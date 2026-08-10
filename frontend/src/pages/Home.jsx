@@ -16,6 +16,8 @@ import logoImg from "../assets/logo.png"
 import {
   LED, VUMeter, DigitalReadout, Knob, Fader, AnimatedWaveform,
 } from "../components/ui/StudioUI"
+import { ShieldCheck, Truck, CreditCard, MessageCircle } from "lucide-react"
+import { useSiteSettings } from "../hooks/useSiteSettings"
 
 // ─── helpers ───────────────────────────────────────────────────
 const clp = (n) => new Intl.NumberFormat("es-CL", { style: "currency",
@@ -76,6 +78,7 @@ function AnimatedNumber({ value }) {
 
 // ═══════════════════════════════════════════════════════════════
 export default function Home() {
+  const { whatsappUrl } = useSiteSettings()
   const { data: featuredData } = useQuery({
     queryKey: ["products", { featured: true }],
     queryFn:  () => getProducts({ is_featured: true, page_size: 4 }),
@@ -630,6 +633,65 @@ export default function Home() {
             </div>
           </div>
         </section>
+      )}
+
+      {/* Confianza — garantía, envíos, pagos, soporte */}
+      {s.show_trust_details !== false && (
+      <section data-testid="trust-details" style={{ padding: 0 }}>
+        <div style={{
+          display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "16px",
+        }}>
+          {[
+            {
+              icon: ShieldCheck, title: "Garantía oficial del fabricante",
+              body: "Te acompañamos durante todo el proceso ante cualquier falla cubierta por la garantía de cada marca.",
+              to: "/garantia",
+            },
+            {
+              icon: Truck, title: "Envíos a Chile y Argentina",
+              body: "Despachamos a todo el país. Los plazos y costos se calculan en el checkout antes de confirmar la compra.",
+              to: "/terminos",
+            },
+            {
+              icon: CreditCard, title: "Pago seguro",
+              body: "MercadoPago, PayPal o transferencia bancaria. Nunca almacenamos los datos completos de tu tarjeta.",
+              to: "/terminos",
+            },
+            {
+              icon: MessageCircle, title: "Soporte técnico real",
+              body: "¿Dudas antes o después de comprar? Hablás directo con un especialista, no con un bot.",
+              to: whatsappUrl, external: true,
+            },
+          ].map(item => (
+            <Link key={item.title} to={item.to}
+              target={item.external ? "_blank" : undefined}
+              rel={item.external ? "noreferrer" : undefined}
+              style={{
+                display: "flex", flexDirection: "column", gap: "12px",
+                padding: "24px", borderRadius: "var(--r-xl)",
+                background: "var(--surface)", border: "1px solid var(--border)",
+                textDecoration: "none", transition: "border-color 200ms var(--ease)",
+              }}
+              onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent)"}
+              onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}>
+              <span style={{ width: "38px", height: "38px", borderRadius: "10px",
+                background: "rgba(26,255,110,0.1)", display: "flex",
+                alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <item.icon size={18} color="var(--accent)" />
+              </span>
+              <p style={{ fontFamily: "var(--font-display)", fontSize: "14.5px",
+                fontWeight: 700, color: "var(--text)" }}>
+                {item.title}
+              </p>
+              <p style={{ fontFamily: "var(--font-sans)", fontSize: "13px",
+                color: "var(--text-3)", lineHeight: 1.6 }}>
+                {item.body}
+              </p>
+            </Link>
+          ))}
+        </div>
+      </section>
       )}
 
       {/* Testimonial */}

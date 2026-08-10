@@ -42,6 +42,7 @@ def sitemap_view(request):
         ("/terminos", "yearly", "0.3"),
         ("/privacidad", "yearly", "0.3"),
         ("/bases-sorteo", "yearly", "0.3"),
+        ("/garantia", "yearly", "0.3"),
     ]
     for path, cf, pr in static_pages:
         rows.append(_url_xml(f"{base}{path}", changefreq=cf, priority=pr))
