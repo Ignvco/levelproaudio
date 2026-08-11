@@ -19,7 +19,7 @@ export function getProductBadge(product) {
     return { label: `-${pct}%`, tone: "discount" }
   }
   if (product.is_low_stock) {
-    return { label: "🚨 Últimas unidades", tone: "urgent" }
+    return { label: "Últimas unidades", tone: "urgent" }
   }
   if (product.stock === 0 && product.product_type === "preorder") {
     return { label: "Preventa", tone: "neutral" }

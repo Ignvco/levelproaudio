@@ -10,8 +10,10 @@
 #      admin veía "enviado" pero el cliente nunca recibía nada. Ahora
 #      pasa por el mismo canal (Resend) que el resto de los emails.
 
+import re
 from decimal import Decimal
 from unittest.mock import patch, MagicMock
+from django.core.cache import cache
 
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
@@ -183,3 +185,41 @@ class EmailBrandingDynamicTest(TestCase):
 
         subject = mock_send.call_args.args[1]
         self.assertIn("LevelPro Audio", subject)
+
+
+class NoEmojisInEmailsTest(TestCase):
+    """
+    Pedido explícito: los emails no deben tener emojis, ni en el ícono
+    decorativo del encabezado, ni en asuntos, ni en el cuerpo. Este test
+    barre TODAS las funciones send_* del módulo con datos de prueba, y
+    confirma que ni el asunto ni el HTML final contienen ningún emoji —
+    así, si alguien agrega uno nuevo sin querer, esto lo agarra.
+    """
+    EMOJI_PATTERN = re.compile(
+        "[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F1E0-\U0001F1FF]+",
+        flags=re.UNICODE,
+    )
+
+    def setUp(self):
+        cache.clear()
+
+    @patch("apps.emails.send_email")
+    def test_password_reset_has_no_emoji(self, mock_send):
+        from apps.emails import send_password_reset
+        send_password_reset("test@test.com", "https://x.com/reset")
+        subject, html = mock_send.call_args.args[1], mock_send.call_args.args[2]
+        self.assertEqual(self.EMOJI_PATTERN.findall(subject), [])
+        self.assertEqual(self.EMOJI_PATTERN.findall(html), [])
+
+    @patch("apps.emails.send_email")
+    def test_order_confirmation_has_no_emoji(self, mock_send):
+        from apps.emails import send_order_confirmation
+        from apps.orders.models import Order, OrderStatus
+        order = Order.objects.create(
+            status=OrderStatus.PAID, total=Decimal("10000"),
+            email="test@test.com", shipping_address="Test 123",
+        )
+        send_order_confirmation(order)
+        subject, html = mock_send.call_args.args[1], mock_send.call_args.args[2]
+        self.assertEqual(self.EMOJI_PATTERN.findall(subject), [])
+        self.assertEqual(self.EMOJI_PATTERN.findall(html), [])
