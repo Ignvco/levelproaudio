@@ -111,7 +111,19 @@ class Product(TimeStampedModel):
     )
     weight    = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True)
     is_active   = models.BooleanField(default=True,  verbose_name="Activo")
+    class Badge(models.TextChoices):
+        BEST_SELLER = "best_seller", "🔥 Best Seller"
+        RECOMMENDED = "recommended", "⭐ LevelPro recomienda"
+        PREMIUM     = "premium",     "💎 Profesional"
+        BEST_VALUE  = "best_value",  "💰 Mejor relación precio/rendimiento"
+        NEW         = "new",         "🆕 Nuevo"
+
     is_featured = models.BooleanField(default=False, verbose_name="Destacado")
+    badge = models.CharField(
+        max_length=20, choices=Badge.choices, blank=True, default="",
+        verbose_name="Etiqueta destacada",
+        help_text="Bajo pedido y Últimas unidades se calculan solos — no hace falta elegirlos acá.",
+    )
 
     seo_title       = models.CharField(max_length=255, blank=True)
     seo_description = models.CharField(max_length=255, blank=True)

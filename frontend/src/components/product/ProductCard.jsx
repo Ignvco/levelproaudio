@@ -13,6 +13,7 @@ import { useCartStore }    from "../../store/cartStore"
 import { mediaUrl }        from "../../utils/mediaUrl"
 import { showToast }       from "../ui/ToastNotification"
 import { FavoriteButton }  from "./FavoriteButton"
+import { getProductBadge } from "../../utils/productBadge"
 
 export default function ProductCard({ product }) {
   const { addItem } = useCartStore()
@@ -33,18 +34,8 @@ export default function ProductCard({ product }) {
   const currentImg = gallery[imgIndex] || null
   const brandLogo  = product.brand_logo ? mediaUrl(product.brand_logo) : null
 
-  const hasDiscount = product.compare_price && Number(product.compare_price) > Number(product.price)
-  const discount    = hasDiscount
-    ? Math.round((1 - Number(product.price) / Number(product.compare_price)) * 100)
-    : 0
-
-  const badge = hasDiscount
-    ? `-${discount}%`
-    : (product.stock === 0 && product.product_type === "preorder") ? "Preventa"
-    : (product.stock === 0 && product.product_type === "on_demand") ? "A pedido"
-    : product.is_featured
-      ? "Destacado"
-      : null
+  const badgeInfo = getProductBadge(product)
+  const badge     = badgeInfo?.label || null
 
   const outOfStock = product.stock === 0 && product.product_type === "stock"
 
@@ -118,7 +109,8 @@ export default function ProductCard({ product }) {
             <span
               data-testid={`product-badge-${product.slug}`}
               style={{
-                background:"rgba(20,20,20,0.72)", backdropFilter:"blur(8px)",
+                background: badgeInfo?.tone === "urgent" ? "rgba(217,119,6,0.85)" : "rgba(20,20,20,0.72)",
+                backdropFilter:"blur(8px)",
                 color:"#fff", fontSize:"12px", fontWeight:600,
                 padding:"6px 13px", borderRadius:"9999px",
               }}>

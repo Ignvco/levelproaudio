@@ -37,6 +37,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
     is_active:         product?.is_active         ?? true,
     is_featured:       product?.is_featured       ?? false,
     product_type:      product?.product_type      || "stock",
+    badge:             product?.badge             || "",
   })
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState("")
@@ -281,6 +282,27 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                     {label}
                   </label>
                 ))}
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 600,
+                  color: "var(--text-2)", marginBottom: "7px" }}>
+                  Etiqueta destacada
+                </label>
+                <select value={form.badge}
+                  onChange={e => setForm(p => ({ ...p, badge: e.target.value }))}
+                  style={inputSt}>
+                  <option value="">Sin etiqueta</option>
+                  <option value="best_seller">🔥 Best Seller</option>
+                  <option value="recommended">⭐ LevelPro recomienda</option>
+                  <option value="premium">💎 Profesional</option>
+                  <option value="best_value">💰 Mejor relación precio/rendimiento</option>
+                  <option value="new">🆕 Nuevo</option>
+                </select>
+                <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "6px" }}>
+                  "Bajo pedido" y "Últimas unidades" se calculan solos según el tipo de
+                  producto y el stock — no hace falta elegirlos acá.
+                </p>
               </div>
             </>
           )}

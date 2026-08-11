@@ -153,6 +153,17 @@ class CourseAdminSerializer(drf_serializers.ModelSerializer):
         return obj.total_lessons
 
 
+class AdminProductDetailSerializer(ProductDetailSerializer):
+    """
+    Mismo serializer que usa el público, pero con los campos internos
+    que el admin sí necesita ver (costo real, umbral de stock mínimo).
+    Separado a propósito del público — cost_price nunca debe viajar a
+    un endpoint que cualquiera pueda pedir sin login.
+    """
+    class Meta(ProductDetailSerializer.Meta):
+        fields = ProductDetailSerializer.Meta.fields + ["cost_price", "stock_min"]
+
+
 class AdminProductWriteSerializer(drf_serializers.ModelSerializer):
     """Serializer para crear/editar productos — acepta IDs de categoría y marca."""
     class Meta:
@@ -162,7 +173,7 @@ class AdminProductWriteSerializer(drf_serializers.ModelSerializer):
             "category", "brand",
             "short_description", "description",
             "price", "compare_price", "cost_price", "stock", "stock_min",
-            "product_type", "is_active", "is_featured",
+            "product_type", "is_active", "is_featured", "badge",
             "weight", "seo_title", "seo_description",
         ]
         extra_kwargs = {
@@ -267,11 +278,12 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         return qs
 
     def get_serializer_class(self):
-        # Lectura → serializer completo con relaciones
+        # Lectura → serializer completo con relaciones + campos internos
+        # (cost_price, stock_min) que el público nunca ve
         if self.action in ["list", "retrieve"]:
-            return ProductDetailSerializer
+            return AdminProductDetailSerializer
         # Escritura → procesamos manualmente para aceptar IDs y cost_price
-        return ProductDetailSerializer  # fallback
+        return AdminProductDetailSerializer  # fallback
 
     def get_serializer_context(self):
         context = super().get_serializer_context()
@@ -314,6 +326,17 @@ class AdminProductViewSet(viewsets.ModelViewSet):
                     f'Opciones: {", ".join(valid_types.keys())}.'
                 )
             product.product_type = data["product_type"]
+
+        # badge: mismo criterio que product_type — validar contra las
+        # choices reales, vacío es válido (significa "sin etiqueta").
+        if "badge" in data:
+            valid_badges = dict(Product.Badge.choices)
+            if data["badge"] and data["badge"] not in valid_badges:
+                raise ValueError(
+                    f'"{data["badge"]}" no es una etiqueta válida. '
+                    f'Opciones: {", ".join(valid_badges.keys())} (o vacío para ninguna).'
+                )
+            product.badge = data["badge"] or ""
 
         # ── Campos decimales — siempre convertir a Decimal ───────
         decimal_fields = ["price", "compare_price", "cost_price"]

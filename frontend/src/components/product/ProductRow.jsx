@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { ArrowUpRight, Check, Truck } from "lucide-react"
 import { useCartStore } from "../../store/cartStore"
+import { getProductBadge } from "../../utils/productBadge"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../ui/ToastNotification"
 import { FavoriteButton } from "./FavoriteButton"
@@ -17,6 +18,9 @@ export default function ProductRow({ product }) {
   const img = mediaUrl(product.primary_image || (product.images && product.images[0]))
   const brandLogo = product.brand_logo ? mediaUrl(product.brand_logo) : null
   const hasDiscount = product.compare_price && Number(product.compare_price) > Number(product.price)
+  // Sin descuento — el badge de descuento ya vive en la imagen, este
+  // es el pill secundario (últimas unidades / etiqueta curada / etc.)
+  const secondaryBadge = !hasDiscount ? getProductBadge(product) : null
   const discount = hasDiscount
     ? Math.round((1 - Number(product.price) / Number(product.compare_price)) * 100) : 0
   const outOfStock = product.stock === 0 && product.product_type === "stock"
@@ -70,9 +74,11 @@ export default function ProductRow({ product }) {
             <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.1em",
               textTransform: "uppercase", color: "var(--accent)" }}>{product.brand_name}</span>
           )}
-          {product.is_featured && (
-            <span style={{ fontSize: "11px", color: "var(--text-3)",
-              border: "1px solid var(--border)", padding: "2px 8px", borderRadius: "9999px" }}>Destacado</span>
+          {secondaryBadge && (
+            <span style={{ fontSize: "11px", fontWeight: secondaryBadge.tone === "urgent" ? 700 : 400,
+              color: secondaryBadge.tone === "urgent" ? "#D97706" : "var(--text-3)",
+              border: `1px solid ${secondaryBadge.tone === "urgent" ? "rgba(217,119,6,0.4)" : "var(--border)"}`,
+              padding: "2px 8px", borderRadius: "9999px" }}>{secondaryBadge.label}</span>
           )}
         </div>
         <h3 style={{ fontFamily: "var(--font-display)", fontSize: "1.4rem", fontWeight: 700,

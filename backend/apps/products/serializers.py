@@ -70,6 +70,8 @@ class ProductListSerializer(serializers.ModelSerializer):
     brand_name    = serializers.CharField(source="brand.name", read_only=True, allow_null=True)
     brand_logo    = serializers.SerializerMethodField()
     is_favorited  = serializers.SerializerMethodField()
+    badge_display = serializers.CharField(source="get_badge_display", read_only=True)
+    is_low_stock  = serializers.SerializerMethodField()
 
     class Meta:
         model  = Product
@@ -77,9 +79,15 @@ class ProductListSerializer(serializers.ModelSerializer):
             "id", "name", "slug", "price", "compare_price",
             "short_description",
             "stock", "in_stock", "is_featured",
+            "badge", "badge_display", "is_low_stock", "product_type",
             "primary_image", "images", "brand_name", "brand_logo",
             "has_discount", "discount_percentage", "is_favorited",
         ]
+
+    def get_is_low_stock(self, obj):
+        # No exponemos el umbral real (stock_min) — solo si o no, para
+        # no filtrar información interna de reposición al público.
+        return obj.product_type == Product.ProductType.STOCK and 0 < obj.stock <= obj.stock_min
 
     def get_is_favorited(self, obj):
         fav_ids = self.context.get("favorite_ids")
@@ -109,12 +117,14 @@ class ProductListSerializer(serializers.ModelSerializer):
 
 class ProductDetailSerializer(serializers.ModelSerializer):
     category            = CategorySerializer(read_only=True)
-    brand               = BrandSerializer(read_only=True)
+    brand                = BrandSerializer(read_only=True)
     images              = ProductImageSerializer(many=True, read_only=True)
     primary_image       = serializers.SerializerMethodField()
     has_discount        = serializers.BooleanField(read_only=True)
     discount_percentage = serializers.IntegerField(read_only=True)
     in_stock            = serializers.BooleanField(read_only=True)
+    badge_display       = serializers.CharField(source="get_badge_display", read_only=True)
+    is_low_stock        = serializers.SerializerMethodField()
 
     class Meta:
         model  = Product
@@ -122,12 +132,16 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "id", "name", "slug", "sku",
             "category", "brand",
             "description", "short_description",
-            "price", "compare_price", "cost_price",
+            "price", "compare_price",
             "has_discount", "discount_percentage",
             "stock", "in_stock", "is_active", "is_featured",
+            "badge", "badge_display", "is_low_stock", "product_type",
             "primary_image", "images",
             "created_at", "updated_at",
         ]
+
+    def get_is_low_stock(self, obj):
+        return obj.product_type == Product.ProductType.STOCK and 0 < obj.stock <= obj.stock_min
 
     def get_primary_image(self, obj):
         img = obj.images.filter(is_primary=True).first() or \

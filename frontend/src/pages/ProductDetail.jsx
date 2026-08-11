@@ -17,6 +17,7 @@ import Seo from "../components/Seo"
 import JsonLd from "../components/JsonLd"
 import { SITE_URL, absUrl } from "../utils/seo"
 import { useSiteSettings } from "../hooks/useSiteSettings"
+import { getProductBadge } from "../utils/productBadge"
 
 export default function ProductDetail() {
   const { whatsappUrl } = useSiteSettings()
@@ -74,6 +75,7 @@ export default function ProductDetail() {
   const hasDiscount = product.compare_price && product.compare_price > product.price
   const discount    = hasDiscount
     ? Math.round((1 - product.price / product.compare_price) * 100) : 0
+  const productBadge = getProductBadge(product)
 
   const handleAddToCart = () => {
     addItem(product, qty)
@@ -194,6 +196,18 @@ export default function ProductDetail() {
                 {product.brand.name}
               </span>
             </div>
+          )}
+
+          {/* Badge (descuento / últimas unidades / etiqueta curada / etc.) */}
+          {productBadge && (
+            <span style={{ display: "inline-flex", alignSelf: "flex-start",
+              fontSize: "12px", fontWeight: 700,
+              color: productBadge.tone === "urgent" ? "#D97706" : "var(--accent)",
+              background: productBadge.tone === "urgent" ? "rgba(217,119,6,0.1)" : "rgba(26,255,110,0.1)",
+              border: `1px solid ${productBadge.tone === "urgent" ? "rgba(217,119,6,0.3)" : "rgba(26,255,110,0.3)"}`,
+              padding: "5px 12px", borderRadius: "9999px" }}>
+              {productBadge.label}
+            </span>
           )}
 
           {/* Nombre */}
