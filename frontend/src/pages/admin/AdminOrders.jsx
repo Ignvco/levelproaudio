@@ -1,11 +1,11 @@
 // pages/admin/AdminOrders.jsx
 import { useState } from "react"
+import { Link } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   getAdminOrders, updateOrderStatus, updateOrderShipping,
-  generateDocumentFromOrder, downloadDocument,
 } from "../../api/admin.api"
-import { Eye, Inbox, Truck } from "lucide-react"
+import { Eye, Inbox, Truck, FileText } from "lucide-react"
 import { DataTable, StatusBadge, AdminPageHeader, formInputStyle } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
 
@@ -32,7 +32,6 @@ function Badge({ status }) {
 
 function OrderPanel({ order, onClose }) {
   const queryClient      = useQueryClient()
-  const [docResult, setDocResult] = useState(null)
   const [carrier, setCarrier]   = useState(order.shipping_carrier || "")
   const [tracking, setTracking] = useState(order.tracking_number || "")
 
@@ -61,21 +60,6 @@ function OrderPanel({ order, onClose }) {
       showToast(e?.response?.data?.detail || "No se pudo actualizar el estado de la orden.", "error")
     },
   })
-
-  const docMutation = useMutation({
-    mutationFn: (tipo) => generateDocumentFromOrder(order.id, tipo),
-    onSuccess:  (data) => setDocResult(data),
-    onError:    (e)    => showToast(e?.response?.data?.error || "Error al generar.", "error"),
-  })
-
-  const handleDownload = async (id, folio) => {
-    const resp = await downloadDocument(id)
-    const url  = window.URL.createObjectURL(new Blob([resp.data]))
-    const a    = document.createElement("a")
-    a.href = url
-    a.setAttribute("download", `${folio}.pdf`)
-    document.body.appendChild(a); a.click(); a.remove()
-  }
 
   return (
     <>
@@ -263,33 +247,19 @@ function OrderPanel({ order, onClose }) {
             </div>
           )}
 
-          {/* Documentos tributarios */}
+          {/* Documentación tributaria — se gestiona en el panel dedicado */}
           {["paid","shipped","completed"].includes(order.status) && (
             <div style={{ paddingTop:"4px" }}>
               <p style={{ fontSize:"12px", color:"var(--text-3)", marginBottom:"10px" }}>
-                Documentos tributarios
+                Documentación tributaria
               </p>
-              {docResult ? (
-                <button onClick={() => handleDownload(docResult.id, docResult.folio)}
-                  className="btn btn-accent"
-                  style={{ width:"100%", justifyContent:"center", fontSize:"13px" }}>
-                  ⬇️ {docResult.folio} — Descargar PDF
-                </button>
-              ) : (
-                <div style={{ display:"flex", gap:"8px" }}>
-                  {["boleta","factura"].map(tipo => (
-                    <button key={tipo} onClick={() => docMutation.mutate(tipo)}
-                      disabled={docMutation.isPending}
-                      style={{ flex:1, padding:"10px", borderRadius:"var(--r-lg)",
-                        background:"var(--surface-3)", border:"1px solid var(--border)",
-                        color:"var(--text-2)", fontSize:"13px", cursor:"pointer",
-                        textTransform:"capitalize",
-                        opacity: docMutation.isPending ? 0.5 : 1 }}>
-                      {docMutation.isPending ? "..." : `🧾 ${tipo}`}
-                    </button>
-                  ))}
-                </div>
-              )}
+              <Link to="/admin/billing"
+                style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"8px",
+                  width:"100%", padding:"10px", borderRadius:"var(--r-lg)",
+                  background:"var(--surface-3)", border:"1px solid var(--border)",
+                  color:"var(--text-2)", fontSize:"13px", textDecoration:"none" }}>
+                <FileText size={14} /> Registrar / gestionar en Documentación Tributaria
+              </Link>
             </div>
           )}
         </div>

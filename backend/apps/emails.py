@@ -162,6 +162,59 @@ def send_order_confirmation(order):
     send_email(order.email, f"Pago confirmado — Orden #{ref}", html)
 
 
+# Copy de cada estado de la orden — el título/asunto y el mensaje que ve
+# el cliente. "paid" tiene su propio email más detallado (arriba), acá
+# cubrimos las transiciones de gestión del pedido.
+_ORDER_STATUS_COPY = {
+    "paid": (
+        "Tu compra fue exitosa",
+        "Recibimos tu pago correctamente. Ya estamos preparando tu pedido — te vamos avisando en cada paso.",
+    ),
+    "shipped": (
+        "Tu pedido va en camino",
+        "Tu pedido fue despachado y está en camino. Si tenemos número de seguimiento, lo vas a ver en tu cuenta.",
+    ),
+    "completed": (
+        "Tu pedido fue entregado",
+        "¡Listo! Tu pedido fue entregado. Esperamos que lo disfrutes. Cualquier cosa, estamos para ayudarte.",
+    ),
+    "cancelled": (
+        "Tu pedido fue cancelado",
+        "Tu pedido fue cancelado. Si creés que es un error o querés retomar la compra, escribinos.",
+    ),
+}
+
+
+def send_order_status_update(order):
+    """
+    Manda el email correspondiente al NUEVO estado de la orden. Se llama
+    cuando el admin cambia el estado. No maneja "pending" (no hay nada que
+    avisar todavía). "paid" acá es el aviso corto de "compra exitosa" — el
+    detalle con el desglose lo manda send_order_confirmation por separado.
+    """
+    copy = _ORDER_STATUS_COPY.get(order.status)
+    if not copy:
+        return
+    title, msg = copy
+    ref = str(order.id)[:8].upper()
+    tracking_html = ""
+    if order.status == "shipped" and getattr(order, "tracking_number", ""):
+        carrier = getattr(order, "shipping_carrier", "") or "el transporte"
+        tracking_html = f"""
+      <p style="margin:16px 0 0;padding:12px 14px;background:#111;border-radius:10px;">
+        Seguimiento ({escape(carrier)}):
+        <strong style="color:#fff;">{escape(order.tracking_number)}</strong>
+      </p>"""
+    body = f"""
+      <p style="margin:0 0 8px;">Tu pedido <strong style="color:#fff;">#{ref}</strong>:</p>
+      <p style="margin:0;">{msg}</p>
+      {tracking_html}
+    """
+    html = _wrap(f"{title} — Orden #{ref}", body,
+                 cta={"label": "Ver mi pedido", "url": f"{settings.FRONTEND_URL}/dashboard/orders"})
+    send_email(order.email, f"{title} — Orden #{ref}", html)
+
+
 def send_ticket_email(email, campaign, codes):
     if not codes:
         return

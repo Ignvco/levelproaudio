@@ -1,7 +1,7 @@
 # apps/academy/certificate_generator.py
 #
 # Certificado simple de finalización de curso: nombre del alumno, curso,
-# fecha. Mismo lenguaje visual (colores de marca) que billing/pdf_generator.py
+# fecha. Usa el mismo lenguaje visual (colores de marca) del sitio.
 # para que todo lo que emite la plataforma se vea consistente.
 
 from reportlab.lib.pagesizes import A4, landscape

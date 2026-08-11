@@ -2,7 +2,7 @@
 import { useState } from "react"
 import { NavLink, Link, useNavigate } from "react-router-dom"
 import {
-  LayoutDashboard, Package, FileText, PlayCircle, Wrench, Star, Gift,
+  LayoutDashboard, Package, PlayCircle, Wrench, Star, Gift,
   User, LogOut, Store, Heart, ChevronsLeft, Menu, Calendar,
 } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
@@ -18,7 +18,6 @@ const navItems = [
   { to: "/dashboard/courses",   label: "Mis cursos",         icon: PlayCircle },
   { to: "/dashboard/services",  label: "Servicios",          icon: Wrench },
   { to: "/dashboard/bookings",  label: "Mis reservas",       icon: Calendar },
-  { to: "/dashboard/documents", label: "Documentos",         icon: FileText },
   { sep: "Fidelización" },
   { to: "/dashboard/loyalty",   label: "Mis puntos",         icon: Star },
   { to: "/dashboard/rewards",   label: "Mis participaciones", icon: Gift },

@@ -1,14 +1,13 @@
 # tests/test_emails.py
 #
-# Cubre dos hallazgos de la auditoría de apps/emails.py:
+# Cubre:
 #   1. Los valores interpolados en el HTML de los emails (nombres de
 #      producto, campaña) no se escapaban — un nombre con caracteres
 #      especiales de HTML podía romper la estructura del email.
-#   2. send_document_email (boletas/facturas) usaba django.core.mail
-#      directo, que SIEMPRE usa el backend de consola en este proyecto
-#      (nunca se sobreescribe a un backend real en producción) — el
-#      admin veía "enviado" pero el cliente nunca recibía nada. Ahora
-#      pasa por el mismo canal (Resend) que el resto de los emails.
+#   2. Que los emails no contengan emojis (encabezado, asunto, cuerpo).
+#   3. Los emails de gestión del pedido (compra exitosa / en camino /
+#      entregado / cancelado) que reemplazaron a los de facturación.
+#   4. Que la marca (nombre, color) se lea de Configuración del sitio.
 
 import re
 from decimal import Decimal
@@ -61,61 +60,6 @@ class EmailHtmlEscapingTest(TestCase):
         html_sent = mock_send.call_args.args[2]
         self.assertNotIn("<b>Conector</b>", html_sent)
         self.assertIn("&amp;", html_sent)
-
-
-class DocumentEmailUsesRealChannelTest(TestCase):
-    """
-    Antes, send_document_email (boletas/facturas) usaba
-    django.core.mail.EmailMessage directo — bypaseando por completo el
-    helper apps.emails.send_email (el que sí usa Resend). Como
-    EMAIL_BACKEND nunca se sobreescribe a un backend real en producción,
-    ese email nunca llegaba, pero el documento igual quedaba marcado
-    como ENVIADO.
-    """
-    def setUp(self):
-        self.admin = User.objects.create_superuser(email="billingadmin@test.com", username="billingadmin", password="x")
-        self.client = APIClient()
-        self.client.force_authenticate(user=self.admin)
-
-    def _make_doc(self):
-        from apps.billing.models import TributaryDocument
-        order = Order.objects.create(
-            status=OrderStatus.PAID, total=Decimal("50000"),
-            email="cliente@test.com", shipping_address="Test 123",
-        )
-        return TributaryDocument.objects.create(
-            order=order, tipo="boleta", numero=1001, folio="1001",
-            neto=Decimal("42017"), iva=Decimal("7983"), total=Decimal("50000"),
-            receptor_email="cliente@test.com",
-        )
-
-    @patch("apps.emails.send_email")
-    def test_send_document_email_uses_centralized_send_email_helper(self, mock_send):
-        """Confirma que ahora pasa por apps.emails.send_email (Resend),
-        no por django.core.mail directo."""
-        mock_send.return_value = True
-        doc = self._make_doc()
-
-        resp = self.client.post(f"/api/v1/billing/send/{doc.id}/")
-
-        self.assertEqual(resp.status_code, 200, resp.data)
-        self.assertTrue(mock_send.called)
-        doc.refresh_from_db()
-        self.assertEqual(doc.estado, "enviado")
-
-    @patch("apps.emails.send_email")
-    def test_document_not_marked_sent_if_email_actually_fails(self, mock_send):
-        """El bug real: antes se marcaba ENVIADO sin importar si el envío
-        funcionó de verdad. Ahora, si send_email devuelve False (falló),
-        el documento NO se marca como enviado."""
-        mock_send.return_value = False
-        doc = self._make_doc()
-
-        resp = self.client.post(f"/api/v1/billing/send/{doc.id}/")
-
-        self.assertEqual(resp.status_code, 502)
-        doc.refresh_from_db()
-        self.assertNotEqual(doc.estado, "enviado")
 
 
 class EmailBrandingDynamicTest(TestCase):
@@ -223,3 +167,63 @@ class NoEmojisInEmailsTest(TestCase):
         subject, html = mock_send.call_args.args[1], mock_send.call_args.args[2]
         self.assertEqual(self.EMOJI_PATTERN.findall(subject), [])
         self.assertEqual(self.EMOJI_PATTERN.findall(html), [])
+
+
+class OrderStatusEmailTest(TestCase):
+    """
+    Emails de gestión del pedido (compra exitosa / en camino / entregado /
+    cancelado). Reemplazan a los viejos emails de facturación, que se
+    eliminaron. Confirmamos que cada estado manda su email, con el copy
+    correcto y sin emojis.
+    """
+    EMOJI_PATTERN = re.compile(
+        "[\U0001F300-\U0001FAFF\U00002600-\U000027BF\U0001F1E0-\U0001F1FF]+",
+        flags=re.UNICODE,
+    )
+
+    def setUp(self):
+        cache.clear()
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            email="pedido@test.com", username="pedidocliente", password="x")
+
+    def _make_order(self, status):
+        from apps.orders.models import Order
+        return Order.objects.create(
+            user=self.user, status=status, total=Decimal("50000"),
+            email="pedido@test.com", shipping_address="Calle 1",
+        )
+
+    @patch("apps.emails.send_email")
+    def test_shipped_sends_email_with_no_emoji(self, mock_send):
+        from apps.emails import send_order_status_update
+        order = self._make_order("shipped")
+        send_order_status_update(order)
+        self.assertTrue(mock_send.called)
+        subject, html = mock_send.call_args.args[1], mock_send.call_args.args[2]
+        self.assertIn("camino", subject.lower())
+        self.assertEqual(self.EMOJI_PATTERN.findall(subject), [])
+        self.assertEqual(self.EMOJI_PATTERN.findall(html), [])
+
+    @patch("apps.emails.send_email")
+    def test_completed_sends_delivered_email(self, mock_send):
+        from apps.emails import send_order_status_update
+        order = self._make_order("completed")
+        send_order_status_update(order)
+        subject = mock_send.call_args.args[1]
+        self.assertIn("entregado", subject.lower())
+
+    @patch("apps.emails.send_email")
+    def test_paid_sends_success_email(self, mock_send):
+        from apps.emails import send_order_status_update
+        order = self._make_order("paid")
+        send_order_status_update(order)
+        subject = mock_send.call_args.args[1]
+        self.assertIn("exitosa", subject.lower())
+
+    @patch("apps.emails.send_email")
+    def test_pending_sends_nothing(self, mock_send):
+        from apps.emails import send_order_status_update
+        order = self._make_order("pending")
+        send_order_status_update(order)
+        self.assertFalse(mock_send.called)

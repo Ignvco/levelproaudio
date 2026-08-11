@@ -88,7 +88,6 @@ const AdminBilling                 = lazy(() => import("./pages/admin/AdminBilli
 import Rewards from "./pages/Rewards"
 import MyEntries from "./pages/dashboard/MyEntries"
 import MyLoyalty from "./pages/dashboard/MyLoyalty"
-import MyDocuments from "./pages/dashboard/MyDocuments"
 import MyFavorites from "./pages/dashboard/MyFavorites"
 const AdminRewards                 = lazy(() => import("./pages/admin/AdminRewards"))
 const AdminRewardsCampaigns        = lazy(() => import("./pages/admin/AdminRewardsCampaigns"))
@@ -280,16 +279,6 @@ function App() {
             <ProtectedRoute>
               <DashboardLayout>
                 <MyLoyalty />
-              </DashboardLayout>
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/dashboard/documents"
-          element={
-            <ProtectedRoute>
-              <DashboardLayout>
-                <MyDocuments />
               </DashboardLayout>
             </ProtectedRoute>
           }

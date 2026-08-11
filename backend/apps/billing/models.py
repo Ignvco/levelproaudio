@@ -1,153 +1,74 @@
 # apps/billing/models.py
+#
+# DOCUMENTACIÓN TRIBUTARIA — registro/seguimiento, NO facturador.
+#
+# Cambio de arquitectura (decisión del negocio): LevelPro dejó de ser un
+# facturador propio. Ya NO genera XML DTE, ni folios correlativos, ni PDFs
+# con formato oficial, ni emite nada al SII. La emisión real se hace por
+# fuera, en el portal del SII (o, a futuro, vía un proveedor DTE).
+#
+# Este módulo ahora es SOLO un registro interno del admin: qué documento
+# se emitió (número real del SII), cuándo, de qué tipo, y en qué estado
+# está la gestión. El cliente NO ve esto — solo ve el estado del PAGO,
+# que vive en apps/payments y apps/orders.
 
-from django.db import models, transaction
-from django.conf import settings
+from django.db import models
 from core.models import TimeStampedModel
 
 
-class BillingConfig(TimeStampedModel):
-    """Configuración tributaria del negocio — singleton"""
-
-    class Pais(models.TextChoices):
-        CL = "CL", "Chile"
-        AR = "AR", "Argentina"
-
-    pais              = models.CharField(
-        max_length=2, choices=Pais.choices, default=Pais.CL,
-        help_text="Determina qué tipos de documento se emiten y la numeración.",
-    )
-    razon_social      = models.CharField(max_length=200, default="")
-    rut               = models.CharField(
-        max_length=20, default="",
-        help_text="RUT (Chile) o CUIT (Argentina).",
-    )
-    giro              = models.CharField(max_length=300, default="")
-    direccion         = models.CharField(max_length=500, default="")
-    telefono          = models.CharField(max_length=30, blank=True)
-    ciudad            = models.CharField(max_length=100, default="Chile")
-    email             = models.EmailField(blank=True)
-    logo              = models.ImageField(
-        upload_to="billing/", blank=True, null=True
-    )
-    # Numeración de documentos
-    ultimo_numero_boleta    = models.PositiveIntegerField(default=0)
-    ultimo_numero_factura   = models.PositiveIntegerField(default=0)
-    ultimo_numero_factura_a = models.PositiveIntegerField(default=0)
-    ultimo_numero_factura_b = models.PositiveIntegerField(default=0)
-    ultimo_numero_factura_c = models.PositiveIntegerField(default=0)
-
-    # IVA
-    iva_porcentaje    = models.DecimalField(
-        max_digits=5, decimal_places=2, default=19,
-        help_text="19 para Chile, 21 para Argentina.",
-    )
-    # Auto-generación
-    auto_generar_al_pagar = models.BooleanField(
-        default=False,
-        help_text="Emitir automáticamente boleta/factura cuando la orden se marca como Pagada.",
-    )
-    tipo_default = models.CharField(
-        max_length=20, default="boleta",
-        help_text="Tipo de documento a emitir por defecto (boleta, factura, factura_c, etc).",
-    )
-
-    class Meta:
-        verbose_name = "Configuración de Facturación"
-
-    def __str__(self):
-        return f"Config facturación — {self.razon_social}"
-
-    @classmethod
-    def get(cls):
-        obj, _ = cls.objects.get_or_create(id=1)
-        return obj
-
-    def siguiente_numero(self, tipo: str) -> tuple[int, str]:
-        """
-        Devuelve (numero, folio) para un tipo de documento.
-        Numeración por país + tipo, con prefijos claros.
-
-        Bloquea la fila de configuración (select_for_update) mientras
-        incrementa el contador: si dos documentos se generan al mismo
-        tiempo (ej. dos pagos confirmándose en simultáneo), esto evita
-        que ambos reciban el mismo número de folio.
-        """
-        prefix_map = {
-            "boleta":       ("B",  "ultimo_numero_boleta"),
-            "factura":      ("F",  "ultimo_numero_factura"),
-            "factura_a":    ("FA", "ultimo_numero_factura_a"),
-            "factura_b":    ("FB", "ultimo_numero_factura_b"),
-            "factura_c":    ("FC", "ultimo_numero_factura_c"),
-        }
-        prefix, field = prefix_map.get(tipo, ("B", "ultimo_numero_boleta"))
-        with transaction.atomic():
-            locked = BillingConfig.objects.select_for_update().get(pk=self.pk)
-            n = getattr(locked, field) + 1
-            setattr(locked, field, n)
-            locked.save(update_fields=[field])
-        self.refresh_from_db()
-        return n, f"{prefix}-{n:06d}"
-
-    # Compatibilidad hacia atrás
-    def siguiente_numero_boleta(self):
-        n, _ = self.siguiente_numero("boleta")
-        return n
-
-    def siguiente_numero_factura(self):
-        n, _ = self.siguiente_numero("factura")
-        return n
-
-
 class TributaryDocument(TimeStampedModel):
-    """Documento tributario generado para una orden"""
+    """
+    Registro de un documento tributario gestionado EXTERNAMENTE (SII).
+    No genera nada — solo deja constancia de lo que el admin emitió por
+    fuera, para trazabilidad interna.
+    """
 
     class TipoDocumento(models.TextChoices):
-        BOLETA       = "boleta",       "Boleta (CL)"
-        FACTURA      = "factura",      "Factura (CL)"
-        FACTURA_A    = "factura_a",    "Factura A (AR)"
-        FACTURA_B    = "factura_b",    "Factura B (AR)"
-        FACTURA_C    = "factura_c",    "Factura C (AR)"
+        BOLETA       = "boleta",       "Boleta"
+        FACTURA      = "factura",      "Factura"
         NOTA_CREDITO = "nota_credito", "Nota de Crédito"
+        NINGUNO      = "ninguno",      "Sin documento"
 
     class Estado(models.TextChoices):
-        EMITIDO   = "emitido",   "Emitido"
-        ANULADO   = "anulado",   "Anulado"
-        ENVIADO   = "enviado",   "Enviado por email"
+        PENDIENTE = "pendiente", "Pendiente de emitir en SII"
+        EMITIDO   = "emitido",   "Emitido en SII"
+        NO_APLICA = "no_aplica", "No aplica"
 
-    order           = models.OneToOneField(
+    order = models.OneToOneField(
         "orders.Order", on_delete=models.CASCADE,
-        related_name="tributary_document"
+        related_name="tributary_document",
     )
-    tipo            = models.CharField(
-        max_length=20,
-        choices=TipoDocumento.choices,
-        default=TipoDocumento.BOLETA
+    tipo = models.CharField(
+        max_length=20, choices=TipoDocumento.choices,
+        default=TipoDocumento.NINGUNO,
+        verbose_name="Tipo de documento",
     )
-    numero          = models.PositiveIntegerField()
-    folio           = models.CharField(max_length=20)
-
-    # Datos del receptor (comprador)
-    receptor_nombre = models.CharField(max_length=200, blank=True)
-    receptor_rut    = models.CharField(max_length=12, blank=True)
-    receptor_email  = models.EmailField(blank=True)
-    receptor_giro   = models.CharField(max_length=200, blank=True)
-    receptor_direccion = models.CharField(max_length=300, blank=True)
-
-    # Montos
-    neto            = models.DecimalField(max_digits=12, decimal_places=2)
-    iva             = models.DecimalField(max_digits=12, decimal_places=2)
-    total           = models.DecimalField(max_digits=12, decimal_places=2)
-
-    estado          = models.CharField(
-        max_length=20,
-        choices=Estado.choices,
-        default=Estado.EMITIDO
+    # El número REAL del documento en el SII — texto libre, NO un
+    # correlativo propio. Puede quedar vacío mientras está pendiente.
+    numero_externo = models.CharField(
+        max_length=60, blank=True,
+        verbose_name="N° de documento (SII)",
+        help_text="El número real del documento emitido en el SII.",
     )
-    pdf_file        = models.FileField(
-        upload_to="billing/pdfs/", blank=True, null=True
+    fecha_emision = models.DateField(
+        null=True, blank=True,
+        verbose_name="Fecha de emisión",
+        help_text="Cuándo se emitió el documento en el SII.",
     )
-    enviado_at      = models.DateTimeField(null=True, blank=True)
-    notas           = models.TextField(blank=True)
+    monto = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text="Monto del documento (informativo).",
+    )
+    estado = models.CharField(
+        max_length=20, choices=Estado.choices,
+        default=Estado.PENDIENTE,
+    )
+    observaciones = models.TextField(blank=True)
+    # PDF opcional: el documento REAL del SII, subido a mano por el admin.
+    pdf_externo = models.FileField(
+        upload_to="billing/externos/", blank=True, null=True,
+        verbose_name="PDF del documento (opcional)",
+    )
 
     class Meta:
         verbose_name = "Documento Tributario"
@@ -155,4 +76,5 @@ class TributaryDocument(TimeStampedModel):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.get_tipo_display()} N°{self.folio} — {self.order.email}"
+        ref = self.numero_externo or "sin número"
+        return f"{self.get_tipo_display()} {ref} — orden {str(self.order_id)[:8]}"

@@ -210,6 +210,7 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
 
         order      = self.get_object()
         new_status = request.data.get("status")
+        old_status = order.status
         valid      = [s[0] for s in OrderStatus.choices]
 
         if new_status not in valid:
@@ -247,6 +248,16 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
 
             # Elimina IncomeRecord (y sus distribuciones, por CASCADE)
             IncomeRecord.objects.filter(order=order).delete()
+
+        # ── Email al cliente — solo si el estado REALMENTE cambió ──
+        # (evita reenviar el mismo aviso si el admin re-guarda sin cambiar
+        # nada). Si el email falla, no rompemos la operación del admin.
+        if new_status != old_status:
+            try:
+                from apps.emails import send_order_status_update
+                send_order_status_update(order)
+            except Exception:
+                pass
 
         return Response({"status": new_status, "detail": "Estado actualizado."})
 

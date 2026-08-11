@@ -1,22 +1,14 @@
-# apps/billing/urls.py
+# apps/billing/urls.py — Documentación Tributaria (registro/seguimiento)
 
 from django.urls import path
 from .views import (
-    generate_document,
-    download_pdf,
-    send_document_email,
-    list_documents,
-    void_document,
-    billing_config,
-    my_documents,
+    tax_dashboard,
+    upsert_document,
+    upload_document_pdf,
 )
 
 urlpatterns = [
-    path("generate/",              generate_document,    name="billing-generate"),
-    path("documents/",             list_documents,       name="billing-list"),
-    path("my-documents/",          my_documents,         name="billing-my"),
-    path("download/<uuid:doc_id>/",download_pdf,         name="billing-download"),
-    path("send/<uuid:doc_id>/",    send_document_email,  name="billing-send"),
-    path("void/<uuid:doc_id>/",    void_document,        name="billing-void"),
-    path("config/",                billing_config,       name="billing-config"),
+    path("dashboard/",                 tax_dashboard,       name="billing-dashboard"),
+    path("record/",                    upsert_document,     name="billing-record"),
+    path("record/<uuid:doc_id>/pdf/",  upload_document_pdf, name="billing-record-pdf"),
 ]

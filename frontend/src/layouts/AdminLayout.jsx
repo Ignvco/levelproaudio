@@ -55,7 +55,7 @@ const navItems = [
 
   { sep:"Finanzas" },
   { to:"/admin/finance", label:"Finanzas",    icon:Wallet },
-  { to:"/admin/billing", label:"Facturación", icon:Receipt },
+  { to:"/admin/billing", label:"Doc. Tributaria", icon:Receipt },
 
   { sep:"Sitio web" },
   { to:"/admin/settings", label:"Personalización", icon:Palette },
