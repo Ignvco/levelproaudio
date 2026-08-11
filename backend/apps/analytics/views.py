@@ -390,13 +390,21 @@ class AdminProductViewSet(viewsets.ModelViewSet):
             product.brand_id = brand_id if brand_id else None
 
         product.save()
+
+        # M2M — se asigna DESPUÉS de guardar (el producto necesita
+        # existir en la DB antes de poder tener relaciones M2M)
+        if "related_products" in data:
+            ids = data["related_products"] or []
+            # nunca un producto "complementa" a sí mismo
+            product.related_products.set([i for i in ids if str(i) != str(product.id)])
+
         return product
 
     
     def create(self, request, *args, **kwargs):
         try:
             product = self._save_product(request)
-            serializer = ProductDetailSerializer(
+            serializer = AdminProductDetailSerializer(
                 product, context=self.get_serializer_context()
             )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
@@ -407,7 +415,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         product = self.get_object()
         try:
             product = self._save_product(request, product)
-            serializer = ProductDetailSerializer(
+            serializer = AdminProductDetailSerializer(
                 product, context=self.get_serializer_context()
             )
             return Response(serializer.data)

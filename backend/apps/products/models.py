@@ -125,6 +125,12 @@ class Product(TimeStampedModel):
         help_text="Bajo pedido y Últimas unidades se calculan solos — no hace falta elegirlos acá.",
     )
 
+    related_products = models.ManyToManyField(
+        "self", symmetrical=False, blank=True, related_name="+",
+        verbose_name="Completá tu setup con",
+        help_text="Accesorios o productos complementarios a mostrar en la ficha (cable, soporte, interfaz, etc.)",
+    )
+
     seo_title       = models.CharField(max_length=255, blank=True)
     seo_description = models.CharField(max_length=255, blank=True)
 

@@ -125,6 +125,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     in_stock            = serializers.BooleanField(read_only=True)
     badge_display       = serializers.CharField(source="get_badge_display", read_only=True)
     is_low_stock        = serializers.SerializerMethodField()
+    related_products    = ProductListSerializer(many=True, read_only=True)
 
     class Meta:
         model  = Product
@@ -136,7 +137,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "has_discount", "discount_percentage",
             "stock", "in_stock", "is_active", "is_featured",
             "badge", "badge_display", "is_low_stock", "product_type",
-            "primary_image", "images",
+            "primary_image", "images", "related_products",
             "created_at", "updated_at",
         ]
 

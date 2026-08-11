@@ -20,6 +20,83 @@ const inputSt = {
 }
 
 // ── Formulario de producto ────────────────────────────────────
+// ── Picker de "Completá tu setup con" — busca entre TODOS los
+// productos (no solo los que coinciden con los filtros de la lista),
+// muestra chips de lo ya elegido, y guarda solo IDs para el backend.
+function RelatedProductsPicker({ productId, initialSelected, selected, onChange }) {
+  const [search, setSearch] = useState("")
+  const [namesById, setNamesById] = useState(() => {
+    const map = {}
+    initialSelected.forEach(p => { map[p.id] = p.name })
+    return map
+  })
+
+  const { data: searchResults, isFetching } = useQuery({
+    queryKey: ["admin-products-picker", search],
+    queryFn: () => getAdminProducts({ search, page_size: 8 }),
+    enabled: search.trim().length >= 2,
+  })
+  const results = (searchResults?.results || searchResults || [])
+    .filter(p => p.id !== productId)  // un producto no puede complementarse a sí mismo
+
+  const toggle = (p) => {
+    if (selected.includes(p.id)) {
+      onChange(selected.filter(id => id !== p.id))
+    } else {
+      setNamesById(prev => ({ ...prev, [p.id]: p.name }))
+      onChange([...selected, p.id])
+    }
+  }
+
+  return (
+    <div style={{ marginTop: "20px" }}>
+      <label style={{ display: "block", fontSize: "12px", fontWeight: 600,
+        color: "var(--text-2)", marginBottom: "7px" }}>
+        Completá tu setup con (accesorios / productos complementarios)
+      </label>
+
+      {selected.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: "6px", marginBottom: "10px" }}>
+          {selected.map(id => (
+            <span key={id} style={{ display: "inline-flex", alignItems: "center", gap: "6px",
+              background: "var(--surface-2)", border: "1px solid var(--border)",
+              borderRadius: "9999px", padding: "5px 6px 5px 12px", fontSize: "12px" }}>
+              {namesById[id] || id}
+              <button type="button" onClick={() => onChange(selected.filter(x => x !== id))}
+                style={{ background: "rgba(255,77,77,0.15)", color: "#ff6b6b", border: "none",
+                  borderRadius: "50%", width: "16px", height: "16px", cursor: "pointer",
+                  fontSize: "11px", lineHeight: 1 }}>×</button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      <input value={search} onChange={e => setSearch(e.target.value)}
+        placeholder="Buscar producto por nombre (mínimo 2 letras)…" style={inputSt} />
+
+      {search.trim().length >= 2 && (
+        <div style={{ marginTop: "8px", maxHeight: "180px", overflowY: "auto",
+          border: "1px solid var(--border)", borderRadius: "var(--r-md)" }}>
+          {isFetching ? (
+            <p style={{ padding: "12px", fontSize: "12px", color: "var(--text-3)" }}>Buscando…</p>
+          ) : results.length === 0 ? (
+            <p style={{ padding: "12px", fontSize: "12px", color: "var(--text-3)" }}>Sin resultados.</p>
+          ) : results.map(p => (
+            <label key={p.id} style={{ display: "flex", alignItems: "center", gap: "10px",
+              padding: "8px 12px", cursor: "pointer", fontSize: "13px",
+              borderBottom: "1px solid var(--border)" }}>
+              <input type="checkbox" checked={selected.includes(p.id)}
+                onChange={() => toggle(p)}
+                style={{ accentColor: "var(--accent)", width: "14px", height: "14px" }} />
+              {p.name}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function ProductForm({ product, categories, brands, onClose, onSave }) {
   const [form, setForm] = useState({
     name:              product?.name              || "",
@@ -38,6 +115,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
     is_featured:       product?.is_featured       ?? false,
     product_type:      product?.product_type      || "stock",
     badge:             product?.badge             || "",
+    related_products:  product?.related_products?.map(p => p.id) || [],
   })
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState("")
@@ -304,6 +382,13 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                   producto y el stock — no hace falta elegirlos acá.
                 </p>
               </div>
+
+              <RelatedProductsPicker
+                productId={product?.id}
+                initialSelected={product?.related_products || []}
+                selected={form.related_products}
+                onChange={ids => setForm(p => ({ ...p, related_products: ids }))}
+              />
             </>
           )}
 

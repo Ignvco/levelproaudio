@@ -12,6 +12,7 @@ import { useCartStore } from "../store/cartStore"
 import { useScrollReveal } from "../hooks/useScrollReveal"
 import { mediaUrl } from "../utils/mediaUrl"
 import { showToast } from "../components/ui/ToastNotification"
+import ProductCard from "../components/product/ProductCard"
 import { RichText } from "../components/ui/RichText"
 import Seo from "../components/Seo"
 import JsonLd from "../components/JsonLd"
@@ -381,6 +382,22 @@ export default function ProductDetail() {
           </div>
         </div>
       </div>
+
+      {/* Completá tu setup — accesorios/complementarios elegidos a mano en el admin */}
+      {product.related_products?.length > 0 && (
+        <div className="lp-container" style={{ paddingBottom: "clamp(60px, 8vw, 100px)" }}>
+          <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent)",
+            textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "18px" }}>
+            Completá tu setup
+          </p>
+          <div style={{ display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "20px" }}>
+            {product.related_products.map(rp => (
+              <ProductCard key={rp.id} product={rp} />
+            ))}
+          </div>
+        </div>
+      )}
 
       <style>{`
         @media (max-width: 900px) {
