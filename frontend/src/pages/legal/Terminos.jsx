@@ -3,6 +3,13 @@ import LegalShell from "../../components/legal/LegalShell"
 
 const SECTIONS = [
   {
+    id: "empresa", title: "Información de la empresa",
+    body: [
+      "Este sitio web y los servicios asociados son operados por LevelPro Audio SpA, sociedad constituida en Chile, RUT 78.217.935-7, en adelante \"LevelPro Audio\".",
+      "Cualquier consulta relacionada con estos Términos y Condiciones, o con la operación del sitio, puede dirigirse a través de los canales oficiales de contacto disponibles en la Plataforma, incluyendo el correo electrónico ventas@levelproaudio.com.",
+    ],
+  },
+  {
     id: "aceptacion", title: "Aceptación de los términos",
     body: [
       "Al acceder y utilizar el sitio web y los servicios de LevelPro Audio (\"la Plataforma\"), aceptás quedar vinculado por estos Términos y Condiciones. Si no estás de acuerdo con alguna de las condiciones, te pedimos que no utilices la Plataforma.",
