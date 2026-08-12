@@ -30,6 +30,7 @@ class SitemapTest(TestCase):
         self.assertIn("<loc>https://levelproaudio.com/</loc>", content)
         self.assertIn("<loc>https://levelproaudio.com/shop</loc>", content)
         self.assertIn("<loc>https://levelproaudio.com/garantia</loc>", content)
+        self.assertIn("<loc>https://levelproaudio.com/envios</loc>", content)
 
     def test_sitemap_includes_active_product_not_inactive(self):
         cat = Category.objects.create(name="Mics", slug="mics-sitemap")

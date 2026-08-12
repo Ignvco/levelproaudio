@@ -714,6 +714,7 @@ function Footer() {
               { label:"Términos",        to:"/terminos"     },
               { label:"Privacidad",      to:"/privacidad"   },
               { label:"Garantía y cambios", to:"/garantia"  },
+              { label:"Envíos",           to:"/envios"    },
               { label:"Bases del Sorteo", to:"/bases-sorteo" },
             ].map(item => (
               <Link key={item.to} to={item.to} data-testid={`footer-legal-${item.to.replace("/","")}`}

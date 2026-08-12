@@ -38,6 +38,7 @@ import Terminos from "./pages/legal/Terminos"
 import Privacidad from "./pages/legal/Privacidad"
 import BasesSorteo from "./pages/legal/BasesSorteo"
 import PoliticaGarantia from "./pages/legal/PoliticaGarantia"
+import PoliticaEnvios from "./pages/legal/PoliticaEnvios"
 
 // Páginas protegidas
 import Dashboard from "./pages/Dashboard"
@@ -161,6 +162,7 @@ function App() {
         <Route path="/privacidad" element={<MainLayout><Privacidad /></MainLayout>} />
         <Route path="/bases-sorteo" element={<MainLayout><BasesSorteo /></MainLayout>} />
         <Route path="/garantia" element={<MainLayout><PoliticaGarantia /></MainLayout>} />
+        <Route path="/envios" element={<MainLayout><PoliticaEnvios /></MainLayout>} />
 
         <Route path="/admin" element={<AdminRoute><Suspense fallback={<AdminLoading />}><AdminLayout /></Suspense></AdminRoute>}>
           <Route index element={<Suspense fallback={<AdminLoading />}><AdminDashboard /></Suspense>} />
