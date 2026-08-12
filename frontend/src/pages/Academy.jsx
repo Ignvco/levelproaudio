@@ -1,10 +1,12 @@
 // pages/Academy.jsx
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { getCourses } from "../api/academy.api"
+import { getCourses, getCertifications, downloadCertificationSeal } from "../api/academy.api"
 import { useScrollReveal } from "../hooks/useScrollReveal"
 import CourseCard from "../components/academy/CourseCard"
 import Seo from "../components/Seo"
+import { showToast } from "../components/ui/ToastNotification"
+import { useAuthStore } from "../store/authStore"
 
 export default function Academy() {
   const [level, setLevel] = useState("")
@@ -15,6 +17,12 @@ export default function Academy() {
     queryFn:  () => getCourses({ level: level || undefined }),
   })
   const courses = data?.results || data || []
+
+  const { data: certData } = useQuery({
+    queryKey: ["certifications"],
+    queryFn:  getCertifications,
+  })
+  const certifications = certData?.results || certData || []
 
   const LEVELS = [
     { value: "",             label: "Todos"         },
@@ -85,6 +93,26 @@ export default function Academy() {
         </div>
       </div>
 
+      {/* Certificaciones profesionales */}
+      {certifications.length > 0 && (
+        <div className="lp-container" style={{ paddingTop: "clamp(24px, 3vw, 40px)" }}>
+          <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent)",
+            textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: "6px" }}>
+            Certificación Profesional
+          </p>
+          <h2 style={{ fontFamily: "var(--font-display)", fontSize: "clamp(1.3rem, 2.4vw, 1.9rem)",
+            fontWeight: 800, color: "var(--text)", marginBottom: "18px" }}>
+            Convertite en Profesional Certificado LevelPro
+          </h2>
+          <div style={{ display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))", gap: "16px" }}>
+            {certifications.map(cert => (
+              <CertificationCard key={cert.id} cert={cert} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Grid */}
       <div className="lp-container" style={{ paddingBlock: "clamp(32px, 4vw, 48px)" }}>
 
@@ -109,6 +137,77 @@ export default function Academy() {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+function CertificationCard({ cert }) {
+  const { isAuthenticated } = useAuthStore()
+  const pct = cert.total > 0 ? Math.round((cert.completed / cert.total) * 100) : 0
+
+  const handleDownload = async () => {
+    try {
+      const resp = await downloadCertificationSeal(cert.slug)
+      const url  = window.URL.createObjectURL(new Blob([resp.data]))
+      const a    = document.createElement("a")
+      a.href = url
+      a.setAttribute("download", `certificacion-${cert.slug}.pdf`)
+      document.body.appendChild(a); a.click(); a.remove()
+      window.URL.revokeObjectURL(url)
+    } catch {
+      showToast("No se pudo descargar la certificación.", "error")
+    }
+  }
+
+  return (
+    <div style={{ padding: "22px", borderRadius: "var(--r-xl)",
+      background: "var(--surface)", border: "1px solid var(--border)",
+      display: "flex", flexDirection: "column", gap: "14px" }}>
+      <div>
+        <p style={{ fontFamily: "var(--font-display)", fontSize: "16px",
+          fontWeight: 800, color: "var(--text)", marginBottom: "4px" }}>
+          {cert.title}
+        </p>
+        {cert.description && (
+          <p style={{ fontSize: "13px", color: "var(--text-3)", lineHeight: 1.5 }}>
+            {cert.description}
+          </p>
+        )}
+      </div>
+
+      <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+        {cert.courses?.length || cert.total} cursos ·{" "}
+        {cert.courses?.map(c => c.title).join(" · ")}
+      </p>
+
+      {/* Progreso */}
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between",
+          fontSize: "12px", color: "var(--text-2)", marginBottom: "6px" }}>
+          <span>{isAuthenticated ? `${cert.completed}/${cert.total} completados` : "Iniciá sesión para ver tu progreso"}</span>
+          {isAuthenticated && <span>{pct}%</span>}
+        </div>
+        <div style={{ height: "6px", borderRadius: "9999px", background: "var(--surface-3)",
+          overflow: "hidden" }}>
+          <div style={{ height: "100%", width: `${pct}%`, background: "var(--accent)",
+            transition: "width 400ms var(--ease)" }} />
+        </div>
+      </div>
+
+      {cert.is_completed ? (
+        <button onClick={handleDownload}
+          style={{ padding: "11px", borderRadius: "var(--r-full)", border: "none",
+            background: "var(--accent)", color: "#000", fontWeight: 700, fontSize: "13px",
+            cursor: "pointer" }}>
+          Descargar mi certificación
+        </button>
+      ) : (
+        <div style={{ padding: "11px", borderRadius: "var(--r-full)",
+          border: "1px solid var(--border)", background: "transparent",
+          color: "var(--text-3)", fontSize: "13px", textAlign: "center" }}>
+          {isAuthenticated ? "Completá todos los cursos para obtenerla" : "Sello al completar la ruta"}
+        </div>
+      )}
     </div>
   )
 }

@@ -143,8 +143,6 @@ function App() {
         <Route path="/" element={<MainLayout><Home /></MainLayout>} />
         <Route path="/shop" element={<MainLayout><Shop /></MainLayout>} />
         <Route path="/shop/:slug" element={<MainLayout><ProductDetail /></MainLayout>} />
-        <Route path="/academy" element={<MainLayout><Academy /></MainLayout>} />
-        <Route path="/services" element={<MainLayout><Services /></MainLayout>} />
         <Route path="/cart" element={<MainLayout><Cart /></MainLayout>} />
         <Route path="/academy" element={<MainLayout><Academy /></MainLayout>} />
         <Route path="/academy/:slug" element={<MainLayout><CourseDetail /></MainLayout>} />

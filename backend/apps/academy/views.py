@@ -209,3 +209,46 @@ class LessonProgressViewSet(viewsets.ViewSet):
             LessonProgressSerializer(progress).data,
             status=status.HTTP_200_OK
         )
+
+class CertificationPathViewSet(viewsets.ReadOnlyModelViewSet):
+    """
+    Rutas de certificación LevelPro. Público puede ver las rutas y sus
+    cursos; el progreso y la descarga del sello requieren estar logueado.
+    """
+    lookup_field    = "slug"
+    permission_classes = [AllowAny]
+    filter_backends = [filters.OrderingFilter]
+    ordering        = ["order"]
+
+    def get_queryset(self):
+        from .models import CertificationPath
+        return (
+            CertificationPath.objects
+            .filter(is_published=True)
+            .prefetch_related("courses")
+        )
+
+    def get_serializer_class(self):
+        from .serializers import CertificationPathSerializer
+        return CertificationPathSerializer
+
+    @action(detail=True, methods=["get"], permission_classes=[IsAuthenticated])
+    def certificate(self, request, slug=None):
+        """
+        GET /api/v1/certifications/{slug}/certificate/ — PDF del sello,
+        solo si el usuario completó TODOS los cursos de la ruta.
+        """
+        path = self.get_object()
+        if not path.is_completed_by(request.user):
+            completed, total = path.completion_for(request.user)
+            return Response(
+                {"error": f"Todavía no completaste esta certificación ({completed}/{total} cursos)."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        from django.http import HttpResponse
+        from .certificate_generator import generate_certification_seal_pdf
+        pdf_bytes = generate_certification_seal_pdf(path, request.user)
+        response = HttpResponse(pdf_bytes, content_type="application/pdf")
+        filename = f"certificacion-{path.slug}.pdf"
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
+        return response

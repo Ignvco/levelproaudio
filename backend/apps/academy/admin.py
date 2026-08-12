@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Course, Module, Lesson, Enrollment, LessonProgress
+from .models import Course, Module, Lesson, Enrollment, LessonProgress, CertificationPath
 
 
 class LessonInline(admin.TabularInline):
@@ -96,3 +96,12 @@ class EnrollmentAdmin(admin.ModelAdmin):
             '<span style="color:{};font-weight:bold;">{}%</span>', color, pct
         )
     progress_display.short_description = "Progreso"
+
+
+@admin.register(CertificationPath)
+class CertificationPathAdmin(admin.ModelAdmin):
+    list_display  = ["title", "seal_label", "is_published", "order"]
+    list_filter   = ["is_published"]
+    search_fields = ["title", "seal_label"]
+    filter_horizontal = ["courses"]
+    prepopulated_fields = {"slug": ("title",)}

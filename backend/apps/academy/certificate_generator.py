@@ -76,3 +76,73 @@ def generate_certificate_pdf(enrollment) -> bytes:
 
     doc.build(story)
     return buffer.getvalue()
+
+
+def generate_certification_seal_pdf(path, user) -> bytes:
+    """
+    Genera el PDF del sello "Profesional Certificado LevelPro" para una
+    ruta de certificación completada. A diferencia del certificado de
+    curso individual, este acredita la ruta completa y lista los cursos
+    que la componen. Retorna bytes del PDF.
+    """
+    from django.utils import timezone
+
+    buffer = BytesIO()
+    doc = SimpleDocTemplate(
+        buffer,
+        pagesize=landscape(A4),
+        rightMargin=3*cm, leftMargin=3*cm,
+        topMargin=2.5*cm, bottomMargin=2.5*cm,
+    )
+
+    nombre = f"{user.first_name} {user.last_name}".strip() or user.email
+    fecha  = timezone.now().strftime("%d de %B de %Y")
+
+    style_eyebrow = ParagraphStyle(
+        "Eyebrow", fontSize=11, leading=14, textColor=COLOR_ACCENT,
+        fontName="Helvetica-Bold", alignment=TA_CENTER, spaceAfter=18,
+    )
+    style_title = ParagraphStyle(
+        "Title", fontSize=15, leading=20, textColor=COLOR_GRAY,
+        fontName="Helvetica", alignment=TA_CENTER, spaceAfter=6,
+    )
+    style_name = ParagraphStyle(
+        "Name", fontSize=30, leading=36, textColor=COLOR_DARK,
+        fontName="Helvetica-Bold", alignment=TA_CENTER, spaceAfter=12,
+    )
+    style_seal = ParagraphStyle(
+        "Seal", fontSize=19, leading=25, textColor=COLOR_DARK,
+        fontName="Helvetica-Bold", alignment=TA_CENTER, spaceAfter=16,
+    )
+    style_courses = ParagraphStyle(
+        "Courses", fontSize=11, leading=16, textColor=COLOR_GRAY,
+        fontName="Helvetica", alignment=TA_CENTER, spaceAfter=4,
+    )
+    style_date = ParagraphStyle(
+        "Date", fontSize=11, leading=14, textColor=COLOR_GRAY,
+        fontName="Helvetica", alignment=TA_CENTER,
+    )
+
+    course_titles = list(path.courses.values_list("title", flat=True))
+    cursos_texto = " · ".join(course_titles)
+
+    story = [
+        Spacer(1, 0.5*cm),
+        Paragraph("LEVELPRO AUDIO · CERTIFICACIÓN PROFESIONAL", style_eyebrow),
+        Spacer(1, 0.5*cm),
+        Paragraph("Se acredita a", style_title),
+        Spacer(1, 0.4*cm),
+        Paragraph(nombre, style_name),
+        HRFlowable(width="30%", thickness=1, color=COLOR_ACCENT, spaceBefore=6, spaceAfter=18, hAlign="CENTER"),
+        Paragraph("como", style_date),
+        Spacer(1, 0.3*cm),
+        Paragraph(path.seal_label, style_seal),
+        Paragraph("habiendo completado la ruta de formación:", style_date),
+        Spacer(1, 0.3*cm),
+        Paragraph(cursos_texto, style_courses),
+        Spacer(1, 0.6*cm),
+        Paragraph(f"Emitido el {fecha}", style_date),
+    ]
+
+    doc.build(story)
+    return buffer.getvalue()

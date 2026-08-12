@@ -164,3 +164,81 @@ class LessonProgress(TimeStampedModel):
 
     def __str__(self):
         return f"{self.user.email} — {self.lesson.title} ({'✓' if self.completed else '○'})"
+
+class CertificationPath(TimeStampedModel):
+    """
+    Ruta de certificación: un conjunto de cursos que, al completarse
+    TODOS, otorgan un sello "Profesional Certificado LevelPro".
+
+    No guardamos un registro de "certificación obtenida" por usuario —
+    se calcula a partir de los Enrollment.completed_at que ya existen.
+    Menos estado que mantener sincronizado; la fuente de verdad es una
+    sola (el progreso real en los cursos).
+    """
+    title       = models.CharField(max_length=300, verbose_name="Título de la certificación")
+    slug        = models.SlugField(unique=True, blank=True)
+    description = models.TextField(blank=True)
+    # El sello/credencial que representa esta certificación
+    seal_label  = models.CharField(
+        max_length=120, default="Profesional Certificado LevelPro",
+        verbose_name="Texto del sello",
+        help_text="Cómo se llama la credencial que se obtiene. Ej: 'Profesional Certificado en Sonido en Vivo'.",
+    )
+    courses = models.ManyToManyField(
+        "Course", related_name="certification_paths",
+        verbose_name="Cursos requeridos",
+        help_text="El usuario obtiene la certificación al completar TODOS estos cursos.",
+    )
+    is_published = models.BooleanField(default=False)
+    order        = models.PositiveIntegerField(default=0)
+
+    # SEO
+    seo_title       = models.CharField(max_length=255, blank=True)
+    seo_description = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["order", "-created_at"]
+        verbose_name = "Ruta de Certificación"
+        verbose_name_plural = "Rutas de Certificación"
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            from django.utils.text import slugify
+            self.slug = slugify(self.title)
+        super().save(*args, **kwargs)
+
+    def required_course_ids(self):
+        return set(self.courses.values_list("id", flat=True))
+
+    def is_completed_by(self, user):
+        """
+        True si el usuario completó TODOS los cursos de la ruta.
+        Un curso cuenta como completado si tiene un Enrollment con
+        completed_at seteado (la misma señal que usa el certificado
+        individual). Una ruta sin cursos nunca se considera obtenida.
+        """
+        required = self.required_course_ids()
+        if not required:
+            return False
+        completed = set(
+            Enrollment.objects
+            .filter(user=user, course_id__in=required, completed_at__isnull=False)
+            .values_list("course_id", flat=True)
+        )
+        return required.issubset(completed)
+
+    def completion_for(self, user):
+        """Devuelve (completados, total) para mostrar progreso parcial."""
+        required = self.required_course_ids()
+        total = len(required)
+        if not total:
+            return (0, 0)
+        completed = (
+            Enrollment.objects
+            .filter(user=user, course_id__in=required, completed_at__isnull=False)
+            .count()
+        )
+        return (completed, total)

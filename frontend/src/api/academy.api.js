@@ -51,3 +51,17 @@ export const purchaseCourse = async (slug) => {
 
 export const downloadCertificate = (enrollmentId) =>
   api.get(`/enrollments/${enrollmentId}/certificate/`, { responseType: "blob" })
+
+// ── Certificaciones (rutas de varios cursos → sello profesional) ──
+export const getCertifications = async () => {
+  const { data } = await api.get("/certifications/")
+  return data
+}
+
+export const getCertification = async (slug) => {
+  const { data } = await api.get(`/certifications/${slug}/`)
+  return data
+}
+
+export const downloadCertificationSeal = (slug) =>
+  api.get(`/certifications/${slug}/certificate/`, { responseType: "blob" })

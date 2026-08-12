@@ -140,3 +140,36 @@ class LessonProgressSerializer(serializers.ModelSerializer):
     class Meta:
         model  = LessonProgress
         fields = ["id", "lesson", "completed", "updated_at"]
+
+
+class CertificationPathSerializer(serializers.ModelSerializer):
+    from .models import CertificationPath as _CP
+    courses      = CourseListSerializer(many=True, read_only=True)
+    completed    = serializers.SerializerMethodField()
+    total        = serializers.SerializerMethodField()
+    is_completed = serializers.SerializerMethodField()
+
+    class Meta:
+        from .models import CertificationPath
+        model  = CertificationPath
+        fields = ["id", "title", "slug", "description", "seal_label",
+                  "courses", "completed", "total", "is_completed",
+                  "seo_title", "seo_description"]
+
+    def _completion(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return (0, len(obj.required_course_ids()))
+        return obj.completion_for(request.user)
+
+    def get_completed(self, obj):
+        return self._completion(obj)[0]
+
+    def get_total(self, obj):
+        return self._completion(obj)[1]
+
+    def get_is_completed(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return False
+        return obj.is_completed_by(request.user)
