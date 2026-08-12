@@ -252,7 +252,9 @@ export default function ProductDetail() {
             <div style={{ textAlign: "right" }}>
               <p style={{ fontSize: "12px", fontWeight: 700,
                 color: product.stock > 5 ? "var(--accent)" : product.stock > 0 ? "var(--warning)" : "var(--danger)" }}>
-                {product.stock > 0
+                {product.product_type === "bundle"
+                  ? (product.in_stock ? "Disponible" : "Sin stock")
+                  : product.stock > 0
                   ? (product.stock <= 5 ? `¡Solo ${product.stock} disponibles!` : "En stock")
                   : product.product_type === "preorder" ? "Preventa"
                   : product.product_type === "on_demand" ? "A pedido"
@@ -265,6 +267,32 @@ export default function ProductDetail() {
               )}
             </div>
           </div>
+
+          {/* Este kit incluye — componentes del bundle */}
+          {product.product_type === "bundle" && product.bundle_items?.length > 0 && (
+            <div style={{ padding: "18px 20px", background: "rgba(26,255,110,0.04)",
+              border: "1px solid rgba(26,255,110,0.2)", borderRadius: "var(--r-xl)" }}>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "var(--accent)",
+                textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "12px" }}>
+                Este kit incluye
+              </p>
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {product.bundle_items.map((bi, idx) => (
+                  <Link key={idx} to={`/shop/${bi.product.slug}`}
+                    style={{ display: "flex", alignItems: "center", gap: "12px",
+                      textDecoration: "none", color: "var(--text)" }}>
+                    <span style={{ minWidth: "28px", height: "28px", borderRadius: "8px",
+                      background: "var(--surface-3)", display: "flex", alignItems: "center",
+                      justifyContent: "center", fontSize: "13px", fontWeight: 700,
+                      color: "var(--accent)" }}>
+                      {bi.quantity}×
+                    </span>
+                    <span style={{ fontSize: "14px" }}>{bi.product.name}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Cantidad + Agregar */}
           {(product.stock > 0 || product.product_type !== "stock") && (

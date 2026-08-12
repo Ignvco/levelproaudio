@@ -137,6 +137,17 @@ class OrderViewSet(viewsets.ModelViewSet):
                     {"error": f"Stock insuficiente para {product.name}."},
                     status=status.HTTP_400_BAD_REQUEST
                 )
+            # Un kit no tiene stock propio: validamos que cada componente
+            # alcance para la cantidad de kits pedida.
+            if product.product_type == Product.ProductType.BUNDLE:
+                for bi in product.bundle_components.select_related("component").all():
+                    comp = bi.component
+                    needed = bi.quantity * quantity
+                    if comp.product_type == Product.ProductType.STOCK and comp.stock < needed:
+                        return Response(
+                            {"error": f"Sin stock suficiente para armar el kit {product.name} (falta {comp.name})."},
+                            status=status.HTTP_400_BAD_REQUEST
+                        )
             validated_items.append({
                 "product": product,
                 "quantity": quantity,
@@ -213,8 +224,16 @@ class OrderViewSet(viewsets.ModelViewSet):
                 price        = item["price"],
                 quantity     = item["quantity"],
             )
-            product.stock = max(0, product.stock - item["quantity"])
-            product.save(update_fields=["stock"])
+            if product.product_type == Product.ProductType.BUNDLE:
+                # El kit no tiene stock propio — descuenta de cada componente,
+                # multiplicando por la cantidad de kits comprados.
+                for bi in product.bundle_components.select_related("component").all():
+                    comp = bi.component
+                    comp.stock = max(0, comp.stock - bi.quantity * item["quantity"])
+                    comp.save(update_fields=["stock"])
+            else:
+                product.stock = max(0, product.stock - item["quantity"])
+                product.save(update_fields=["stock"])
 
         return Response(
             OrderSerializer(order).data,
@@ -233,8 +252,14 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         for item in order.items.all():
             if item.product:
-                item.product.stock += item.quantity
-                item.product.save(update_fields=["stock"])
+                if item.product.product_type == Product.ProductType.BUNDLE:
+                    for bi in item.product.bundle_components.select_related("component").all():
+                        comp = bi.component
+                        comp.stock += bi.quantity * item.quantity
+                        comp.save(update_fields=["stock"])
+                else:
+                    item.product.stock += item.quantity
+                    item.product.save(update_fields=["stock"])
 
         order.status = OrderStatus.CANCELLED
         order.save(update_fields=["status"])

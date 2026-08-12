@@ -126,6 +126,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     badge_display       = serializers.CharField(source="get_badge_display", read_only=True)
     is_low_stock        = serializers.SerializerMethodField()
     related_products    = ProductListSerializer(many=True, read_only=True)
+    bundle_items        = serializers.SerializerMethodField()
 
     class Meta:
         model  = Product
@@ -137,9 +138,18 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "has_discount", "discount_percentage",
             "stock", "in_stock", "is_active", "is_featured",
             "badge", "badge_display", "is_low_stock", "product_type",
-            "primary_image", "images", "related_products",
+            "primary_image", "images", "related_products", "bundle_items",
             "created_at", "updated_at",
         ]
+
+    def get_bundle_items(self, obj):
+        if obj.product_type != Product.ProductType.BUNDLE:
+            return []
+        items = obj.bundle_components.select_related("component").all()
+        return [{
+            "quantity":  bi.quantity,
+            "product":   ProductListSerializer(bi.component, context=self.context).data,
+        } for bi in items]
 
     def get_is_low_stock(self, obj):
         return obj.product_type == Product.ProductType.STOCK and 0 < obj.stock <= obj.stock_min

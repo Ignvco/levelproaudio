@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Category, Brand, Product, ProductImage
+from .models import Category, Brand, Product, ProductImage, BundleItem
 
 
 @admin.register(Category)
@@ -43,6 +43,18 @@ class ProductImageInline(admin.TabularInline):
     image_preview.short_description = "Preview"
 
 
+class BundleItemInline(admin.TabularInline):
+    # fk_name explícito: BundleItem tiene DOS FKs a Product (bundle y
+    # component), así que hay que decirle a Django cuál es la del "kit".
+    model     = BundleItem
+    fk_name   = "bundle"
+    extra     = 3
+    fields    = ["component", "quantity"]
+    verbose_name = "Componente del kit"
+    verbose_name_plural = "Componentes del kit (solo para tipo Kit/Combo)"
+    autocomplete_fields = ["component"]
+
+
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
     list_display  = [
@@ -53,7 +65,7 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = ["name", "sku"]
     prepopulated_fields = {"slug": ("name",)}
     readonly_fields     = ["image_thumbnail", "created_at", "updated_at"]
-    inlines             = [ProductImageInline]
+    inlines             = [ProductImageInline, BundleItemInline]
 
     fieldsets = (
         ("Información Principal", {

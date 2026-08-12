@@ -61,6 +61,7 @@ class Product(TimeStampedModel):
         STOCK     = "stock",     "En Stock"
         PREORDER  = "preorder",  "Preorden"
         ON_DEMAND = "on_demand", "A pedido"
+        BUNDLE    = "bundle",    "Kit / Combo"
 
     name  = models.CharField(max_length=300)
     slug  = models.SlugField(max_length=300, unique=True)
@@ -131,6 +132,16 @@ class Product(TimeStampedModel):
         help_text="Accesorios o productos complementarios a mostrar en la ficha (cable, soporte, interfaz, etc.)",
     )
 
+    # Componentes de un kit/combo. Solo aplica cuando product_type=bundle.
+    # El precio del kit es el propio (price), fijado a mano — NO se calcula
+    # de los componentes. Al comprarlo, descuenta stock de cada componente
+    # (el kit no tiene stock propio).
+    bundle_items = models.ManyToManyField(
+        "self", through="BundleItem", symmetrical=False,
+        related_name="in_bundles", blank=True,
+        verbose_name="Productos que componen el kit",
+    )
+
     seo_title       = models.CharField(max_length=255, blank=True)
     seo_description = models.CharField(max_length=255, blank=True)
 
@@ -172,7 +183,42 @@ class Product(TimeStampedModel):
 
     @property
     def in_stock(self):
+        if self.product_type == self.ProductType.BUNDLE:
+            # Un kit está disponible solo si TODOS sus componentes tienen
+            # stock suficiente para la cantidad que el kit requiere.
+            items = self.bundle_components.select_related("component").all()
+            if not items:
+                return False
+            return all(
+                it.component.product_type != self.ProductType.STOCK
+                or it.component.stock >= it.quantity
+                for it in items
+            )
         return self.stock > 0
+
+
+class BundleItem(TimeStampedModel):
+    """
+    Un componente de un kit/combo, con su cantidad. Ej: el kit "Set de
+    grabación" lleva 1 micrófono + 2 cables + 1 pedestal.
+    """
+    bundle = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="bundle_components",
+        verbose_name="Kit",
+    )
+    component = models.ForeignKey(
+        Product, on_delete=models.CASCADE, related_name="component_of",
+        verbose_name="Producto componente",
+    )
+    quantity = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        unique_together = ("bundle", "component")
+        verbose_name = "Componente de kit"
+        verbose_name_plural = "Componentes de kit"
+
+    def __str__(self):
+        return f"{self.bundle.name}: {self.quantity}× {self.component.name}"
 
 
 class ProductImage(TimeStampedModel):

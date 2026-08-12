@@ -6,17 +6,21 @@
 // urgente para el comprador:
 //
 //   1. Descuento activo       — la oferta real, siempre gana
-//   2. Últimas unidades       — urgencia genuina (calculado en el
+//   2. Kit / Combo            — identidad del producto (es un combo)
+//   3. Últimas unidades       — urgencia genuina (calculado en el
 //                                backend, nunca revela el umbral real)
-//   3. Preventa / A pedido    — expectativa de entrega distinta
-//   4. Etiqueta curada        — Best Seller / Recomendado / etc.
+//   4. Preventa / A pedido    — expectativa de entrega distinta
+//   5. Etiqueta curada        — Best Seller / Recomendado / etc.
 //                                (elegida a mano en el admin)
-//   5. Destacado              — el catch-all de siempre
+//   6. Destacado              — el catch-all de siempre
 export function getProductBadge(product) {
   const hasDiscount = product.compare_price && Number(product.compare_price) > Number(product.price)
   if (hasDiscount) {
     const pct = Math.round((1 - Number(product.price) / Number(product.compare_price)) * 100)
     return { label: `-${pct}%`, tone: "discount" }
+  }
+  if (product.product_type === "bundle") {
+    return { label: "Kit", tone: "curated" }
   }
   if (product.is_low_stock) {
     return { label: "Últimas unidades", tone: "urgent" }

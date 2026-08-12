@@ -332,7 +332,15 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                     <option value="stock">En stock</option>
                     <option value="preorder">Preorden</option>
                     <option value="on_demand">A pedido</option>
+                    <option value="bundle">Kit / Combo</option>
                   </select>
+                  {form.product_type === "bundle" && (
+                    <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "6px" }}>
+                      Los productos que componen el kit se configuran desde el admin de Django
+                      (Productos → este producto → Componentes del kit). El precio del kit es
+                      el que pongas acá, a mano.
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
