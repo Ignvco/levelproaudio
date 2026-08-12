@@ -67,6 +67,15 @@ def sitemap_view(request):
         rows.append(_url_xml(f"{base}/academy/{c.slug}",
                              lastmod=_lastmod(c), changefreq="monthly", priority="0.7"))
 
+    # Artículos del blog publicados
+    from apps.blog.models import Article
+    for a in Article.objects.filter(is_published=True).only("slug", "updated_at", "created_at"):
+        rows.append(_url_xml(f"{base}/blog/{a.slug}",
+                             lastmod=_lastmod(a), changefreq="monthly", priority="0.6"))
+
+    # Índice del blog
+    rows.append(_url_xml(f"{base}/blog", changefreq="daily", priority="0.7"))
+
     xml = (
         '<?xml version="1.0" encoding="UTF-8"?>\n'
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'

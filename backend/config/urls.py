@@ -37,6 +37,7 @@ urlpatterns = [
     # Loyalty y Billing
     path("api/v1/loyalty/", include("apps.loyalty.urls")),
     path("api/v1/billing/", include("apps.billing.urls")),
+    path("api/v1/blog/", include("apps.blog.urls")),
 
     # Configuración del sitio (Personalización)
     path("api/v1/", include("apps.site_settings.urls")),

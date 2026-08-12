@@ -48,6 +48,7 @@ INSTALLED_APPS = [
     'apps.site_settings',
     'apps.rewards',
     'apps.seo',
+    'apps.blog',
 ]
 
 # DRF — ahora con JWT como autenticación por defecto

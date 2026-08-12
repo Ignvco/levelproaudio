@@ -15,6 +15,7 @@ const NAV_LINKS = [
   { label: "Tienda",    to: "/shop"     },
   { label: "Academia",  to: "/academy"  },
   { label: "Servicios", to: "/services" },
+  { label: "Blog",      to: "/blog"     },
   { label: "Rewards",   to: "/rewards"  },
 ]
 

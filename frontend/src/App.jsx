@@ -27,6 +27,8 @@ import Shop from "./pages/Shop"
 import ProductDetail from "./pages/ProductDetail"
 import Login from "./pages/Login"
 import Academy from "./pages/Academy"
+import Blog from "./pages/Blog"
+import BlogArticle from "./pages/BlogArticle"
 import Services from "./pages/Services"
 import Cart from "./pages/Cart"
 import Register from "./pages/Register"
@@ -148,6 +150,8 @@ function App() {
         <Route path="/academy/:slug" element={<MainLayout><CourseDetail /></MainLayout>} />
         <Route path="/services" element={<MainLayout><Services /></MainLayout>} />
         <Route path="/services/:slug" element={<MainLayout><ServiceDetail /></MainLayout>} />
+        <Route path="/blog" element={<MainLayout><Blog /></MainLayout>} />
+        <Route path="/blog/:slug" element={<MainLayout><BlogArticle /></MainLayout>} />
 
         {/* Rewards público */}
         <Route path="/rewards" element={<MainLayout><Rewards /></MainLayout>} />
