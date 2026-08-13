@@ -14,18 +14,18 @@ import {
   Search, Bell, Menu, X, Clock, AlertTriangle, MessageSquare, CheckCircle2,
 } from "lucide-react"
 
-// ── Mapa de navegación (conserva TODAS las rutas actuales) ──
+// ── Mapa de navegación (Fase 1: reorganizado por dominio de negocio) ──
+// Nota: Vista Ejecutiva y Analytics siguen accesibles bajo "Negocio";
+// en la Fase 2 se consolidan dentro de Dashboard y Finanzas.
 const navItems = [
-  { sep:"Panel" },
-  { to:"/admin",           label:"Dashboard",       icon:LayoutDashboard, end:true },
-  { to:"/admin/executive", label:"Vista Ejecutiva", icon:LineChart },
-  { to:"/admin/analytics", label:"Analytics",       icon:BarChart3 },
+  { sep:"Inicio" },
+  { to:"/admin", label:"Dashboard", icon:LayoutDashboard, end:true },
 
   { sep:"Ventas" },
-  { to:"/admin/orders",   label:"Órdenes",   icon:ShoppingBag },
-  { to:"/admin/payments", label:"Pagos",     icon:CreditCard },
-  { to:"/admin/services", label:"Servicios", icon:Wrench },
-  { to:"/admin/users",    label:"Usuarios",  icon:Users },
+  { to:"/admin/orders",          label:"Órdenes",         icon:ShoppingBag },
+  { to:"/admin/payments",        label:"Pagos",           icon:CreditCard },
+  { to:"/admin/payment-methods", label:"Métodos de pago", icon:CreditCard },
+  { to:"/admin/billing",         label:"Doc. Tributaria", icon:Receipt },
 
   { sep:"Catálogo" },
   { label:"Productos", icon:Package, children:[
@@ -45,22 +45,24 @@ const navItems = [
     { to:"/admin/academy/certifications", label:"Certificaciones" },
   ]},
 
-  { sep:"Rewards" },
+  { sep:"Servicios" },
+  { to:"/admin/services", label:"Servicios", icon:Wrench },
+
+  { sep:"Fidelización" },
+  { to:"/admin/loyalty", label:"Puntos y niveles", icon:Star },
   { label:"Rewards", icon:Gift, children:[
     { to:"/admin/rewards",           label:"Dashboard"       },
     { to:"/admin/rewards/campaigns", label:"Campañas"        },
     { to:"/admin/rewards/entries",   label:"Participaciones" },
     { to:"/admin/rewards/winners",   label:"Ganadores"       },
   ]},
-  { to:"/admin/loyalty", label:"Puntos y niveles", icon:Star },
 
-  { sep:"Finanzas" },
-  { to:"/admin/finance", label:"Finanzas",    icon:Wallet },
-  { to:"/admin/payment-methods", label:"Métodos de pago", icon:CreditCard },
-  { to:"/admin/billing", label:"Doc. Tributaria", icon:Receipt },
-
-  { sep:"Sitio web" },
-  { to:"/admin/settings", label:"Personalización", icon:Palette },
+  { sep:"Negocio" },
+  { to:"/admin/finance",   label:"Finanzas",        icon:Wallet },
+  { to:"/admin/executive", label:"Vista Ejecutiva", icon:LineChart },
+  { to:"/admin/analytics", label:"Analytics",       icon:BarChart3 },
+  { to:"/admin/users",     label:"Clientes",        icon:Users },
+  { to:"/admin/settings",  label:"Personalización", icon:Palette },
 ]
 
 // Título/subtítulo del topbar según la ruta
@@ -72,7 +74,7 @@ const ROUTE_TITLES = {
   "/admin/payments":  ["Pagos",           "Transacciones y cobros"],
   "/admin/payment-methods": ["Métodos de pago", "Configuración de cobros y cuentas"],
   "/admin/services":  ["Servicios",       "Solicitudes y cotizaciones"],
-  "/admin/users":     ["Usuarios",        "Clientes registrados"],
+  "/admin/users":     ["Clientes",        "Clientes registrados"],
   "/admin/products":  ["Productos",       "Catálogo de la tienda"],
   "/admin/inventory": ["Inventario",      "Stock y disponibilidad"],
   "/admin/settings":  ["Personalización", "Configuración del sitio"],
