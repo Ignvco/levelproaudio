@@ -396,3 +396,34 @@ class Global66WhatsappUsesRealSettingsTest(TestCase):
         info = get_global66_info(order)
 
         self.assertEqual(info["whatsapp"], "https://wa.me/5492622635045")
+
+
+class AdminPaymentsListExposesProviderTest(TestCase):
+    """
+    La página de Pagos destaca las transferencias pendientes (las que
+    esperan aprobación manual). Para eso necesita que la lista admin
+    exponga el 'provider' de cada pago.
+    """
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            email="plist@test.com", username="plist", password="x")
+        self.buyer = User.objects.create_user(
+            email="plistbuyer@test.com", username="plistbuyer", password="x")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_list_exposes_provider_for_transfer(self):
+        order = _pending_order(self.buyer, total="30000")
+        Payment.objects.create(
+            order=order, provider=PaymentProvider.TRANSFER,
+            status=PaymentStatus.PENDING, amount=Decimal("30000"), currency="CLP",
+        )
+        resp = self.client.get("/api/v1/admin/payments/")
+        self.assertEqual(resp.status_code, 200)
+        results = resp.data.get("results", resp.data)
+        self.assertTrue(len(results) >= 1)
+        # Cada pago trae su provider, para que el front distinga transferencias
+        self.assertIn("provider", results[0])
+        transfer_payments = [p for p in results if p["provider"] == "transfer"]
+        self.assertEqual(len(transfer_payments), 1)
+        self.assertEqual(transfer_payments[0]["status"], "pending")

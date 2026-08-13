@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminPayments, updatePaymentStatus } from "../../api/admin.api"
 import { StatCard, DataTable, StatusBadge, AdminPageHeader } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
-import { Inbox } from "lucide-react"
+import { Inbox, Bell } from "lucide-react"
 
 const STATUS = {
   pending:   { label:"Pendiente",   color:"#D97706" },
@@ -77,6 +77,13 @@ export default function AdminPayments() {
   })
   const payments = data?.results || []
 
+  // Transferencias pendientes: son las que esperan TU acción manual
+  // (aprobar cuando llega el comprobante). Un MP pendiente se resuelve
+  // solo; una transferencia pendiente te está esperando.
+  const pendingTransfers = payments.filter(
+    p => p.status === "pending" && (p.provider === "transfer" || p.provider === "global66")
+  )
+
   const columns = [
     { key:"order_id", header:"Orden", sortable:true,
       render:p => <span style={{ fontFamily:"monospace", fontWeight:600, fontSize:12.5 }}>#{p.order_id?.slice(0,8).toUpperCase()}</span> },
@@ -87,7 +94,25 @@ export default function AdminPayments() {
     { key:"amount", header:"Monto", sortable:true, align:"right",
       render:p => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>${Number(p.amount).toLocaleString("es-CL")}</span> },
     { key:"status", header:"Estado",
-      render:p => <StatusBadge tone={TONE[p.status] || "neutral"}>{STATUS[p.status]?.label || p.status}</StatusBadge> },
+      render:p => {
+        const isPendingTransfer = p.status === "pending" &&
+          (p.provider === "transfer" || p.provider === "global66")
+        return (
+          <span style={{ display:"inline-flex", alignItems:"center", gap:"6px" }}>
+            <StatusBadge tone={TONE[p.status] || "neutral"}>{STATUS[p.status]?.label || p.status}</StatusBadge>
+            {isPendingTransfer && (
+              <span title="Transferencia esperando tu aprobación"
+                style={{ display:"inline-flex", alignItems:"center", gap:"3px",
+                  fontSize:"10.5px", fontWeight:700, color:"#D97706",
+                  padding:"1px 7px", borderRadius:"var(--r-full)",
+                  background:"rgba(217,119,6,0.12)", border:"1px solid rgba(217,119,6,0.3)",
+                  whiteSpace:"nowrap" }}>
+                ● revisá
+              </span>
+            )}
+          </span>
+        )
+      } },
     { header:"Cambiar estado",
       render:p => <StatusSelector paymentId={p.id} current={p.status} /> },
   ]
@@ -99,6 +124,32 @@ export default function AdminPayments() {
         description={data?.total_approved > 0
           ? `Total aprobado: $${Number(data.total_approved).toLocaleString("es-CL")}`
           : undefined} />
+
+      {/* Aviso: transferencias esperando aprobación manual */}
+      {pendingTransfers.length > 0 && (
+        <div
+          onClick={() => setStatusFilter("pending")}
+          style={{ display:"flex", alignItems:"center", gap:"14px", cursor:"pointer",
+            padding:"14px 18px", borderRadius:"var(--r-lg)", marginBottom:"20px",
+            background:"rgba(217,119,6,0.08)", border:"1px solid rgba(217,119,6,0.3)" }}>
+          <div style={{ display:"flex", alignItems:"center", justifyContent:"center",
+            width:"38px", height:"38px", borderRadius:"50%", flexShrink:0,
+            background:"rgba(217,119,6,0.15)", color:"#D97706" }}>
+            <Bell size={18} />
+          </div>
+          <div style={{ flex:1 }}>
+            <p style={{ fontSize:"14px", fontWeight:700, color:"var(--admin-text)" }}>
+              {pendingTransfers.length} transferencia{pendingTransfers.length !== 1 ? "s" : ""} esperando tu aprobación
+            </p>
+            <p style={{ fontSize:"12.5px", color:"var(--admin-text-muted)" }}>
+              Revisá que el comprobante haya llegado y aprobá el pago para procesar el pedido.
+            </p>
+          </div>
+          <span style={{ fontSize:"12px", fontWeight:600, color:"#D97706", whiteSpace:"nowrap" }}>
+            Ver pendientes →
+          </span>
+        </div>
+      )}
 
       {/* KPIs rápidos por estado */}
       <div className="au-grid" style={{ gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))" }}>
