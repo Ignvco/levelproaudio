@@ -213,3 +213,28 @@ export const updateAdminService = (id, data) =>
 
 export const deleteAdminService = (id) =>
   api.delete(`${BASE}/services/${id}/`).then(r => r.data)
+
+// ── Métodos de pago y cuentas bancarias (config) ─────────
+export const listPaymentMethods = () =>
+  api.get("/payments/admin/payment-methods/").then(r => r.data.results || r.data)
+
+export const createPaymentMethod = (data) =>
+  api.post("/payments/admin/payment-methods/", data).then(r => r.data)
+
+export const updatePaymentMethod = (id, data) =>
+  api.patch(`/payments/admin/payment-methods/${id}/`, data).then(r => r.data)
+
+export const deletePaymentMethod = (id) =>
+  api.delete(`/payments/admin/payment-methods/${id}/`).then(r => r.data)
+
+export const listBankAccounts = () =>
+  api.get("/payments/admin/bank-accounts/").then(r => r.data.results || r.data)
+
+export const createBankAccount = (data) =>
+  api.post("/payments/admin/bank-accounts/", data).then(r => r.data)
+
+export const updateBankAccount = (id, data) =>
+  api.patch(`/payments/admin/bank-accounts/${id}/`, data).then(r => r.data)
+
+export const deleteBankAccount = (id) =>
+  api.delete(`/payments/admin/bank-accounts/${id}/`).then(r => r.data)

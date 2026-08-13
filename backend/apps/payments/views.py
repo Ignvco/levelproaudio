@@ -249,3 +249,24 @@ def payment_methods(request):
             })
 
     return Response({"methods": methods, "bank_accounts": accounts})
+
+
+# ── Admin: CRUD de métodos de pago y cuentas bancarias ──────────────
+from rest_framework import viewsets
+from core.admin_permissions import IsAdminOrStaff
+from .models import PaymentMethodConfig, BankAccount
+from .serializers import PaymentMethodConfigSerializer, BankAccountSerializer
+
+
+class AdminPaymentMethodViewSet(viewsets.ModelViewSet):
+    """CRUD de métodos de pago para el panel admin de React."""
+    queryset = PaymentMethodConfig.objects.all()
+    serializer_class = PaymentMethodConfigSerializer
+    permission_classes = [IsAdminOrStaff]
+
+
+class AdminBankAccountViewSet(viewsets.ModelViewSet):
+    """CRUD de cuentas bancarias para el panel admin de React."""
+    queryset = BankAccount.objects.all()
+    serializer_class = BankAccountSerializer
+    permission_classes = [IsAdminOrStaff]

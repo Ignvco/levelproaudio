@@ -33,3 +33,21 @@ class PaymentSerializer(serializers.ModelSerializer):
             "provider_display",
             "status_display",
         ]
+
+class PaymentMethodConfigSerializer(serializers.ModelSerializer):
+    method_display = serializers.CharField(source="get_method_display", read_only=True)
+
+    class Meta:
+        from .models import PaymentMethodConfig
+        model = PaymentMethodConfig
+        fields = ["id", "method", "method_display", "is_active", "label",
+                  "description", "currencies", "order"]
+
+
+class BankAccountSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import BankAccount
+        model = BankAccount
+        fields = ["id", "label", "currency", "bank_name", "account_type",
+                  "account_number", "holder_name", "holder_id", "email",
+                  "instructions", "is_active", "order"]

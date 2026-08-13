@@ -113,3 +113,50 @@ class TransferPaymentFlowTest(TestCase):
             "order_id": str(self.order.id), "provider": "transfer",
         }, format="json")
         self.assertTrue(resp.data["reference"].startswith("LEVELPRO-"))
+
+
+class AdminPaymentConfigCRUDTest(TestCase):
+    """Endpoints admin para gestionar métodos y cuentas desde el panel React."""
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        self.admin = User.objects.create_superuser(
+            email="padmin@test.com", username="padmin", password="x")
+        self.cliente = User.objects.create_user(
+            email="pcli@test.com", username="pcli", password="x")
+        self.client = APIClient()
+
+    def test_admin_can_create_payment_method(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/v1/payments/admin/payment-methods/", {
+            "method": "transfer", "is_active": True, "currencies": "CLP",
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+
+    def test_admin_can_toggle_method(self):
+        from apps.payments.models import PaymentMethodConfig
+        m = PaymentMethodConfig.objects.create(method="paypal", is_active=False)
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.patch(f"/api/v1/payments/admin/payment-methods/{m.id}/", {
+            "is_active": True,
+        }, format="json")
+        self.assertEqual(resp.status_code, 200)
+        m.refresh_from_db()
+        self.assertTrue(m.is_active)
+
+    def test_admin_can_create_bank_account(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/v1/payments/admin/bank-accounts/", {
+            "label": "Cuenta CLP", "currency": "CLP", "bank_name": "Banco Estado",
+            "account_number": "123456", "holder_name": "LevelPro Audio SpA",
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+
+    def test_client_cannot_access_admin_endpoints(self):
+        self.client.force_authenticate(user=self.cliente)
+        resp = self.client.get("/api/v1/payments/admin/payment-methods/")
+        self.assertIn(resp.status_code, (401, 403))
+
+    def test_anon_cannot_access_admin_endpoints(self):
+        resp = self.client.get("/api/v1/payments/admin/bank-accounts/")
+        self.assertIn(resp.status_code, (401, 403))

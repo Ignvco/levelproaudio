@@ -55,6 +55,7 @@ const navItems = [
 
   { sep:"Finanzas" },
   { to:"/admin/finance", label:"Finanzas",    icon:Wallet },
+  { to:"/admin/payment-methods", label:"Métodos de pago", icon:CreditCard },
   { to:"/admin/billing", label:"Doc. Tributaria", icon:Receipt },
 
   { sep:"Sitio web" },
@@ -68,6 +69,7 @@ const ROUTE_TITLES = {
   "/admin/analytics": ["Analytics",       "Análisis detallado"],
   "/admin/orders":    ["Órdenes",         "Gestión de pedidos"],
   "/admin/payments":  ["Pagos",           "Transacciones y cobros"],
+  "/admin/payment-methods": ["Métodos de pago", "Configuración de cobros y cuentas"],
   "/admin/services":  ["Servicios",       "Solicitudes y cotizaciones"],
   "/admin/users":     ["Usuarios",        "Clientes registrados"],
   "/admin/products":  ["Productos",       "Catálogo de la tienda"],
