@@ -2,7 +2,25 @@
 
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Payment
+from .models import Payment, PaymentMethodConfig, BankAccount
+
+
+@admin.register(PaymentMethodConfig)
+class PaymentMethodConfigAdmin(admin.ModelAdmin):
+    list_display  = ["get_method_display", "is_active", "currencies", "order"]
+    list_editable = ["is_active", "order"]
+    list_filter   = ["is_active"]
+    fields = ["method", "is_active", "label", "description", "currencies", "order"]
+
+
+@admin.register(BankAccount)
+class BankAccountAdmin(admin.ModelAdmin):
+    list_display  = ["label", "currency", "bank_name", "account_number", "is_active", "order"]
+    list_editable = ["is_active", "order"]
+    list_filter   = ["is_active", "currency"]
+    fields = ["label", "currency", "is_active", "order",
+              "bank_name", "account_type", "account_number",
+              "holder_name", "holder_id", "email", "instructions"]
 
 @admin.register(Payment)
 class PaymentAdmin(admin.ModelAdmin):

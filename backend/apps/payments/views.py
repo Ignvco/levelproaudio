@@ -187,3 +187,52 @@ def payment_status(request, order_id):
         "provider": payment.provider,
         "paid_at":  payment.paid_at,
     })
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+def payment_methods(request):
+    """
+    GET /api/v1/payments/methods/?currency=CLP
+    Devuelve los métodos de pago ACTIVOS que aplican a la moneda pedida,
+    más las cuentas bancarias activas de esa moneda (para transferencia).
+    El checkout lee de acá — nada hardcodeado.
+    """
+    from .models import PaymentMethodConfig, BankAccount
+
+    currency = (request.GET.get("currency") or "CLP").upper()
+
+    methods = []
+    for m in PaymentMethodConfig.objects.filter(is_active=True):
+        if not m.available_for_currency(currency):
+            continue
+        methods.append({
+            "id":          m.method,
+            "label":       m.label or m.get_method_display(),
+            "description": m.description,
+        })
+
+    # Cuentas bancarias — solo relevantes si transferencia está activa
+    accounts = []
+    transfer_active = PaymentMethodConfig.objects.filter(
+        method="transfer", is_active=True).exists()
+    if transfer_active:
+        qs = BankAccount.objects.filter(is_active=True)
+        # Mostramos las de la moneda pedida; si no hay ninguna en esa
+        # moneda, mostramos todas (mejor dar opciones que dejar vacío).
+        by_currency = qs.filter(currency__iexact=currency)
+        source = by_currency if by_currency.exists() else qs
+        for a in source:
+            accounts.append({
+                "id":            str(a.id),
+                "label":         a.label,
+                "currency":      a.currency,
+                "bank_name":     a.bank_name,
+                "account_type":  a.account_type,
+                "account_number": a.account_number,
+                "holder_name":   a.holder_name,
+                "holder_id":     a.holder_id,
+                "email":         a.email,
+                "instructions":  a.instructions,
+            })
+
+    return Response({"methods": methods, "bank_accounts": accounts})
