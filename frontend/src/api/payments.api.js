@@ -2,6 +2,13 @@
 
 import api from "./client"
 
+// Métodos de pago activos + cuentas bancarias, filtrados por moneda.
+// El checkout lee de acá (configurable desde el admin, nada hardcodeado).
+export const getPaymentMethods = async (currency = "CLP") => {
+  const response = await api.get("/payments/methods/", { params: { currency } })
+  return response.data
+}
+
 export const createPayment = async (orderId, provider) => {
   const response = await api.post("/payments/create/", {
     order_id: orderId,

@@ -10,6 +10,8 @@ export default function TransferInstructions() {
   const { id }         = useParams()
   const { state }      = useLocation()
   const transferData   = state?.transferData
+  const bankAccounts   = state?.bankAccounts || []
+  const stateAmount    = state?.amount
 
   const { data: order } = useQuery({
     queryKey: ["order", id],
@@ -17,11 +19,14 @@ export default function TransferInstructions() {
     enabled:  !!id,
   })
 
+  const amount = stateAmount || transferData?.amount || order?.total || 0
+  const reference = transferData?.reference || `LEVELPRO-${id?.slice(0,8).toUpperCase()}`
+
   const steps = [
     { n: "1", title: "Realizá la transferencia",
-      desc: `Transferí exactamente $${Number(transferData?.amount || order?.total || 0).toLocaleString("es-CL")} al alias indicado.` },
+      desc: `Transferí exactamente $${Number(amount).toLocaleString("es-CL")} a la cuenta indicada.` },
     { n: "2", title: "Incluí la referencia",
-      desc: `En el comentario de la transferencia escribí: ${transferData?.reference || "LEVELPRO-" + id?.slice(0,8).toUpperCase()}` },
+      desc: `En el comentario de la transferencia escribí: ${reference}` },
     { n: "3", title: "Envianos el comprobante",
       desc: "Mandanos una captura del comprobante por WhatsApp o email y procesamos tu pedido en menos de 24hs hábiles." },
   ]
@@ -56,38 +61,88 @@ export default function TransferInstructions() {
         </div>
 
         {/* Datos bancarios */}
-        <div style={{ background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
-          borderRadius: "var(--r-2xl)", overflow: "hidden" }}>
-          <div style={{ padding: "16px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
-            <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent)",
-              textTransform: "uppercase", letterSpacing: "0.15em" }}>
-              · Datos para transferir
-            </p>
-          </div>
-          <div style={{ padding: "8px 24px 16px" }}>
-            {[
-              { label: "Alias / Cuenta",  value: transferData?.alias        || "levelproaudio" },
-              { label: "Nombre",          value: transferData?.account_name  || siteName },
-              { label: "Banco",           value: transferData?.bank          || "Global66"       },
-              { label: "Monto exacto",    value: `$${Number(transferData?.amount || order?.total || 0).toLocaleString("es-CL")}`, accent: true },
-              { label: "Referencia",      value: transferData?.reference     || `LEVELPRO-${id?.slice(0,8).toUpperCase()}`, mono: true },
-            ].map(({ label, value, accent, mono }, i, arr) => (
-              <div key={label} style={{ display: "flex", justifyContent: "space-between",
-                alignItems: "center", padding: "14px 0", gap: "16px",
-                borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
-                <span style={{ fontSize: "13px", color: "var(--text-3)", flexShrink: 0 }}>{label}</span>
-                <span style={{
-                  fontFamily: mono ? "monospace" : accent ? "var(--font-display)" : "inherit",
-                  fontSize: accent ? "1.4rem" : "14px",
-                  fontWeight: accent ? 800 : 600,
-                  letterSpacing: accent ? "-0.02em" : 0,
-                  color: accent ? "var(--accent)" : "var(--text)", textAlign: "right" }}>
-                  {value}
-                </span>
+        {bankAccounts.length > 0 ? (
+          // Cuentas reales cargadas desde el admin
+          bankAccounts.map((acc) => (
+            <div key={acc.id} style={{ background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
+              borderRadius: "var(--r-2xl)", overflow: "hidden" }}>
+              <div style={{ padding: "16px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)",
+                display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent)",
+                  textTransform: "uppercase", letterSpacing: "0.15em" }}>
+                  · {acc.label}
+                </p>
+                <span style={{ fontSize: "11px", color: "var(--text-3)", fontWeight: 600 }}>{acc.currency}</span>
               </div>
-            ))}
+              <div style={{ padding: "8px 24px 16px" }}>
+                {[
+                  { label: "Banco",         value: acc.bank_name },
+                  { label: "Tipo de cuenta", value: acc.account_type },
+                  { label: "N° de cuenta",  value: acc.account_number, mono: true },
+                  { label: "Titular",       value: acc.holder_name },
+                  { label: "RUT/CUIT",      value: acc.holder_id },
+                  { label: "Email",         value: acc.email },
+                  { label: "Monto exacto",  value: `$${Number(amount).toLocaleString("es-CL")}`, accent: true },
+                  { label: "Referencia",    value: reference, mono: true },
+                ].filter(r => r.value).map(({ label, value, accent, mono }, i, arr) => (
+                  <div key={label} style={{ display: "flex", justifyContent: "space-between",
+                    alignItems: "center", padding: "14px 0", gap: "16px",
+                    borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
+                    <span style={{ fontSize: "13px", color: "var(--text-3)", flexShrink: 0 }}>{label}</span>
+                    <span style={{
+                      fontFamily: mono ? "monospace" : accent ? "var(--font-display)" : "inherit",
+                      fontSize: accent ? "1.4rem" : "14px",
+                      fontWeight: accent ? 800 : 600,
+                      letterSpacing: accent ? "-0.02em" : 0,
+                      color: accent ? "var(--accent)" : "var(--text)", textAlign: "right" }}>
+                      {value}
+                    </span>
+                  </div>
+                ))}
+                {acc.instructions && (
+                  <p style={{ fontSize: "12px", color: "var(--text-3)", lineHeight: 1.6,
+                    paddingTop: "12px", borderTop: "1px solid var(--border)" }}>
+                    {acc.instructions}
+                  </p>
+                )}
+              </div>
+            </div>
+          ))
+        ) : (
+          // Fallback: formato viejo (global66 u otros que pasan transferData)
+          <div style={{ background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
+            borderRadius: "var(--r-2xl)", overflow: "hidden" }}>
+            <div style={{ padding: "16px 24px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+              <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent)",
+                textTransform: "uppercase", letterSpacing: "0.15em" }}>
+                · Datos para transferir
+              </p>
+            </div>
+            <div style={{ padding: "8px 24px 16px" }}>
+              {[
+                { label: "Alias / Cuenta",  value: transferData?.alias        || "levelproaudio" },
+                { label: "Nombre",          value: transferData?.account_name  || siteName },
+                { label: "Banco",           value: transferData?.bank          || "Global66"       },
+                { label: "Monto exacto",    value: `$${Number(amount).toLocaleString("es-CL")}`, accent: true },
+                { label: "Referencia",      value: reference, mono: true },
+              ].map(({ label, value, accent, mono }, i, arr) => (
+                <div key={label} style={{ display: "flex", justifyContent: "space-between",
+                  alignItems: "center", padding: "14px 0", gap: "16px",
+                  borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
+                  <span style={{ fontSize: "13px", color: "var(--text-3)", flexShrink: 0 }}>{label}</span>
+                  <span style={{
+                    fontFamily: mono ? "monospace" : accent ? "var(--font-display)" : "inherit",
+                    fontSize: accent ? "1.4rem" : "14px",
+                    fontWeight: accent ? 800 : 600,
+                    letterSpacing: accent ? "-0.02em" : 0,
+                    color: accent ? "var(--accent)" : "var(--text)", textAlign: "right" }}>
+                    {value}
+                  </span>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Pasos */}
         <div style={{ background: "#121212", border: "1px solid rgba(255,255,255,0.06)",

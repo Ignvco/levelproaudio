@@ -42,6 +42,7 @@ def create_payment(request):
         PaymentProvider.MERCADOPAGO_AR,
         PaymentProvider.PAYPAL,
         PaymentProvider.GLOBAL66,
+        PaymentProvider.TRANSFER,
     ]
 
     if provider not in VALID_PROVIDERS:
@@ -73,6 +74,18 @@ def create_payment(request):
 
         elif provider == PaymentProvider.GLOBAL66:
             data = get_global66_info(order)
+
+        elif provider == PaymentProvider.TRANSFER:
+            # Transferencia: no hay pasarela externa. Se registra el pago
+            # como pendiente; el admin lo aprueba a mano cuando recibe el
+            # comprobante (mismo flujo que ya existe para pagos manuales).
+            from .models import Payment
+            Payment.objects.create(
+                order=order, provider=provider, amount=order.total,
+                currency=getattr(order, "currency", "CLP") or "CLP",
+                status="pending",
+            )
+            data = {"status": "pending", "reference": f"LEVELPRO-{str(order.id)[:8].upper()}"}
 
         return Response({"provider": provider, **data})
 

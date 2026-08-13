@@ -78,3 +78,38 @@ class PaymentMethodConfigTest(TestCase):
         resp = self.client.get("/api/v1/payments/methods/")
         self.assertEqual(resp.data["methods"], [])
         self.assertEqual(resp.data["bank_accounts"], [])
+
+
+class TransferPaymentFlowTest(TestCase):
+    """El método transfer crea un Payment pendiente sin pasarela externa."""
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        from apps.orders.models import Order
+        from decimal import Decimal
+        User = get_user_model()
+        self.user = User.objects.create_user(
+            email="tf@test.com", username="tfuser", password="x")
+        self.order = Order.objects.create(
+            user=self.user, status="pending", total=Decimal("50000"),
+            email="tf@test.com", shipping_address="Calle 1")
+        self.client = APIClient()
+
+    def test_transfer_creates_pending_payment(self):
+        from apps.payments.models import Payment
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post("/api/v1/payments/create/", {
+            "order_id": str(self.order.id), "provider": "transfer",
+        }, format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        self.assertEqual(resp.data["provider"], "transfer")
+        self.assertEqual(resp.data["status"], "pending")
+        # Se creó el Payment pendiente
+        payment = Payment.objects.get(order=self.order, provider="transfer")
+        self.assertEqual(payment.status, "pending")
+
+    def test_transfer_reference_format(self):
+        self.client.force_authenticate(user=self.user)
+        resp = self.client.post("/api/v1/payments/create/", {
+            "order_id": str(self.order.id), "provider": "transfer",
+        }, format="json")
+        self.assertTrue(resp.data["reference"].startswith("LEVELPRO-"))

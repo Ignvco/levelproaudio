@@ -1,7 +1,7 @@
 // pages/Checkout.jsx — Checkout estilo editorial premium
-/* eslint-disable react-hooks/immutability */
-import { useState } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { useNavigate, Link } from "react-router-dom"
+import { useQuery } from "@tanstack/react-query"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -11,7 +11,7 @@ import {
   Globe, Landmark, ShieldCheck, ShoppingBag,
 } from "lucide-react"
 import api from "../api/client"
-import { createPayment } from "../api/payments.api"
+import { createPayment, getPaymentMethods } from "../api/payments.api"
 import { cancelOrder } from "../api/orders.api"
 import { useCartStore } from "../store/cartStore"
 import { useAuthStore } from "../store/authStore"
@@ -27,11 +27,17 @@ const schema = z.object({
   notes:            z.string().optional(),
 })
 
-const PAYMENT_METHODS = [
-  { id: "mercadopago_cl", label: "MercadoPago",  Icon: CreditCard, desc: "Tarjetas, Khipu, efectivo" },
-  { id: "paypal",         label: "PayPal",        Icon: Globe,      desc: "Tarjetas internacionales"  },
-  { id: "global66",       label: "Transferencia", Icon: Landmark,   desc: "Global66 · 24hs hábiles"  },
-]
+// Ícono y color por método — el catálogo de métodos viene del backend
+// (configurable desde el admin); acá solo resolvemos la parte visual.
+const METHOD_ICON = {
+  mercadopago_cl: CreditCard,
+  mercadopago_ar: CreditCard,
+  paypal:         Globe,
+  payoneer:       Globe,
+  dlocal:         CreditCard,
+  transfer:       Landmark,
+  global66:       Landmark,
+}
 
 function Eyebrow({ children }) {
   return (
@@ -82,13 +88,37 @@ function Section({ title, icon: Icon, children }) {
 }
 
 export default function Checkout() {
-  const [selectedMethod, setSelectedMethod] = useState("mercadopago_cl")
+  const [selectedMethod, setSelectedMethod] = useState("")
   const [isLoading, setIsLoading]           = useState(false)
   const [serverError, setServerError]       = useState("")
   const { items, clearCart, getTotal, pointsToRedeem } = useCartStore()
   const { user }                            = useAuthStore()
   const navigate                            = useNavigate()
   const total                               = getTotal()
+
+  // Métodos de pago activos (configurables desde el admin). Por ahora
+  // en CLP; cuando entre el multi-moneda, se pasa la moneda elegida.
+  const { data: methodsData } = useQuery({
+    queryKey: ["payment-methods", "CLP"],
+    queryFn:  () => getPaymentMethods("CLP"),
+  })
+  const paymentMethods = useMemo(
+    () => (methodsData?.methods || []).map(m => ({
+      id:    m.id,
+      label: m.label,
+      desc:  m.description,
+      Icon:  METHOD_ICON[m.id] || CreditCard,
+    })),
+    [methodsData]
+  )
+  const bankAccounts = methodsData?.bank_accounts || []
+
+  // Si no hay método elegido y ya llegaron los métodos, elegir el primero
+  useEffect(() => {
+    if (!selectedMethod && paymentMethods.length > 0) {
+      setSelectedMethod(paymentMethods[0].id)
+    }
+  }, [selectedMethod, paymentMethods])
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
@@ -139,7 +169,12 @@ export default function Checkout() {
         throw paymentError
       }
 
-      if (selectedMethod === "global66") {
+      if (selectedMethod === "transfer") {
+        clearCart()
+        navigate(`/payment/transfer/${order.id}`, {
+          state: { bankAccounts, amount: total, currency: "CLP" }
+        })
+      } else if (selectedMethod === "global66") {
         clearCart()
         navigate(`/payment/transfer/${order.id}`, { state: { transferData: paymentData } })
       } else if (selectedMethod === "mercadopago_cl" || selectedMethod === "mercadopago_ar") {
@@ -258,7 +293,7 @@ export default function Checkout() {
 
               <Section title="Método de pago" icon={CreditCard}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {PAYMENT_METHODS.map(m => {
+                  {paymentMethods.map(m => {
                     const active = selectedMethod === m.id
                     return (
                       <button key={m.id} type="button"
@@ -343,7 +378,7 @@ export default function Checkout() {
                   background: "rgba(26,255,110,0.05)", border: "1px solid rgba(26,255,110,0.15)",
                   fontSize: "13px", marginBottom: "16px", color: "var(--text)" }}>
                   {(() => {
-                    const m = PAYMENT_METHODS.find(m => m.id === selectedMethod)
+                    const m = paymentMethods.find(m => m.id === selectedMethod)
                     return m ? <><span style={{ color: "var(--accent)", display: "flex" }}><m.Icon size={16} /></span><span>{m.label}</span></> : null
                   })()}
                 </div>
@@ -371,7 +406,7 @@ export default function Checkout() {
                 onMouseEnter={e => { if (!isLoading) e.currentTarget.style.transform = "translateY(-2px)" }}
                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)" }}>
                 {isLoading ? "Procesando..." :
-                  selectedMethod === "global66" ? "Ver instrucciones de transferencia" : "Ir al pago"}
+                  (selectedMethod === "global66" || selectedMethod === "transfer") ? "Ver instrucciones de transferencia" : "Ir al pago"}
                 {!isLoading && (
                   <span style={{ width: "26px", height: "26px", borderRadius: "50%",
                     background: "#000", color: "var(--accent)", display: "flex",
