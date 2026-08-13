@@ -90,3 +90,42 @@ class CertificationPathTest(TestCase):
         slugs = [p["slug"] for p in resp.data["results"]] if "results" in resp.data else [p["slug"] for p in resp.data]
         self.assertIn("certificacion-en-sonido-en-vivo", slugs)
         self.assertNotIn("borrador", slugs)
+
+
+class AdminCertificationCRUDTest(TestCase):
+    """Endpoints admin para gestionar rutas desde el panel de React."""
+    def setUp(self):
+        self.admin = User.objects.create_superuser(
+            email="certadmin@test.com", username="certadmin", password="x")
+        self.cliente = User.objects.create_user(
+            email="certcli@test.com", username="certcli", password="x")
+        self.c1 = Course.objects.create(title="C1", slug="c1-admin", is_published=True)
+        self.c2 = Course.objects.create(title="C2", slug="c2-admin", is_published=True)
+        self.client = APIClient()
+
+    def test_admin_can_create_certification_with_courses(self):
+        self.client.force_authenticate(user=self.admin)
+        resp = self.client.post("/api/v1/admin/academy/certifications/", {
+            "title": "Ruta Pro", "seal_label": "Certificado Pro",
+            "is_published": True,
+            "course_ids": [str(self.c1.id), str(self.c2.id)],
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        path = CertificationPath.objects.get(title="Ruta Pro")
+        self.assertEqual(path.courses.count(), 2)
+
+    def test_admin_can_edit_courses(self):
+        self.client.force_authenticate(user=self.admin)
+        path = CertificationPath.objects.create(title="Ruta Edit", slug="ruta-edit")
+        path.courses.set([self.c1])
+        resp = self.client.patch(f"/api/v1/admin/academy/certifications/{path.id}/", {
+            "course_ids": [str(self.c2.id)],
+        }, format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        path.refresh_from_db()
+        self.assertEqual(list(path.courses.all()), [self.c2])
+
+    def test_client_cannot_access_admin_certifications(self):
+        self.client.force_authenticate(user=self.cliente)
+        resp = self.client.get("/api/v1/admin/academy/certifications/")
+        self.assertIn(resp.status_code, (401, 403))

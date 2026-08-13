@@ -238,3 +238,16 @@ export const updateBankAccount = (id, data) =>
 
 export const deleteBankAccount = (id) =>
   api.delete(`/payments/admin/bank-accounts/${id}/`).then(r => r.data)
+
+// ── Rutas de certificación ───────────────────────────────
+export const listAdminCertifications = () =>
+  api.get(`${BASE}/academy/certifications/`).then(r => r.data.results || r.data)
+
+export const createAdminCertification = (data) =>
+  api.post(`${BASE}/academy/certifications/`, data).then(r => r.data)
+
+export const updateAdminCertification = (id, data) =>
+  api.patch(`${BASE}/academy/certifications/${id}/`, data).then(r => r.data)
+
+export const deleteAdminCertification = (id) =>
+  api.delete(`${BASE}/academy/certifications/${id}/`).then(r => r.data)

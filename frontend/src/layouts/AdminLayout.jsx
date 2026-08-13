@@ -42,6 +42,7 @@ const navItems = [
     { to:"/admin/academy/modules",     label:"Módulos"       },
     { to:"/admin/academy/lessons",     label:"Lecciones"     },
     { to:"/admin/academy/enrollments", label:"Inscripciones" },
+    { to:"/admin/academy/certifications", label:"Certificaciones" },
   ]},
 
   { sep:"Rewards" },

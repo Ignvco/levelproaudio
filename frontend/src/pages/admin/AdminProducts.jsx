@@ -23,6 +23,86 @@ const inputSt = {
 // ── Picker de "Completá tu setup con" — busca entre TODOS los
 // productos (no solo los que coinciden con los filtros de la lista),
 // muestra chips de lo ya elegido, y guarda solo IDs para el backend.
+function BundleItemsPicker({ productId, items, onChange }) {
+  // items: [{ product_id, quantity, name }]
+  const [search, setSearch] = useState("")
+
+  const { data: searchResults, isFetching } = useQuery({
+    queryKey: ["admin-bundle-picker", search],
+    queryFn: () => getAdminProducts({ search, page_size: 8 }),
+    enabled: search.trim().length >= 2,
+  })
+  const results = (searchResults?.results || searchResults || [])
+    .filter(p => p.id !== productId && p.product_type !== "bundle")  // sin auto-referencia ni kits dentro de kits
+
+  const addItem = (p) => {
+    if (items.some(it => it.product_id === p.id)) return
+    onChange([...items, { product_id: p.id, quantity: 1, name: p.name }])
+  }
+  const removeItem = (id) => onChange(items.filter(it => it.product_id !== id))
+  const setQty = (id, qty) =>
+    onChange(items.map(it => it.product_id === id ? { ...it, quantity: Math.max(1, qty) } : it))
+
+  return (
+    <div style={{ marginTop: "20px", padding: "16px", borderRadius: "var(--r-lg)",
+      background: "rgba(26,255,110,0.03)", border: "1px solid rgba(26,255,110,0.15)" }}>
+      <label style={{ display: "block", fontSize: "12px", fontWeight: 600,
+        color: "var(--accent)", marginBottom: "3px" }}>
+        Componentes del kit
+      </label>
+      <p style={{ fontSize: "11px", color: "var(--text-3)", marginBottom: "12px" }}>
+        Los productos que incluye este kit. El precio del kit es el que pusiste arriba (fijo);
+        el stock se calcula de estos componentes.
+      </p>
+
+      {items.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginBottom: "12px" }}>
+          {items.map(it => (
+            <div key={it.product_id} style={{ display: "flex", alignItems: "center", gap: "10px",
+              background: "var(--surface-2)", border: "1px solid var(--border)",
+              borderRadius: "var(--r-md)", padding: "8px 12px" }}>
+              <span style={{ flex: 1, fontSize: "13px" }}>{it.name || it.product_id}</span>
+              <input type="number" min="1" value={it.quantity}
+                onChange={e => setQty(it.product_id, Number(e.target.value))}
+                style={{ width: "60px", padding: "5px 8px", borderRadius: "var(--r-sm)",
+                  border: "1px solid var(--border)", background: "var(--surface)",
+                  color: "var(--text)", fontSize: "13px" }} />
+              <span style={{ fontSize: "11px", color: "var(--text-3)" }}>unid.</span>
+              <button type="button" onClick={() => removeItem(it.product_id)}
+                style={{ background: "rgba(255,77,77,0.15)", color: "#ff6b6b", border: "none",
+                  borderRadius: "50%", width: "20px", height: "20px", cursor: "pointer",
+                  fontSize: "13px", lineHeight: 1 }}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <input value={search} onChange={e => setSearch(e.target.value)}
+        placeholder="Buscar producto para agregar al kit…" style={inputSt} />
+
+      {search.trim().length >= 2 && (
+        <div style={{ marginTop: "8px", maxHeight: "180px", overflowY: "auto",
+          border: "1px solid var(--border)", borderRadius: "var(--r-md)" }}>
+          {isFetching ? (
+            <p style={{ padding: "12px", fontSize: "12px", color: "var(--text-3)" }}>Buscando…</p>
+          ) : results.length === 0 ? (
+            <p style={{ padding: "12px", fontSize: "12px", color: "var(--text-3)" }}>Sin resultados.</p>
+          ) : results.map(p => (
+            <button key={p.id} type="button" onClick={() => addItem(p)}
+              disabled={items.some(it => it.product_id === p.id)}
+              style={{ display: "block", width: "100%", textAlign: "left",
+                padding: "8px 12px", cursor: "pointer", fontSize: "13px",
+                borderBottom: "1px solid var(--border)", background: "transparent",
+                border: "none", color: items.some(it => it.product_id === p.id) ? "var(--text-3)" : "var(--text)" }}>
+              {p.name} {items.some(it => it.product_id === p.id) && "· agregado"}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function RelatedProductsPicker({ productId, initialSelected, selected, onChange }) {
   const [search, setSearch] = useState("")
   const [namesById, setNamesById] = useState(() => {
@@ -116,6 +196,11 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
     product_type:      product?.product_type      || "stock",
     badge:             product?.badge             || "",
     related_products:  product?.related_products?.map(p => p.id) || [],
+    bundle_items:      product?.bundle_items?.map(bi => ({
+                         product_id: bi.product.id,
+                         quantity:   bi.quantity,
+                         name:       bi.product.name,
+                       })) || [],
   })
   const [saving, setSaving]   = useState(false)
   const [error, setError]     = useState("")
@@ -137,6 +222,16 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
       if (!payload.category)      delete payload.category
       if (!payload.brand)         delete payload.brand
       if (!payload.slug)          delete payload.slug
+
+      // Componentes del kit: solo enviamos si es bundle, y solo los
+      // campos que el backend espera (product_id, quantity)
+      if (payload.product_type === "bundle") {
+        payload.bundle_items = (payload.bundle_items || []).map(it => ({
+          product_id: it.product_id, quantity: it.quantity,
+        }))
+      } else {
+        delete payload.bundle_items
+      }
 
       if (product?.id) {
         await updateAdminProduct(product.id, payload)
@@ -336,9 +431,8 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                   </select>
                   {form.product_type === "bundle" && (
                     <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "6px" }}>
-                      Los productos que componen el kit se configuran desde el admin de Django
-                      (Productos → este producto → Componentes del kit). El precio del kit es
-                      el que pongas acá, a mano.
+                      Los productos que componen el kit se configuran más abajo, en
+                      "Componentes del kit". El precio del kit es el que pongas acá, a mano.
                     </p>
                   )}
                 </div>
@@ -390,6 +484,14 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                   producto y el stock — no hace falta elegirlos acá.
                 </p>
               </div>
+
+              {form.product_type === "bundle" && (
+                <BundleItemsPicker
+                  productId={product?.id}
+                  items={form.bundle_items}
+                  onChange={items => setForm(p => ({ ...p, bundle_items: items }))}
+                />
+              )}
 
               <RelatedProductsPicker
                 productId={product?.id}

@@ -173,3 +173,21 @@ class CertificationPathSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return False
         return obj.is_completed_by(request.user)
+
+
+class CertificationPathAdminSerializer(serializers.ModelSerializer):
+    """Serializer admin: cursos editables por lista de IDs."""
+    from .models import CertificationPath as _CP
+    course_ids = serializers.PrimaryKeyRelatedField(
+        many=True, write_only=True, required=False,
+        queryset=Course.objects.all(), source="courses",
+    )
+    courses = CourseListSerializer(many=True, read_only=True)
+
+    class Meta:
+        from .models import CertificationPath
+        model = CertificationPath
+        fields = ["id", "title", "slug", "description", "seal_label",
+                  "courses", "course_ids", "is_published", "order",
+                  "seo_title", "seo_description"]
+        read_only_fields = ["slug"]

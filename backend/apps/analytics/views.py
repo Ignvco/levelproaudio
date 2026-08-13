@@ -30,7 +30,7 @@ from django.utils.text import slugify
 from decimal import Decimal
 from apps.users.models import User
 from apps.payments.models import Payment
-from apps.academy.models import Course, Module, Lesson, Enrollment
+from apps.academy.models import Course, Module, Lesson, Enrollment, CertificationPath
 from apps.services.models import Service, Booking, ServiceRequest, ServiceCategory
 from apps.products.importers import import_from_excel, import_from_csv
 from apps.products.importers_extended import (
@@ -409,6 +409,21 @@ class AdminProductViewSet(viewsets.ModelViewSet):
             # nunca un producto "complementa" a sí mismo
             product.related_products.set([i for i in ids if str(i) != str(product.id)])
 
+        # Componentes del kit (solo para product_type=bundle). Payload:
+        # bundle_items = [{"product_id": "...", "quantity": 2}, ...]
+        if "bundle_items" in data:
+            from apps.products.models import BundleItem
+            items = data["bundle_items"] or []
+            # Reemplazo completo: borro los actuales y recreo
+            product.bundle_components.all().delete()
+            for it in items:
+                comp_id = it.get("product_id") or it.get("product")
+                if not comp_id or str(comp_id) == str(product.id):
+                    continue  # un kit no se contiene a sí mismo
+                qty = int(it.get("quantity") or 1)
+                BundleItem.objects.create(
+                    bundle=product, component_id=comp_id, quantity=max(1, qty))
+
         return product
 
     
@@ -541,6 +556,20 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
         return Course.objects.annotate(
             enrollment_count=Count("enrollments")
         ).order_by("-created_at")
+
+
+class AdminCertificationPathViewSet(viewsets.ModelViewSet):
+    """CRUD de rutas de certificación para el panel admin de React."""
+    permission_classes = [IsAdminOrStaff]
+    parser_classes     = [JSONParser]
+    lookup_field       = "id"
+
+    def get_queryset(self):
+        return CertificationPath.objects.prefetch_related("courses").order_by("order", "-created_at")
+
+    def get_serializer_class(self):
+        from apps.academy.serializers import CertificationPathAdminSerializer
+        return CertificationPathAdminSerializer
 
 
 class AdminModuleViewSet(viewsets.ModelViewSet):

@@ -130,3 +130,62 @@ class BundleStockTest(TestCase):
     def test_normal_product_has_empty_bundle_items(self):
         resp = self.client.get(f"/api/v1/products/{self.mic.slug}/")
         self.assertEqual(resp.data["bundle_items"], [])
+
+
+class BundleAdminEditTest(TestCase):
+    """Crear/editar un kit con componentes desde el endpoint admin de React."""
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        self.admin = User.objects.create_superuser(
+            email="kitadmin@test.com", username="kitadmin", password="x")
+        self.cat = Category.objects.create(name="Audio", slug="audio-kitadmin")
+        self.mic = Product.objects.create(
+            name="Mic K", slug="mic-k", category=self.cat,
+            price=Decimal("60000"), stock=10, product_type="stock")
+        self.cable = Product.objects.create(
+            name="Cable K", slug="cable-k", category=self.cat,
+            price=Decimal("8000"), stock=20, product_type="stock")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_create_bundle_with_components(self):
+        resp = self.client.post("/api/v1/admin/products/", {
+            "name": "Kit Studio", "price": "62000", "product_type": "bundle",
+            "category": str(self.cat.id),
+            "bundle_items": [
+                {"product_id": str(self.mic.id), "quantity": 1},
+                {"product_id": str(self.cable.id), "quantity": 2},
+            ],
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+
+        kit = Product.objects.get(name="Kit Studio")
+        comps = {bi.component.name: bi.quantity for bi in kit.bundle_components.all()}
+        self.assertEqual(comps, {"Mic K": 1, "Cable K": 2})
+
+    def test_edit_bundle_replaces_components(self):
+        kit = Product.objects.create(
+            name="Kit Edit", slug="kit-edit", category=self.cat,
+            price=Decimal("50000"), product_type="bundle")
+        BundleItem.objects.create(bundle=kit, component=self.mic, quantity=1)
+
+        resp = self.client.patch(f"/api/v1/admin/products/{kit.id}/", {
+            "bundle_items": [{"product_id": str(self.cable.id), "quantity": 3}],
+        }, format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+
+        kit.refresh_from_db()
+        comps = {bi.component.name: bi.quantity for bi in kit.bundle_components.all()}
+        self.assertEqual(comps, {"Cable K": 3})  # el mic fue reemplazado
+
+    def test_bundle_cannot_contain_itself(self):
+        kit = Product.objects.create(
+            name="Kit Self", slug="kit-self", category=self.cat,
+            price=Decimal("50000"), product_type="bundle")
+        resp = self.client.patch(f"/api/v1/admin/products/{kit.id}/", {
+            "bundle_items": [{"product_id": str(kit.id), "quantity": 1}],
+        }, format="json")
+        self.assertEqual(resp.status_code, 200)
+        kit.refresh_from_db()
+        self.assertEqual(kit.bundle_components.count(), 0)  # se ignoró la auto-referencia

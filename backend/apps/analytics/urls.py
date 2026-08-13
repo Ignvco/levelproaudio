@@ -10,6 +10,7 @@ from .views import (
     AdminBrandViewSet,
     AdminProductImageViewSet,
     AdminCourseViewSet,
+    AdminCertificationPathViewSet,
     AdminModuleViewSet,
     AdminLessonViewSet,
     admin_lesson_video_upload_url,
@@ -60,6 +61,7 @@ router.register("products",        AdminProductViewSet, basename="admin-products
 router.register("categories",      AdminCategoryViewSet, basename="admin-categories")
 router.register("brands",          AdminBrandViewSet,   basename="admin-brands")
 router.register("academy/courses", AdminCourseViewSet,  basename="admin-courses")
+router.register("academy/certifications", AdminCertificationPathViewSet, basename="admin-certifications")
 router.register("academy/modules", AdminModuleViewSet,  basename="admin-modules")
 router.register("academy/lessons", AdminLessonViewSet,  basename="admin-lessons")
 
