@@ -9,6 +9,7 @@ import {
   getFinanceSummary, getFinanceCategories,
   createFinanceCategory, updateFinanceCategory, deleteFinanceCategory,
   getWithdrawals, createWithdrawal, deleteWithdrawal,
+  getAnalytics,
 } from "../../api/admin.api"
 
 const fmt   = n => `$${Number(n || 0).toLocaleString("es-CL")}`
@@ -18,6 +19,7 @@ const TABS  = [
   { key:"withdrawals", label:"Retiros"       },
   { key:"categories",  label:"Configuración" },
   { key:"by_product",  label:"Por producto"  },
+  { key:"analysis",    label:"Análisis"      },
 ]
 
 const inputSt = {
@@ -284,6 +286,11 @@ export default function AdminFinance() {
     queryKey: ["admin-finance-by-product"],
     queryFn:  () => api.get("/admin/finance/by-product/").then(r => r.data),
     enabled:  tab === "by_product",
+  })
+  const { data:analytics } = useQuery({
+    queryKey: ["admin-analytics"],
+    queryFn:  getAnalytics,
+    enabled:  tab === "analysis",
   })
 
   const deleteWithdrawalMutation = useMutation({
@@ -671,6 +678,83 @@ export default function AdminFinance() {
           emptyDesc="Aparecen al aprobarse pagos con órdenes reales."
           testId="by-product-table" />
       )}
+
+      {/* ── ANÁLISIS (consolida Vista Ejecutiva + Analytics) ── */}
+      {tab==="analysis" && (
+        <div style={{ display:"flex", flexDirection:"column", gap:"24px" }}>
+          {!analytics ? (
+            <p style={{ color:"var(--admin-text-muted)", padding:"40px 0" }}>Cargando análisis…</p>
+          ) : (
+            <>
+              {/* KPIs estratégicos */}
+              <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:"14px" }}>
+                <StatCard Icon={TrendingUp} label="Ingresos totales"
+                  value={fmt(analytics.kpis?.total_revenue)} />
+                <StatCard Icon={Wallet} label="Ticket promedio"
+                  value={fmt(analytics.kpis?.avg_order_value)} />
+                <StatCard Icon={Inbox} label="Clientes únicos"
+                  value={analytics.kpis?.total_customers ?? 0} />
+                <StatCard Icon={TrendingUp} label="Tasa de repetición"
+                  value={`${analytics.kpis?.repeat_rate ?? 0}%`} />
+              </div>
+
+              {/* Ventas por mes */}
+              <AnalysisBarSection title="Ventas por mes"
+                data={(analytics.sales_by_month || []).map(m => ({ label:m.month, value:m.total }))}
+                fmt={fmt} />
+
+              {/* Ingresos por categoría */}
+              <AnalysisBarSection title="Ingresos por categoría"
+                data={(analytics.revenue_by_category || []).map(c => ({ label:c.category, value:c.total }))}
+                fmt={fmt} />
+
+              {/* Ingresos por método de pago */}
+              <AnalysisBarSection title="Ingresos por método de pago"
+                data={(analytics.revenue_by_provider || []).map(p => ({ label:p.provider, value:p.total }))}
+                fmt={fmt} />
+
+              {/* Órdenes por estado */}
+              <AnalysisBarSection title="Órdenes por estado"
+                data={(analytics.orders_by_status || []).map(o => ({ label:o.status, value:o.count }))}
+                fmt={v => `${v}`} />
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Sección de barras horizontales simple, reutilizable en la pestaña Análisis.
+function AnalysisBarSection({ title, data, fmt }) {
+  const max = Math.max(...data.map(d => d.value || 0), 1)
+  if (data.length === 0) {
+    return (
+      <div>
+        <h3 style={{ fontSize:"14px", fontWeight:700, color:"var(--admin-text)", marginBottom:"12px" }}>{title}</h3>
+        <p style={{ fontSize:"13px", color:"var(--admin-text-muted)" }}>Sin datos todavía.</p>
+      </div>
+    )
+  }
+  return (
+    <div>
+      <h3 style={{ fontSize:"14px", fontWeight:700, color:"var(--admin-text)", marginBottom:"14px" }}>{title}</h3>
+      <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
+        {data.map((d, i) => (
+          <div key={i} style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+            <span style={{ fontSize:"12px", color:"var(--admin-text-muted)", width:"120px",
+              flexShrink:0, textAlign:"right", textTransform:"capitalize" }}>{d.label}</span>
+            <div style={{ flex:1, height:"22px", background:"var(--admin-surface-2)",
+              borderRadius:"6px", overflow:"hidden" }}>
+              <div style={{ height:"100%", width:`${(d.value/max)*100}%`,
+                background:"var(--admin-primary)", borderRadius:"6px", minWidth:"2px",
+                transition:"width 400ms ease" }} />
+            </div>
+            <span style={{ fontSize:"12px", fontWeight:600, color:"var(--admin-text)",
+              width:"90px", flexShrink:0 }}>{fmt(d.value)}</span>
+          </div>
+        ))}
+      </div>
     </div>
   )
 }

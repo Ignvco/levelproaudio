@@ -168,9 +168,6 @@ export const getInventoryRotation   = () =>
 export const getInventoryByCategory = () =>
   api.get(`${BASE}/inventory/by-category/`).then(r => r.data)
 
-export const getExecutiveDashboard = () =>
-  api.get(`${BASE}/executive/`).then(r => r.data)
-
 
 // Loyalty — admin
 // ← Estaban apuntando a ${BASE}/loyalty/admin/... 

@@ -73,7 +73,6 @@ const AdminPaymentMethods          = lazy(() => import("./pages/admin/AdminPayme
 const AdminAcademy                 = lazy(() => import("./pages/admin/AdminAcademy"))
 const AdminCertifications          = lazy(() => import("./pages/admin/AdminCertifications"))
 const AdminServices                = lazy(() => import("./pages/admin/AdminServices"))
-const AdminAnalytics               = lazy(() => import("./pages/admin/AdminAnalytics"))
 const AdminCategories              = lazy(() => import("./pages/admin/AdminCategories"))
 const AdminBrands                  = lazy(() => import("./pages/admin/AdminBrands"))
 const AdminSettings                = lazy(() => import("./pages/admin/AdminSettings"))
@@ -83,7 +82,6 @@ const AdminEnrollments             = lazy(() => import("./pages/admin/AdminEnrol
 const AdminProductImport           = lazy(() => import("./pages/admin/AdminProductImport"))
 const AdminFinance                 = lazy(() => import("./pages/admin/AdminFinance"))
 const AdminInventory               = lazy(() => import("./pages/admin/AdminInventory"))
-const ExecutiveDashboard           = lazy(() => import("./pages/admin/ExecutiveDashboard"))
 const AdminLoyalty                 = lazy(() => import("./pages/admin/AdminLoyalty"))
 const AdminBilling                 = lazy(() => import("./pages/admin/AdminBilling"))
 
@@ -164,8 +162,8 @@ function App() {
 
         <Route path="/admin" element={<AdminRoute><Suspense fallback={<AdminLoading />}><AdminLayout /></Suspense></AdminRoute>}>
           <Route index element={<Suspense fallback={<AdminLoading />}><AdminDashboard /></Suspense>} />
-          <Route path="analytics" element={<Suspense fallback={<AdminLoading />}><AdminAnalytics /></Suspense>} />
-          <Route path="/admin/executive" element={<Suspense fallback={<AdminLoading />}><ExecutiveDashboard /></Suspense>} />
+          <Route path="analytics" element={<Navigate to="/admin/finance" replace />} />
+          <Route path="/admin/executive" element={<Navigate to="/admin/finance" replace />} />
           <Route path="/admin/finance" element={<Suspense fallback={<AdminLoading />}><AdminFinance /></Suspense>} />
           <Route path="/admin/billing" element={<Suspense fallback={<AdminLoading />}><AdminBilling /></Suspense>} />
           <Route path="/admin/loyalty" element={<Suspense fallback={<AdminLoading />}><AdminLoyalty /></Suspense>} />

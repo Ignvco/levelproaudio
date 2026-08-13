@@ -8,7 +8,7 @@ import AdminSearch                                           from "../components
 import logoImg                                               from "../assets/logo.png"
 import { useSiteSettings }                                   from "../hooks/useSiteSettings"
 import {
-  LayoutDashboard, LineChart, BarChart3, ChevronRight, ChevronsLeft,
+  LayoutDashboard, ChevronRight, ChevronsLeft,
   ShoppingBag, CreditCard, Users, Package, Boxes, GraduationCap,
   Wrench, Gift, Wallet, Receipt, Star, Palette, ExternalLink, LogOut,
   Search, Bell, Menu, X, Clock, AlertTriangle, MessageSquare, CheckCircle2,
@@ -59,8 +59,6 @@ const navItems = [
 
   { sep:"Negocio" },
   { to:"/admin/finance",   label:"Finanzas",        icon:Wallet },
-  { to:"/admin/executive", label:"Vista Ejecutiva", icon:LineChart },
-  { to:"/admin/analytics", label:"Analytics",       icon:BarChart3 },
   { to:"/admin/users",     label:"Clientes",        icon:Users },
   { to:"/admin/settings",  label:"Personalización", icon:Palette },
 ]
@@ -68,8 +66,6 @@ const navItems = [
 // Título/subtítulo del topbar según la ruta
 const ROUTE_TITLES = {
   "/admin":           ["Dashboard",       "Resumen general de tu tienda"],
-  "/admin/executive": ["Vista Ejecutiva", "Métricas clave del negocio"],
-  "/admin/analytics": ["Analytics",       "Análisis detallado"],
   "/admin/orders":    ["Órdenes",         "Gestión de pedidos"],
   "/admin/payments":  ["Pagos",           "Transacciones y cobros"],
   "/admin/payment-methods": ["Métodos de pago", "Configuración de cobros y cuentas"],
