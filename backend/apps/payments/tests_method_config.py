@@ -12,6 +12,9 @@ from apps.payments.models import PaymentMethodConfig, BankAccount
 
 class PaymentMethodConfigTest(TestCase):
     def setUp(self):
+        # Partimos de tabla limpia: la migración 0004 siembra métodos,
+        # pero estos tests controlan su propio estado.
+        PaymentMethodConfig.objects.all().delete()
         self.client = APIClient()
 
     def test_only_active_methods_returned(self):
@@ -124,6 +127,7 @@ class AdminPaymentConfigCRUDTest(TestCase):
             email="padmin@test.com", username="padmin", password="x")
         self.cliente = User.objects.create_user(
             email="pcli@test.com", username="pcli", password="x")
+        PaymentMethodConfig.objects.all().delete()
         self.client = APIClient()
 
     def test_admin_can_create_payment_method(self):
@@ -160,3 +164,20 @@ class AdminPaymentConfigCRUDTest(TestCase):
     def test_anon_cannot_access_admin_endpoints(self):
         resp = self.client.get("/api/v1/payments/admin/bank-accounts/")
         self.assertIn(resp.status_code, (401, 403))
+
+
+class SeededMethodsTest(TestCase):
+    """La migración 0004 siembra los métodos que existían antes."""
+    def test_existing_methods_are_seeded(self):
+        from apps.payments.models import PaymentMethodConfig
+        # La migración ya corrió en la DB de test
+        methods = set(PaymentMethodConfig.objects.values_list("method", flat=True))
+        self.assertIn("mercadopago_cl", methods)
+        self.assertIn("paypal", methods)
+        self.assertIn("transfer", methods)
+
+    def test_seeded_methods_are_inactive_by_default(self):
+        from apps.payments.models import PaymentMethodConfig
+        mp = PaymentMethodConfig.objects.filter(method="mercadopago_cl").first()
+        if mp:
+            self.assertFalse(mp.is_active)  # el admin decide activar

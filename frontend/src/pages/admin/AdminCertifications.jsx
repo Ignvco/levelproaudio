@@ -54,7 +54,7 @@ function CertModal({ item, onClose }) {
   })
 
   return (
-    <FormModal title={isEdit ? "Editar certificación" : "Nueva certificación"} onClose={onClose}
+    <FormModal open title={isEdit ? "Editar certificación" : "Nueva certificación"} onClose={onClose}
       onSave={() => save.mutate()} saving={save.isPending}>
       <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
         <FormField label="Título">
@@ -139,11 +139,13 @@ export default function AdminCertifications() {
       {modal && <CertModal item={modal === "new" ? null : modal} onClose={() => setModal(null)} />}
       {toDelete && (
         <ConfirmationModal
+          open
           title="Eliminar certificación"
-          message="¿Seguro? Esto no borra el progreso de los alumnos, solo la ruta."
+          description="¿Seguro? Esto no borra el progreso de los alumnos, solo la ruta."
+          danger
           onConfirm={() => delMutation.mutate()}
           onCancel={() => setToDelete(null)}
-          confirming={delMutation.isPending}
+          loading={delMutation.isPending}
         />
       )}
 
@@ -158,8 +160,9 @@ export default function AdminCertifications() {
       </div>
 
       {certs.length === 0 ? (
-        <EmptyState icon={Award}
-          message="No hay certificaciones. Creá una ruta agrupando varios cursos." />
+        <EmptyState Icon={Award}
+          title="Sin certificaciones"
+          description="Creá una ruta agrupando varios cursos." />
       ) : (
         <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
           <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>

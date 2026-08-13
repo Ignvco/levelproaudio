@@ -49,7 +49,7 @@ function MethodModal({ item, onClose }) {
   })
 
   return (
-    <FormModal title={isEdit ? "Editar método" : "Nuevo método"} onClose={onClose}
+    <FormModal open title={isEdit ? "Editar método" : "Nuevo método"} onClose={onClose}
       onSave={() => save.mutate()} saving={save.isPending}>
       <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
         <FormField label="Método">
@@ -130,7 +130,7 @@ function AccountModal({ item, onClose }) {
   )
 
   return (
-    <FormModal title={isEdit ? "Editar cuenta" : "Nueva cuenta"} onClose={onClose}
+    <FormModal open title={isEdit ? "Editar cuenta" : "Nueva cuenta"} onClose={onClose}
       onSave={() => save.mutate()} saving={save.isPending}>
       <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
         {field("Etiqueta", "label", "Ej: Cuenta CLP - Banco Estado")}
@@ -214,11 +214,13 @@ export default function AdminPaymentMethods() {
       {accountModal && <AccountModal item={accountModal === "new" ? null : accountModal} onClose={() => setAccountModal(null)} />}
       {toDelete && (
         <ConfirmationModal
+          open
           title="Eliminar"
-          message="¿Seguro que querés eliminar esto? No se puede deshacer."
+          description="¿Seguro que querés eliminar esto? No se puede deshacer."
+          danger
           onConfirm={() => delMutation.mutate()}
           onCancel={() => setToDelete(null)}
-          confirming={delMutation.isPending}
+          loading={delMutation.isPending}
         />
       )}
 
@@ -235,7 +237,7 @@ export default function AdminPaymentMethods() {
         </div>
 
         {methods.length === 0 ? (
-          <EmptyState message="No hay métodos configurados. Agregá al menos uno para que el checkout funcione." />
+          <EmptyState title="Sin métodos" description="Agregá al menos uno para que el checkout funcione." />
         ) : (
           <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
@@ -285,7 +287,7 @@ export default function AdminPaymentMethods() {
         </div>
 
         {accounts.length === 0 ? (
-          <EmptyState message="No hay cuentas cargadas. Agregá una para que aparezca en el checkout cuando el cliente elija transferencia." />
+          <EmptyState title="Sin cuentas" description="Agregá una para que aparezca en el checkout cuando el cliente elija transferencia." />
         ) : (
           <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
