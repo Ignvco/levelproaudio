@@ -1,7 +1,30 @@
 # apps/products/serializers.py
 from rest_framework import serializers
+from decimal import Decimal
 from .models import Category, Brand, Product, ProductImage
 from core.media import media_url as _media_url
+
+
+def _get_exchange_rates(context):
+    """
+    Obtiene las tasas de cambio de SiteSettings, cacheadas en el contexto
+    del serializer para no consultar la DB una vez por producto.
+    """
+    cached = context.get("_exchange_rates") if context else None
+    if cached:
+        return cached
+    try:
+        from apps.site_settings.models import SiteSettings
+        s = SiteSettings.objects.first()
+        rates = {
+            "usd_to_clp": s.usd_to_clp if s else Decimal("950"),
+            "usd_to_ars": s.usd_to_ars if s else Decimal("1000"),
+        }
+    except Exception:
+        rates = {"usd_to_clp": Decimal("950"), "usd_to_ars": Decimal("1000")}
+    if context is not None:
+        context["_exchange_rates"] = rates
+    return rates
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -72,17 +95,24 @@ class ProductListSerializer(serializers.ModelSerializer):
     is_favorited  = serializers.SerializerMethodField()
     badge_display = serializers.CharField(source="get_badge_display", read_only=True)
     is_low_stock  = serializers.SerializerMethodField()
+    prices        = serializers.SerializerMethodField()
 
     class Meta:
         model  = Product
         fields = [
             "id", "name", "slug", "price", "compare_price",
+            "price_usd", "price_ars", "prices",
             "short_description",
             "stock", "in_stock", "is_featured",
             "badge", "badge_display", "is_low_stock", "product_type",
             "primary_image", "images", "brand_name", "brand_logo",
             "has_discount", "discount_percentage", "is_favorited",
         ]
+
+    def get_prices(self, obj):
+        rates = _get_exchange_rates(self.context)
+        p = obj.prices_by_currency(rates["usd_to_clp"], rates["usd_to_ars"])
+        return {k: str(v) for k, v in p.items()}
 
     def get_is_low_stock(self, obj):
         # No exponemos el umbral real (stock_min) — solo si o no, para
@@ -127,6 +157,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     is_low_stock        = serializers.SerializerMethodField()
     related_products    = ProductListSerializer(many=True, read_only=True)
     bundle_items        = serializers.SerializerMethodField()
+    prices              = serializers.SerializerMethodField()
 
     class Meta:
         model  = Product
@@ -135,12 +166,18 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "category", "brand",
             "description", "short_description",
             "price", "compare_price",
+            "price_usd", "price_ars", "prices",
             "has_discount", "discount_percentage",
             "stock", "in_stock", "is_active", "is_featured",
             "badge", "badge_display", "is_low_stock", "product_type",
             "primary_image", "images", "related_products", "bundle_items",
             "created_at", "updated_at",
         ]
+
+    def get_prices(self, obj):
+        rates = _get_exchange_rates(self.context)
+        p = obj.prices_by_currency(rates["usd_to_clp"], rates["usd_to_ars"])
+        return {k: str(v) for k, v in p.items()}
 
     def get_bundle_items(self, obj):
         if obj.product_type != Product.ProductType.BUNDLE:

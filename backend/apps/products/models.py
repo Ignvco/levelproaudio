@@ -92,6 +92,23 @@ class Product(TimeStampedModel):
         validators=[MinValueValidator(Decimal("0"))],
     )
 
+    # Precios multi-moneda cargados a mano. price (arriba) es el CLP base.
+    # Si price_usd/price_ars quedan vacíos, el frontend cae a la tasa de
+    # cambio configurable. El USD es el precio de referencia real para el
+    # comprador argentino (es lo que cobra Payoneer); el ARS es informativo.
+    price_usd = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        verbose_name="Precio USD",
+        help_text="Precio en dólares. Si se deja vacío, se calcula con la tasa configurable.",
+    )
+    price_ars = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        verbose_name="Precio ARS",
+        help_text="Precio en pesos argentinos (referencial). Si se deja vacío, se calcula con la tasa.",
+    )
+
     cost_price = models.DecimalField(
         max_digits=12, decimal_places=2,
         null=True, blank=True,
@@ -170,6 +187,34 @@ class Product(TimeStampedModel):
         super().save(*args, **kwargs)
 
     
+
+    def prices_by_currency(self, usd_to_clp=None, usd_to_ars=None):
+        """
+        Devuelve los precios en las 3 monedas. Usa el precio manual si
+        está cargado; si no, lo calcula desde el CLP con las tasas dadas.
+        CLP es la base. Las tasas se pasan desde SiteSettings (o defaults).
+        """
+        from decimal import Decimal, ROUND_HALF_UP
+        usd_to_clp = usd_to_clp or Decimal("950")
+        usd_to_ars = usd_to_ars or Decimal("1000")
+
+        clp = self.price
+        # USD: manual o (CLP / tasa_usd_clp)
+        if self.price_usd is not None:
+            usd = self.price_usd
+        else:
+            usd = (clp / usd_to_clp).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if usd_to_clp else Decimal("0")
+        # ARS: manual o (USD * tasa_usd_ars) — referencial
+        if self.price_ars is not None:
+            ars = self.price_ars
+        else:
+            ars = (usd * usd_to_ars).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+
+        return {
+            "CLP": clp,
+            "USD": usd,
+            "ARS": ars,
+        }
 
     @property
     def has_discount(self):

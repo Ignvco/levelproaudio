@@ -3,6 +3,7 @@ Site Settings — modelo singleton para la personalización del sitio.
 Todos los textos, imágenes, toggles y meta-data configurables desde el admin.
 """
 from django.db import models
+from decimal import Decimal
 from core.models import TimeStampedModel
 
 
@@ -66,6 +67,21 @@ class SiteSettings(TimeStampedModel):
     about_body = models.TextField(
         blank=True,
         default="Creemos que comprar equipamiento profesional debería empezar con una buena decisión técnica. Por eso combinamos equipamiento, formación y asesoría para ayudarte a construir un sistema que realmente funcione.",
+    )
+
+    # ── Tasas de cambio (multi-moneda) ──────────────────────────────
+    # CLP es la moneda base (el precio principal del producto). Estas
+    # tasas se usan para CALCULAR los precios USD/ARS cuando el producto
+    # no los tiene cargados a mano. El admin las actualiza cuando quiere.
+    usd_to_clp = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("950"),
+        verbose_name="1 USD = ? CLP",
+        help_text="Cuántos pesos chilenos vale un dólar (para calcular precios USD).",
+    )
+    usd_to_ars = models.DecimalField(
+        max_digits=12, decimal_places=2, default=Decimal("1000"),
+        verbose_name="1 USD = ? ARS",
+        help_text="Cuántos pesos argentinos vale un dólar (para el precio ARS referencial).",
     )
 
     class Meta:
