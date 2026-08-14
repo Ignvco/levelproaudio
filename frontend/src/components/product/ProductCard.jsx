@@ -10,6 +10,7 @@ import { useState, useRef, useEffect } from "react"
 import { useNavigate }     from "react-router-dom"
 import { ArrowUpRight }    from "lucide-react"
 import { useCartStore }    from "../../store/cartStore"
+import { usePrice }        from "../../hooks/usePrice"
 import { mediaUrl }        from "../../utils/mediaUrl"
 import { showToast }       from "../ui/ToastNotification"
 import { FavoriteButton }  from "./FavoriteButton"
@@ -17,6 +18,7 @@ import { getProductBadge } from "../../utils/productBadge"
 
 export default function ProductCard({ product }) {
   const { addItem } = useCartStore()
+  const { price }   = usePrice()
   const navigate    = useNavigate()
 
   const [imgIndex, setImgIndex] = useState(0)
@@ -219,7 +221,7 @@ export default function ProductCard({ product }) {
               border:"1px solid rgba(255,255,255,0.08)",
               lineHeight:1, whiteSpace:"nowrap",
             }}>
-            ${Number(product.price).toLocaleString("es-CL")}
+            {price(product)}
           </span>
 
           <button

@@ -6,6 +6,8 @@ import { useQuery } from "@tanstack/react-query"
 import { ArrowLeft } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
 import { useCartStore } from "../store/cartStore"
+import { useCurrencyStore } from "../store/currencyStore"
+import CurrencySelector from "../components/CurrencySelector"
 import { getCategories } from "../api/products.api"
 import { buildCategoryTree } from "../utils/categoryTree"
 import logoImg from "../assets/logo.png"
@@ -245,6 +247,9 @@ function Navbar() {
         {/* Right side — cart + auth pill */}
         <div style={{ display: "flex", alignItems: "center",
           gap: "6px", marginLeft: "14px" }}>
+
+          {/* Selector de moneda */}
+          <CurrencySelector />
 
           {/* Cart icon inside pill */}
           <Link to="/cart" data-testid="navbar-cart" style={{
@@ -767,6 +772,11 @@ export default function MainLayout({ children }) {
   const [isMobile, setIsMobile] = useState(
     typeof window !== "undefined" && window.innerWidth <= 900
   )
+  const detectCurrency = useCurrencyStore(s => s.detectCurrency)
+
+  useEffect(() => {
+    detectCurrency()   // default inteligente por geo-IP (solo si no eligió antes)
+  }, [detectCurrency])
 
   useEffect(() => {
     const onResize = () => setIsMobile(window.innerWidth <= 900)

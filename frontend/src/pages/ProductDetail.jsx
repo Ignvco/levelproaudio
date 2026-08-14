@@ -18,10 +18,12 @@ import Seo from "../components/Seo"
 import JsonLd from "../components/JsonLd"
 import { SITE_URL, absUrl } from "../utils/seo"
 import { useSiteSettings } from "../hooks/useSiteSettings"
+import { usePrice } from "../hooks/usePrice"
 import { getProductBadge } from "../utils/productBadge"
 
 export default function ProductDetail() {
   const { whatsappUrl } = useSiteSettings()
+  const { price, secondaryPrice } = usePrice()
   const { slug }  = useParams()
   const { addItem } = useCartStore()
   const [qty, setQty]           = useState(1)
@@ -233,7 +235,7 @@ export default function ProductDetail() {
                 <p data-testid="product-detail-price" style={{ fontFamily: "var(--font-display)",
                   fontSize: "2.4rem", fontWeight: 800, letterSpacing: "-0.03em",
                   color: "var(--text)", lineHeight: 1 }}>
-                  ${Number(product.price).toLocaleString("es-CL")}
+                  {price(product)}
                 </p>
                 {hasDiscount && (
                   <p style={{ fontSize: "16px", color: "var(--text-3)", textDecoration: "line-through" }}>
@@ -241,6 +243,11 @@ export default function ProductDetail() {
                   </p>
                 )}
               </div>
+              {secondaryPrice(product) && (
+                <p style={{ fontSize: "14px", color: "var(--text-3)", marginTop: "6px" }}>
+                  ≈ {secondaryPrice(product)} <span style={{ fontSize: "12px" }}>(referencial)</span>
+                </p>
+              )}
               {hasDiscount && (
                 <span style={{ display: "inline-block", marginTop: "8px",
                   background: "var(--accent)", color: "#000", fontSize: "12px", fontWeight: 800,

@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { ArrowUpRight, Check, Truck } from "lucide-react"
 import { useCartStore } from "../../store/cartStore"
+import { usePrice } from "../../hooks/usePrice"
 import { getProductBadge } from "../../utils/productBadge"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../ui/ToastNotification"
@@ -10,6 +11,7 @@ import { FavoriteButton } from "./FavoriteButton"
 
 export default function ProductRow({ product }) {
   const { addItem } = useCartStore()
+  const { price }   = usePrice()
   const navigate    = useNavigate()
   const [added, setAdded] = useState(false)
   const timer = useRef(null)
@@ -117,7 +119,7 @@ export default function ProductRow({ product }) {
         )}
         <span style={{ fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 800,
           color: "#fff", whiteSpace: "nowrap" }}>
-          ${Number(product.price).toLocaleString("es-CL")}
+          {price(product)}
         </span>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <FavoriteButton productId={product.id} slug={product.slug} size={40} variant="solid" />
