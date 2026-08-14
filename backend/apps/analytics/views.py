@@ -173,6 +173,7 @@ class AdminProductWriteSerializer(drf_serializers.ModelSerializer):
             "category", "brand",
             "short_description", "description",
             "price", "compare_price", "cost_price", "stock", "stock_min",
+            "price_usd", "price_ars",
             "product_type", "is_active", "is_featured", "badge",
             "weight", "seo_title", "seo_description",
         ]
@@ -350,7 +351,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
             product.badge = data["badge"] or ""
 
         # ── Campos decimales — siempre convertir a Decimal ───────
-        decimal_fields = ["price", "compare_price", "cost_price"]
+        decimal_fields = ["price", "compare_price", "cost_price", "price_usd", "price_ars"]
         for field in decimal_fields:
             if field in data:
                 val = data[field]

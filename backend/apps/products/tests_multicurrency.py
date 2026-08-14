@@ -66,3 +66,46 @@ class PricesInApiTest(TestCase):
             price=Decimal("120000"), price_usd=Decimal("125"), is_active=True)
         resp = self.client.get(f"/api/v1/products/{p.slug}/")
         self.assertEqual(resp.data["prices"]["USD"], "125.00")
+
+
+class AdminMultiCurrencyEditTest(TestCase):
+    """El admin puede cargar precios USD/ARS por producto y editar las tasas."""
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        self.admin = User.objects.create_superuser(
+            email="mcadmin@test.com", username="mcadmin", password="x")
+        self.cat = Category.objects.create(name="Audio", slug="audio-mcedit")
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_admin_can_set_product_usd_ars(self):
+        resp = self.client.post("/api/v1/admin/products/", {
+            "name": "Mic Pro", "price": "100000", "category": str(self.cat.id),
+            "price_usd": "105.00", "price_ars": "120000",
+        }, format="json")
+        self.assertEqual(resp.status_code, 201, resp.data)
+        p = Product.objects.get(name="Mic Pro")
+        self.assertEqual(p.price_usd, Decimal("105.00"))
+        self.assertEqual(p.price_ars, Decimal("120000"))
+
+    def test_admin_can_clear_usd_price(self):
+        p = Product.objects.create(
+            name="Clear", slug="clear-mc", category=self.cat,
+            price=Decimal("50000"), price_usd=Decimal("60"))
+        resp = self.client.patch(f"/api/v1/admin/products/{p.id}/", {
+            "price_usd": "",
+        }, format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        p.refresh_from_db()
+        self.assertIsNone(p.price_usd)  # vacío → null → se calculará con la tasa
+
+    def test_admin_can_edit_exchange_rates(self):
+        resp = self.client.patch("/api/v1/admin/site-settings/", {
+            "usd_to_clp": "980", "usd_to_ars": "1150",
+        }, format="json")
+        self.assertEqual(resp.status_code, 200, resp.data)
+        from apps.site_settings.models import SiteSettings
+        s = SiteSettings.objects.first()
+        self.assertEqual(s.usd_to_clp, Decimal("980"))
+        self.assertEqual(s.usd_to_ars, Decimal("1150"))

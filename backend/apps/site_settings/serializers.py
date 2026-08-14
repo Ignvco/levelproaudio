@@ -41,6 +41,8 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
             "testimonial_role", "testimonial_quote",
             # Conoce LevelPro
             "about_title", "about_body",
+            # Tasas de cambio (multi-moneda)
+            "usd_to_clp", "usd_to_ars",
         ]
 
     def get_hero_image_url(self, obj):        return _media_url(obj.hero_image)

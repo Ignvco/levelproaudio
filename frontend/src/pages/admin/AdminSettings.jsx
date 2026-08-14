@@ -12,6 +12,7 @@ const TABS = [
   { id: "sections", label: "Secciones"   },
   { id: "seo",      label: "SEO"         },
   { id: "test",     label: "Testimonial" },
+  { id: "currency", label: "Monedas"     },
 ]
 
 const inputSt = {
@@ -437,6 +438,37 @@ export default function AdminSettings() {
                 value={form.testimonial_quote || ""}
                 onChange={e => set("testimonial_quote", e.target.value)} />
             </Field>
+          </>
+        )}
+
+        {tab === "currency" && (
+          <>
+            <div style={{ padding: "14px 16px", borderRadius: "var(--r-lg)", marginBottom: "18px",
+              background: "rgba(26,255,110,0.04)", border: "1px solid rgba(26,255,110,0.15)",
+              fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6 }}>
+              Estas tasas se usan para <strong>calcular</strong> los precios USD y ARS de un
+              producto cuando no los cargaste a mano. Si un producto tiene su precio USD/ARS
+              cargado, ese manda y la tasa no lo toca. La tienda le muestra CLP a los chilenos,
+              y ARS + USD a los argentinos.
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+              <Field label="1 USD = ? CLP">
+                <input type="number" min="0" step="0.01" style={inputSt}
+                  value={form.usd_to_clp || ""}
+                  onChange={e => set("usd_to_clp", e.target.value)}
+                  placeholder="950" />
+              </Field>
+              <Field label="1 USD = ? ARS">
+                <input type="number" min="0" step="0.01" style={inputSt}
+                  value={form.usd_to_ars || ""}
+                  onChange={e => set("usd_to_ars", e.target.value)}
+                  placeholder="1000" />
+              </Field>
+            </div>
+            <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "12px" }}>
+              Ejemplo: si 1 USD = 950 CLP, un producto de $95.000 CLP se muestra como US$100.
+              Si además 1 USD = 1000 ARS, ese producto se muestra como $100.000 ARS.
+            </p>
           </>
         )}
       </div>

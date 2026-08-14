@@ -9,6 +9,7 @@ import {
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../components/ui/ToastNotification"
 import { DataTable, StatusBadge, AdminPageHeader, PrimaryButton, FormModal, ConfirmationModal } from "../../components/admin/ui"
+import { useSiteSettings } from "../../hooks/useSiteSettings"
 import { Pencil, Trash2, Package } from "lucide-react"
 
 const inputSt = {
@@ -178,6 +179,11 @@ function RelatedProductsPicker({ productId, initialSelected, selected, onChange 
 }
 
 function ProductForm({ product, categories, brands, onClose, onSave }) {
+  const { settings: siteSettings } = useSiteSettings()
+  const rates = siteSettings ? {
+    usd_to_clp: Number(siteSettings.usd_to_clp) || 0,
+    usd_to_ars: Number(siteSettings.usd_to_ars) || 0,
+  } : null
   const [form, setForm] = useState({
     name:              product?.name              || "",
     slug:              product?.slug              || "",
@@ -186,6 +192,8 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
     price:             product?.price             || "",
     compare_price:     product?.compare_price     || "",
     cost_price:        product?.cost_price        || "",
+    price_usd:         product?.price_usd         || "",
+    price_ars:         product?.price_ars         || "",
     stock:             product?.stock             ?? 0,
     stock_min:         product?.stock_min         ?? 3,
     sku:               product?.sku               || "",
@@ -543,6 +551,51 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                 <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "5px" }}>
                   Usado para calcular la distribución financiera automática.
                 </p>
+              </div>
+
+              {/* Precios internacionales (multi-moneda) */}
+              <div style={{ padding: "16px", borderRadius: "var(--r-xl)",
+                background: "rgba(26,255,110,0.03)", border: "1px solid rgba(26,255,110,0.15)" }}>
+                <p style={{ fontSize: "12px", fontWeight: 600, color: "var(--accent)",
+                  textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "4px" }}>
+                  Precios internacionales
+                </p>
+                <p style={{ fontSize: "11px", color: "var(--text-3)", marginBottom: "14px" }}>
+                  El USD es lo que se cobra al comprador argentino (vía Payoneer); el ARS es referencial.
+                  Si los dejás vacíos, se calculan con la tasa configurada en Personalización.
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+                      color: "var(--text-2)", marginBottom: "7px" }}>Precio USD</label>
+                    <input type="number" min="0" step="0.01" value={form.price_usd}
+                      onChange={e => setForm(p => ({ ...p, price_usd: e.target.value }))}
+                      style={inputSt} placeholder="Ej: 105.00" />
+                  </div>
+                  <div>
+                    <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+                      color: "var(--text-2)", marginBottom: "7px" }}>Precio ARS</label>
+                    <input type="number" min="0" value={form.price_ars}
+                      onChange={e => setForm(p => ({ ...p, price_ars: e.target.value }))}
+                      style={inputSt} placeholder="Ej: 120000" />
+                  </div>
+                </div>
+                {rates && form.price > 0 && (
+                  <button type="button"
+                    onClick={() => {
+                      const usd = rates.usd_to_clp ? (form.price / rates.usd_to_clp) : 0
+                      const ars = usd * (rates.usd_to_ars || 0)
+                      setForm(p => ({ ...p,
+                        price_usd: usd ? usd.toFixed(2) : "",
+                        price_ars: ars ? Math.round(ars).toString() : "" }))
+                    }}
+                    style={{ marginTop: "12px", display: "inline-flex", alignItems: "center", gap: "6px",
+                      padding: "7px 12px", borderRadius: "var(--r-md)", cursor: "pointer",
+                      fontSize: "12px", fontWeight: 600, border: "1px solid rgba(26,255,110,0.3)",
+                      background: "transparent", color: "var(--accent)" }}>
+                    Calcular desde CLP (1 USD = {rates.usd_to_clp} CLP · {rates.usd_to_ars} ARS)
+                  </button>
+                )}
               </div>
 
               {/* Calculadora de márgenes */}
