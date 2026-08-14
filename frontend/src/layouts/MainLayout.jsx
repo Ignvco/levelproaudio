@@ -665,6 +665,7 @@ function Footer() {
             { title:"Plataforma", links:[
               {label:"Academia",  to:"/academy"},
               {label:"Servicios", to:"/services"},
+              {label:"Bajo pedido", to:"/bajo-pedido"},
               {label:"Rewards",   to:"/rewards"},
               {label:"Mi cuenta", to:"/dashboard"},
             ]},

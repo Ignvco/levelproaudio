@@ -273,3 +273,58 @@ class Favorite(TimeStampedModel):
 
     def __str__(self):
         return f"{self.user.email} ♥ {self.product.name}"
+
+
+class SpecialOrderRequest(TimeStampedModel):
+    """
+    Solicitud de un cliente para un equipo que no está en el catálogo
+    ("bajo pedido"). El cliente describe qué busca; el admin lo gestiona
+    (contactar, cotizar, cerrar). Mismo patrón que ServiceRequest.
+    """
+    class Status(models.TextChoices):
+        PENDING   = "pending",   "Pendiente"
+        CONTACTED = "contacted", "Contactado"
+        QUOTED    = "quoted",    "Cotizado"
+        CLOSED    = "closed",    "Cerrado"
+        REJECTED  = "rejected",  "Rechazado"
+
+    # Puede ser anónimo (visitante sin cuenta) o de un usuario logueado
+    user  = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL, null=True, blank=True,
+        related_name="special_order_requests",
+    )
+    name  = models.CharField(max_length=200)
+    email = models.EmailField()
+    phone = models.CharField(max_length=30, blank=True, default="")
+
+    # Qué equipo busca
+    equipment   = models.CharField(
+        max_length=300,
+        help_text="Qué equipo/producto busca el cliente",
+    )
+    brand_model = models.CharField(
+        max_length=200, blank=True, default="",
+        help_text="Marca o modelo específico, si lo sabe",
+    )
+    quantity    = models.PositiveIntegerField(default=1)
+    details     = models.TextField(
+        blank=True, default="",
+        help_text="Detalles, uso previsto, especificaciones",
+    )
+    budget      = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        help_text="Presupuesto aproximado (opcional)",
+    )
+
+    status      = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING)
+    admin_notes = models.TextField(blank=True, default="")
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Solicitud bajo pedido"
+        verbose_name_plural = "Solicitudes bajo pedido"
+
+    def __str__(self):
+        return f"{self.name} — {self.equipment}"

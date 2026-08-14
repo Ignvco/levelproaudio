@@ -9,7 +9,7 @@ import logoImg                                               from "../assets/log
 import { useSiteSettings }                                   from "../hooks/useSiteSettings"
 import {
   LayoutDashboard, ChevronRight, ChevronsLeft,
-  ShoppingBag, CreditCard, Users, Package, Boxes, GraduationCap,
+  ShoppingBag, CreditCard, Users, Package, Boxes, GraduationCap, PackageSearch,
   Wrench, Gift, Wallet, Receipt, Star, Palette, ExternalLink, LogOut,
   Search, Bell, Menu, X, Clock, AlertTriangle, MessageSquare, CheckCircle2,
 } from "lucide-react"
@@ -23,6 +23,7 @@ const navItems = [
 
   { sep:"Ventas" },
   { to:"/admin/orders",          label:"Órdenes",         icon:ShoppingBag },
+  { to:"/admin/special-orders",  label:"Bajo pedido",     icon:PackageSearch },
   { to:"/admin/payments",        label:"Pagos",           icon:CreditCard },
   { to:"/admin/payment-methods", label:"Métodos de pago", icon:CreditCard },
   { to:"/admin/billing",         label:"Doc. Tributaria", icon:Receipt },
@@ -67,6 +68,7 @@ const navItems = [
 const ROUTE_TITLES = {
   "/admin":           ["Dashboard",       "Resumen general de tu tienda"],
   "/admin/orders":    ["Órdenes",         "Gestión de pedidos"],
+  "/admin/special-orders": ["Solicitudes bajo pedido", "Equipos pedidos fuera del catálogo"],
   "/admin/payments":  ["Pagos",           "Transacciones y cobros"],
   "/admin/payment-methods": ["Métodos de pago", "Configuración de cobros y cuentas"],
   "/admin/services":  ["Servicios",       "Solicitudes y cotizaciones"],

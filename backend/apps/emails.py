@@ -359,3 +359,33 @@ def send_service_request_status_update(sr):
     html = _wrap(title, body,
                  cta={"label": "Ver mis solicitudes", "url": f"{settings.FRONTEND_URL}/dashboard/services"})
     send_email(sr.email or sr.user.email, f"{title} — {service_name}", html)
+
+
+def send_special_order_notification(special_order):
+    """
+    Avisa al equipo de ventas que llegó una solicitud de equipo bajo pedido.
+    No crítico: si falla, la solicitud igual quedó guardada.
+    """
+    try:
+        from apps.site_settings.models import SiteSettings
+        settings_obj = SiteSettings.objects.first()
+        to = (settings_obj.contact_email if settings_obj and settings_obj.contact_email
+              else "ventas@levelproaudio.com")
+    except Exception:
+        to = "ventas@levelproaudio.com"
+
+    budget = f"${special_order.budget:,.0f}".replace(",", ".") if special_order.budget else "No indicado"
+    html = f"""
+    <h2>Nueva solicitud de equipo bajo pedido</h2>
+    <p><strong>Cliente:</strong> {special_order.name} ({special_order.email})</p>
+    <p><strong>Teléfono:</strong> {special_order.phone or 'No indicado'}</p>
+    <hr>
+    <p><strong>Equipo:</strong> {special_order.equipment}</p>
+    <p><strong>Marca/modelo:</strong> {special_order.brand_model or 'No especificado'}</p>
+    <p><strong>Cantidad:</strong> {special_order.quantity}</p>
+    <p><strong>Presupuesto:</strong> {budget}</p>
+    <p><strong>Detalles:</strong><br>{special_order.details or 'Sin detalles'}</p>
+    <hr>
+    <p>Gestioná esta solicitud desde el panel de administración.</p>
+    """
+    return send_email(to, "Nueva solicitud bajo pedido — LevelPro", html)

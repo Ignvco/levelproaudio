@@ -248,3 +248,13 @@ export const updateAdminCertification = (id, data) =>
 
 export const deleteAdminCertification = (id) =>
   api.delete(`${BASE}/academy/certifications/${id}/`).then(r => r.data)
+
+// ── Solicitudes bajo pedido ──────────────────────────────
+export const listSpecialOrders = (params) =>
+  api.get("/admin/special-orders/", { params }).then(r => r.data.results || r.data)
+
+export const updateSpecialOrder = (id, data) =>
+  api.patch(`/admin/special-orders/${id}/`, data).then(r => r.data)
+
+export const deleteSpecialOrder = (id) =>
+  api.delete(`/admin/special-orders/${id}/`).then(r => r.data)

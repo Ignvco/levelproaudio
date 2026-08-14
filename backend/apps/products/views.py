@@ -149,3 +149,41 @@ def favorite_ids(request):
         Favorite.objects.filter(user=request.user).values_list("product_id", flat=True)
     )
     return Response({"ids": ids})
+
+
+# ── Solicitudes bajo pedido ─────────────────────────────────────────
+from rest_framework import status as drf_status
+from core.admin_permissions import IsAdminOrStaff
+from .models import SpecialOrderRequest
+from .serializers import (
+    SpecialOrderRequestSerializer, SpecialOrderRequestAdminSerializer,
+)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def create_special_order(request):
+    """
+    POST /api/v1/special-orders/
+    Público: un cliente (con o sin cuenta) solicita un equipo bajo pedido.
+    """
+    serializer = SpecialOrderRequestSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    user = request.user if request.user.is_authenticated else None
+    obj = serializer.save(user=user)
+
+    # Aviso al equipo (no rompe si el email falla)
+    try:
+        from apps.emails import send_special_order_notification
+        send_special_order_notification(obj)
+    except Exception:
+        pass
+
+    return Response(serializer.data, status=drf_status.HTTP_201_CREATED)
+
+
+class AdminSpecialOrderViewSet(viewsets.ModelViewSet):
+    """CRUD admin de solicitudes bajo pedido, para el panel de React."""
+    queryset = SpecialOrderRequest.objects.all()
+    serializer_class = SpecialOrderRequestAdminSerializer
+    permission_classes = [IsAdminOrStaff]

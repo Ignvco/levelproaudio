@@ -158,3 +158,25 @@ class ProductDetailSerializer(serializers.ModelSerializer):
         img = obj.images.filter(is_primary=True).first() or \
               obj.images.order_by("order", "id").first()
         return _media_url(img.image) if img else None
+
+class SpecialOrderRequestSerializer(serializers.ModelSerializer):
+    """Público: para crear una solicitud bajo pedido."""
+    class Meta:
+        from .models import SpecialOrderRequest
+        model = SpecialOrderRequest
+        fields = ["id", "name", "email", "phone", "equipment", "brand_model",
+                  "quantity", "details", "budget", "created_at"]
+        read_only_fields = ["id", "created_at"]
+
+
+class SpecialOrderRequestAdminSerializer(serializers.ModelSerializer):
+    """Admin: gestión completa con estado y notas."""
+    status_display = serializers.CharField(source="get_status_display", read_only=True)
+
+    class Meta:
+        from .models import SpecialOrderRequest
+        model = SpecialOrderRequest
+        fields = ["id", "name", "email", "phone", "equipment", "brand_model",
+                  "quantity", "details", "budget", "status", "status_display",
+                  "admin_notes", "created_at"]
+        read_only_fields = ["id", "created_at"]
