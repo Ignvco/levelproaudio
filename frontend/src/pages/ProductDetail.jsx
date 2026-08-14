@@ -318,12 +318,20 @@ export default function ProductDetail() {
           )}
 
           {product.stock === 0 && product.product_type === "stock" && (
-            <button disabled style={{ display: "inline-flex", justifyContent: "center",
-              padding: "15px", borderRadius: "var(--r-full)", background: "rgba(255,255,255,0.04)",
-              color: "var(--text-3)", border: "1px solid var(--border)", fontSize: "14px",
-              fontWeight: 600, opacity: 0.6, cursor: "not-allowed" }}>
-              Sin stock disponible
-            </button>
+            <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+              <button disabled style={{ display: "inline-flex", justifyContent: "center",
+                padding: "15px", borderRadius: "var(--r-full)", background: "rgba(255,255,255,0.04)",
+                color: "var(--text-3)", border: "1px solid var(--border)", fontSize: "14px",
+                fontWeight: 600, opacity: 0.6, cursor: "not-allowed" }}>
+                Sin stock disponible
+              </button>
+              <Link to="/bajo-pedido"
+                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "8px",
+                  padding: "14px", borderRadius: "var(--r-full)", background: "var(--accent)",
+                  color: "#000", textDecoration: "none", fontSize: "14px", fontWeight: 700 }}>
+                Pedilo bajo pedido <ArrowRight size={16} />
+              </Link>
+            </div>
           )}
 
           {/* ¿No sabés si es para vos? — asesoría directa por WhatsApp */}

@@ -2,8 +2,8 @@
 import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { useQuery } from "@tanstack/react-query"
-import { useSearchParams } from "react-router-dom"
-import { Search, SlidersHorizontal, X, ChevronDown, ArrowUpDown, PackageSearch, LayoutGrid, Rows3 } from "lucide-react"
+import { useSearchParams, Link } from "react-router-dom"
+import { Search, SlidersHorizontal, X, ChevronDown, ArrowUpDown, PackageSearch, LayoutGrid, Rows3, ArrowRight } from "lucide-react"
 import { getProducts, getCategories, getBrands } from "../api/products.api"
 import ProductCard from "../components/product/ProductCard"
 import ProductRow from "../components/product/ProductRow"
@@ -313,6 +313,16 @@ export default function Shop() {
                   className="btn btn-accent" style={{ marginTop: "4px" }}>
                   Limpiar filtros
                 </button>
+                <div style={{ marginTop: "8px", paddingTop: "24px", borderTop: "1px solid var(--border)",
+                  width: "100%", maxWidth: "380px" }}>
+                  <p style={{ color: "var(--text-2)", fontSize: "14px", marginBottom: "12px" }}>
+                    ¿Buscás algo que no está en el catálogo?
+                  </p>
+                  <Link to="/bajo-pedido" className="btn btn-ghost"
+                    style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                    Pedilo bajo pedido <ArrowRight size={16} />
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className={view === "list" ? "shop-list" : "shop-grid"} style={
