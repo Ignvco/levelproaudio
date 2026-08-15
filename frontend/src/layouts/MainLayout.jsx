@@ -248,9 +248,6 @@ function Navbar() {
         <div style={{ display: "flex", alignItems: "center",
           gap: "6px", marginLeft: "14px" }}>
 
-          {/* Selector de moneda */}
-          <CurrencySelector />
-
           {/* Cart icon inside pill */}
           <Link to="/cart" data-testid="navbar-cart" style={{
             position: "relative",
@@ -711,9 +708,12 @@ function Footer() {
           display:"flex", justifyContent:"space-between",
           alignItems:"center", flexWrap:"wrap", gap:"12px",
         }}>
-          <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
-            © {new Date().getFullYear()} {siteName}. Todos los derechos reservados.
-          </p>
+          <div style={{ display:"flex", alignItems:"center", gap:"16px", flexWrap:"wrap" }}>
+            <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
+              © {new Date().getFullYear()} {siteName}. Todos los derechos reservados.
+            </p>
+            <CurrencySelector dropUp />
+          </div>
           <div style={{ display:"flex", gap:"20px", alignItems:"center", flexWrap:"wrap" }}>
             {[
               { label:"Términos",        to:"/terminos"     },

@@ -2,7 +2,7 @@
 import { useState, useRef, useEffect } from "react"
 import { useCurrencyStore, CURRENCIES } from "../store/currencyStore"
 
-export default function CurrencySelector() {
+export default function CurrencySelector({ dropUp = false }) {
   const currency = useCurrencyStore(s => s.currency)
   const setCurrency = useCurrencyStore(s => s.setCurrency)
   const [open, setOpen] = useState(false)
@@ -33,7 +33,7 @@ export default function CurrencySelector() {
       </button>
 
       {open && (
-        <div style={{ position: "absolute", top: "44px", right: 0, zIndex: 100,
+        <div style={{ position: "absolute", ...(dropUp ? { bottom: "44px" } : { top: "44px" }), right: 0, zIndex: 100,
           minWidth: "190px", background: "#161616", borderRadius: "14px",
           border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden",
           boxShadow: "0 12px 40px rgba(0,0,0,0.5)" }}>
