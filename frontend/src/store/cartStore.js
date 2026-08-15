@@ -53,6 +53,20 @@ export const useCartStore = create(
         }, 0)
       },
 
+      // Total en una moneda específica (CLP/USD/ARS), usando el objeto
+      // `prices` que cada producto trae del backend. Si un producto no
+      // tiene ese precio, cae al CLP crudo (no deber­ía pasar en prod).
+      getTotalIn: (currency = "CLP") => {
+        return get().items.reduce((acc, i) => {
+          const p = i.product?.prices
+          const price = p && p[currency] != null
+            ? Number(p[currency])
+            : Number(i.product?.price) || 0
+          const qty = Number(i.quantity) || 0
+          return acc + price * qty
+        }, 0)
+      },
+
       getCount: () => {
         return get().items.reduce((acc, i) => acc + (Number(i.quantity) || 0), 0)
       },

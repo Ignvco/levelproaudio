@@ -60,7 +60,7 @@ class OrderSerializer(serializers.ModelSerializer):
         model  = Order
         fields = [
             "id", "status", "status_display",
-            "total", "items_count",
+            "total", "currency", "items_count",
             "loyalty_points_redeemed", "loyalty_discount",
             "email", "shipping_address", "notes",
             "shipping_carrier", "tracking_number",

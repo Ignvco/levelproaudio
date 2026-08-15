@@ -12,6 +12,7 @@ import {
 } from "lucide-react"
 import api from "../api/client"
 import { createPayment, getPaymentMethods } from "../api/payments.api"
+import { usePrice } from "../hooks/usePrice"
 import { cancelOrder } from "../api/orders.api"
 import { useCartStore } from "../store/cartStore"
 import { useAuthStore } from "../store/authStore"
@@ -91,16 +92,18 @@ export default function Checkout() {
   const [selectedMethod, setSelectedMethod] = useState("")
   const [isLoading, setIsLoading]           = useState(false)
   const [serverError, setServerError]       = useState("")
-  const { items, clearCart, getTotal, pointsToRedeem } = useCartStore()
+  const { items, clearCart, getTotalIn, pointsToRedeem } = useCartStore()
   const { user }                            = useAuthStore()
+  const { currency, format }                = usePrice()
   const navigate                            = useNavigate()
-  const total                               = getTotal()
+  const total                               = getTotalIn(currency)
 
-  // Métodos de pago activos (configurables desde el admin). Por ahora
-  // en CLP; cuando entre el multi-moneda, se pasa la moneda elegida.
+  // Métodos de pago activos para la moneda elegida (configurables desde
+  // el admin). Un argentino en USD ve Payoneer; un chileno en CLP ve
+  // transferencia/dLocal. Filtrado por el backend.
   const { data: methodsData } = useQuery({
-    queryKey: ["payment-methods", "CLP"],
-    queryFn:  () => getPaymentMethods("CLP"),
+    queryKey: ["payment-methods", currency],
+    queryFn:  () => getPaymentMethods(currency),
   })
   const paymentMethods = useMemo(
     () => (methodsData?.methods || []).map(m => ({
@@ -143,18 +146,19 @@ export default function Checkout() {
         shipping_address: `${data.address_street}, ${data.address_city}, ${data.address_province}`,
         notes:            data.notes || "",
         total,
+        currency,
         loyalty_points_redeemed: pointsToRedeem || 0,
         items: items.map(i => ({
           product:      i.product.id,
           product_name: i.product.name,
-          price:        i.product.price,
+          price:        i.product.prices?.[currency] ?? i.product.price,
           quantity:     i.quantity,
         })),
       })
 
       let paymentData
       try {
-        paymentData = await createPayment(order.id, selectedMethod)
+        paymentData = await createPayment(order.id, selectedMethod, currency)
       } catch (paymentError) {
         // La orden ya descontó stock — si la pasarela falla acá, hay
         // que cancelarla de inmediato (devuelve el stock) para que el
@@ -169,10 +173,10 @@ export default function Checkout() {
         throw paymentError
       }
 
-      if (selectedMethod === "transfer") {
+      if (selectedMethod === "transfer" || selectedMethod === "payoneer") {
         clearCart()
         navigate(`/payment/transfer/${order.id}`, {
-          state: { bankAccounts, amount: total, currency: "CLP" }
+          state: { bankAccounts, amount: total, currency }
         })
       } else if (selectedMethod === "global66") {
         clearCart()
@@ -355,7 +359,7 @@ export default function Checkout() {
                     </span>
                     <span style={{ flexShrink: 0, color: "var(--text-2)", fontWeight: 600,
                       fontVariantNumeric: "tabular-nums" }}>
-                      ${(Number(item.product.price) * item.quantity).toLocaleString("es-CL")}
+                      {format((Number(item.product.prices?.[currency] ?? item.product.price)) * item.quantity)}
                     </span>
                   </div>
                 ))}
@@ -368,7 +372,7 @@ export default function Checkout() {
                 <span data-testid="checkout-total" style={{ fontFamily: "var(--font-display)",
                   fontSize: "2rem", fontWeight: 800, letterSpacing: "-0.03em",
                   color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>
-                  ${Number(total || 0).toLocaleString("es-CL")}
+                  {format(total || 0)} <span style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-3)" }}>{currency}</span>
                 </span>
               </div>
 
@@ -406,7 +410,7 @@ export default function Checkout() {
                 onMouseEnter={e => { if (!isLoading) e.currentTarget.style.transform = "translateY(-2px)" }}
                 onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)" }}>
                 {isLoading ? "Procesando..." :
-                  (selectedMethod === "global66" || selectedMethod === "transfer") ? "Ver instrucciones de transferencia" : "Ir al pago"}
+                  (selectedMethod === "global66" || selectedMethod === "transfer" || selectedMethod === "payoneer") ? "Ver instrucciones de transferencia" : "Ir al pago"}
                 {!isLoading && (
                   <span style={{ width: "26px", height: "26px", borderRadius: "50%",
                     background: "#000", color: "var(--accent)", display: "flex",

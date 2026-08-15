@@ -122,6 +122,10 @@ class Order(TimeStampedModel):
         decimal_places=2
     )
 
+    # Moneda en la que se cobró la orden (CLP/USD/ARS). Multi-moneda:
+    # un argentino paga en USD (Payoneer), un chileno en CLP.
+    currency = models.CharField(max_length=10, default="CLP")
+
     # ── Loyalty: canje de puntos aplicado a esta orden ──
     loyalty_points_redeemed = models.PositiveIntegerField(
         default=0,

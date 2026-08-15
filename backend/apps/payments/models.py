@@ -11,6 +11,7 @@ class PaymentProvider(models.TextChoices):
     PAYPAL         = "paypal",         "PayPal"
     GLOBAL66       = "global66",       "Transferencia Global66"
     TRANSFER       = "transfer",       "Transferencia bancaria"
+    PAYONEER       = "payoneer",       "Payoneer (USD)"
     CASH           = "cash",           "Pago manual"
 
 

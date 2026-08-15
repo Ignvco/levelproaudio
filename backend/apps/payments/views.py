@@ -43,6 +43,7 @@ def create_payment(request):
         PaymentProvider.PAYPAL,
         PaymentProvider.GLOBAL66,
         PaymentProvider.TRANSFER,
+        PaymentProvider.PAYONEER,
     ]
 
     if provider not in VALID_PROVIDERS:
@@ -75,10 +76,11 @@ def create_payment(request):
         elif provider == PaymentProvider.GLOBAL66:
             data = get_global66_info(order)
 
-        elif provider == PaymentProvider.TRANSFER:
-            # Transferencia: no hay pasarela externa. Se registra el pago
-            # como pendiente; el admin lo aprueba a mano cuando recibe el
-            # comprobante (mismo flujo que ya existe para pagos manuales).
+        elif provider in (PaymentProvider.TRANSFER, PaymentProvider.PAYONEER):
+            # Transferencia (local o Payoneer/internacional USD): no hay
+            # pasarela externa que confirme sola. Se registra el pago como
+            # pendiente; el admin lo aprueba a mano cuando recibe el
+            # comprobante (mismo flujo que los pagos manuales).
             from .models import Payment
             Payment.objects.create(
                 order=order, provider=provider, amount=order.total,

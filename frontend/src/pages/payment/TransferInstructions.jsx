@@ -12,6 +12,7 @@ export default function TransferInstructions() {
   const transferData   = state?.transferData
   const bankAccounts   = state?.bankAccounts || []
   const stateAmount    = state?.amount
+  const currency       = state?.currency || order?.currency || "CLP"
 
   const { data: order } = useQuery({
     queryKey: ["order", id],
@@ -22,9 +23,16 @@ export default function TransferInstructions() {
   const amount = stateAmount || transferData?.amount || order?.total || 0
   const reference = transferData?.reference || `LEVELPRO-${id?.slice(0,8).toUpperCase()}`
 
+  // Formatea el monto en la moneda de la orden
+  const fmtAmount = (v) => {
+    const n = Number(v || 0)
+    if (currency === "USD") return `US$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    return `$${Math.round(n).toLocaleString("es-CL")}`
+  }
+
   const steps = [
     { n: "1", title: "Realizá la transferencia",
-      desc: `Transferí exactamente $${Number(amount).toLocaleString("es-CL")} a la cuenta indicada.` },
+      desc: `Transferí exactamente ${fmtAmount(amount)} ${currency} a la cuenta indicada.${currency === "USD" ? " La transferencia debe ser en USD (SWIFT); tarda 1-3 días hábiles." : ""}` },
     { n: "2", title: "Incluí la referencia",
       desc: `En el comentario de la transferencia escribí: ${reference}` },
     { n: "3", title: "Envianos el comprobante",
@@ -82,7 +90,7 @@ export default function TransferInstructions() {
                   { label: "Titular",       value: acc.holder_name },
                   { label: "RUT/CUIT",      value: acc.holder_id },
                   { label: "Email",         value: acc.email },
-                  { label: "Monto exacto",  value: `$${Number(amount).toLocaleString("es-CL")}`, accent: true },
+                  { label: "Monto exacto",  value: fmtAmount(amount), accent: true },
                   { label: "Referencia",    value: reference, mono: true },
                 ].filter(r => r.value).map(({ label, value, accent, mono }, i, arr) => (
                   <div key={label} style={{ display: "flex", justifyContent: "space-between",
@@ -123,7 +131,7 @@ export default function TransferInstructions() {
                 { label: "Alias / Cuenta",  value: transferData?.alias        || "levelproaudio" },
                 { label: "Nombre",          value: transferData?.account_name  || siteName },
                 { label: "Banco",           value: transferData?.bank          || "Global66"       },
-                { label: "Monto exacto",    value: `$${Number(amount).toLocaleString("es-CL")}`, accent: true },
+                { label: "Monto exacto",    value: fmtAmount(amount), accent: true },
                 { label: "Referencia",      value: reference, mono: true },
               ].map(({ label, value, accent, mono }, i, arr) => (
                 <div key={label} style={{ display: "flex", justifyContent: "space-between",

@@ -9,10 +9,11 @@ export const getPaymentMethods = async (currency = "CLP") => {
   return response.data
 }
 
-export const createPayment = async (orderId, provider) => {
+export const createPayment = async (orderId, provider, currency = "CLP") => {
   const response = await api.post("/payments/create/", {
     order_id: orderId,
     provider,
+    currency,
   })
   return response.data
 }

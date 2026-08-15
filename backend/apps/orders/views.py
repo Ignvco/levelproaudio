@@ -107,6 +107,18 @@ class OrderViewSet(viewsets.ModelViewSet):
     def create(self, request):
         data       = request.data
         items_data = data.get("items", [])
+        # Moneda de la orden (CLP/USD/ARS). El precio se recalcula en el
+        # servidor en esta moneda — nunca se confía en el que manda el cliente.
+        currency = (data.get("currency") or "CLP").upper()
+        if currency not in ("CLP", "USD", "ARS"):
+            currency = "CLP"
+
+        # Tasas para calcular precios en la moneda pedida cuando el
+        # producto no tiene el precio manual cargado.
+        from apps.site_settings.models import SiteSettings
+        _s = SiteSettings.objects.first()
+        _rate_clp = _s.usd_to_clp if _s else None
+        _rate_ars = _s.usd_to_ars if _s else None
 
         if not items_data:
             return Response(
@@ -151,7 +163,9 @@ class OrderViewSet(viewsets.ModelViewSet):
             validated_items.append({
                 "product": product,
                 "quantity": quantity,
-                "price": product.price,  # ← precio real de la BD
+                # Precio real de la BD, en la moneda de la orden (manual o
+                # calculado con la tasa). Nunca el que manda el cliente.
+                "price": product.prices_by_currency(_rate_clp, _rate_ars)[currency],
             })
 
         subtotal = sum(
@@ -193,6 +207,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             shipping_address=data.get("shipping_address", ""),
             notes=data.get("notes", ""),
             total=total,
+            currency=currency,
             loyalty_points_redeemed=loyalty_points_redeemed,
             loyalty_discount=loyalty_discount,
         )
