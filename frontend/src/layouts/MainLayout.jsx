@@ -3,15 +3,32 @@ import { useState, useEffect, useRef } from "react"
 import { createPortal } from "react-dom"
 import { Link, useNavigate, useLocation } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft } from "lucide-react"
+import { ArrowLeft, ArrowRight, Radio, Mic, Mic2, Music, Headphones, Cable, Speaker, Sliders, Package } from "lucide-react"
 import { useAuthStore } from "../store/authStore"
 import { useCartStore } from "../store/cartStore"
 import { useCurrencyStore } from "../store/currencyStore"
 import CurrencySelector from "../components/CurrencySelector"
-import { getCategories } from "../api/products.api"
+import { getCategories, getProducts } from "../api/products.api"
 import { buildCategoryTree } from "../utils/categoryTree"
+import { mediaUrl } from "../utils/mediaUrl"
 import logoImg from "../assets/logo.png"
 import { useSiteSettings } from "../hooks/useSiteSettings"
+
+// Íconos por nombre de categoría/subcategoría (el modelo no tiene ícono
+// propio, así que los mapeamos acá). La clave se normaliza a minúsculas;
+// si una categoría no matchea, cae en el ícono genérico (Package).
+const CATEGORY_ICONS = {
+  "inalámbricos": Radio,    "inalambricos": Radio,    "wireless": Radio,
+  "condensadores": Mic,     "condensador": Mic,
+  "dinámicos": Mic2,        "dinamicos": Mic2,        "dinámico": Mic2,
+  "de estudio": Music,      "estudio": Music,
+  "accesorios": Headphones, "accesorio": Headphones,
+  "cables": Cable,          "cable": Cable,
+  "monitores": Speaker,     "parlantes": Speaker,     "altavoces": Speaker,
+  "consolas": Sliders,      "mezcladoras": Sliders,   "interfaces": Sliders,
+}
+const iconForCategory = (name = "") =>
+  CATEGORY_ICONS[name.trim().toLowerCase()] || Package
 
 const NAV_LINKS = [
   { label: "Tienda",    to: "/shop"     },
@@ -70,6 +87,15 @@ function Navbar() {
     staleTime: 5 * 60 * 1000, // el árbol no cambia seguido
   })
   const categoryTree = buildCategoryTree(categoriesData?.results || categoriesData || [])
+
+  // Productos destacados (is_featured) para la columna "Destacados" del
+  // mega-menú. Traemos pocos; se cargan una vez y se cachean.
+  const { data: featuredData } = useQuery({
+    queryKey: ["nav-featured"],
+    queryFn: () => getProducts({ is_featured: true, page_size: 2 }),
+    staleTime: 5 * 60 * 1000,
+  })
+  const featuredProducts = (featuredData?.results || featuredData || []).slice(0, 2)
 
   const openShopMenu  = () => { clearTimeout(shopCloseTimer.current); setShopOpen(true) }
   const closeShopMenu = () => { shopCloseTimer.current = setTimeout(() => setShopOpen(false), 150) }
@@ -422,6 +448,7 @@ function Navbar() {
       {categoryTree.length > 0 && (
         <div
           onMouseEnter={openShopMenu} onMouseLeave={closeShopMenu}
+          role="menu" aria-label="Menú de tienda"
           style={{
             position: "absolute", top: "calc(100% - 1px)", left: 0, width: "100%",
             background: "rgba(10,10,10,0.97)",
@@ -430,11 +457,10 @@ function Navbar() {
             border: "1px solid rgba(255,255,255,0.07)", borderTop: "none",
             borderRadius: "0 0 var(--r-2xl) var(--r-2xl)",
             boxShadow: "0 30px 70px rgba(0,0,0,0.45)",
-            padding: "clamp(28px, 3vw, 40px) clamp(28px, 4vw, 48px) clamp(32px, 3.4vw, 46px)",
+            padding: "clamp(28px, 3vw, 44px) clamp(28px, 4vw, 52px) clamp(32px, 3.4vw, 48px)",
             display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(160px, 200px))",
-            gap: "16px 40px",
-            justifyContent: "start",
+            gridTemplateColumns: "minmax(200px, 0.85fr) minmax(280px, 1.3fr) minmax(200px, 0.85fr)",
+            gap: "0 clamp(32px, 3.5vw, 52px)",
             opacity: shopOpen ? 1 : 0,
             visibility: shopOpen ? "visible" : "hidden",
             transform: shopOpen ? "translateY(0)" : "translateY(-6px)",
@@ -442,46 +468,122 @@ function Navbar() {
             pointerEvents: shopOpen ? "auto" : "none",
             zIndex: 99,
           }}>
-          {categoryTree.map(cat => (
-            <div key={cat.id}>
-              <Link to={`/shop?category=${cat.slug}`}
-                style={{ display: "block", fontSize: "11.5px", fontWeight: 700,
-                  color: "var(--accent)", textTransform: "uppercase",
-                  letterSpacing: "0.07em", textDecoration: "none", marginBottom: "14px" }}>
-                {cat.name}
-              </Link>
-              <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-                {cat.children.length > 0
-                  ? cat.children.map(ch => (
-                    <Link key={ch.id} to={`/shop?category=${ch.slug}`}
-                      style={{ fontSize: "14px", color: "rgba(255,255,255,0.70)",
-                        textDecoration: "none", padding: "6px 8px", margin: "0 -8px",
-                        borderRadius: "8px",
-                        transition: "background 160ms var(--ease), color 160ms var(--ease), transform 160ms var(--ease)" }}
-                      onMouseEnter={e => {
-                        e.currentTarget.style.color = "#fff"
-                        e.currentTarget.style.background = "rgba(255,255,255,0.04)"
-                        e.currentTarget.style.transform = "translateX(2px)"
-                      }}
-                      onMouseLeave={e => {
-                        e.currentTarget.style.color = "rgba(255,255,255,0.70)"
-                        e.currentTarget.style.background = "transparent"
-                        e.currentTarget.style.transform = "translateX(0)"
-                      }}>
-                      {ch.name}
-                    </Link>
-                  ))
-                  : (
-                    <Link to={`/shop?category=${cat.slug}`}
-                      style={{ fontSize: "14px", color: "rgba(255,255,255,0.5)",
-                        textDecoration: "none", padding: "6px 8px", margin: "0 -8px",
-                        borderRadius: "8px" }}>
-                      Ver todo
-                    </Link>
-                  )}
+
+          {/* ── Columna 1: Categorías ───────────────────────────── */}
+          <div>
+            {categoryTree.slice(0, 1).map(cat => (
+              <div key={cat.id}>
+                <Link to={`/shop?category=${cat.slug}`}
+                  style={{ display: "block", fontSize: "11.5px", fontWeight: 700,
+                    color: "var(--accent)", textTransform: "uppercase",
+                    letterSpacing: "0.07em", textDecoration: "none", marginBottom: "22px" }}>
+                  {cat.name}
+                </Link>
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                  {(cat.children.length > 0 ? cat.children : [cat]).map(ch => {
+                    const Icon = iconForCategory(ch.name)
+                    return (
+                      <Link key={ch.id} to={`/shop?category=${ch.slug}`}
+                        style={{ display: "flex", alignItems: "center", gap: "14px",
+                          fontSize: "15px", color: "rgba(255,255,255,0.75)",
+                          textDecoration: "none", padding: "9px 10px", margin: "0 -10px",
+                          borderRadius: "10px",
+                          transition: "background 160ms var(--ease), color 160ms var(--ease)" }}
+                        onMouseEnter={e => {
+                          e.currentTarget.style.color = "#fff"
+                          e.currentTarget.style.background = "rgba(255,255,255,0.04)"
+                        }}
+                        onMouseLeave={e => {
+                          e.currentTarget.style.color = "rgba(255,255,255,0.75)"
+                          e.currentTarget.style.background = "transparent"
+                        }}>
+                        <Icon size={19} strokeWidth={1.6} style={{ color: "rgba(255,255,255,0.55)", flexShrink: 0 }} />
+                        {ch.name}
+                      </Link>
+                    )
+                  })}
+                </div>
               </div>
+            ))}
+          </div>
+
+          {/* ── Columna 2: Destacados ───────────────────────────── */}
+          <div style={{ borderLeft: "1px solid rgba(255,255,255,0.07)",
+            borderRight: "1px solid rgba(255,255,255,0.07)",
+            padding: "0 clamp(24px, 3vw, 44px)" }}>
+            <p style={{ fontSize: "11.5px", fontWeight: 700, color: "rgba(255,255,255,0.4)",
+              textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "22px" }}>
+              Destacados
+            </p>
+            <div style={{ display: "flex", flexDirection: "column" }}>
+              {featuredProducts.length === 0 && (
+                <p style={{ fontSize: "13px", color: "rgba(255,255,255,0.4)" }}>
+                  Marcá productos como destacados para que aparezcan acá.
+                </p>
+              )}
+              {featuredProducts.map((prod, i) => {
+                const img = prod.primary_image || prod.images?.[0]?.image || prod.images?.[0]
+                return (
+                  <div key={prod.id || i}>
+                    {i > 0 && <div style={{ height: "1px", background: "rgba(255,255,255,0.07)", margin: "6px 0" }} />}
+                    <Link to={`/shop/${prod.slug}`}
+                      style={{ display: "flex", alignItems: "center", gap: "18px",
+                        textDecoration: "none", padding: "14px 12px", margin: "0 -12px",
+                        borderRadius: "14px",
+                        transition: "background 160ms var(--ease)" }}
+                      onMouseEnter={e => { e.currentTarget.style.background = "rgba(255,255,255,0.03)" }}
+                      onMouseLeave={e => { e.currentTarget.style.background = "transparent" }}>
+                      <div style={{ width: "94px", height: "94px", flexShrink: 0,
+                        borderRadius: "12px", overflow: "hidden", background: "rgba(255,255,255,0.04)",
+                        display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        {img
+                          ? <img src={mediaUrl(img)} alt={prod.name}
+                              style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                          : <Package size={28} style={{ color: "rgba(255,255,255,0.25)" }} />}
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <p style={{ fontSize: "16px", fontWeight: 600, color: "#fff",
+                          lineHeight: 1.3, marginBottom: "8px" }}>
+                          {prod.name}
+                        </p>
+                        <p style={{ fontSize: "11px", fontWeight: 600, color: "rgba(255,255,255,0.4)",
+                          textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                          {[prod.brand_name, prod.category_name].filter(Boolean).join(" · ") || "Ver producto"}
+                        </p>
+                      </div>
+                    </Link>
+                  </div>
+                )
+              })}
             </div>
-          ))}
+          </div>
+
+          {/* ── Columna 3: CTA Contáctanos ──────────────────────── */}
+          <div>
+            <p style={{ fontSize: "11.5px", fontWeight: 700, color: "rgba(255,255,255,0.4)",
+              textTransform: "uppercase", letterSpacing: "0.07em", marginBottom: "22px" }}>
+              Contáctanos
+            </p>
+            <Link to="/bajo-pedido"
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: "18px", textDecoration: "none", borderRadius: "16px",
+                padding: "4px 4px 4px 0" }}
+              onMouseEnter={e => { const a = e.currentTarget.querySelector("[data-cta-arrow]"); if (a) { a.style.background = "var(--accent)"; a.style.borderColor = "var(--accent)"; a.style.color = "#000" } }}
+              onMouseLeave={e => { const a = e.currentTarget.querySelector("[data-cta-arrow]"); if (a) { a.style.background = "transparent"; a.style.borderColor = "rgba(255,255,255,0.15)"; a.style.color = "var(--accent)" } }}>
+              <span style={{ fontSize: "22px", fontWeight: 600, color: "#fff",
+                lineHeight: 1.3, letterSpacing: "-0.01em" }}>
+                Te ayudamos a encontrar el equipo ideal
+              </span>
+              <span data-cta-arrow style={{ flexShrink: 0, width: "44px", height: "44px",
+                borderRadius: "50%", border: "1px solid rgba(255,255,255,0.15)",
+                display: "flex", alignItems: "center", justifyContent: "center",
+                color: "var(--accent)",
+                transition: "background 200ms var(--ease), border-color 200ms var(--ease), color 200ms var(--ease)" }}>
+                <ArrowRight size={20} />
+              </span>
+            </Link>
+          </div>
+
         </div>
       )}
     </header>
