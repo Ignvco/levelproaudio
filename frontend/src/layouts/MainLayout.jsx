@@ -191,11 +191,18 @@ function Navbar() {
         left:      "50%",
         transform: "translateX(-50%)",
         zIndex:    100,
-        width:     "auto",
+        // Con el mega-menú abierto, el pill se ensancha a un ancho fijo
+        // para que las 3 columnas del dropdown quepan sin desbordarse.
+        // Cerrado vuelve a "auto" (pill compacto que se ajusta al contenido).
+        width:     shopOpen ? "min(1100px, calc(100vw - 40px))" : "auto",
+        transition: "width 260ms cubic-bezier(.2,.8,.2,1)",
       }}>
       <div style={{
         display:         "flex",
         alignItems:      "center",
+        // Abierto: el pill es ancho, distribuimos los grupos (logo · nav ·
+        // acciones) a lo ancho. Cerrado: pegados con gap, pill compacto.
+        justifyContent:  shopOpen ? "space-between" : "flex-start",
         gap:             "6px",
         padding:         "6px 6px 6px 22px",
         background:      scrolled ? "rgba(15,15,15,0.95)" : "rgba(15,15,15,0.85)",
