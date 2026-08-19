@@ -15,6 +15,7 @@ import { showToast } from "../components/ui/ToastNotification"
 import ProductCard from "../components/product/ProductCard"
 import { RichText } from "../components/ui/RichText"
 import Seo from "../components/Seo"
+import Button from "../components/ui/Button"
 import JsonLd from "../components/JsonLd"
 import { SITE_URL, absUrl } from "../utils/seo"
 import { useSiteSettings } from "../hooks/useSiteSettings"
@@ -68,7 +69,7 @@ export default function ProductDetail() {
         letterSpacing: "-0.03em", marginBottom: "20px", color: "var(--text)" }}>
         Producto no encontrado
       </h2>
-      <Link to="/shop" style={accentPill}>Ir a la tienda {arrowSpan}</Link>
+      <Button to="/shop" variant="green" size="md" arrow>Ir a la tienda</Button>
     </div>
   )
 
@@ -315,12 +316,13 @@ export default function ProductDetail() {
                   onClick={() => setQty(q => Math.min(product.product_type === "stock" ? product.stock : 99, q + 1))}
                   style={qtyBtn}><Plus size={16} strokeWidth={2.5} /></button>
               </div>
-              <button data-testid="pd-add-to-cart" onClick={handleAddToCart} style={{ ...accentPill, flex: 1,
-                justifyContent: "center", padding: "14px 14px 14px 24px", fontSize: "15px" }}>
+              <Button testId="pd-add-to-cart" onClick={handleAddToCart}
+                variant="green" size="md" arrow
+                style={{ flex: 1, justifyContent: "space-between" }}>
                 {product.stock > 0 ? "Agregar al carrito"
                   : product.product_type === "preorder" ? "Reservar (preventa)"
-                  : "Pedir"} {arrowSpan}
-              </button>
+                  : "Pedir"}
+              </Button>
             </div>
           )}
 
@@ -332,12 +334,10 @@ export default function ProductDetail() {
                 fontWeight: 600, opacity: 0.6, cursor: "not-allowed" }}>
                 Sin stock disponible
               </button>
-              <Link to="/bajo-pedido"
-                style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "8px",
-                  padding: "14px", borderRadius: "var(--r-full)", background: "var(--accent)",
-                  color: "#000", textDecoration: "none", fontSize: "14px", fontWeight: 700 }}>
-                Pedilo bajo pedido <ArrowRight size={16} />
-              </Link>
+              <Button to="/bajo-pedido" variant="green" size="md" arrow
+                style={{ width: "100%", justifyContent: "space-between" }}>
+                Pedilo bajo pedido
+              </Button>
             </div>
           )}
 
@@ -457,13 +457,3 @@ const qtyBtn = { width: "44px", height: "48px", background: "none", border: "non
   color: "var(--text)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }
 const eyebrowSt = { fontSize: "11px", fontWeight: 700, color: "var(--accent)",
   textTransform: "uppercase", letterSpacing: "0.15em" }
-const accentPill = { display: "inline-flex", alignItems: "center", gap: "10px",
-  padding: "14px 14px 14px 24px", borderRadius: "var(--r-full)", background: "var(--accent)",
-  color: "#000", fontSize: "14px", fontWeight: 700, textDecoration: "none", border: "none",
-  cursor: "pointer", boxShadow: "0 8px 30px rgba(26,255,110,0.3)" }
-const arrowSpan = (
-  <span style={{ width: "26px", height: "26px", borderRadius: "50%", background: "#000",
-    color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-    <ArrowRight size={14} />
-  </span>
-)
