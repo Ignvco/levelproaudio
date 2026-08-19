@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
 import Seo from "../components/Seo"
+import Button from "../components/ui/Button"
 import {
   ArrowLeft, ArrowRight, User, MapPin, CreditCard,
   Globe, Landmark, ShieldCheck, ShoppingBag,
@@ -397,28 +398,13 @@ export default function Checkout() {
                 </div>
               )}
 
-              <button type="submit" disabled={isLoading || !selectedMethod}
-                data-testid="checkout-submit"
-                style={{ width: "100%", display: "inline-flex", alignItems: "center",
-                  justifyContent: "center", gap: "10px",
-                  padding: "15px 14px 15px 24px", borderRadius: "var(--r-full)",
-                  background: "var(--accent)", color: "#000", border: "none",
-                  fontSize: "15px", fontWeight: 700, fontFamily: "var(--font-sans)",
-                  cursor: isLoading ? "wait" : "pointer", opacity: isLoading ? 0.7 : 1,
-                  boxShadow: "0 8px 30px rgba(26,255,110,0.3)",
-                  transition: "transform 200ms var(--ease)" }}
-                onMouseEnter={e => { if (!isLoading) e.currentTarget.style.transform = "translateY(-2px)" }}
-                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)" }}>
+              <Button type="submit" disabled={!selectedMethod}
+                loading={isLoading} testId="checkout-submit"
+                variant="green" size="md" arrow
+                style={{ width: "100%", justifyContent: "space-between" }}>
                 {isLoading ? "Procesando..." :
                   (selectedMethod === "global66" || selectedMethod === "transfer" || selectedMethod === "payoneer") ? "Ver instrucciones de transferencia" : "Ir al pago"}
-                {!isLoading && (
-                  <span style={{ width: "26px", height: "26px", borderRadius: "50%",
-                    background: "#000", color: "var(--accent)", display: "flex",
-                    alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <ArrowRight size={14} />
-                  </span>
-                )}
-              </button>
+              </Button>
 
               <p style={{ fontSize: "11px", color: "var(--text-3)", textAlign: "center",
                 marginTop: "14px", display: "flex", alignItems: "center",
