@@ -8,6 +8,7 @@ import { useSiteSettings } from "../hooks/useSiteSettings"
 import ServiceCard from "../components/services/ServiceCard"
 import ServiceProcess from "../components/services/ServiceProcess"
 import Seo from "../components/Seo"
+import Button from "../components/ui/Button"
 
 export default function Services() {
   const { whatsappUrl } = useSiteSettings()
@@ -155,11 +156,11 @@ export default function Services() {
             marginBottom: "32px", position: "relative", maxWidth: "520px", margin: "0 auto 32px" }}>
             Consultanos sin compromiso. Te asesoramos según tus necesidades y presupuesto.
           </p>
-          <a href={whatsappUrl} target="_blank" rel="noreferrer"
-            className="btn btn-accent" style={{ fontSize: "15px", padding: "14px 30px",
-              position: "relative", gap: "10px" }}>
-            <MessageCircle size={18} /> Consultar por WhatsApp
-          </a>
+          <Button href={whatsappUrl} target="_blank" rel="noreferrer"
+            variant="green" size="md">
+            <MessageCircle size={18} style={{ marginRight: "8px" }} />
+            Consultar por WhatsApp
+          </Button>
         </div>
       </div>
     </div>

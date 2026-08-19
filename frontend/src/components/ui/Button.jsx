@@ -114,7 +114,7 @@ export default function Button({
   const handlers = { onMouseEnter: onEnter, onMouseLeave: onLeave, onMouseDown: onDown, onMouseUp: onUp }
 
   const content = <>
-    <span>{children}</span>
+    <span style={{ display: "inline-flex", alignItems: "center" }}>{children}</span>
     {circle}
   </>
 
