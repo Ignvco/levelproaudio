@@ -12,6 +12,7 @@ import { previewCartEntries } from "../api/rewards.api"
 import { getMyLoyalty } from "../api/loyalty.api"
 import { mediaUrl } from "../utils/mediaUrl"
 import Seo from "../components/Seo"
+import Button from "../components/ui/Button"
 
 // ─────────────────────────────────────────────────────────────
 // Eyebrow reutilizable
@@ -29,42 +30,16 @@ function Eyebrow({ children, color = "var(--accent)" }) {
 }
 
 // ─────────────────────────────────────────────────────────────
-// CTA principal (pill accent con flecha) reutilizable
+// CTA principal — ahora usa el sistema de botones global (Button)
 // ─────────────────────────────────────────────────────────────
 function AccentCTA({ children, testid, onClick, to, full = false }) {
-  const style = {
-    display: "inline-flex", alignItems: "center", justifyContent: "center",
-    gap: "10px",
-    padding: "14px 14px 14px 24px", borderRadius: "var(--r-full)",
-    background: "var(--accent)", color: "#000",
-    fontSize: "14px", fontWeight: 700, textDecoration: "none",
-    fontFamily: "var(--font-sans)", border: "none", cursor: "pointer",
-    width: full ? "100%" : "auto",
-    boxShadow: "0 8px 30px rgba(26,255,110,0.3)",
-    transition: "transform 200ms var(--ease)",
-  }
-  const onEnter = e => { e.currentTarget.style.transform = "translateY(-2px)" }
-  const onLeave = e => { e.currentTarget.style.transform = "translateY(0)" }
-  const arrow = (
-    <span style={{ width: "26px", height: "26px", borderRadius: "50%",
-      background: "#000", color: "var(--accent)", display: "flex",
-      alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-      <ArrowRight size={14} />
-    </span>
-  )
-  if (to) {
-    return (
-      <Link to={to} data-testid={testid} style={style}
-        onMouseEnter={onEnter} onMouseLeave={onLeave}>
-        {children}{arrow}
-      </Link>
-    )
-  }
   return (
-    <button data-testid={testid} onClick={onClick} style={style}
-      onMouseEnter={onEnter} onMouseLeave={onLeave}>
-      {children}{arrow}
-    </button>
+    <Button
+      to={to} onClick={onClick} testId={testid}
+      variant="green" size="md" arrow
+      style={full ? { width: "100%", justifyContent: "space-between" } : undefined}>
+      {children}
+    </Button>
   )
 }
 
