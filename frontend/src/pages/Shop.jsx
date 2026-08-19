@@ -3,12 +3,13 @@ import { useState, useEffect } from "react"
 import { createPortal } from "react-dom"
 import { useQuery } from "@tanstack/react-query"
 import { useSearchParams, Link } from "react-router-dom"
-import { Search, SlidersHorizontal, X, ChevronDown, ArrowUpDown, PackageSearch, LayoutGrid, Rows3, ArrowRight } from "lucide-react"
+import { Search, SlidersHorizontal, X, ChevronDown, ArrowUpDown, PackageSearch, LayoutGrid, Rows3 } from "lucide-react"
 import { getProducts, getCategories, getBrands } from "../api/products.api"
 import ProductCard from "../components/product/ProductCard"
 import ProductRow from "../components/product/ProductRow"
 import ShopFilters, { money } from "../components/product/ShopFilters"
 import Seo from "../components/Seo"
+import Button from "../components/ui/Button"
 import { useScrollReveal } from "../hooks/useScrollReveal"
 import { useFavoritesStore } from "../store/favoritesStore"
 import { useAuthStore } from "../store/authStore"
@@ -155,8 +156,8 @@ export default function Shop() {
                 placeholder="Buscar productos, marcas..." className="input"
                 style={{ paddingLeft: "44px" }} />
             </div>
-            <button type="submit" data-testid="shop-search-btn" className="btn btn-accent"
-              style={{ padding: "12px 24px", flexShrink: 0 }}>Buscar</button>
+            <Button type="submit" testId="shop-search-btn" variant="green" size="md"
+              style={{ flexShrink: 0 }}>Buscar</Button>
           </form>
         </div>
       </div>
@@ -309,19 +310,18 @@ export default function Shop() {
                 <p style={{ color: "var(--text-3)", fontSize: "15px", maxWidth: "340px" }}>
                   No encontramos productos con esos filtros. Probá ampliar tu búsqueda.
                 </p>
-                <button onClick={clearAll} data-testid="shop-empty-clear"
-                  className="btn btn-accent" style={{ marginTop: "4px" }}>
+                <Button onClick={clearAll} testId="shop-empty-clear"
+                  variant="light" size="md" style={{ marginTop: "4px" }}>
                   Limpiar filtros
-                </button>
+                </Button>
                 <div style={{ marginTop: "8px", paddingTop: "24px", borderTop: "1px solid var(--border)",
                   width: "100%", maxWidth: "380px" }}>
                   <p style={{ color: "var(--text-2)", fontSize: "14px", marginBottom: "12px" }}>
                     ¿Buscás algo que no está en el catálogo?
                   </p>
-                  <Link to="/bajo-pedido" className="btn btn-ghost"
-                    style={{ display: "inline-flex", alignItems: "center", gap: "8px" }}>
-                    Pedilo bajo pedido <ArrowRight size={16} />
-                  </Link>
+                  <Button to="/bajo-pedido" variant="green" size="md" arrow>
+                    Pedilo bajo pedido
+                  </Button>
                 </div>
               </div>
             ) : (
