@@ -1,9 +1,10 @@
 // pages/SpecialOrder.jsx — Solicitar equipo bajo pedido
 import { useState } from "react"
 import { useMutation } from "@tanstack/react-query"
-import { PackageSearch, Check, ArrowRight } from "lucide-react"
+import { PackageSearch, Check } from "lucide-react"
 import { createSpecialOrder } from "../api/products.api"
 import Seo from "../components/Seo"
+import Button from "../components/ui/Button"
 
 const inputStyle = {
   width: "100%", padding: "13px 16px", borderRadius: "var(--r-lg)",
@@ -145,15 +146,11 @@ export default function SpecialOrder() {
             </p>
           )}
 
-          <button onClick={submit} disabled={mutation.isPending}
-            style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: "10px",
-              padding: "15px 24px", borderRadius: "var(--r-lg)", cursor: "pointer",
-              background: "var(--accent)", color: "#000", border: "none",
-              fontSize: "15px", fontWeight: 700, marginTop: "8px",
-              opacity: mutation.isPending ? 0.6 : 1 }}>
+          <Button onClick={submit} loading={mutation.isPending}
+            variant="green" size="md" arrow
+            style={{ width: "100%", justifyContent: "space-between", marginTop: "8px" }}>
             {mutation.isPending ? "Enviando…" : "Enviar solicitud"}
-            {!mutation.isPending && <ArrowRight size={18} />}
-          </button>
+          </Button>
         </div>
       </div>
     </>

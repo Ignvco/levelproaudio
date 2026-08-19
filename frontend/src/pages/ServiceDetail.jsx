@@ -16,6 +16,7 @@ import ServiceProcess from "../components/services/ServiceProcess"
 import ServiceCard from "../components/services/ServiceCard"
 import { serviceCover } from "../utils/serviceCover"
 import Seo from "../components/Seo"
+import Button from "../components/ui/Button"
 import JsonLd from "../components/JsonLd"
 import { SITE_URL, absUrl } from "../utils/seo"
 import { useSiteSettings } from "../hooks/useSiteSettings"
@@ -84,9 +85,10 @@ function BookingModal({ service, onClose }) {
             <p style={{ fontSize: "14px", color: "var(--text-2)", marginBottom: "20px" }}>
               Reserva enviada. Te vamos a confirmar la fecha por email.
             </p>
-            <button onClick={onClose} className="btn btn-accent" style={{ width: "100%", justifyContent: "center" }}>
+            <Button onClick={onClose} variant="green" size="md"
+              style={{ width: "100%", justifyContent: "center" }}>
               Cerrar
-            </button>
+            </Button>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
@@ -115,12 +117,12 @@ function BookingModal({ service, onClose }) {
                   background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)",
                   color: "#fff", fontSize: "14px", resize: "vertical" }} />
             </div>
-            <button onClick={() => { setError(""); date ? mutation.mutate() : setError("Elegí una fecha.") }}
-              disabled={mutation.isPending}
-              className="btn btn-accent" style={{ width: "100%", justifyContent: "center",
-                padding: "13px", opacity: mutation.isPending ? 0.6 : 1 }}>
+            <Button onClick={() => { setError(""); date ? mutation.mutate() : setError("Elegí una fecha.") }}
+              loading={mutation.isPending}
+              variant="green" size="md" arrow
+              style={{ width: "100%", justifyContent: "space-between" }}>
               {mutation.isPending ? "Reservando..." : "Confirmar reserva"}
-            </button>
+            </Button>
           </div>
         )}
       </div>

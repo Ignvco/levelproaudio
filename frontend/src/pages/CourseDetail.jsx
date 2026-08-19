@@ -13,6 +13,7 @@ import { showToast } from "../components/ui/ToastNotification"
 import { useAuthStore } from "../store/authStore"
 import { mediaUrl } from "../utils/mediaUrl"
 import Seo from "../components/Seo"
+import Button from "../components/ui/Button"
 import JsonLd from "../components/JsonLd"
 import { SITE_URL, absUrl } from "../utils/seo"
 import { useSiteSettings } from "../hooks/useSiteSettings"
@@ -272,7 +273,7 @@ export default function CourseDetail() {
         letterSpacing: "-0.03em", marginBottom: "20px" }}>
         Curso no encontrado
       </h2>
-      <Link to="/academy" className="btn btn-accent">← Academia</Link>
+      <Button to="/academy" variant="light" size="md">← Academia</Button>
     </div>
   )
 
@@ -337,16 +338,16 @@ export default function CourseDetail() {
               Ya tenés acceso a <strong>{course.title}</strong>.
             </p>
             <div style={{ display: "flex", gap: "10px" }}>
-              <button onClick={() => setShowSuccess(false)}
-                className="btn btn-accent"
+              <Button onClick={() => setShowSuccess(false)}
+                variant="green" size="md"
                 style={{ flex: 1, justifyContent: "center" }}>
                 Comenzar ahora
-              </button>
-              <button onClick={() => navigate("/dashboard/courses")}
-                className="btn btn-ghost"
+              </Button>
+              <Button onClick={() => navigate("/dashboard/courses")}
+                variant="light" size="md"
                 style={{ flex: 1, justifyContent: "center" }}>
                 Mis cursos
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -544,7 +545,7 @@ export default function CourseDetail() {
                   </>
 
                 ) : !showPayment ? (
-                  <button onClick={() => {
+                  <Button onClick={() => {
                     if (!isAuthenticated) {
                       navigate(`/login?next=/academy/${slug}`)
                       return
@@ -554,14 +555,13 @@ export default function CourseDetail() {
                       : purchaseMutation.mutate()
                   }}
                     disabled={enrollMutation.isPending || purchaseMutation.isPending}
-                    className="btn btn-accent"
-                    style={{ justifyContent: "center", fontSize: "15px",
-                      padding: "14px", width: "100%",
-                      opacity: (enrollMutation.isPending || purchaseMutation.isPending) ? 0.7 : 1 }}>
+                    loading={enrollMutation.isPending || purchaseMutation.isPending}
+                    variant="green" size="md" arrow
+                    style={{ width: "100%", justifyContent: "space-between" }}>
                     {enrollMutation.isPending || purchaseMutation.isPending
                       ? "Procesando..."
                       : course.is_free ? "Inscribirse gratis" : "Comprar curso"}
-                  </button>
+                  </Button>
 
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
@@ -590,13 +590,12 @@ export default function CourseDetail() {
                         <span style={{ fontSize: "13px" }}>{m.label}</span>
                       </button>
                     ))}
-                    <button onClick={() => payMutation.mutate()}
-                      disabled={payMutation.isPending}
-                      className="btn btn-accent"
-                      style={{ justifyContent: "center", marginTop: "4px",
-                        width: "100%", opacity: payMutation.isPending ? 0.7 : 1 }}>
+                    <Button onClick={() => payMutation.mutate()}
+                      loading={payMutation.isPending}
+                      variant="green" size="md" arrow
+                      style={{ width: "100%", justifyContent: "space-between", marginTop: "4px" }}>
                       {payMutation.isPending ? "Redirigiendo..." : "Ir al pago"}
-                    </button>
+                    </Button>
                     <button onClick={() => { setShowPayment(false); setPurchaseOrderId(null) }}
                       style={{ fontSize: "12px", color: "var(--text-3)",
                         background: "none", border: "none", cursor: "pointer",

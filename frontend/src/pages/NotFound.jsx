@@ -2,6 +2,7 @@
 import { Link, useNavigate } from "react-router-dom"
 import { useEffect, useState } from "react"
 import Seo from "../components/Seo"
+import Button from "../components/ui/Button"
 
 export default function NotFound() {
   const navigate    = useNavigate()
@@ -98,14 +99,12 @@ export default function NotFound() {
 
         <div style={{ display: "flex", gap: "12px",
           justifyContent: "center", flexWrap: "wrap" }}>
-          <Link to="/" className="btn btn-accent"
-            style={{ fontSize: "15px", padding: "13px 28px" }}>
+          <Button to="/" variant="green" size="md" arrow>
             Ir al inicio
-          </Link>
-          <Link to="/shop" className="btn btn-ghost"
-            style={{ fontSize: "15px", padding: "13px 28px" }}>
+          </Button>
+          <Button to="/shop" variant="light" size="md">
             Ver tienda
-          </Link>
+          </Button>
         </div>
 
         {/* Links útiles */}

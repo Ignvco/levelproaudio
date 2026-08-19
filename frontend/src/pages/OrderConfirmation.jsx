@@ -46,14 +46,14 @@ export default function OrderConfirmation() {
         </p>
 
         <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          <Link to="/dashboard/orders" className="btn btn-accent"
-            style={{ justifyContent: "center" }}>
+          <Button to="/dashboard/orders" variant="green" size="md" arrow
+            style={{ width: "100%", justifyContent: "space-between" }}>
             Ver mis pedidos
-          </Link>
-          <Link to="/shop" className="btn btn-ghost"
-            style={{ justifyContent: "center" }}>
+          </Button>
+          <Button to="/shop" variant="light" size="md"
+            style={{ width: "100%", justifyContent: "center" }}>
             Seguir comprando
-          </Link>
+          </Button>
         </div>
       </div>
     </div>
