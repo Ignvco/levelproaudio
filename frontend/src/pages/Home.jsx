@@ -12,6 +12,7 @@ import ProductCard from "../components/product/ProductCard"
 import CourseCard from "../components/academy/CourseCard"
 import ServiceCard from "../components/services/ServiceCard"
 import Seo from "../components/Seo"
+import Button from "../components/ui/Button"
 import logoImg from "../assets/logo.png"
 import {
   LED, VUMeter, DigitalReadout, Knob, Fader, AnimatedWaveform,
@@ -259,24 +260,10 @@ export default function Home() {
             </p>
 
             <div className="hero-cta-row" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <Link to={s.hero_cta1_link || "/shop"} data-testid="hero-cta-primary" style={{
-                display: "inline-flex", alignItems: "center", gap: "10px",
-                padding: "14px 12px 14px 24px", borderRadius: "var(--r-full)",
-                background: "var(--accent)", color: "#000",
-                fontSize: "14px", fontWeight: 700, textDecoration: "none",
-                fontFamily: "var(--font-sans)",
-                boxShadow: "0 8px 30px rgba(26,255,110,0.3)",
-                transition: "transform 200ms var(--ease)",
-              }}
-                onMouseEnter={e => { e.currentTarget.style.transform = "translateY(-2px)" }}
-                onMouseLeave={e => { e.currentTarget.style.transform = "translateY(0)" }}>
+              <Button to={s.hero_cta1_link || "/shop"} testId="hero-cta-primary"
+                variant="light" size="md" arrow>
                 {s.hero_cta1_text || "Explorar tienda"}
-                <span style={{ width: "26px", height: "26px", borderRadius: "50%",
-                  background: "#000", color: "var(--accent)", display: "flex",
-                  alignItems: "center", justifyContent: "center" }}>
-                  <Icon name="arrow" size={14} />
-                </span>
-              </Link>
+              </Button>
               <Link to={s.hero_cta2_link || "/academy"} data-testid="hero-cta-secondary" style={{
                 display: "inline-flex", alignItems: "center", gap: "8px",
                 padding: "14px 22px", borderRadius: "var(--r-full)",
@@ -502,16 +489,9 @@ export default function Home() {
                   Lo que suena en los mejores estudios.
                 </h2>
               </div>
-              <Link to="/shop" style={{
-                padding: "10px 20px", borderRadius: "var(--r-full)",
-                border: "1px solid var(--border)",
-                color: "var(--text)", background: "transparent",
-                fontSize: "12px", fontWeight: 600, textDecoration: "none",
-                fontFamily: "var(--font-sans)",
-                display: "inline-flex", alignItems: "center", gap: "6px",
-              }}>
-                Ver toda la tienda <Icon name="arrow" size={12} />
-              </Link>
+              <Button to="/shop" variant="light" size="sm" arrow>
+                Ver toda la tienda
+              </Button>
             </div>
 
             <div style={{
@@ -556,16 +536,9 @@ export default function Home() {
                   Aprendé de los que graban a los grandes.
                 </h2>
               </div>
-              <Link to="/academy" style={{
-                padding: "10px 20px", borderRadius: "var(--r-full)",
-                border: "1px solid var(--border)",
-                color: "var(--text)", background: "transparent",
-                fontSize: "12px", fontWeight: 600, textDecoration: "none",
-                fontFamily: "var(--font-sans)",
-                display: "inline-flex", alignItems: "center", gap: "6px",
-              }}>
-                Ver todos los cursos <Icon name="arrow" size={12} />
-              </Link>
+              <Button to="/academy" variant="light" size="sm" arrow>
+                Ver todos los cursos
+              </Button>
             </div>
 
             <div style={{
@@ -609,16 +582,9 @@ export default function Home() {
                   Contratá servicios profesionales a medida.
                 </h2>
               </div>
-              <Link to="/services" style={{
-                padding: "10px 20px", borderRadius: "var(--r-full)",
-                border: "1px solid var(--border)",
-                color: "var(--text)", background: "transparent",
-                fontSize: "12px", fontWeight: 600, textDecoration: "none",
-                fontFamily: "var(--font-sans)",
-                display: "inline-flex", alignItems: "center", gap: "6px",
-              }}>
-                Ver todos <Icon name="arrow" size={12} />
-              </Link>
+              <Button to="/services" variant="light" size="sm" arrow>
+                Ver todos
+              </Button>
             </div>
 
             <div style={{
@@ -829,16 +795,9 @@ export default function Home() {
             </p>
             <div style={{ display: "flex", gap: "14px",
               justifyContent: "center", flexWrap: "wrap" }}>
-              <Link to="/shop" data-testid="final-cta-shop" style={{
-                display: "inline-flex", alignItems: "center", gap: "8px",
-                padding: "13px 26px", borderRadius: "var(--r-full)",
-                background: "var(--accent)", color: "#000",
-                fontSize: "14px", fontWeight: 700, textDecoration: "none",
-                fontFamily: "var(--font-sans)",
-                boxShadow: "0 8px 30px rgba(26,255,110,0.3)",
-              }}>
-                Explorar tienda <Icon name="arrow" size={14} />
-              </Link>
+              <Button to="/shop" testId="final-cta-shop" variant="light" size="md" arrow>
+                Explorar tienda
+              </Button>
               <Link to="/services" data-testid="final-cta-services" style={{
                 display: "inline-flex", alignItems: "center", gap: "8px",
                 padding: "13px 26px", borderRadius: "var(--r-full)",
