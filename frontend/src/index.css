@@ -22,6 +22,11 @@
   --accent-dim:   rgba(26,255,110,0.1);
   --accent-glow:  rgba(26,255,110,0.22);
 
+  /* Verde de los botones (sistema de botones global). Más sólido que el
+     neón de marca — se cambia acá y se actualiza en todos los botones. */
+  --btn-green:       #1a9d4e;
+  --btn-green-hover: #17853f;
+
   /* Texto */
   --text:         #fafafa;
   --text-2:       #a0a0a0;
