@@ -730,7 +730,7 @@ function FooterSocialButton({ href, path, label }) {
   return (
     <a href={href} target="_blank" rel="noreferrer" aria-label={label}
       style={{
-        width:"44px", height:"44px", borderRadius:"12px",
+        width:"44px", height:"44px", borderRadius:"50%",
         background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)",
         display:"flex", alignItems:"center", justifyContent:"center",
         color:"var(--text-2)", transition:"background 220ms var(--ease), border-color 220ms var(--ease), color 220ms var(--ease)",
@@ -824,19 +824,30 @@ function Footer() {
   ]
 
   return (
-    <footer style={{ position:"relative", background:"var(--bg)", marginTop:"auto",
+    <footer style={{ position:"relative", background:"#0d0d0f", marginTop:"auto",
       borderTop:"1px solid var(--border)", overflow:"hidden" }}>
 
-      {/* Glow verde difuso, vertical y atmosférico */}
-      <div aria-hidden style={{ position:"absolute", inset:0, pointerEvents:"none",
-        background:"radial-gradient(ellipse 80% 60% at 60% 40%, rgba(26,255,110,0.06) 0%, transparent 70%)" }} />
+      {/* Fondo atmosférico: varias manchas verdes difusas + blur real,
+          para lograr la textura orgánica del diseño (como humo verde). */}
+      <div aria-hidden style={{ position:"absolute", inset:0, pointerEvents:"none", overflow:"hidden" }}>
+        <div style={{
+          position:"absolute", inset:"-120px",
+          filter:"blur(90px)",
+          background:`
+            radial-gradient(ellipse 40% 50% at 55% 30%, rgba(26,255,110,0.10) 0%, transparent 65%),
+            radial-gradient(ellipse 30% 40% at 78% 55%, rgba(26,255,110,0.07) 0%, transparent 60%),
+            radial-gradient(ellipse 35% 45% at 35% 60%, rgba(0,230,83,0.05) 0%, transparent 65%),
+            radial-gradient(ellipse 50% 30% at 65% 15%, rgba(26,255,110,0.06) 0%, transparent 70%)
+          `,
+        }} />
+      </div>
 
       <div style={{ position:"relative", maxWidth:"var(--container-max, 1440px)", margin:"0 auto",
-        padding:"88px var(--container-pad, clamp(20px,4vw,64px)) 56px" }}>
+        padding:"112px var(--container-pad, clamp(20px,4vw,64px)) 64px" }}>
 
         {/* Zona superior */}
         <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr",
-          columnGap:"64px", rowGap:"48px", marginBottom:"clamp(48px,6vw,72px)" }}
+          columnGap:"80px", rowGap:"56px", marginBottom:"clamp(64px,7vw,96px)" }}
           className="lp-footer-grid">
 
           {/* Columna marca */}
@@ -858,7 +869,7 @@ function Footer() {
         </div>
 
         {/* Zona inferior */}
-        <div style={{ paddingTop:"28px", borderTop:"1px solid rgba(255,255,255,0.06)",
+        <div style={{ paddingTop:"40px", borderTop:"1px solid rgba(255,255,255,0.06)",
           display:"flex", justifyContent:"space-between", alignItems:"center",
           flexWrap:"wrap", gap:"20px" }} className="lp-footer-bottom">
 
