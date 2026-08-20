@@ -721,158 +721,181 @@ function MobileDock() {
 // ═════════════════════════════════════════════════════════════
 // Footer (preservado del layout anterior)
 // ═════════════════════════════════════════════════════════════
+// ─────────────────────────────────────────────────────────────
+// Footer — sub-componentes reutilizables
+// ─────────────────────────────────────────────────────────────
+
+// Ícono social cuadrado redondeado (Instagram / WhatsApp)
+function FooterSocialButton({ href, path, label }) {
+  return (
+    <a href={href} target="_blank" rel="noreferrer" aria-label={label}
+      style={{
+        width:"44px", height:"44px", borderRadius:"12px",
+        background:"rgba(255,255,255,0.04)", border:"1px solid rgba(255,255,255,0.08)",
+        display:"flex", alignItems:"center", justifyContent:"center",
+        color:"var(--text-2)", transition:"background 220ms var(--ease), border-color 220ms var(--ease), color 220ms var(--ease)",
+      }}
+      onMouseEnter={e=>{ e.currentTarget.style.background="rgba(26,255,110,0.08)"; e.currentTarget.style.borderColor="rgba(26,255,110,0.3)"; e.currentTarget.style.color="var(--accent)" }}
+      onMouseLeave={e=>{ e.currentTarget.style.background="rgba(255,255,255,0.04)"; e.currentTarget.style.borderColor="rgba(255,255,255,0.08)"; e.currentTarget.style.color="var(--text-2)" }}>
+      <svg width="17" height="17" fill="currentColor" viewBox="0 0 24 24"><path d={path}/></svg>
+    </a>
+  )
+}
+
+// Un link del footer (interno o externo)
+function FooterLink({ label, to, href }) {
+  const style = { fontSize:"14px", color:"var(--text-3)", textDecoration:"none",
+    transition:"color 200ms var(--ease)", width:"fit-content" }
+  const enter = e => e.currentTarget.style.color = "var(--text)"
+  const leave = e => e.currentTarget.style.color = "var(--text-3)"
+  return href
+    ? <a href={href} target="_blank" rel="noreferrer" style={style} onMouseEnter={enter} onMouseLeave={leave}>{label}</a>
+    : <Link to={to} style={style} onMouseEnter={enter} onMouseLeave={leave}>{label}</Link>
+}
+
+// Columna de links con título verde
+function FooterColumn({ title, links }) {
+  return (
+    <div>
+      <p style={{ fontSize:"12px", fontWeight:700, color:"var(--accent)",
+        textTransform:"uppercase", letterSpacing:"0.12em", marginBottom:"22px" }}>
+        {title}
+      </p>
+      <div style={{ display:"flex", flexDirection:"column", gap:"15px" }}>
+        {links.map(l => <FooterLink key={l.label} {...l} />)}
+      </div>
+    </div>
+  )
+}
+
+// Botón pill "Panel Admin" con punto verde
+function FooterAdminButton() {
+  return (
+    <Link to="/admin/login" data-testid="footer-admin-link"
+      style={{ fontSize:"13px", color:"var(--text-2)", textDecoration:"none",
+        display:"inline-flex", alignItems:"center", gap:"8px",
+        padding:"8px 16px", borderRadius:"var(--r-full)",
+        border:"1px solid rgba(255,255,255,0.1)", background:"rgba(255,255,255,0.03)",
+        transition:"all 200ms var(--ease)", whiteSpace:"nowrap" }}
+      onMouseEnter={e=>{ e.currentTarget.style.color="var(--accent)"; e.currentTarget.style.borderColor="rgba(26,255,110,0.35)"; e.currentTarget.style.background="rgba(26,255,110,0.06)" }}
+      onMouseLeave={e=>{ e.currentTarget.style.color="var(--text-2)"; e.currentTarget.style.borderColor="rgba(255,255,255,0.1)"; e.currentTarget.style.background="rgba(255,255,255,0.03)" }}>
+      <span style={{ width:"7px", height:"7px", borderRadius:"50%", background:"var(--accent)",
+        boxShadow:"0 0 8px rgba(26,255,110,0.6)" }} />
+      Panel Admin
+    </Link>
+  )
+}
+
+const IG_PATH = "M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"
+const WA_PATH = "M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"
+
+const LEGAL_LINKS = [
+  { label:"Términos",           to:"/terminos"     },
+  { label:"Privacidad",         to:"/privacidad"   },
+  { label:"Garantía y cambios", to:"/garantia"     },
+  { label:"Envíos",             to:"/envios"       },
+  { label:"Bases del Sorteo",   to:"/bases-sorteo" },
+]
+
 function Footer() {
   const { whatsappUrl, instagramUrl, contactEmail, siteName, logoUrl } = useSiteSettings()
-  return (
-    <footer style={{ background:"var(--bg)", marginTop:"auto",
-      borderTop:"1px solid var(--border)" }}>
-      <div style={{
-        maxWidth:"var(--container-max, 1440px)", margin:"0 auto",
-        padding:"88px var(--container-pad, clamp(20px,4vw,64px)) 64px",
-      }}>
-        <div style={{
-          display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr",
-          columnGap:"64px", rowGap:"40px", marginBottom:"clamp(40px,6vw,64px)",
-        }} className="lp-footer-grid">
 
-          {/* Brand */}
+  // Datos de las columnas centralizados (usan valores reales del sitio)
+  const COLUMNS = [
+    { title:"Tienda", links:[
+      { label:"Todos los productos", to:"/shop" },
+      { label:"Micrófonos",          to:"/shop?category=microfonos" },
+      { label:"Interfaces de audio", to:"/shop?category=interfaces" },
+      { label:"Auriculares",         to:"/shop?category=auriculares" },
+    ]},
+    { title:"Plataforma", links:[
+      { label:"Academia",   to:"/academy" },
+      { label:"Servicios",  to:"/services" },
+      { label:"Bajo pedido",to:"/bajo-pedido" },
+      { label:"Rewards",    to:"/rewards" },
+      { label:"Mi cuenta",  to:"/dashboard" },
+    ]},
+    { title:"Contacto", links:[
+      { label:"WhatsApp",       href:whatsappUrl },
+      { label:"Instagram",      href:instagramUrl },
+      { label:contactEmail,     href:`mailto:${contactEmail}` },
+      { label:"Iniciar sesión", to:"/login" },
+    ]},
+  ]
+
+  return (
+    <footer style={{ position:"relative", background:"var(--bg)", marginTop:"auto",
+      borderTop:"1px solid var(--border)", overflow:"hidden" }}>
+
+      {/* Glow verde difuso, vertical y atmosférico */}
+      <div aria-hidden style={{ position:"absolute", inset:0, pointerEvents:"none",
+        background:"radial-gradient(ellipse 80% 60% at 60% 40%, rgba(26,255,110,0.06) 0%, transparent 70%)" }} />
+
+      <div style={{ position:"relative", maxWidth:"var(--container-max, 1440px)", margin:"0 auto",
+        padding:"88px var(--container-pad, clamp(20px,4vw,64px)) 56px" }}>
+
+        {/* Zona superior */}
+        <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr",
+          columnGap:"64px", rowGap:"48px", marginBottom:"clamp(48px,6vw,72px)" }}
+          className="lp-footer-grid">
+
+          {/* Columna marca */}
           <div>
             <img src={logoUrl || logoImg} alt={siteName} style={{
-              height:"22px", objectFit:"contain",
-              filter:"brightness(0) invert(1)", marginBottom:"18px",
-            }} />
-            <p style={{ fontSize:"14px", color:"var(--text-3)", lineHeight:1.75, maxWidth:"280px" }}>
+              height:"24px", objectFit:"contain",
+              filter:"brightness(0) invert(1)", marginBottom:"22px" }} />
+            <p style={{ fontSize:"14px", color:"var(--text-3)", lineHeight:1.75, maxWidth:"300px" }}>
               Equipamiento de audio profesional para músicos, productores y estudios en Chile y Argentina.
             </p>
-            <div style={{ display:"flex", gap:"10px", marginTop:"22px" }}>
-              {[
-                { href:instagramUrl, path:"M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z" },
-                { href:whatsappUrl,      path:"M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" },
-              ].map(({ href, path }) => (
-                <a key={href} href={href} target="_blank" rel="noreferrer" style={{
-                  width:"34px", height:"34px", borderRadius:"50%",
-                  border:"1px solid var(--border)",
-                  display:"flex", alignItems:"center", justifyContent:"center",
-                  color:"var(--text-3)", transition:"all 150ms",
-                }}
-                  onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--text-3)";e.currentTarget.style.color="var(--text)"}}
-                  onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.color="var(--text-3)"}}>
-                  <svg width="13" height="13" fill="currentColor" viewBox="0 0 24 24">
-                    <path d={path}/>
-                  </svg>
-                </a>
-              ))}
+            <div style={{ display:"flex", gap:"12px", marginTop:"28px" }}>
+              <FooterSocialButton href={instagramUrl} path={IG_PATH} label="Instagram" />
+              <FooterSocialButton href={whatsappUrl} path={WA_PATH} label="WhatsApp" />
             </div>
           </div>
 
-          {/* Columnas */}
-          {[
-            { title:"Tienda",    links:[
-              {label:"Todos los productos", to:"/shop"},
-              {label:"Micrófonos",           to:"/shop?category=microfonos"},
-              {label:"Interfaces de audio",  to:"/shop?category=interfaces"},
-              {label:"Auriculares",          to:"/shop?category=auriculares"},
-            ]},
-            { title:"Plataforma", links:[
-              {label:"Academia",  to:"/academy"},
-              {label:"Servicios", to:"/services"},
-              {label:"Bajo pedido", to:"/bajo-pedido"},
-              {label:"Rewards",   to:"/rewards"},
-              {label:"Mi cuenta", to:"/dashboard"},
-            ]},
-            { title:"Contacto",  links:[
-              {label:"WhatsApp",       href:whatsappUrl},
-              {label:"Instagram",      href:instagramUrl},
-              {label:contactEmail,     href:`mailto:${contactEmail}`},
-              {label:"Iniciar sesión", to:"/login"},
-            ]},
-          ].map(({ title, links }) => (
-            <div key={title}>
-              <p style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
-                textTransform:"uppercase", letterSpacing:"0.1em", marginBottom:"18px" }}>
-                {title}
-              </p>
-              <div style={{ display:"flex", flexDirection:"column", gap:"12px" }}>
-                {links.map(({ label, to, href }) =>
-                  href ? (
-                    <a key={label} href={href} target="_blank" rel="noreferrer"
-                      style={{ fontSize:"14px", color:"var(--text-3)", textDecoration:"none", transition:"color 150ms" }}
-                      onMouseEnter={e=>e.currentTarget.style.color="var(--text)"}
-                      onMouseLeave={e=>e.currentTarget.style.color="var(--text-3)"}>{label}</a>
-                  ) : (
-                    <Link key={to} to={to}
-                      style={{ fontSize:"14px", color:"var(--text-3)", textDecoration:"none", transition:"color 150ms" }}
-                      onMouseEnter={e=>e.currentTarget.style.color="var(--text)"}
-                      onMouseLeave={e=>e.currentTarget.style.color="var(--text-3)"}>{label}</Link>
-                  )
-                )}
-              </div>
-            </div>
-          ))}
+          {/* Columnas de links */}
+          {COLUMNS.map(col => <FooterColumn key={col.title} {...col} />)}
         </div>
 
-        {/* Bottom */}
-        <div style={{
-          paddingTop:"24px", borderTop:"1px solid var(--border)",
-          display:"flex", justifyContent:"space-between",
-          alignItems:"center", flexWrap:"wrap", gap:"12px",
-        }}>
-          <div style={{ display:"flex", alignItems:"center", gap:"16px", flexWrap:"wrap" }}>
+        {/* Zona inferior */}
+        <div style={{ paddingTop:"28px", borderTop:"1px solid rgba(255,255,255,0.06)",
+          display:"flex", justifyContent:"space-between", alignItems:"center",
+          flexWrap:"wrap", gap:"20px" }} className="lp-footer-bottom">
+
+          <div style={{ display:"flex", alignItems:"center", gap:"18px", flexWrap:"wrap" }}>
             <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
               © {new Date().getFullYear()} {siteName}. Todos los derechos reservados.
             </p>
             <CurrencySelector dropUp />
           </div>
-          <div style={{ display:"flex", gap:"20px", alignItems:"center", flexWrap:"wrap" }}>
-            {[
-              { label:"Términos",        to:"/terminos"     },
-              { label:"Privacidad",      to:"/privacidad"   },
-              { label:"Garantía y cambios", to:"/garantia"  },
-              { label:"Envíos",           to:"/envios"    },
-              { label:"Bases del Sorteo", to:"/bases-sorteo" },
-            ].map(item => (
+
+          <div style={{ display:"flex", gap:"22px", alignItems:"center", flexWrap:"wrap" }}>
+            {LEGAL_LINKS.map(item => (
               <Link key={item.to} to={item.to} data-testid={`footer-legal-${item.to.replace("/","")}`}
-                style={{ fontSize:"13px", color:"var(--text-3)", textDecoration:"none", transition:"color 150ms" }}
+                style={{ fontSize:"13px", color:"var(--text-3)", textDecoration:"none", transition:"color 200ms var(--ease)" }}
                 onMouseEnter={e=>e.currentTarget.style.color="var(--text)"}
                 onMouseLeave={e=>e.currentTarget.style.color="var(--text-3)"}>
                 {item.label}
               </Link>
             ))}
-            <Link to="/admin/login" data-testid="footer-admin-link" style={{
-              fontSize:"12px", color:"var(--text-3)",
-              textDecoration:"none",
-              display:"inline-flex", alignItems:"center", gap:"6px",
-              padding:"5px 12px", borderRadius:"var(--r-full)",
-              border:"1px solid var(--border)",
-              transition:"all 150ms",
-            }}
-              onMouseEnter={e=>{
-                e.currentTarget.style.color = "var(--accent)"
-                e.currentTarget.style.borderColor = "rgba(26,255,110,0.3)"
-              }}
-              onMouseLeave={e=>{
-                e.currentTarget.style.color = "var(--text-3)"
-                e.currentTarget.style.borderColor = "var(--border)"
-              }}>
-              <span style={{ width:"6px", height:"6px", borderRadius:"50%",
-                background:"var(--accent)" }} />
-              Panel Admin
-            </Link>
+            <FooterAdminButton />
           </div>
         </div>
       </div>
 
       <style>{`
-        @media (max-width: 640px) {
+        @media (max-width: 900px) {
           .lp-footer-grid { grid-template-columns: 1fr 1fr !important; }
         }
-        @media (max-width: 400px) {
+        @media (max-width: 560px) {
           .lp-footer-grid { grid-template-columns: 1fr !important; }
+          .lp-footer-bottom { flex-direction: column; align-items: flex-start !important; }
         }
       `}</style>
     </footer>
   )
 }
+
 
 // ═════════════════════════════════════════════════════════════
 // MainLayout — responsive con detección de viewport via JS
