@@ -370,7 +370,13 @@ export default function Home() {
       {/* BODY — sube sobre el hero con bordes redondos superiores */}
       <div className="home-body" style={{
         position: "relative", zIndex: 3,
+        // Con imagen: transparente (imagen 100% visible) + una línea de luz
+        // sutil arriba que marca la curva del borde redondeado sobre el hero.
+        // Sin imagen: el fondo oscuro normal.
         background: useImage ? "transparent" : "var(--bg)",
+        boxShadow: useImage
+          ? "inset 0 1px 0 rgba(255,255,255,0.12), 0 -1px 20px rgba(0,0,0,0.3)"
+          : "none",
         borderRadius: "clamp(28px, 4vw, 44px) clamp(28px, 4vw, 44px) 0 0",
         marginTop: "clamp(-56px, -6vh, -40px)",
         paddingTop: "clamp(56px, 7vw, 96px)",
