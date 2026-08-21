@@ -13,6 +13,7 @@ const TABS = [
   { id: "seo",      label: "SEO"         },
   { id: "test",     label: "Testimonial" },
   { id: "currency", label: "Monedas"     },
+  { id: "homebg",   label: "Fondo Home"  },
 ]
 
 const inputSt = {
@@ -150,7 +151,7 @@ export default function AdminSettings() {
     // Removemos URLs derivadas del serializer read-only
     ;["hero_image_url","hero_image_2_url","hero_image_3_url",
       "pillar_shop_image_url","pillar_academy_image_url","pillar_services_image_url",
-      "logo_url","og_image_url","testimonial_photo_url",
+      "logo_url","og_image_url","testimonial_photo_url","home_bg_image_url",
       "id","created_at","updated_at"].forEach(k => delete clone[k])
     return clone
   }
@@ -471,6 +472,84 @@ export default function AdminSettings() {
             </p>
           </>
         )}
+
+        {tab === "homebg" && (
+          <>
+            <div style={{ padding: "14px 16px", borderRadius: "var(--r-lg)", marginBottom: "18px",
+              background: "rgba(26,255,110,0.04)", border: "1px solid rgba(26,255,110,0.15)",
+              fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6 }}>
+              Personalizá el fondo de la página de inicio. Podés elegir un <strong>color sólido</strong> o
+              subir una <strong>imagen</strong>. Con imagen, ajustá su opacidad y sumá un overlay oscuro
+              encima para que el texto y las tarjetas se lean bien.
+            </div>
+
+            {/* Tipo de fondo: color o imagen */}
+            <Field label="Tipo de fondo">
+              <div style={{ display: "flex", gap: "10px" }}>
+                {[["color", "Color sólido"], ["image", "Imagen"]].map(([val, lbl]) => (
+                  <button key={val} type="button"
+                    onClick={() => set("home_bg_type", val)}
+                    style={{
+                      flex: 1, padding: "10px 14px", borderRadius: "var(--r-md)", cursor: "pointer",
+                      fontSize: "13px", fontWeight: 600,
+                      border: (form.home_bg_type || "color") === val ? "2px solid var(--accent)" : "1px solid var(--border)",
+                      background: (form.home_bg_type || "color") === val ? "rgba(26,255,110,0.08)" : "transparent",
+                      color: (form.home_bg_type || "color") === val ? "var(--accent)" : "var(--text-2)",
+                    }}>
+                    {lbl}
+                  </button>
+                ))}
+              </div>
+            </Field>
+
+            {/* Color sólido */}
+            {(form.home_bg_type || "color") === "color" && (
+              <Field label="Color de fondo">
+                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
+                  <input type="color"
+                    value={form.home_bg_color || "#0a0a0a"}
+                    onChange={e => set("home_bg_color", e.target.value)}
+                    style={{ width: "56px", height: "40px", borderRadius: "var(--r-md)",
+                      border: "1px solid var(--border)", cursor: "pointer", background: "none" }} />
+                  <input style={{ ...inputSt, maxWidth: "160px" }}
+                    value={form.home_bg_color || "#0a0a0a"}
+                    onChange={e => set("home_bg_color", e.target.value)}
+                    placeholder="#0a0a0a" />
+                </div>
+              </Field>
+            )}
+
+            {/* Imagen + opacidad + overlay */}
+            {(form.home_bg_type || "color") === "image" && (
+              <>
+                <Field label="Imagen de fondo">
+                  <FileInput value={files.home_bg_image}
+                    previewUrl={form.home_bg_image_url}
+                    onChange={f => setFile("home_bg_image", f)} />
+                </Field>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                  <Field label={`Opacidad de la imagen: ${form.home_bg_image_opacity ?? 100}%`}>
+                    <input type="range" min="0" max="100"
+                      value={form.home_bg_image_opacity ?? 100}
+                      onChange={e => set("home_bg_image_opacity", Number(e.target.value))}
+                      style={{ width: "100%" }} />
+                  </Field>
+                  <Field label={`Overlay oscuro: ${form.home_bg_overlay_opacity ?? 0}%`}>
+                    <input type="range" min="0" max="100"
+                      value={form.home_bg_overlay_opacity ?? 0}
+                      onChange={e => set("home_bg_overlay_opacity", Number(e.target.value))}
+                      style={{ width: "100%" }} />
+                  </Field>
+                </div>
+                <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "12px" }}>
+                  La opacidad controla qué tan visible es la imagen. El overlay es una capa negra
+                  encima: subilo si el texto cuesta leerse sobre la foto.
+                </p>
+              </>
+            )}
+          </>
+        )}
+
       </div>
     </div>
   )
