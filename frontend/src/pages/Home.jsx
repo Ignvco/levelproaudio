@@ -380,9 +380,9 @@ export default function Home() {
       <div className="home-body" style={{
         position: "relative", zIndex: 3,
         // Transparente cuando hay color o imagen custom (deja ver el fondo del
-        // root/imagen). Con imagen, además una línea de luz marca la curva.
+        // root/imagen). En ambos casos, una línea de luz marca la curva superior.
         background: bodyTransparent ? "transparent" : "var(--bg)",
-        boxShadow: useImage
+        boxShadow: bodyTransparent
           ? "inset 0 1px 0 rgba(255,255,255,0.12), 0 -1px 20px rgba(0,0,0,0.3)"
           : "none",
         borderRadius: "clamp(28px, 4vw, 44px) clamp(28px, 4vw, 44px) 0 0",
