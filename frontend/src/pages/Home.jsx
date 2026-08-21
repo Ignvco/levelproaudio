@@ -195,6 +195,9 @@ export default function Home() {
           position: "relative",
           background: "#0b0b0b",
           overflow: "hidden",
+          // Esquinas inferiores redondeadas: el hero "termina en curva" y el
+          // body arranca plano debajo (se ve limpio con fondo color/imagen).
+          borderRadius: "0 0 clamp(28px, 4vw, 44px) clamp(28px, 4vw, 44px)",
           minHeight: "100vh",
           display: "flex", flexDirection: "column",
         }}
@@ -376,17 +379,19 @@ export default function Home() {
         )}
       </section>
 
-      {/* BODY — sube sobre el hero con bordes redondos superiores */}
+      {/* BODY — con fondo color/imagen, arranca plano justo bajo el hero
+          (el hero dibuja la curva). En modo default, sube sobre el hero con
+          sus propias esquinas redondeadas, como siempre. */}
       <div className="home-body" style={{
         position: "relative", zIndex: 3,
-        // Transparente cuando hay color o imagen custom (deja ver el fondo del
-        // root/imagen). En ambos casos, una línea de luz marca la curva superior.
         background: bodyTransparent ? "transparent" : "var(--bg)",
-        boxShadow: bodyTransparent
-          ? "inset 0 1px 0 rgba(255,255,255,0.12), 0 -1px 20px rgba(0,0,0,0.3)"
-          : "none",
-        borderRadius: "clamp(28px, 4vw, 44px) clamp(28px, 4vw, 44px) 0 0",
-        marginTop: "clamp(-56px, -6vh, -40px)",
+        boxShadow: "none",
+        borderRadius: bodyTransparent
+          ? "0"
+          : "clamp(28px, 4vw, 44px) clamp(28px, 4vw, 44px) 0 0",
+        marginTop: bodyTransparent
+          ? "0"
+          : "clamp(-56px, -6vh, -40px)",
         paddingTop: "clamp(56px, 7vw, 96px)",
         paddingBottom: "clamp(80px, 10vw, 120px)",
       }} data-testid="home-body">
