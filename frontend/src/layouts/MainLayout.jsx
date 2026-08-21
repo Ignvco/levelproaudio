@@ -137,13 +137,13 @@ function Navbar() {
   }, [])
 
   const isHome = location.pathname === "/"
-  const pillBg = scrolled ? "rgba(15,15,15,0.95)" : "rgba(15,15,15,0.85)"
+  const pillBg = scrolled ? "rgba(15,15,15,0.72)" : "rgba(15,15,15,0.55)"
   const sideElBase = {
     position: "fixed", top: "20px", zIndex: 100, height: "52px",
     display: "flex", alignItems: "center",
     background: pillBg,
-    backdropFilter: "blur(20px) saturate(1.6)",
-    WebkitBackdropFilter: "blur(20px) saturate(1.6)",
+    backdropFilter: "blur(28px) saturate(1.8)",
+    WebkitBackdropFilter: "blur(28px) saturate(1.8)",
     border: "1px solid rgba(255,255,255,0.08)",
     borderRadius: "var(--r-full)",
     boxShadow: "0 20px 60px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.04) inset",
@@ -205,9 +205,9 @@ function Navbar() {
         justifyContent:  shopOpen ? "space-between" : "flex-start",
         gap:             "6px",
         padding:         "6px 6px 6px 22px",
-        background:      scrolled ? "rgba(15,15,15,0.95)" : "rgba(15,15,15,0.85)",
-        backdropFilter:  "blur(20px) saturate(1.6)",
-        WebkitBackdropFilter: "blur(20px) saturate(1.6)",
+        background:      scrolled ? "rgba(15,15,15,0.72)" : "rgba(15,15,15,0.55)",
+        backdropFilter:  "blur(28px) saturate(1.8)",
+        WebkitBackdropFilter: "blur(28px) saturate(1.8)",
         border:          "1px solid rgba(255,255,255,0.08)",
         borderRadius:    shopOpen ? "var(--r-full) var(--r-full) 0 0" : "var(--r-full)",
         transition:      "background 320ms var(--ease), border-radius 240ms cubic-bezier(.2,.8,.2,1)",
@@ -651,8 +651,8 @@ function MobileDock() {
         display: "flex", alignItems: "center", gap: "1px",
         padding: "6px 7px",
         background: "rgba(15,15,15,0.9)",
-        backdropFilter: "blur(20px) saturate(1.6)",
-        WebkitBackdropFilter: "blur(20px) saturate(1.6)",
+        backdropFilter: "blur(28px) saturate(1.8)",
+        WebkitBackdropFilter: "blur(28px) saturate(1.8)",
         border: "1px solid rgba(255,255,255,0.08)",
         borderRadius: "var(--r-full)",
         boxShadow: `
