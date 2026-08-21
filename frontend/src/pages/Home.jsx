@@ -132,13 +132,16 @@ export default function Home() {
     linear-gradient(180deg, #101013 0%, #0c0c0e 50%, #0a0a0b 100%)
   `
   const useImage  = bgType === "image" && bgImage
-  // Base: si el admin eligió un color, se usa ese color sólido; si eligió
-  // imagen (o no configuró nada), la base es el gris atmosférico por defecto.
-  const rootBg    = bgType === "color" ? bgColor : "#0a0a0a"
-  // El gradiente gris solo aparece cuando NO hay color sólido NI imagen
-  // (o sea, el estado por defecto sin configurar). Con imagen, la imagen
-  // ES el fondo — el gris la opacaría.
-  const showDefaultGradient = bgType !== "color" && !useImage
+  const useColor  = bgType === "color"
+  // Color de fondo del root: si es color, el color elegido; si es imagen, negro
+  // base (la imagen va encima); si no hay config, negro (el gradiente va encima).
+  const rootBg    = useColor ? bgColor : "#0a0a0a"
+  // El gradiente gris atmosférico solo cuando NO hay color NI imagen (default).
+  const showDefaultGradient = !useColor && !useImage
+  // El body deja ver el fondo (imagen/color/gradiente) cuando NO es el modo
+  // por defecto — si es color o imagen, el body es transparente para que el
+  // fondo del root/imagen se vea a través.
+  const bodyTransparent = useColor || useImage
 
   return (
     <div style={{
@@ -146,38 +149,35 @@ export default function Home() {
       background: rootBg,
       display: "flex", flexDirection: "column",
     }} data-testid="home-page">
-      {/* Fondo gris atmosférico por defecto — base cuando el tipo NO es
-          un color sólido (o sea: cuando es imagen, o no hay config). */}
-      {showDefaultGradient && (
-        <div aria-hidden style={{
-          position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-          background: DEFAULT_BG,
-        }} />
-      )}
-      {/* Capa de imagen de fondo (solo si el tipo es imagen).
-          cover + center mantiene la proporción sin deformar; fixed la ancla
-          al viewport para que no se estire a lo largo del body. Para que se
-          vea nítida, subí una imagen horizontal de alta resolución (ver el
-          admin para la recomendación de tamaño). */}
-      {useImage && (
-        <div aria-hidden style={{
-          position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-          backgroundImage: `url(${bgImage})`,
-          backgroundSize: "cover",
-          backgroundPosition: "center center",
-          backgroundRepeat: "no-repeat",
-          backgroundAttachment: "fixed",
-          imageRendering: "auto",
-          opacity: bgImgOp,
-        }} />
-      )}
-      {/* Overlay oscuro sobre la imagen (legibilidad del texto) */}
-      {useImage && bgOvlOp > 0 && (
-        <div aria-hidden style={{
-          position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
-          background: `rgba(0,0,0,${bgOvlOp})`,
-        }} />
-      )}
+      {/* ── Capas de fondo fijas al viewport ──────────────────────────
+          Se renderizan en un contenedor fixed propio, fuera del flujo del
+          contenido, para que NO se estiren con el scroll ni las afecten los
+          backdrop-filter de las cards (que rompen el fixed si son ancestros). */}
+      <div aria-hidden style={{
+        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+        zIndex: 0, pointerEvents: "none", overflow: "hidden",
+      }}>
+        {/* Gradiente gris atmosférico por defecto (sin color ni imagen) */}
+        {showDefaultGradient && (
+          <div style={{ position: "absolute", inset: 0, background: DEFAULT_BG }} />
+        )}
+        {/* Imagen de fondo — cover + center, sin deformar, quieta al scrollear */}
+        {useImage && (
+          <div style={{
+            position: "absolute", inset: 0,
+            backgroundImage: `url(${bgImage})`,
+            backgroundSize: "cover",
+            backgroundPosition: "center center",
+            backgroundRepeat: "no-repeat",
+            opacity: bgImgOp,
+          }} />
+        )}
+        {/* Overlay oscuro sobre la imagen (legibilidad) */}
+        {useImage && bgOvlOp > 0 && (
+          <div style={{ position: "absolute", inset: 0, background: `rgba(0,0,0,${bgOvlOp})` }} />
+        )}
+      </div>
+
       {/* Contenido del Home por encima de las capas de fondo */}
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column" }}>
       <Seo
@@ -377,10 +377,9 @@ export default function Home() {
       {/* BODY — sube sobre el hero con bordes redondos superiores */}
       <div className="home-body" style={{
         position: "relative", zIndex: 3,
-        // Con imagen: transparente (imagen 100% visible) + una línea de luz
-        // sutil arriba que marca la curva del borde redondeado sobre el hero.
-        // Sin imagen: el fondo oscuro normal.
-        background: useImage ? "transparent" : "var(--bg)",
+        // Transparente cuando hay color o imagen custom (deja ver el fondo del
+        // root/imagen). Con imagen, además una línea de luz marca la curva.
+        background: bodyTransparent ? "transparent" : "var(--bg)",
         boxShadow: useImage
           ? "inset 0 1px 0 rgba(255,255,255,0.12), 0 -1px 20px rgba(0,0,0,0.3)"
           : "none",
