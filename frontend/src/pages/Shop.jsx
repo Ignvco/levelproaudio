@@ -120,7 +120,18 @@ export default function Shop() {
   const seoCanonical = activeCat ? `/shop?category=${activeCat.slug}` : "/shop"
 
   return (
-    <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
+    <div style={{ background: "var(--bg)", minHeight: "100vh", position: "relative" }}>
+      {/* Capa de gradiente atmosférico fija — le da al backdrop-filter de las
+          ProductCards algo que difuminar (efecto vidrio esmerilado real). */}
+      <div aria-hidden style={{
+        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
+        background: `
+          radial-gradient(circle at 18% 25%, rgba(26,255,110,0.07) 0%, transparent 38%),
+          radial-gradient(circle at 82% 65%, rgba(70,90,140,0.10) 0%, transparent 42%),
+          radial-gradient(circle at 50% 90%, rgba(26,255,110,0.04) 0%, transparent 40%)
+        `,
+      }} />
+      <div style={{ position: "relative", zIndex: 1 }}>
       <Seo title={seoTitle} description={seoDesc} noindex={isSearch} canonicalPath={seoCanonical} />
 
       {/* ── Header ── */}
@@ -403,6 +414,8 @@ export default function Shop() {
         </div>,
         document.body
       )}
+
+      </div>
 
       <style>{`
         @keyframes slideInLeft { from { transform: translateX(-100%) } to { transform: translateX(0) } }

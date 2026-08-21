@@ -59,8 +59,10 @@ export default function ProductCard({ product }) {
       className="lp-product-card"
       onClick={goToDetail}
       style={{
-        background:    "#121212",
-        border:        "1px solid rgba(255,255,255,0.06)",
+        background:    "rgba(20,20,24,0.55)",
+        backdropFilter: "blur(16px) saturate(1.3)",
+        WebkitBackdropFilter: "blur(16px) saturate(1.3)",
+        border:        "1px solid rgba(255,255,255,0.08)",
         borderRadius:  "26px",
         padding:       "14px",
         cursor:        "pointer",
