@@ -124,6 +124,7 @@ export default function Home() {
   const bgType    = s.home_bg_type || "color"
   const bgColor   = s.home_bg_color || "#0a0a0a"
   const bgImage   = s.home_bg_image_url ? mediaUrl(s.home_bg_image_url) : null
+  const bgImgMode = s.home_bg_image_mode || "cover"  // "cover" | "tile"
   const bgImgOp   = (s.home_bg_image_opacity ?? 100) / 100
   const bgOvlOp   = (s.home_bg_overlay_opacity ?? 0) / 100
   const DEFAULT_BG = `
@@ -161,14 +162,15 @@ export default function Home() {
         {showDefaultGradient && (
           <div style={{ position: "absolute", inset: 0, background: DEFAULT_BG }} />
         )}
-        {/* Imagen de fondo — cover + center, sin deformar, quieta al scrollear */}
+        {/* Imagen de fondo — cover (foto que llena) o tile (textura que se
+            repite a tamaño real, ideal para grano/piedra sin agrandar). */}
         {useImage && (
           <div style={{
             position: "absolute", inset: 0,
             backgroundImage: `url(${bgImage})`,
-            backgroundSize: "cover",
-            backgroundPosition: "center center",
-            backgroundRepeat: "no-repeat",
+            backgroundSize: bgImgMode === "tile" ? "512px auto" : "cover",
+            backgroundPosition: bgImgMode === "tile" ? "top left" : "center center",
+            backgroundRepeat: bgImgMode === "tile" ? "repeat" : "no-repeat",
             opacity: bgImgOp,
           }} />
         )}

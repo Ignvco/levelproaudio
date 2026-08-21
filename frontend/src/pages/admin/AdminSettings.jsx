@@ -535,6 +535,30 @@ export default function AdminSettings() {
                   Lo ideal es 2560×1440. La imagen se centra y cubre la pantalla sin deformarse.
                   Evitá imágenes verticales o chicas: se ven pixeladas al estirarse.
                 </div>
+
+                {/* Modo de la imagen: cubrir o mosaico */}
+                <Field label="Modo de la imagen">
+                  <div style={{ display: "flex", gap: "10px" }}>
+                    {[["cover", "Cubrir", "Una foto que llena la pantalla"],
+                      ["tile", "Mosaico", "Una textura que se repite (grano, piedra)"]].map(([val, lbl, desc]) => (
+                      <button key={val} type="button"
+                        onClick={() => set("home_bg_image_mode", val)}
+                        style={{
+                          flex: 1, padding: "12px 14px", borderRadius: "var(--r-md)", cursor: "pointer",
+                          textAlign: "left",
+                          border: (form.home_bg_image_mode || "cover") === val ? "2px solid var(--accent)" : "1px solid var(--border)",
+                          background: (form.home_bg_image_mode || "cover") === val ? "rgba(26,255,110,0.08)" : "transparent",
+                        }}>
+                        <div style={{ fontSize: "13px", fontWeight: 700,
+                          color: (form.home_bg_image_mode || "cover") === val ? "var(--accent)" : "var(--text)" }}>
+                          {lbl}
+                        </div>
+                        <div style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "3px" }}>{desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <Field label={`Opacidad de la imagen: ${form.home_bg_image_opacity ?? 100}%`}>
                     <input type="range" min="0" max="100"

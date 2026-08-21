@@ -46,6 +46,7 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
             "usd_to_clp", "usd_to_ars",
             # Fondo del Home (configurable)
             "home_bg_type", "home_bg_color", "home_bg_image_url",
+            "home_bg_image_mode",
             "home_bg_image_opacity", "home_bg_overlay_opacity",
         ]
 

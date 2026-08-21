@@ -78,6 +78,10 @@ class SiteSettings(TimeStampedModel):
         COLOR = "color", "Color sólido"
         IMAGE = "image", "Imagen"
 
+    class HomeBgMode(models.TextChoices):
+        COVER = "cover", "Cubrir (foto que llena la pantalla)"
+        TILE  = "tile",  "Mosaico (textura que se repite)"
+
     home_bg_type = models.CharField(
         max_length=8, choices=HomeBgType.choices, default=HomeBgType.COLOR,
         verbose_name="Tipo de fondo del Home",
@@ -92,6 +96,11 @@ class SiteSettings(TimeStampedModel):
         upload_to="site/", blank=True, null=True,
         verbose_name="Imagen de fondo del Home",
         help_text="Imagen de fondo. Se usa si el tipo es 'imagen'.",
+    )
+    home_bg_image_mode = models.CharField(
+        max_length=6, choices=HomeBgMode.choices, default=HomeBgMode.COVER,
+        verbose_name="Modo de la imagen",
+        help_text="Cubrir: una foto que llena la pantalla (se recorta). Mosaico: una textura que se repite a tamaño real (ideal para grano/piedra).",
     )
     home_bg_image_opacity = models.PositiveSmallIntegerField(
         default=100,
