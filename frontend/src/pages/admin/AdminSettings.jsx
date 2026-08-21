@@ -527,6 +527,14 @@ export default function AdminSettings() {
                     previewUrl={form.home_bg_image_url}
                     onChange={f => setFile("home_bg_image", f)} />
                 </Field>
+                <div style={{ padding: "12px 14px", borderRadius: "var(--r-md)", marginBottom: "16px",
+                  background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)",
+                  fontSize: "12px", color: "var(--text-3)", lineHeight: 1.6 }}>
+                  <strong style={{ color: "var(--text-2)" }}>📐 Para que se vea nítida:</strong> subí una
+                  imagen <strong>horizontal</strong> (apaisada) de al menos <strong>1920×1080 px</strong>.
+                  Lo ideal es 2560×1440. La imagen se centra y cubre la pantalla sin deformarse.
+                  Evitá imágenes verticales o chicas: se ven pixeladas al estirarse.
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
                   <Field label={`Opacidad de la imagen: ${form.home_bg_image_opacity ?? 100}%`}>
                     <input type="range" min="0" max="100"

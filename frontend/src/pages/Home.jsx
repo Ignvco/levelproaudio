@@ -154,13 +154,20 @@ export default function Home() {
           background: DEFAULT_BG,
         }} />
       )}
-      {/* Capa de imagen de fondo (solo si el tipo es imagen) */}
+      {/* Capa de imagen de fondo (solo si el tipo es imagen).
+          cover + center mantiene la proporción sin deformar; fixed la ancla
+          al viewport para que no se estire a lo largo del body. Para que se
+          vea nítida, subí una imagen horizontal de alta resolución (ver el
+          admin para la recomendación de tamaño). */}
       {useImage && (
         <div aria-hidden style={{
           position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
           backgroundImage: `url(${bgImage})`,
-          backgroundSize: "cover", backgroundPosition: "center",
+          backgroundSize: "cover",
+          backgroundPosition: "center center",
+          backgroundRepeat: "no-repeat",
           backgroundAttachment: "fixed",
+          imageRendering: "auto",
           opacity: bgImgOp,
         }} />
       )}
