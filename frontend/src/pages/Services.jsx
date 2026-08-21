@@ -52,7 +52,18 @@ export default function Services() {
   })
 
   return (
-    <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
+    <div style={{ background: "var(--bg)", minHeight: "100vh", position: "relative" }}>
+      {/* Capa de gradiente atmosférico fija — para el efecto vidrio esmerilado
+          de las ServiceCards (profile-card con backdrop-filter). */}
+      <div aria-hidden style={{
+        position: "fixed", inset: 0, pointerEvents: "none", zIndex: 0,
+        background: `
+          radial-gradient(circle at 18% 25%, rgba(26,255,110,0.07) 0%, transparent 38%),
+          radial-gradient(circle at 82% 65%, rgba(70,90,140,0.10) 0%, transparent 42%),
+          radial-gradient(circle at 50% 90%, rgba(26,255,110,0.04) 0%, transparent 40%)
+        `,
+      }} />
+      <div style={{ position: "relative", zIndex: 1 }}>
       <Seo title="Servicios" description="Mezcla, mastering, operación en vivo y asesoría técnica de audio profesional, a medida de tu proyecto." />
 
       {/* Hero */}
@@ -162,6 +173,7 @@ export default function Services() {
             Consultar por WhatsApp
           </Button>
         </div>
+      </div>
       </div>
     </div>
   )
