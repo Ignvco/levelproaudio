@@ -463,7 +463,7 @@ export default function Home() {
           PRODUCTOS DESTACADOS — con LED stock + VU meter rating
           ═════════════════════════════════════════════════════════════ */}
       {s.show_products !== false && featured.length > 0 && (
-        <section data-testid="featured-products" style={{ padding: 0 }}>
+        <section data-testid="featured-products" className="home-glass-section" style={{ padding: 0 }}>
           <div style={{
             background: "transparent",
             border: "none",
@@ -510,7 +510,7 @@ export default function Home() {
 
       {/* Academia */}
       {s.show_courses !== false && courses.length > 0 && (
-        <section data-testid="featured-courses" style={{ padding: 0 }}>
+        <section data-testid="featured-courses" className="home-glass-section" style={{ padding: 0 }}>
           <div style={{
             background: "transparent",
             border: "none",
@@ -556,7 +556,7 @@ export default function Home() {
 
       {/* Servicios */}
       {s.show_services !== false && services.length > 0 && (
-        <section data-testid="featured-services" style={{ padding: 0 }}>
+        <section data-testid="featured-services" className="home-glass-section" style={{ padding: 0 }}>
           <div style={{
             background: "transparent",
             border: "none",

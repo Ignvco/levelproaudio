@@ -1016,3 +1016,24 @@ h1 em, h2 em, h3 em {
 }
 
 
+
+/* Fondo atmosférico sutil para las secciones de cards de la Home.
+   Le da al backdrop-filter de las cards algo que difuminar (vidrio esmerilado)
+   sin recargar el resto de la página (el hero no lleva esto). */
+.home-glass-section {
+  position: relative;
+}
+.home-glass-section::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(circle at 15% 40%, rgba(26,255,110,0.06) 0%, transparent 45%),
+    radial-gradient(circle at 85% 60%, rgba(70,90,140,0.08) 0%, transparent 48%);
+}
+.home-glass-section > * {
+  position: relative;
+  z-index: 1;
+}
