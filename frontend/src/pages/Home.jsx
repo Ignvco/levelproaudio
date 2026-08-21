@@ -693,7 +693,10 @@ export default function Home() {
               style={{
                 display: "flex", flexDirection: "column", gap: "12px",
                 padding: "24px", borderRadius: "var(--r-xl)",
-                background: "var(--surface)", border: "1px solid var(--border)",
+                background: "rgba(20,20,24,0.55)",
+                backdropFilter: "blur(16px) saturate(1.3)",
+                WebkitBackdropFilter: "blur(16px) saturate(1.3)",
+                border: "1px solid rgba(255,255,255,0.08)",
                 textDecoration: "none", transition: "border-color 200ms var(--ease)",
               }}
               onMouseEnter={e => e.currentTarget.style.borderColor = "var(--accent)"}
@@ -784,8 +787,10 @@ export default function Home() {
       {s.show_about !== false && (
       <section data-testid="about-levelpro" style={{
         padding: "clamp(32px, 4vw, 60px)",
-        background: "var(--surface)",
-        border: "1px solid var(--border)",
+        background: "rgba(20,20,24,0.55)",
+        backdropFilter: "blur(16px) saturate(1.3)",
+        WebkitBackdropFilter: "blur(16px) saturate(1.3)",
+        border: "1px solid rgba(255,255,255,0.08)",
         borderRadius: "var(--r-2xl)",
         textAlign: "center",
       }}>
@@ -815,8 +820,10 @@ export default function Home() {
       <section data-testid="final-cta" style={{ padding: 0 }}>
         <div style={{
           position: "relative",
-          background: "var(--surface)",
-          border: "1px solid var(--border)",
+          background: "rgba(20,20,24,0.55)",
+          backdropFilter: "blur(16px) saturate(1.3)",
+          WebkitBackdropFilter: "blur(16px) saturate(1.3)",
+          border: "1px solid rgba(255,255,255,0.08)",
           borderRadius: "32px",
           padding: "clamp(56px, 8vw, 72px) clamp(28px, 4vw, 40px)",
           minHeight: "clamp(420px, 55vw, 520px)",
