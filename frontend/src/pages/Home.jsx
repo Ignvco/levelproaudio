@@ -117,11 +117,59 @@ export default function Home() {
     return () => clearInterval(t)
   }, [heroImages.length])
 
+  // ── Fondo del Home configurable desde el admin ──────────────────
+  // Tipo "color": usa home_bg_color. Tipo "image": muestra la imagen con
+  // su opacidad + un overlay oscuro ajustable encima (legibilidad). Si no
+  // hay config todavía, cae al fondo gris atmosférico por defecto.
+  const bgType    = s.home_bg_type || "color"
+  const bgColor   = s.home_bg_color || "#0a0a0a"
+  const bgImage   = s.home_bg_image_url || null
+  const bgImgOp   = (s.home_bg_image_opacity ?? 100) / 100
+  const bgOvlOp   = (s.home_bg_overlay_opacity ?? 0) / 100
+  const DEFAULT_BG = `
+    radial-gradient(ellipse 100% 80% at 50% 0%, #1a1a1d 0%, transparent 55%),
+    radial-gradient(ellipse 90% 70% at 80% 100%, #16161a 0%, transparent 60%),
+    linear-gradient(180deg, #101013 0%, #0c0c0e 50%, #0a0a0b 100%)
+  `
+  const useImage  = bgType === "image" && bgImage
+  // Base: si el admin eligió un color, se usa ese color sólido; si eligió
+  // imagen (o no configuró nada), la base es el gris atmosférico por defecto.
+  const rootBg    = bgType === "color" ? bgColor : "#0a0a0a"
+  const showDefaultGradient = bgType !== "color"
+
   return (
     <div style={{
-      background: "var(--bg)",
+      position: "relative",
+      background: rootBg,
       display: "flex", flexDirection: "column",
     }} data-testid="home-page">
+      {/* Fondo gris atmosférico por defecto — base cuando el tipo NO es
+          un color sólido (o sea: cuando es imagen, o no hay config). */}
+      {showDefaultGradient && (
+        <div aria-hidden style={{
+          position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+          background: DEFAULT_BG,
+        }} />
+      )}
+      {/* Capa de imagen de fondo (solo si el tipo es imagen) */}
+      {useImage && (
+        <div aria-hidden style={{
+          position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+          backgroundImage: `url(${bgImage})`,
+          backgroundSize: "cover", backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+          opacity: bgImgOp,
+        }} />
+      )}
+      {/* Overlay oscuro sobre la imagen (legibilidad del texto) */}
+      {useImage && bgOvlOp > 0 && (
+        <div aria-hidden style={{
+          position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
+          background: `rgba(0,0,0,${bgOvlOp})`,
+        }} />
+      )}
+      {/* Contenido del Home por encima de las capas de fondo */}
+      <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column" }}>
       <Seo
         title="Equipamiento de Audio Profesional en Chile"
         description="Micrófonos, interfaces de audio, monitores de estudio, cursos, mezcla, mastering y servicios de audio profesional en Chile y Argentina." />
@@ -463,7 +511,7 @@ export default function Home() {
           PRODUCTOS DESTACADOS — con LED stock + VU meter rating
           ═════════════════════════════════════════════════════════════ */}
       {s.show_products !== false && featured.length > 0 && (
-        <section data-testid="featured-products" className="home-glass-section" style={{ padding: 0 }}>
+        <section data-testid="featured-products" style={{ padding: 0 }}>
           <div style={{
             background: "transparent",
             border: "none",
@@ -510,7 +558,7 @@ export default function Home() {
 
       {/* Academia */}
       {s.show_courses !== false && courses.length > 0 && (
-        <section data-testid="featured-courses" className="home-glass-section" style={{ padding: 0 }}>
+        <section data-testid="featured-courses" style={{ padding: 0 }}>
           <div style={{
             background: "transparent",
             border: "none",
@@ -556,7 +604,7 @@ export default function Home() {
 
       {/* Servicios */}
       {s.show_services !== false && services.length > 0 && (
-        <section data-testid="featured-services" className="home-glass-section" style={{ padding: 0 }}>
+        <section data-testid="featured-services" style={{ padding: 0 }}>
           <div style={{
             background: "transparent",
             border: "none",
@@ -865,6 +913,7 @@ export default function Home() {
           .courses-grid    { grid-template-columns: 1fr !important; }
         }
       `}</style>
+      </div>
     </div>
   )
 }
