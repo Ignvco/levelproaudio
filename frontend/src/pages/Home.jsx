@@ -135,7 +135,10 @@ export default function Home() {
   // Base: si el admin eligió un color, se usa ese color sólido; si eligió
   // imagen (o no configuró nada), la base es el gris atmosférico por defecto.
   const rootBg    = bgType === "color" ? bgColor : "#0a0a0a"
-  const showDefaultGradient = bgType !== "color"
+  // El gradiente gris solo aparece cuando NO hay color sólido NI imagen
+  // (o sea, el estado por defecto sin configurar). Con imagen, la imagen
+  // ES el fondo — el gris la opacaría.
+  const showDefaultGradient = bgType !== "color" && !useImage
 
   return (
     <div style={{
@@ -367,7 +370,7 @@ export default function Home() {
       {/* BODY — sube sobre el hero con bordes redondos superiores */}
       <div className="home-body" style={{
         position: "relative", zIndex: 3,
-        background: "var(--bg)",
+        background: useImage ? "transparent" : "var(--bg)",
         borderRadius: "clamp(28px, 4vw, 44px) clamp(28px, 4vw, 44px) 0 0",
         marginTop: "clamp(-56px, -6vh, -40px)",
         paddingTop: "clamp(56px, 7vw, 96px)",
