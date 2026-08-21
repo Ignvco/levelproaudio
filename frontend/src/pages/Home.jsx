@@ -123,7 +123,7 @@ export default function Home() {
   // hay config todavía, cae al fondo gris atmosférico por defecto.
   const bgType    = s.home_bg_type || "color"
   const bgColor   = s.home_bg_color || "#0a0a0a"
-  const bgImage   = s.home_bg_image_url || null
+  const bgImage   = s.home_bg_image_url ? mediaUrl(s.home_bg_image_url) : null
   const bgImgOp   = (s.home_bg_image_opacity ?? 100) / 100
   const bgOvlOp   = (s.home_bg_overlay_opacity ?? 0) / 100
   const DEFAULT_BG = `
