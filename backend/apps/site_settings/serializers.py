@@ -15,6 +15,7 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
     logo_url              = serializers.SerializerMethodField()
     og_image_url          = serializers.SerializerMethodField()
     testimonial_photo_url = serializers.SerializerMethodField()
+    home_bg_image_url     = serializers.SerializerMethodField()
 
     class Meta:
         model  = SiteSettings
@@ -43,6 +44,9 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
             "about_title", "about_body",
             # Tasas de cambio (multi-moneda)
             "usd_to_clp", "usd_to_ars",
+            # Fondo del Home (configurable)
+            "home_bg_type", "home_bg_color", "home_bg_image_url",
+            "home_bg_image_opacity", "home_bg_overlay_opacity",
         ]
 
     def get_hero_image_url(self, obj):        return _media_url(obj.hero_image)
@@ -54,6 +58,7 @@ class SiteSettingsSerializer(serializers.ModelSerializer):
     def get_logo_url(self, obj):              return _media_url(obj.logo)
     def get_og_image_url(self, obj):          return _media_url(obj.og_image)
     def get_testimonial_photo_url(self, obj): return _media_url(obj.testimonial_photo)
+    def get_home_bg_image_url(self, obj):     return _media_url(obj.home_bg_image)
 
 
 class SiteSettingsWriteSerializer(SiteSettingsSerializer):
@@ -68,10 +73,12 @@ class SiteSettingsWriteSerializer(SiteSettingsSerializer):
     logo              = serializers.ImageField(write_only=True, required=False)
     og_image          = serializers.ImageField(write_only=True, required=False)
     testimonial_photo = serializers.ImageField(write_only=True, required=False)
+    home_bg_image     = serializers.ImageField(write_only=True, required=False)
 
     class Meta(SiteSettingsSerializer.Meta):
         fields = SiteSettingsSerializer.Meta.fields + [
             "hero_image", "hero_image_2", "hero_image_3",
             "pillar_shop_image", "pillar_academy_image", "pillar_services_image",
             "logo", "og_image", "testimonial_photo",
+            "home_bg_image",
         ]

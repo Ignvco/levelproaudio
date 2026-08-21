@@ -3,6 +3,7 @@ Site Settings — modelo singleton para la personalización del sitio.
 Todos los textos, imágenes, toggles y meta-data configurables desde el admin.
 """
 from django.db import models
+from django.core.validators import MinValueValidator, MaxValueValidator
 from decimal import Decimal
 from core.models import TimeStampedModel
 
@@ -67,6 +68,42 @@ class SiteSettings(TimeStampedModel):
     about_body = models.TextField(
         blank=True,
         default="Creemos que comprar equipamiento profesional debería empezar con una buena decisión técnica. Por eso combinamos equipamiento, formación y asesoría para ayudarte a construir un sistema que realmente funcione.",
+    )
+
+    # ── Fondo del Home (configurable desde el admin) ────────────────
+    # Permite elegir un color sólido o una imagen de fondo para toda la
+    # página de inicio, con control de opacidad de la imagen y un overlay
+    # oscuro ajustable encima (para que el texto se lea sobre cualquier foto).
+    class HomeBgType(models.TextChoices):
+        COLOR = "color", "Color sólido"
+        IMAGE = "image", "Imagen"
+
+    home_bg_type = models.CharField(
+        max_length=8, choices=HomeBgType.choices, default=HomeBgType.COLOR,
+        verbose_name="Tipo de fondo del Home",
+        help_text="Elegí si el fondo del Home es un color sólido o una imagen.",
+    )
+    home_bg_color = models.CharField(
+        max_length=9, default="#0a0a0a",
+        verbose_name="Color de fondo del Home",
+        help_text="Color sólido de fondo (hex, ej. #0a0a0a). Se usa si el tipo es 'color'.",
+    )
+    home_bg_image = models.ImageField(
+        upload_to="site/", blank=True, null=True,
+        verbose_name="Imagen de fondo del Home",
+        help_text="Imagen de fondo. Se usa si el tipo es 'imagen'.",
+    )
+    home_bg_image_opacity = models.PositiveSmallIntegerField(
+        default=100,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Opacidad de la imagen (%)",
+        help_text="0 = invisible, 100 = totalmente opaca.",
+    )
+    home_bg_overlay_opacity = models.PositiveSmallIntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        verbose_name="Overlay oscuro sobre la imagen (%)",
+        help_text="Capa negra encima de la imagen para mejorar la legibilidad del texto. 0 = sin overlay.",
     )
 
     # ── Tasas de cambio (multi-moneda) ──────────────────────────────
