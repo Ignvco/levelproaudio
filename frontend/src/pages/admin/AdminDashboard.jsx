@@ -1,21 +1,26 @@
-// pages/admin/AdminDashboard.jsx — Piloto del rediseño con la biblioteca au-*
+// pages/admin/AdminDashboard.jsx — Rediseño estética "Quixotic": limpio, premium,
+// tarjetas blancas muy redondeadas, fondo gris claro, verde de marca. Toda la
+// data es real (getAdminDashboard, getAnalytics); no se inventan cifras.
+import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "react-router-dom"
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell,
+  AreaChart, Area,
 } from "recharts"
 import {
-  DollarSign, ShoppingBag, Users, Package, Boxes, Clock,
-  MessageSquare, AlertTriangle, ArrowRight, RefreshCw, Eye,
+  DollarSign, ShoppingBag, Users, Package, Clock, ArrowRight, ArrowUpRight,
+  RefreshCw, Eye, Wifi, CreditCard, Boxes,
 } from "lucide-react"
 import { getAdminDashboard, getAnalytics } from "../../api/admin.api"
 import {
-  AdminPageHeader, StatCard, ChartCard, RadialStatCard, SectionCard,
+  AdminPageHeader, StatCard, ChartCard, SectionCard,
   DataTable, StatusBadge, SecondaryButton, EmptyState,
 } from "../../components/admin/ui"
 
 const clp = (n) => `$${Math.round(n || 0).toLocaleString("es-CL")}`
 
+/* ── Tooltip del gráfico de barras ───────────────────────────────── */
 function SalesTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
@@ -26,67 +31,58 @@ function SalesTooltip({ active, payload, label }) {
   )
 }
 
-function SalesChart({ data }) {
+/* ── Gráfico central de barras (Engagement Rate → Ventas) ────────── */
+function SalesBars({ data, period }) {
   const fmtDay = (d) => { try { return new Date(d).toLocaleDateString("es-CL", { day: "2-digit", month: "short" }) } catch { return d } }
-  const points = (data || []).slice(-14).map((d) => ({ day: fmtDay(d.date), total: d.total || 0 }))
+  const raw = (data || [])
+  const points = (period === "annual" ? raw.slice(-12) : raw.slice(-14))
+    .map((d) => ({ day: fmtDay(d.date), total: d.total || 0 }))
   const max = Math.max(...points.map((p) => p.total), 1)
   return (
-    <ResponsiveContainer width="100%" height={240}>
-      <BarChart data={points} margin={{ top: 10, right: 6, left: -18, bottom: 0 }} barCategoryGap="28%">
-        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#ECEEF2" />
+    <ResponsiveContainer width="100%" height={260}>
+      <BarChart data={points} margin={{ top: 24, right: 6, left: -14, bottom: 0 }} barCategoryGap="26%">
+        <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#EEF0F3" />
         <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#98A2B3" }} interval="preserveStartEnd" />
-        <YAxis tickLine={false} axisLine={false} width={54} tick={{ fontSize: 11, fill: "#98A2B3" }}
-          tickFormatter={(v) => (v >= 1000 ? `$${Math.round(v / 1000)}k` : `$${v}`)} />
-        <Tooltip cursor={{ fill: "rgba(26,255,110,0.06)" }} content={<SalesTooltip />} />
-        <Bar dataKey="total" radius={[8, 8, 0, 0]} maxBarSize={34}>
-          {points.map((p, i) => <Cell key={i} fill={p.total >= max * 0.6 ? "#1AFF6E" : "#E5E7EB"} />)}
+        <YAxis tickLine={false} axisLine={false} width={52} tick={{ fontSize: 11, fill: "#98A2B3" }}
+          tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)} />
+        <Tooltip cursor={{ fill: "rgba(26,255,110,0.05)" }} content={<SalesTooltip />} />
+        <Bar dataKey="total" radius={[20, 20, 20, 20]} maxBarSize={44}>
+          {points.map((p, i) => <Cell key={i} fill={p.total >= max * 0.85 ? "#0F9940" : p.total >= max * 0.45 ? "#7BC99B" : "#D9E5DD"} />)}
         </Bar>
       </BarChart>
     </ResponsiveContainer>
   )
 }
 
-function SummaryRow({ label, value, tone, badge }) {
+/* ── Mini area-chart (Total balance) ─────────────────────────────── */
+function BalanceArea({ data }) {
+  const points = (data || []).slice(-20).map((d, i) => ({ i, v: d.total || 0 }))
+  if (!points.length) return null
   return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid var(--admin-border)" }}>
-      <span style={{ fontSize: 13.5, color: "var(--admin-text-muted)" }}>{label}</span>
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 15, fontWeight: 700, color: "var(--admin-text)", fontVariantNumeric: "tabular-nums" }}>{value}</span>
-        {badge && <StatusBadge tone={tone}>{badge}</StatusBadge>}
-      </div>
-    </div>
+    <ResponsiveContainer width="100%" height={90}>
+      <AreaChart data={points} margin={{ top: 6, right: 0, left: 0, bottom: 0 }}>
+        <defs>
+          <linearGradient id="balGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#1AFF6E" stopOpacity={0.35} />
+            <stop offset="100%" stopColor="#1AFF6E" stopOpacity={0} />
+          </linearGradient>
+        </defs>
+        <Area type="monotone" dataKey="v" stroke="#0F9940" strokeWidth={2.5} fill="url(#balGrad)" />
+      </AreaChart>
+    </ResponsiveContainer>
   )
 }
-
-function ActionList({ Icon, title, to, items, renderItem, emptyMsg }) {
-  return (
-    <SectionCard
-      title={title}
-      action={to && <Link to={to} style={{ fontSize: 12, color: "var(--admin-primary-text)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 600 }}>Ver todo <ArrowRight size={12} /></Link>}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <span className="au-stat__icon" style={{ width: 38, height: 38, borderRadius: 11 }}><Icon size={17} /></span>
-        <span style={{ fontSize: 12.5, color: "var(--admin-text-muted)" }}>{items.length} elementos</span>
-      </div>
-      {items.length
-        ? <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>{items.slice(0, 5).map(renderItem)}</div>
-        : <EmptyState title={emptyMsg} />}
-    </SectionCard>
-  )
-}
-
-const rowLink = { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, padding: "11px 13px", background: "var(--admin-surface-secondary)", borderRadius: 12, textDecoration: "none" }
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
+  const [period, setPeriod] = useState("monthly")
+
   const { data, isLoading, refetch, isFetching } = useQuery({
     queryKey: ["admin-dashboard"], queryFn: getAdminDashboard, refetchInterval: 60000,
   })
-  const { data: analytics, isLoading: loadingAnalytics } = useQuery({
+  const { data: analytics } = useQuery({
     queryKey: ["admin-analytics"], queryFn: getAnalytics, refetchInterval: 120000,
   })
-  const salesByCategory = (analytics?.revenue_by_category || [])
-    .map((c) => ({ name: c.category, value: c.total || 0 }))
 
   const rev = data?.revenue || {}, orders = data?.orders || {}, users = data?.users || {}
   const products = data?.products || {}, academy = data?.academy || {}, chart = data?.sales_chart || []
@@ -95,15 +91,27 @@ export default function AdminDashboard() {
   const unread = actions.unread_service_requests || 0
 
   const activeProducts = Math.max((products.total || 0) - (products.out_of_stock || 0) - (products.low_stock || 0), 0)
-
   const today = new Date().toLocaleDateString("es-CL", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
 
   const orderColumns = [
-    { key: "short_id", header: "Orden", sortable: true, render: (r) => <span style={{ fontFamily: "monospace", fontWeight: 600, fontSize: 12.5 }}>#{r.short_id}</span> },
-    { key: "user_name", header: "Cliente", sortable: true, render: (r) => <span style={{ color: "var(--admin-text-muted)" }}>{r.user_name || "—"}</span> },
-    { key: "items_count", header: "Items", align: "center", render: (r) => r.items_count },
-    { key: "total", header: "Total", sortable: true, align: "right", render: (r) => <span style={{ fontWeight: 700, color: "var(--admin-primary-text)" }}>{clp(r.total)}</span> },
-    { key: "estado", header: "Estado", render: () => <StatusBadge tone="warning">Pendiente</StatusBadge> },
+    { key: "user_name", header: "Cliente", sortable: true, render: (r) => (
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--admin-primary-soft)", color: "var(--admin-primary-text)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
+          {(r.user_name || "?").charAt(0).toUpperCase()}
+        </span>
+        <div style={{ minWidth: 0 }}>
+          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--admin-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.user_name || "—"}</p>
+          <p style={{ fontSize: 11.5, color: "var(--admin-text-muted)", fontFamily: "monospace" }}>#{r.short_id}</p>
+        </div>
+      </div>
+    ) },
+    { key: "items_count", header: "Items", align: "center", render: (r) => <span style={{ color: "var(--admin-text-muted)", fontSize: 13 }}>{r.items_count}</span> },
+    { key: "estado", header: "Estado", render: () => (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--admin-warning)" }}>
+        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--admin-warning)" }} /> Pendiente
+      </span>
+    ) },
+    { key: "total", header: "Total", sortable: true, align: "right", render: (r) => <span style={{ fontWeight: 700, color: "var(--admin-text)", fontVariantNumeric: "tabular-nums" }}>{clp(r.total)}</span> },
   ]
 
   return (
@@ -117,21 +125,83 @@ export default function AdminDashboard() {
         </SecondaryButton>}
       />
 
-      {(pending.length > 0 || products.out_of_stock > 0 || unread > 0) && (
-        <div className="au-card" data-testid="admin-alerts" style={{ padding: "14px 20px", display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap", background: "#FFFBEB", border: "1px solid #FDE68A", boxShadow: "none" }}>
-          <AlertTriangle size={18} style={{ color: "#D97706", flexShrink: 0 }} />
-          <p style={{ fontSize: 13, color: "#92400E", flex: 1 }}>
-            {pending.length > 0 && `${pending.length} pedidos pendientes · `}
-            {products.out_of_stock > 0 && `${products.out_of_stock} productos sin stock · `}
-            {unread > 0 && `${unread} solicitudes de servicio`}
-          </p>
-        </div>
-      )}
+      {/* ═══ FILA HERO ═══════════════════════════════════════════════
+          Izq: card destacada (ingresos, estilo tarjeta) + ingresos semana.
+          Centro: gráfico grande de ventas. Der: balance con area-chart. */}
+      <div className="dash-hero">
+        {/* Columna izquierda */}
+        <div className="dash-hero__left">
+          {/* Card destacada verde (VISA → Ingresos totales) */}
+          <div className="dash-feature" data-testid="dash-feature-revenue">
+            <div className="dash-feature__head">
+              <div>
+                <p className="dash-feature__label">Ingresos totales</p>
+                <p className="dash-feature__sublabel">Acumulado histórico</p>
+              </div>
+              <Wifi size={22} style={{ opacity: 0.85, transform: "rotate(90deg)" }} />
+            </div>
+            <div className="dash-feature__amount">{clp(rev.total)}</div>
+            <div className="dash-feature__foot">
+              <span className="dash-feature__chip"><CreditCard size={14} /> LevelPro Audio</span>
+              <span style={{ fontSize: 12.5, opacity: 0.85 }}>Este mes {clp(rev.this_month)}</span>
+            </div>
+          </div>
 
-      {/* Fila 1 — KPIs (lenguaje de cards del front LevelPro) */}
-      <div className="au-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(230px,1fr))" }}>
-        <StatCard variant="primary" Icon={DollarSign} label="INGRESOS TOTALES" value={clp(rev.total)}
-          sub={`Este mes ${clp(rev.this_month)}`} loading={isLoading} testId="kpi-revenue" />
+          {/* Ingresos del mes (dato real) */}
+          <div className="au-card dash-week" data-testid="dash-month-revenue">
+            <div>
+              <p style={{ fontSize: 12.5, color: "var(--admin-text-muted)", marginBottom: 6 }}>Ingresos del mes</p>
+              <p style={{ fontSize: 26, fontWeight: 800, color: "var(--admin-text)", letterSpacing: "-0.02em" }}>{clp(rev.this_month)}</p>
+            </div>
+            <span className="au-stat__icon" style={{ width: 44, height: 44, borderRadius: 13 }}><DollarSign size={20} /></span>
+          </div>
+        </div>
+
+        {/* Columna centro — gráfico grande */}
+        <ChartCard
+          title="Ventas recientes"
+          description="Actividad de la tienda"
+          period={
+            <div className="au-seg" role="tablist" style={{ marginLeft: "auto" }}>
+              <button className={`au-seg__btn ${period === "monthly" ? "is-active" : ""}`} onClick={() => setPeriod("monthly")}>Mensual</button>
+              <button className={`au-seg__btn ${period === "annual" ? "is-active" : ""}`} onClick={() => setPeriod("annual")}>Anual</button>
+            </div>
+          }
+          loading={isLoading} isEmpty={chart.length === 0}
+          emptyDesc="Cuando registres ventas las verás acá."
+          testId="admin-sales-chart">
+          <SalesBars data={chart} period={period} />
+        </ChartCard>
+
+        {/* Columna derecha — balance del mes con area-chart */}
+        <div className="au-card dash-balance" data-testid="dash-balance">
+          <div className="dash-balance__head">
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "var(--admin-text)" }}>Ventas del mes</p>
+              <p style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>Últimos 30 días</p>
+            </div>
+            <Link to="/admin/orders" className="au-iconbtn au-iconbtn--ghost" aria-label="Ver órdenes">
+              <ArrowUpRight size={16} />
+            </Link>
+          </div>
+          <p style={{ fontSize: 13, color: "var(--admin-text-muted)", textAlign: "center", marginTop: 6 }}>Total del período</p>
+          <p style={{ fontSize: 32, fontWeight: 800, color: "var(--admin-text)", textAlign: "center", letterSpacing: "-0.02em", marginBottom: 4 }}>
+            {clp(rev.last_30_days)}
+          </p>
+          <BalanceArea data={chart} />
+          <div className="dash-balance__actions">
+            <Link to="/admin/orders" className="au-btn au-btn--primary" style={{ flex: 1, justifyContent: "center" }}>
+              Ver órdenes <ArrowRight size={15} />
+            </Link>
+            <Link to="/admin/products" className="au-btn au-btn--secondary" style={{ flex: 1, justifyContent: "center" }}>
+              Productos
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* ═══ FILA KPIs ═══════════════════════════════════════════════ */}
+      <div className="au-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))" }}>
         <StatCard Icon={ShoppingBag} label="PEDIDOS" value={orders.total || 0}
           sub={`${orders.today || 0} hoy`} to="/admin/orders" loading={isLoading} testId="kpi-orders" />
         <StatCard Icon={Users} label="USUARIOS" value={users.total || 0}
@@ -140,93 +210,148 @@ export default function AdminDashboard() {
           sub={`${activeProducts} activos`}
           badge={products.out_of_stock > 0 ? <span className="au-lp__delta au-lp__delta--neg">{products.out_of_stock} agotados</span> : null}
           to="/admin/products" loading={isLoading} testId="kpi-products" />
+        <StatCard Icon={Boxes} label="ACADEMIA" value={academy.total_enrollments || 0}
+          sub={academy.enrollments_month > 0 ? `+${academy.enrollments_month} este mes` : "inscripciones"}
+          to="/admin/enrollments" loading={isLoading} testId="kpi-academy" />
       </div>
 
-      {/* Fila 2 — gráfico de ventas (ancho completo) */}
-      <ChartCard title="Ventas recientes" description="Últimos días con actividad"
-        loading={isLoading} isEmpty={chart.length === 0} emptyDesc="Cuando registres ventas las verás acá."
-        action={<span style={{ fontSize: 22, fontWeight: 800, color: "var(--admin-primary-text)" }}>{clp(rev.last_30_days)}</span>}
-        testId="admin-sales-chart">
-        <SalesChart data={chart} />
-      </ChartCard>
-
-      {/* Fila 2b — dos donuts: ventas por categoría + distribución de productos */}
-      <div className="au-grid admin-grid-2" style={{ gridTemplateColumns: "minmax(0,1fr) minmax(0,1fr)" }}>
-        <RadialStatCard title="Ventas por categoría" description="Ingresos por categoría de producto"
-          total={salesByCategory.reduce((a, b) => a + b.value, 0)} totalLabel="Total"
-          loading={loadingAnalytics} data={salesByCategory} valueFormatter={clp}
-          testId="admin-sales-category-radial" />
-
-        <RadialStatCard title="Estadística de productos" description="Distribución del catálogo"
-          total={products.total || 0} totalLabel="Productos" loading={isLoading}
-          data={[
-            { name: "Activos", value: activeProducts },
-            { name: "Stock bajo", value: products.low_stock || 0, color: "#CA8A04" },
-            { name: "Agotados", value: products.out_of_stock || 0, color: "#EF4444" },
-          ]}
-          testId="admin-products-radial" />
-      </div>
-
-      {/* Fila 3 — tabla + resumen */}
-      <div className="au-grid admin-grid-2" style={{ gridTemplateColumns: "minmax(0,1.6fr) minmax(0,1fr)" }}>
-        <div>
-          <h2 className="au-panel__title" style={{ marginBottom: 12 }}>Órdenes por confirmar</h2>
+      {/* ═══ FILA ACTIVIDAD ══════════════════════════════════════════
+          Izq: tabla de órdenes (Payment History). Der: card de refund/
+          crédito → stock, + usuarios recientes (Mandatory Payments). */}
+      <div className="dash-activity">
+        {/* Tabla de actividad reciente */}
+        <div className="au-card" style={{ padding: 20 }} data-testid="dash-orders">
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+            <div>
+              <h2 className="au-panel__title">Órdenes por confirmar</h2>
+              <p className="au-panel__desc">Actividad reciente de la tienda</p>
+            </div>
+            <Link to="/admin/orders" className="au-iconbtn au-iconbtn--ghost" aria-label="Ver todas">
+              <ArrowUpRight size={16} />
+            </Link>
+          </div>
           <DataTable
             columns={orderColumns} data={pending} loading={isLoading}
-            getRowId={(r) => r.id} searchPlaceholder="Buscar orden o cliente..."
+            getRowId={(r) => r.id}
             onRowClick={(r) => navigate(`/admin/orders?id=${r.id}`)}
             rowActions={(r) => [{ label: "Ver orden", icon: Eye, onClick: () => navigate(`/admin/orders?id=${r.id}`) }]}
-            initialPageSize={10} emptyTitle="No hay órdenes pendientes" emptyDesc="Todas las órdenes están al día."
-            emptyIcon={Clock} testId="dashboard-orders-table" />
+            initialPageSize={6} emptyTitle="No hay órdenes pendientes" emptyDesc="Todas las órdenes están al día."
+            emptyIcon={Clock} testId="dashboard-orders-table" searchable={false} />
         </div>
 
-        <SectionCard title="Resumen" description="Estado de tu operación" testId="admin-summary">
-          <SummaryRow label="Pedidos pendientes" value={orders.pending || 0} tone={pending.length > 0 ? "warning" : "success"} badge={pending.length > 0 ? "revisar" : "ok"} />
-          <SummaryRow label="Ventas del mes" value={clp(rev.this_month)} />
-          <SummaryRow label="Productos sin stock" value={products.out_of_stock || 0} tone={products.out_of_stock > 0 ? "danger" : "success"} badge={products.out_of_stock > 0 ? "agotado" : "ok"} />
-          <SummaryRow label="Stock bajo" value={products.low_stock || 0} />
-          <SummaryRow label="Inscripciones academia" value={academy.total_enrollments || 0} tone="success" badge={academy.enrollments_month > 0 ? `+${academy.enrollments_month}` : null} />
-        </SectionCard>
-      </div>
-
-      {/* Fila 4 — acciones */}
-      <div className="au-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(320px,1fr))" }}>
-        <ActionList Icon={Boxes} title="Stock bajo o agotado" to="/admin/inventory" items={lowStock}
-          emptyMsg="Todo en stock ✓"
-          renderItem={(p) => (
-            <Link key={p.id} to={`/admin/products?highlight=${p.id}`} style={rowLink}>
-              <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--admin-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>{p.name}</span>
-              <span style={{ fontSize: 12.5, fontWeight: 700, color: p.stock === 0 ? "#EF4444" : "#D97706" }}>{p.stock === 0 ? "Agotado" : `${p.stock} u.`}</span>
-            </Link>
-          )} />
-
-        <ActionList Icon={Clock} title="Órdenes por confirmar" to="/admin/orders" items={pending}
-          emptyMsg="No hay órdenes pendientes ✓"
-          renderItem={(o) => (
-            <Link key={o.id} to={`/admin/orders?id=${o.id}`} style={rowLink}>
-              <div style={{ minWidth: 0, flex: 1 }}>
-                <p style={{ fontSize: 12.5, fontWeight: 600, color: "var(--admin-text)", fontFamily: "monospace" }}>#{o.short_id}</p>
-                <p style={{ fontSize: 11, color: "var(--admin-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{o.user_name} · {o.items_count} items</p>
+        {/* Columna derecha */}
+        <div className="dash-activity__side">
+          {/* Card destacada — stock / inventario (Amount of credit) */}
+          <div className="au-card dash-credit" data-testid="dash-stock">
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+              <span className="au-stat__icon" style={{ width: 42, height: 42, borderRadius: 12 }}><Boxes size={19} /></span>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 700, color: "var(--admin-text)" }}>Stock del catálogo</p>
+                <p style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>Productos activos disponibles</p>
               </div>
-              <span style={{ fontSize: 13, fontWeight: 700, color: "var(--admin-primary-text)" }}>{clp(o.total)}</span>
-            </Link>
-          )} />
+            </div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+              <span style={{ fontSize: 34, fontWeight: 800, color: "var(--admin-text)", letterSpacing: "-0.02em" }}>{activeProducts}</span>
+              {products.low_stock > 0 && (
+                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--admin-warning)", background: "rgba(217,119,6,0.1)", padding: "3px 9px", borderRadius: 100 }}>
+                  {products.low_stock} stock bajo
+                </span>
+              )}
+            </div>
 
-        <SectionCard title="Solicitudes de servicios"
-          action={<Link to="/admin/services" style={{ fontSize: 12, color: "var(--admin-primary-text)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 600 }}>Ver todo <ArrowRight size={12} /></Link>}
-          testId="action-service-requests">
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-            <span className="au-stat__icon" style={{ width: 38, height: 38, borderRadius: 11 }}><MessageSquare size={17} /></span>
-            <span style={{ fontSize: 12.5, color: "var(--admin-text-muted)" }}>{unread} sin leer</span>
+            {/* Usuarios nuevos (dato real: users.new_week) */}
+            <div className="dash-credit__users">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: "var(--admin-text)" }}>Usuarios nuevos</p>
+                  <p style={{ fontSize: 11.5, color: "var(--admin-text-muted)" }}>Registrados esta semana</p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ fontSize: 24, fontWeight: 800, color: "var(--admin-primary-text)" }}>+{users.new_week || 0}</span>
+                  <Link to="/admin/users" className="au-iconbtn au-iconbtn--ghost" aria-label="Ver usuarios">
+                    <ArrowUpRight size={15} />
+                  </Link>
+                </div>
+              </div>
+            </div>
           </div>
-          {unread > 0
-            ? <p style={{ fontSize: 13, color: "var(--admin-text-muted)", padding: "12px 14px", background: "var(--admin-surface-secondary)", borderRadius: 12 }}>Tenés <strong style={{ color: "var(--admin-primary-text)" }}>{unread}</strong> cotizaciones esperando respuesta.</p>
-            : <EmptyState title="Sin solicitudes nuevas ✓" />}
-        </SectionCard>
+
+          {/* Solicitudes de servicio */}
+          <SectionCard title="Solicitudes de servicio"
+            action={<Link to="/admin/services" style={{ fontSize: 12, color: "var(--admin-primary-text)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 600 }}>Ver todo <ArrowRight size={12} /></Link>}
+            testId="dash-service-requests">
+            {unread > 0
+              ? <p style={{ fontSize: 13, color: "var(--admin-text-muted)", padding: "13px 15px", background: "var(--admin-surface-secondary)", borderRadius: 12 }}>Tenés <strong style={{ color: "var(--admin-primary-text)" }}>{unread}</strong> cotizaciones esperando respuesta.</p>
+              : <EmptyState title="Sin solicitudes nuevas ✓" />}
+          </SectionCard>
+        </div>
       </div>
 
       <style>{`
-        @media (max-width:900px){ .admin-root .admin-grid-2 { grid-template-columns:1fr !important; } }
+        /* ── Layout general del dashboard ── */
+        .admin-root .dash-hero {
+          display: grid;
+          grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(280px, 320px);
+          gap: 16px;
+          align-items: stretch;
+        }
+        .admin-root .dash-hero__left { display: flex; flex-direction: column; gap: 16px; }
+
+        /* Card destacada verde (VISA → ingresos) */
+        .admin-root .dash-feature {
+          background: linear-gradient(150deg, #1AA85A 0%, #0F9940 60%, #0C7A33 100%);
+          border-radius: var(--admin-radius-lg);
+          padding: 22px;
+          color: #fff;
+          box-shadow: 0 16px 40px rgba(15,153,64,0.28);
+          display: flex; flex-direction: column; gap: 18px;
+          flex: 1;
+          position: relative; overflow: hidden;
+        }
+        .admin-root .dash-feature::after {
+          content: ""; position: absolute; top: -40%; right: -20%;
+          width: 260px; height: 260px; border-radius: 50%;
+          background: radial-gradient(circle, rgba(255,255,255,0.12), transparent 70%);
+          pointer-events: none;
+        }
+        .admin-root .dash-feature__head { display: flex; justify-content: space-between; align-items: flex-start; }
+        .admin-root .dash-feature__label { font-size: 15px; font-weight: 700; }
+        .admin-root .dash-feature__sublabel { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+        .admin-root .dash-feature__amount { font-size: 38px; font-weight: 800; letterSpacing: -0.03em; line-height: 1; }
+        .admin-root .dash-feature__foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+        .admin-root .dash-feature__chip {
+          display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600;
+          background: rgba(255,255,255,0.18); padding: 5px 11px; border-radius: 100px; backdrop-filter: blur(4px);
+        }
+
+        /* Ingresos de la semana */
+        .admin-root .dash-week {
+          padding: 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px;
+        }
+
+        /* Balance derecha */
+        .admin-root .dash-balance { padding: 20px; display: flex; flex-direction: column; }
+        .admin-root .dash-balance__head { display: flex; justify-content: space-between; align-items: flex-start; }
+        .admin-root .dash-balance__actions { display: flex; gap: 10px; margin-top: 16px; }
+
+        /* Fila de actividad */
+        .admin-root .dash-activity {
+          display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); gap: 16px; align-items: start;
+        }
+        .admin-root .dash-activity__side { display: flex; flex-direction: column; gap: 16px; }
+        .admin-root .dash-credit { padding: 20px; }
+        .admin-root .dash-credit__users { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--admin-border); }
+
+        /* ── Responsive ── */
+        @media (max-width: 1180px) {
+          .admin-root .dash-hero { grid-template-columns: minmax(280px, 320px) minmax(0, 1fr); }
+          .admin-root .dash-balance { grid-column: 1 / -1; }
+        }
+        @media (max-width: 900px) {
+          .admin-root .dash-hero { grid-template-columns: 1fr; }
+          .admin-root .dash-activity { grid-template-columns: 1fr; }
+        }
+
         .admin-root .spin { animation: au-spin 1s linear infinite; }
         @keyframes au-spin { to { transform: rotate(360deg); } }
       `}</style>
