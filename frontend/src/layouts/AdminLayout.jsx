@@ -8,61 +8,72 @@ import AdminSearch                                           from "../components
 import logoImg                                               from "../assets/logo.png"
 import { useSiteSettings }                                   from "../hooks/useSiteSettings"
 import {
-  LayoutDashboard, ChevronRight, ChevronsLeft,
-  ShoppingBag, CreditCard, Users, Package, Boxes, GraduationCap, PackageSearch,
-  Wrench, Gift, Wallet, Receipt, Star, Palette, ExternalLink, LogOut,
-  Search, Bell, Menu, X, Clock, AlertTriangle, MessageSquare, CheckCircle2,
+  LayoutDashboard, ChevronRight,
+  ShoppingBag, Package, GraduationCap,
+  Wrench, Gift, Wallet, ExternalLink, LogOut,
+  Search, Bell, Menu, Clock, AlertTriangle, MessageSquare, CheckCircle2,
 } from "lucide-react"
 
-// ── Mapa de navegación (Fase 1: reorganizado por dominio de negocio) ──
-// Nota: Vista Ejecutiva y Analytics siguen accesibles bajo "Negocio";
-// en la Fase 2 se consolidan dentro de Dashboard y Finanzas.
-const navItems = [
-  { sep:"Inicio" },
-  { to:"/admin", label:"Dashboard", icon:LayoutDashboard, end:true },
+// ── Mapa de navegación agrupado ──────────────────────────────────
+// Cada grupo es un ícono en el riel del sidebar (desktop). Si el grupo
+// tiene "items", el hover abre un flyout con esas rutas; si tiene "to"
+// directo, el ícono navega solo. En mobile se usa la misma data en un
+// drawer con labels (sin necesidad de hover).
+const navGroups = [
+  { key:"inicio",   label:"Dashboard",     icon:LayoutDashboard, to:"/admin", end:true },
 
-  { sep:"Ventas" },
-  { to:"/admin/orders",          label:"Órdenes",         icon:ShoppingBag },
-  { to:"/admin/special-orders",  label:"Bajo pedido",     icon:PackageSearch },
-  { to:"/admin/payments",        label:"Pagos",           icon:CreditCard },
-  { to:"/admin/payment-methods", label:"Métodos de pago", icon:CreditCard },
-  { to:"/admin/billing",         label:"Doc. Tributaria", icon:Receipt },
+  { key:"ventas", label:"Ventas", icon:ShoppingBag, items:[
+    { to:"/admin/orders",          label:"Órdenes"         },
+    { to:"/admin/special-orders",  label:"Bajo pedido"     },
+    { to:"/admin/payments",        label:"Pagos"           },
+    { to:"/admin/payment-methods", label:"Métodos de pago" },
+    { to:"/admin/billing",         label:"Doc. tributaria" },
+  ]},
 
-  { sep:"Catálogo" },
-  { label:"Productos", icon:Package, children:[
+  { key:"catalogo", label:"Catálogo", icon:Package, items:[
     { to:"/admin/products",        label:"Catálogo"   },
     { to:"/admin/brands",          label:"Marcas"     },
     { to:"/admin/categories",      label:"Categorías" },
     { to:"/admin/products/import", label:"Importar"   },
-  ]},
-  { to:"/admin/inventory", label:"Inventario", icon:Boxes },
-
-  { sep:"Academia" },
-  { label:"Academia", icon:GraduationCap, children:[
-    { to:"/admin/academy",             label:"Cursos"        },
-    { to:"/admin/academy/modules",     label:"Módulos"       },
-    { to:"/admin/academy/lessons",     label:"Lecciones"     },
-    { to:"/admin/academy/enrollments", label:"Inscripciones" },
-    { to:"/admin/academy/certifications", label:"Certificaciones" },
+    { to:"/admin/inventory",       label:"Inventario" },
   ]},
 
-  { sep:"Servicios" },
-  { to:"/admin/services", label:"Servicios", icon:Wrench },
-
-  { sep:"Fidelización" },
-  { to:"/admin/loyalty", label:"Puntos y niveles", icon:Star },
-  { label:"Rewards", icon:Gift, children:[
-    { to:"/admin/rewards",           label:"Dashboard"       },
-    { to:"/admin/rewards/campaigns", label:"Campañas"        },
-    { to:"/admin/rewards/entries",   label:"Participaciones" },
-    { to:"/admin/rewards/winners",   label:"Ganadores"       },
+  { key:"academia", label:"Academia", icon:GraduationCap, items:[
+    { to:"/admin/academy",                label:"Cursos"         },
+    { to:"/admin/academy/modules",        label:"Módulos"        },
+    { to:"/admin/academy/lessons",        label:"Lecciones"      },
+    { to:"/admin/academy/enrollments",    label:"Inscripciones"  },
+    { to:"/admin/academy/certifications", label:"Certificaciones"},
   ]},
 
-  { sep:"Negocio" },
-  { to:"/admin/finance",   label:"Finanzas",        icon:Wallet },
-  { to:"/admin/users",     label:"Clientes",        icon:Users },
-  { to:"/admin/settings",  label:"Personalización", icon:Palette },
+  { key:"servicios", label:"Servicios", icon:Wrench, to:"/admin/services" },
+
+  { key:"fidelizacion", label:"Fidelización", icon:Gift, items:[
+    { to:"/admin/loyalty",           label:"Puntos y niveles" },
+    { to:"/admin/rewards",           label:"Rewards"          },
+    { to:"/admin/rewards/campaigns", label:"Campañas"         },
+    { to:"/admin/rewards/entries",   label:"Participaciones"  },
+    { to:"/admin/rewards/winners",   label:"Ganadores"        },
+  ]},
+
+  { key:"negocio", label:"Negocio", icon:Wallet, items:[
+    { to:"/admin/finance",  label:"Finanzas"        },
+    { to:"/admin/users",    label:"Clientes"        },
+    { to:"/admin/settings", label:"Personalización" },
+  ]},
 ]
+
+// isGroupActive: determina si un grupo del riel/pill está activo según la ruta actual
+function isGroupActive(group, pathname) {
+  if (group.to) return group.end ? pathname === group.to : pathname.startsWith(group.to)
+  if (group.items) return group.items.some((it) => pathname.startsWith(it.to))
+  return false
+}
+
+// Primer destino navegable de un grupo (usado por el pill superior)
+function firstDestination(group) {
+  return group.to || group.items?.[0]?.to || "/admin"
+}
 
 // Título/subtítulo del topbar según la ruta
 const ROUTE_TITLES = {
@@ -228,24 +239,24 @@ function NotifRow({ title, sub, right, rightColor, onClick }) {
   )
 }
 
-function NavGroup({ item, collapsed }) {
+function NavGroup({ group }) {
   const location = useLocation()
-  const isOpen   = item.children.some(c => location.pathname.startsWith(c.to))
+  const isOpen = group.items.some((c) => location.pathname.startsWith(c.to))
   const [open, setOpen] = useState(isOpen)
-  const Icon = item.icon
+  const Icon = group.icon
   return (
     <div style={{ marginBottom:"2px" }}>
       <button onClick={() => setOpen(!open)} className={`a-nav${isOpen ? " active" : ""}`}
-        data-testid={`admin-navgroup-${item.label.toLowerCase()}`}>
+        data-testid={`admin-navgroup-${group.key}`}>
         {Icon && <Icon size={18} strokeWidth={1.9} />}
-        <span style={{ flex:1 }}>{item.label}</span>
+        <span style={{ flex:1 }}>{group.label}</span>
         <ChevronRight className="a-chevron" size={14} strokeWidth={2}
           style={{ opacity:0.6, transform: open ? "rotate(90deg)" : "none",
             transition:"transform 200ms var(--ease)" }} />
       </button>
-      {open && !collapsed && (
+      {open && (
         <div style={{ marginTop:"2px", marginBottom:"4px" }}>
-          {item.children.map(c => (
+          {group.items.map((c) => (
             <NavLink key={c.to} to={c.to}
               className={({ isActive }) => `a-subnav${isActive ? " active" : ""}`}>
               {c.label}
@@ -257,12 +268,76 @@ function NavGroup({ item, collapsed }) {
   )
 }
 
+// ── NavRail — riel de íconos (desktop). Los grupos con "items" abren un
+// flyout al hover; los directos navegan solos. Tooltip para leaf items. ──
+function NavRail({ openKey, setOpenKey }) {
+  const location = useLocation()
+  return (
+    <nav className="a-rail__nav" aria-label="Navegación principal">
+      {navGroups.map((group) => {
+        const Icon = group.icon
+        const active = isGroupActive(group, location.pathname)
+        const hasFlyout = !!group.items
+        return (
+          <div key={group.key} className="a-rail__item"
+            onMouseEnter={() => hasFlyout && setOpenKey(group.key)}
+            onMouseLeave={() => hasFlyout && setOpenKey(null)}>
+            {group.to ? (
+              <NavLink to={group.to} end={group.end}
+                className={`a-rail__btn${active ? " active" : ""}`}
+                data-testid={`admin-nav-${group.key}`} aria-label={group.label}>
+                <Icon size={19} strokeWidth={1.9} />
+              </NavLink>
+            ) : (
+              <button type="button" className={`a-rail__btn${active ? " active" : ""}`}
+                data-testid={`admin-nav-${group.key}`} aria-label={group.label}
+                aria-expanded={openKey === group.key}>
+                <Icon size={19} strokeWidth={1.9} />
+              </button>
+            )}
+            {!hasFlyout && <span className="a-rail__tip">{group.label}</span>}
+            {hasFlyout && openKey === group.key && (
+              <div className="a-rail__flyout" data-testid={`admin-flyout-${group.key}`}>
+                <p className="a-rail__flyout-title">{group.label}</p>
+                {group.items.map((it) => (
+                  <NavLink key={it.to} to={it.to} onClick={() => setOpenKey(null)}
+                    className={({ isActive }) => `a-rail__flyout-item${isActive ? " active" : ""}`}>
+                    {it.label}
+                  </NavLink>
+                ))}
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </nav>
+  )
+}
+
+// ── PillNav — navegación rápida superior tipo Quixotic (desktop) ──
+function PillNav() {
+  const location = useLocation()
+  const navigate = useNavigate()
+  return (
+    <nav className="a-pillnav" aria-label="Navegación rápida">
+      {navGroups.map((group) => (
+        <button key={group.key} type="button"
+          className={`a-pillnav__btn${isGroupActive(group, location.pathname) ? " active" : ""}`}
+          data-testid={`admin-pill-${group.key}`}
+          onClick={() => navigate(firstDestination(group))}>
+          {group.label}
+        </button>
+      ))}
+    </nav>
+  )
+}
+
 export default function AdminLayout() {
   const { user, logout } = useAuthStore()
   const { siteName, logoUrl } = useSiteSettings()
   const navigate  = useNavigate()
   const location  = useLocation()
-  const [collapsed, setCollapsed] = useState(false)
+  const [openKey, setOpenKey] = useState(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -282,66 +357,51 @@ export default function AdminLayout() {
   const today = new Date().toLocaleDateString("es-CL",
     { weekday:"long", year:"numeric", month:"long", day:"numeric" })
 
-  const width = collapsed ? 84 : 256
-
-  const SidebarInner = (
-    <aside className={`a-sidebar${collapsed ? " collapsed" : ""}`}
-      style={{ width, height:"100%" }} data-testid="admin-sidebar">
-      {/* Logo */}
-      <div style={{ padding:"22px 18px 6px", display:"flex", alignItems:"center", gap:"10px",
-        justifyContent: collapsed ? "center" : "flex-start" }}>
+  // ── Drawer mobile: lista completa con labels (sin hover, apto para touch) ──
+  const MobileDrawer = (
+    <aside className="a-sidebar" style={{ width:256, height:"100%" }} data-testid="admin-sidebar-mobile">
+      <div style={{ padding:"22px 18px 6px", display:"flex", alignItems:"center", gap:"10px" }}>
         <Link to="/" style={{ display:"flex", alignItems:"center", gap:"9px" }}>
-          {collapsed
-            ? <span style={{ width:"34px", height:"34px", borderRadius:"10px", background:"var(--accent)",
-                display:"flex", alignItems:"center", justifyContent:"center", color:"#000",
-                fontWeight:800, fontSize:"16px" }}>{siteName.charAt(0).toUpperCase()}</span>
-            : logoUrl
-              ? <img src={logoUrl} alt={siteName}
-                  style={{ height:"24px", maxWidth:"120px", objectFit:"contain" }} />
-              : <img src={logoImg} alt={siteName}
-                  style={{ height:"24px", filter:"brightness(0) invert(1)", maxWidth:"120px" }} />}
+          {logoUrl
+            ? <img src={logoUrl} alt={siteName} style={{ height:"24px", maxWidth:"120px", objectFit:"contain" }} />
+            : <img src={logoImg} alt={siteName} style={{ height:"24px", filter:"brightness(0) invert(1)", maxWidth:"120px" }} />}
         </Link>
       </div>
 
-      {/* Nav */}
       <nav style={{ flex:1, padding:"6px 12px 14px", overflowY:"auto", overflowX:"hidden" }}
         className="admin-scroll">
-        {navItems.map((item, i) => {
-          if (item.sep) return <p key={item.sep+i} className="a-group-label">{item.sep}</p>
-          if (item.children) return <NavGroup key={item.label} item={item} collapsed={collapsed} />
-          const Icon = item.icon
+        {navGroups.map((group) => {
+          if (group.items) return <NavGroup key={group.key} group={group} />
+          const Icon = group.icon
           return (
-            <NavLink key={item.to} to={item.to} end={item.end}
+            <NavLink key={group.key} to={group.to} end={group.end}
               onClick={() => setMobileOpen(false)}
               className={({ isActive }) => `a-nav${isActive ? " active" : ""}`}
-              data-testid={`admin-nav-${item.label.toLowerCase().replace(/\s/g,'-')}`}>
+              data-testid={`admin-nav-mobile-${group.key}`}>
               {Icon && <Icon size={18} strokeWidth={1.9} />}
-              <span>{item.label}</span>
+              <span>{group.label}</span>
             </NavLink>
           )
         })}
       </nav>
 
-      {/* Footer */}
       <div style={{ padding:"10px 12px 14px", borderTop:"1px solid rgba(255,255,255,0.06)" }}>
-        {!collapsed && (
-          <div style={{ display:"flex", alignItems:"center", gap:"10px", padding:"8px 6px 10px" }}>
-            <span style={{ width:"34px", height:"34px", borderRadius:"50%", background:"var(--accent)",
-              color:"#000", flexShrink:0, display:"flex", alignItems:"center",
-              justifyContent:"center", fontSize:"14px", fontWeight:800 }}>{initial}</span>
-            <div style={{ minWidth:0 }}>
-              <p style={{ fontSize:"12px", fontWeight:600, color:"#fff", overflow:"hidden",
-                textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.email}</p>
-              <p style={{ fontSize:"11px", color:"#6B7280" }}>
-                {user?.is_superuser ? "Superusuario" : "Staff"}</p>
-            </div>
+        <div style={{ display:"flex", alignItems:"center", gap:"10px", padding:"8px 6px 10px" }}>
+          <span style={{ width:"34px", height:"34px", borderRadius:"50%", background:"var(--accent)",
+            color:"#000", flexShrink:0, display:"flex", alignItems:"center",
+            justifyContent:"center", fontSize:"14px", fontWeight:800 }}>{initial}</span>
+          <div style={{ minWidth:0 }}>
+            <p style={{ fontSize:"12px", fontWeight:600, color:"#fff", overflow:"hidden",
+              textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{user?.email}</p>
+            <p style={{ fontSize:"11px", color:"#6B7280" }}>
+              {user?.is_superuser ? "Superusuario" : "Staff"}</p>
           </div>
-        )}
-        <Link to="/" className="a-nav" data-testid="admin-view-site">
+        </div>
+        <Link to="/" className="a-nav" data-testid="admin-view-site-mobile">
           <ExternalLink size={17} strokeWidth={1.9} /><span>Ver sitio</span>
         </Link>
         <button onClick={() => { logout(); navigate("/admin/login") }}
-          className="a-nav" data-testid="admin-logout">
+          className="a-nav" data-testid="admin-logout-mobile">
           <LogOut size={17} strokeWidth={1.9} /><span>Cerrar sesión</span>
         </button>
       </div>
@@ -352,36 +412,52 @@ export default function AdminLayout() {
     <div className="admin-root" style={{ minHeight:"100vh", display:"flex",
       padding:"14px", gap:"18px", fontFamily:"var(--font-sans)" }}>
 
-      {/* Sidebar desktop */}
+      {/* Riel de íconos — desktop */}
       <div style={{ position:"sticky", top:"14px", height:"calc(100vh - 28px)", flexShrink:0 }}
-        className="a-sidebar-desktop">
-        {SidebarInner}
+        className="a-rail-desktop">
+        <aside className="a-rail" data-testid="admin-sidebar">
+          <Link to="/" className="a-rail__logo" aria-label={siteName}>
+            {logoUrl
+              ? <img src={logoUrl} alt="" style={{ width:22, height:22, objectFit:"contain" }} />
+              : <span>{siteName.charAt(0).toUpperCase()}</span>}
+          </Link>
+          <NavRail openKey={openKey} setOpenKey={setOpenKey} />
+          <div className="a-rail__footer">
+            <Link to="/" className="a-rail__item">
+              <span className="a-rail__btn" aria-label="Ver sitio"><ExternalLink size={18} strokeWidth={1.9} /></span>
+              <span className="a-rail__tip">Ver sitio</span>
+            </Link>
+            <div className="a-rail__item">
+              <button type="button" className="a-rail__btn" aria-label="Cerrar sesión"
+                onClick={() => { logout(); navigate("/admin/login") }} data-testid="admin-logout">
+                <LogOut size={18} strokeWidth={1.9} />
+              </button>
+              <span className="a-rail__tip">Cerrar sesión</span>
+            </div>
+          </div>
+        </aside>
       </div>
 
       {/* Drawer móvil */}
       {mobileOpen && <div className="a-drawer-backdrop" onClick={() => setMobileOpen(false)} />}
       <div className={`a-sidebar-wrap${mobileOpen ? " open" : ""}`}
         style={{ width:256, display:"none" }} data-mobile>
-        {SidebarInner}
+        {MobileDrawer}
       </div>
 
       {/* Main */}
       <main style={{ flex:1, minWidth:0, display:"flex", flexDirection:"column" }}>
-        {/* Topbar (solo acciones — el título lo pone cada página) */}
+        {/* Topbar — pill de navegación rápida (desktop) + acciones */}
         <header style={{ display:"flex", justifyContent:"space-between", alignItems:"center",
           gap:"16px", marginBottom:"14px" }}>
-          <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"12px", minWidth:0, flex:1 }}>
             <button className="a-icon-btn a-mobile-toggle" onClick={() => setMobileOpen(true)}
               aria-label="Abrir menú" style={{ display:"none" }} data-testid="admin-mobile-menu">
               <Menu size={18} />
             </button>
-            <button className="a-icon-btn a-collapse-toggle" onClick={() => setCollapsed(c => !c)}
-              aria-label="Contraer menú" data-testid="admin-collapse-toggle">
-              <ChevronsLeft size={18} style={{ transform: collapsed ? "rotate(180deg)" : "none",
-                transition:"transform 250ms var(--ease)" }} />
-            </button>
+            <PillNav />
           </div>
-          <div style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"12px", flexShrink:0 }}>
             <button className="a-icon-btn" aria-label="Buscar" onClick={() => setSearchOpen(true)}
               data-testid="admin-search-btn"><Search size={18} /></button>
             <NotificationsBell />
@@ -409,11 +485,72 @@ export default function AdminLayout() {
       </main>
 
       <style>{`
+        /* ── Riel de íconos (desktop) — blanco, flotante, redondeado ── */
+        .admin-root .a-rail {
+          width: 72px; height: 100%; background: #fff; border: 1px solid var(--admin-border, #ECEEF2);
+          border-radius: 22px; display: flex; flex-direction: column; align-items: center;
+          padding: 16px 0; box-shadow: 0 4px 20px rgba(20,30,24,0.05);
+        }
+        .admin-root .a-rail__logo {
+          width: 38px; height: 38px; border-radius: 12px; background: var(--admin-primary, #1AFF6E);
+          display: flex; align-items: center; justify-content: center; color: #00160b;
+          font-weight: 800; font-size: 15px; margin-bottom: 18px; flex-shrink: 0;
+        }
+        .admin-root .a-rail__nav { flex: 1; display: flex; flex-direction: column; gap: 4px; width: 100%;
+          align-items: center; overflow-y: auto; overflow-x: visible; }
+        .admin-root .a-rail__footer { display: flex; flex-direction: column; gap: 4px; width: 100%;
+          align-items: center; padding-top: 10px; border-top: 1px solid var(--admin-border, #ECEEF2); margin-top: 8px; }
+        .admin-root .a-rail__item { position: relative; display: flex; justify-content: center; width: 100%; }
+        .admin-root .a-rail__btn {
+          width: 44px; height: 44px; border-radius: 13px; border: none; background: transparent;
+          color: #6B7280; display: flex; align-items: center; justify-content: center; cursor: pointer;
+          text-decoration: none; transition: background 150ms var(--ease), color 150ms var(--ease);
+        }
+        .admin-root .a-rail__btn:hover { background: #F4F5F7; color: #14161A; }
+        .admin-root .a-rail__btn.active { background: var(--admin-primary-soft, rgba(26,255,110,0.14));
+          color: var(--admin-primary-text, #0F9940); }
+        .admin-root .a-rail__tip {
+          position: absolute; left: calc(100% + 10px); top: 50%; transform: translateY(-50%);
+          background: #14161A; color: #fff; font-size: 11.5px; font-weight: 600; padding: 5px 10px;
+          border-radius: 8px; white-space: nowrap; opacity: 0; pointer-events: none; z-index: 60;
+          transition: opacity 120ms var(--ease); box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+        }
+        .admin-root .a-rail__item:hover .a-rail__tip { opacity: 1; }
+        .admin-root .a-rail__flyout {
+          position: absolute; left: calc(100% + 10px); top: 0; min-width: 208px;
+          background: #fff; border: 1px solid var(--admin-border, #ECEEF2); border-radius: 16px;
+          box-shadow: 0 20px 45px rgba(20,30,24,0.14); padding: 10px; z-index: 70;
+        }
+        .admin-root .a-rail__flyout-title { font-size: 11px; font-weight: 700; text-transform: uppercase;
+          letter-spacing: .05em; color: #98A2B3; padding: 4px 10px 8px; }
+        .admin-root .a-rail__flyout-item {
+          display: block; padding: 9px 10px; border-radius: 10px; font-size: 13.5px; font-weight: 600;
+          color: #14161A; text-decoration: none; transition: background 120ms var(--ease);
+        }
+        .admin-root .a-rail__flyout-item:hover { background: #F4F5F7; }
+        .admin-root .a-rail__flyout-item.active { background: var(--admin-primary-soft, rgba(26,255,110,0.14));
+          color: var(--admin-primary-text, #0F9940); }
+
+        /* ── Pill de navegación rápida (topbar, desktop) ── */
+        .admin-root .a-pillnav {
+          display: inline-flex; align-items: center; gap: 2px; background: #fff;
+          border: 1px solid var(--admin-border, #ECEEF2); border-radius: 100px; padding: 4px;
+          overflow-x: auto; max-width: 100%; box-shadow: 0 4px 12px rgba(20,30,24,0.04);
+        }
+        .admin-root .a-pillnav::-webkit-scrollbar { display: none; }
+        .admin-root .a-pillnav__btn {
+          border: none; background: transparent; color: #6B7280; font-size: 13px; font-weight: 600;
+          padding: 8px 16px; border-radius: 100px; cursor: pointer; white-space: nowrap;
+          transition: background 150ms var(--ease), color 150ms var(--ease); flex-shrink: 0;
+        }
+        .admin-root .a-pillnav__btn:hover { background: #F4F5F7; color: #14161A; }
+        .admin-root .a-pillnav__btn.active { background: var(--admin-primary, #1AFF6E); color: #00160b; }
+
         @media (max-width: 1024px) {
-          .a-sidebar-desktop { display:none !important; }
+          .a-rail-desktop { display:none !important; }
           .a-sidebar-wrap[data-mobile] { display:block !important; }
           .a-mobile-toggle { display:flex !important; }
-          .a-collapse-toggle { display:none !important; }
+          .a-pillnav { display:none !important; }
         }
         @media (max-width: 560px) {
           .a-user-meta { display:none; }
