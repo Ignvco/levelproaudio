@@ -806,7 +806,7 @@ h1 em, h2 em, h3 em {
   --admin-danger:             #EF4444;
   --admin-radius-sm:          12px;
   --admin-radius-md:          16px;
-  --admin-radius-lg:          20px;
+  --admin-radius-lg:          24px;
   --admin-shadow-sm:          0 4px 14px rgba(20,30,24,0.05);
   --admin-shadow-md:          0 10px 30px rgba(20,30,24,0.07);
   background: var(--bg);

@@ -92,9 +92,9 @@
 
 /* ── Badges ── */
 .admin-root .au-badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:100px; font-size:11.5px; font-weight:700; line-height:1; white-space:nowrap; }
-.admin-root .au-badge--success, .admin-root .au-badge--pos { background:rgba(26,255,110,.15); color:#0F9940; }
-.admin-root .au-badge--danger,  .admin-root .au-badge--neg { background:rgba(239,68,68,.1);  color:#EF4444; }
-.admin-root .au-badge--warning { background:rgba(217,119,6,.12); color:#B45309; }
+.admin-root .au-badge--success, .admin-root .au-badge--pos { background:var(--admin-primary-soft); color:var(--admin-primary-text); }
+.admin-root .au-badge--danger,  .admin-root .au-badge--neg { background:rgba(239,68,68,.1);  color:var(--admin-danger); }
+.admin-root .au-badge--warning { background:rgba(217,119,6,.12); color:var(--admin-warning); }
 .admin-root .au-badge--info    { background:rgba(20,184,166,.12); color:#0F766E; }
 .admin-root .au-badge--neutral { background:var(--admin-surface-secondary); color:var(--admin-text-muted); }
 .admin-root .au-metric { display:inline-flex; align-items:center; gap:3px; font-size:12px; font-weight:700; }
@@ -249,7 +249,7 @@
 .admin-root .au-lp {
   position:relative; overflow:hidden; height:100%;
   background:#FCFCFC; border:1px solid #FFFFFF;
-  border-radius:24px; padding:20px;
+  border-radius:var(--admin-radius-lg); padding:20px;
   box-shadow:0 10px 30px rgba(20,30,24,.08);
   display:flex; flex-direction:column; gap:16px;
 }
@@ -259,22 +259,22 @@
 }
 .admin-root .au-lp--interactive:hover { transform:translateY(-6px); box-shadow:0 24px 50px -18px rgba(20,30,24,.22); }
 .admin-root .au-lp__top { display:flex; align-items:center; justify-content:space-between; gap:10px; position:relative; z-index:2; }
-.admin-root .au-lp__tag { background:#1AFF6E; color:#00160b; font-size:11px; font-weight:700; letter-spacing:.04em; padding:6px 13px; border-radius:9999px; white-space:nowrap; }
-.admin-root .au-lp__icon { width:44px; height:44px; border-radius:50%; background:#292929; color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.admin-root .au-lp__tag { background:var(--admin-primary-soft); color:var(--admin-primary-text); font-size:11px; font-weight:700; letter-spacing:.04em; padding:6px 13px; border-radius:9999px; white-space:nowrap; }
+.admin-root .au-lp__icon { width:44px; height:44px; border-radius:50%; background:var(--admin-surface-secondary); color:var(--admin-text); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
 .admin-root .au-lp__value { font-family:var(--font-display); font-size:30px; font-weight:800; letter-spacing:-.02em; line-height:1; color:#000000; position:relative; z-index:2; font-variant-numeric:tabular-nums; }
 .admin-root .au-lp__foot { display:flex; align-items:center; gap:8px; flex-wrap:wrap; position:relative; z-index:2; margin-top:auto; }
-.admin-root .au-lp__pill { background:#292929; border:1px solid transparent; color:#ffffff; font-size:12.5px; font-weight:600; padding:9px 16px; border-radius:9999px; white-space:nowrap; }
+.admin-root .au-lp__pill { background:var(--admin-surface-secondary); border:1px solid transparent; color:var(--admin-text-muted); font-size:12.5px; font-weight:600; padding:9px 16px; border-radius:9999px; white-space:nowrap; }
 .admin-root .au-lp__delta { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:700; padding:8px 13px; border-radius:9999px; }
 .admin-root .au-lp__delta--pos { background:rgba(26,255,110,.16); color:#0F9940; }
 .admin-root .au-lp__delta--neg { background:rgba(239,68,68,.12); color:#EF4444; }
-/* variante primary: ícono verde sólido */
+/* variante primary: ícono verde sólido (única variante que usa color fuerte, a propósito) */
 .admin-root .au-lp--primary .au-lp__icon { background:#1AFF6E; color:#00160b; }
 /* variante light (alias del mismo estilo claro) */
 .admin-root .au-lp--light { background:#FCFCFC; border:1px solid #FFFFFF; box-shadow:0 10px 30px rgba(20,30,24,.08); }
-.admin-root .au-lp--light .au-lp__tag { background:#1AFF6E; color:#00160b; }
-.admin-root .au-lp--light .au-lp__icon { background:#292929; color:#fff; }
+.admin-root .au-lp--light .au-lp__tag { background:var(--admin-primary-soft); color:var(--admin-primary-text); }
+.admin-root .au-lp--light .au-lp__icon { background:var(--admin-surface-secondary); color:var(--admin-text); }
 .admin-root .au-lp--light .au-lp__value { color:#000000; }
-.admin-root .au-lp--light .au-lp__pill { background:#292929; border-color:transparent; color:#ffffff; }
+.admin-root .au-lp--light .au-lp__pill { background:var(--admin-surface-secondary); border-color:transparent; color:var(--admin-text-muted); }
 /* compacta */
 .admin-root .au-lp--compact { padding:16px; gap:12px; border-radius:20px; }
 .admin-root .au-lp--compact .au-lp__value { font-size:24px; }
