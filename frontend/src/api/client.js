@@ -1,13 +1,9 @@
 // api/client.js
-import axios from "axios"
+import { createApiClient, authClient } from "./http"
 import { useAuthStore } from "../store/authStore"
 
 // withCredentials: envía/recibe las cookies HTTPOnly de auth en cada request.
-const api = axios.create({
-  baseURL: "/api/v1",
-  headers: { "Content-Type": "application/json" },
-  withCredentials: true,
-})
+const api = createApiClient()
 
 api.interceptors.request.use(
   (config) => {
@@ -32,12 +28,12 @@ api.interceptors.response.use(
     const original = error.config
     const url = original?.url || ""
     // No intentar refrescar en los propios endpoints de auth
-    const isAuthCall = url.includes("/auth/login") || url.includes("/auth/token/refresh") || url.includes("/auth/logout")
-    if (error.response?.status === 401 && !original._retry && !isAuthCall) {
+    const isAuthCall = url.includes("/auth/login") || url.includes("/auth/token/refresh") || url.includes("/auth/logout") || url.includes("/auth/csrf")
+    if (error.response?.status === 401 && original && !original._retry && !isAuthCall) {
       original._retry = true
       try {
         if (!refreshing) {
-          refreshing = axios.post("/api/v1/auth/token/refresh/", {}, { withCredentials: true })
+          refreshing = authClient.post("/auth/token/refresh/", {})
         }
         await refreshing
         refreshing = null

@@ -98,11 +98,19 @@ SIMPLE_JWT = {
 # ── Cookies HTTPOnly para JWT ─────────────────────────────────
 # El access/refresh viajan en cookies HTTPOnly (no accesibles desde JS).
 # SameSite=Lax: la cookie sobrevive redirecciones top-level GET (MercadoPago/PayPal
-# vuelven al sitio) y bloquea envíos cross-site en POST → protección CSRF.
+# vuelven al sitio). Se complementa con validación explícita de CSRF.
 AUTH_COOKIE_ACCESS   = "access_token"
 AUTH_COOKIE_REFRESH  = "refresh_token"
 AUTH_COOKIE_SECURE   = env.bool("AUTH_COOKIE_SECURE", default=True)
 AUTH_COOKIE_SAMESITE = env("AUTH_COOKIE_SAMESITE", default="Lax")
+
+# El frontend Axios lee esta cookie para enviar X-CSRFToken. No es un JWT.
+CSRF_COOKIE_NAME = "csrftoken"
+CSRF_HEADER_NAME = "HTTP_X_CSRFTOKEN"
+CSRF_COOKIE_HTTPONLY = False
+CSRF_COOKIE_SAMESITE = AUTH_COOKIE_SAMESITE
+CSRF_COOKIE_SECURE = AUTH_COOKIE_SECURE
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',

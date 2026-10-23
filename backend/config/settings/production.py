@@ -101,6 +101,12 @@ CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[
 ])
 CORS_ALLOW_CREDENTIALS = True
 
+# Nginx usa el host interno de Cloud Run; Origin conserva el dominio público.
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[
+    "https://levelproaudio.com",
+    "https://www.levelproaudio.com",
+])
+
 # ── Logging estructurado ──────────────────────────────────────
 LOGGING = {
     "version": 1,

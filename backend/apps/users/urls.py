@@ -4,10 +4,11 @@ from .views import (
     RegisterView, ProfileView, LogoutView,
     CookieTokenObtainPairView, CookieTokenRefreshView,
     PasswordResetRequestView, PasswordResetConfirmView,
-    ChangePasswordView, GoogleAuthView,
+    ChangePasswordView, GoogleAuthView, CsrfTokenView,
 )
 
 urlpatterns = [
+    path('csrf/', CsrfTokenView.as_view(), name='auth-csrf'),
     path('register/', RegisterView.as_view(), name='auth-register'),
     path('login/', CookieTokenObtainPairView.as_view(), name='auth-login'),
     path('google/', GoogleAuthView.as_view(), name='auth-google'),

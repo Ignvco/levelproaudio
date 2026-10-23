@@ -9,6 +9,13 @@ from .base import *  # noqa: F401, F403
 
 DEBUG = True
 
+AUTH_COOKIE_SECURE = env.bool("AUTH_COOKIE_SECURE", default=False)  # noqa: F405
+CSRF_COOKIE_SECURE = AUTH_COOKIE_SECURE
+CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[  # noqa: F405
+    "http://localhost:3000", "http://127.0.0.1:3000",
+    "http://localhost:5173", "http://127.0.0.1:5173",
+])
+
 ALLOWED_HOSTS = ["*"]
 
 # Base de datos local — SQLite

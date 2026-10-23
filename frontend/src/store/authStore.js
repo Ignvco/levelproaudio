@@ -1,17 +1,11 @@
 // store/authStore.js
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
-import axios from "axios"
+import { authClient as authAxios } from "../api/http"
 
 // Los tokens JWT viven en cookies HTTPOnly (no accesibles desde JS).
 // El store sólo guarda el objeto `user` y el flag `isAuthenticated` para la UI;
 // la fuente de verdad de la sesión es la cookie, que se valida con checkAuth().
-const authAxios = axios.create({
-  baseURL: "/api/v1",
-  headers: { "Content-Type": "application/json" },
-  withCredentials: true,
-})
-
 // Limpieza one-shot de tokens legacy que quedaron en storage de versiones previas.
 ;(function purgeLegacyTokens() {
   try {
@@ -24,7 +18,7 @@ const authAxios = axios.create({
 
 export const useAuthStore = create(
   persist(
-    (set, get) => ({
+    (set) => ({
       user: null,
       isAuthenticated: false,
 

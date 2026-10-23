@@ -1,11 +1,24 @@
 # apps/users/views.py
 from django.conf import settings
+from django.middleware.csrf import get_token, rotate_token
 from rest_framework import generics, permissions
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework_simplejwt.tokens import RefreshToken
+from .authentication import enforce_csrf
+
+
+class CsrfTokenView(APIView):
+    """Inicializa CSRF incluso si la cookie de acceso ya expiró."""
+    authentication_classes = []
+    permission_classes = [permissions.AllowAny]
+
+    def get(self, request):
+        response = Response({"csrfToken": get_token(request)})
+        response["Cache-Control"] = "no-store, private"
+        return response
 
 
 class LoginRateThrottle(AnonRateThrottle):
@@ -66,8 +79,10 @@ class CookieTokenObtainPairView(TokenObtainPairView):
     throttle_classes = [LoginRateThrottle]
 
     def post(self, request, *args, **kwargs):
+        enforce_csrf(request)
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
+            rotate_token(request)
             access  = response.data.get("access")
             refresh = response.data.get("refresh")
             set_access_cookie(response, access)
@@ -90,10 +105,12 @@ class GoogleAuthView(APIView):
     que mande el cliente directamente — se verifica la firma del token
     contra las claves públicas de Google, y los datos salen de ahí.
     """
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
     throttle_classes = [GoogleAuthRateThrottle]
 
     def post(self, request):
+        enforce_csrf(request)
         credential = request.data.get("credential")
         if not credential:
             return Response({"error": "Falta el token de Google."}, status=400)
@@ -125,6 +142,7 @@ class GoogleAuthView(APIView):
             user.save(update_fields=["password"])
 
         refresh  = RefreshToken.for_user(user)
+        rotate_token(request)
         response = Response({"detail": "ok"})
         set_access_cookie(response, refresh.access_token)
         set_refresh_cookie(response, refresh)
@@ -139,6 +157,8 @@ def _rand_suffix():
 # ── Refresh: lee el refresh de la cookie y renueva el access ──
 class CookieTokenRefreshView(TokenRefreshView):
     def post(self, request, *args, **kwargs):
+        # También protege el refresh enviado en el body: la respuesta crea cookies.
+        enforce_csrf(request)
         if not request.data.get("refresh"):
             cookie_refresh = request.COOKIES.get(settings.AUTH_COOKIE_REFRESH)
             if cookie_refresh:
@@ -155,9 +175,12 @@ class CookieTokenRefreshView(TokenRefreshView):
 
 # ── Logout: invalida el refresh y borra las cookies ──
 class LogoutView(APIView):
+    # El logout debe poder limpiar la sesión aunque el access ya haya expirado.
+    authentication_classes = []
     permission_classes = [permissions.AllowAny]
 
     def post(self, request):
+        enforce_csrf(request)
         refresh = request.COOKIES.get(settings.AUTH_COOKIE_REFRESH) or request.data.get("refresh")
         if refresh:
             try:
