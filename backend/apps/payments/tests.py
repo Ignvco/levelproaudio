@@ -173,6 +173,12 @@ class PayPalCaptureAmountValidationTest(TestCase):
 
         result = capture_paypal_payment("pp-2", "PAYER123", self.user)
 
+        self.assertFalse(result)
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.PENDING)  # NO se aprobó
+        payment = Payment.objects.get(preference_id="pp-2")
+        self.assertEqual(payment.status, PaymentStatus.IN_REVIEW)
+
     @patch("apps.payments.services.paypalrestsdk.Payment.find")
     def test_other_users_payment_is_never_executed(self, mock_find):
         other = User.objects.create_user(email="other@test.com", username="other", password="x")
@@ -209,12 +215,6 @@ class PayPalCaptureAmountValidationTest(TestCase):
         mock_payment.return_value.to_dict.return_value = {}
         create_paypal_order(order)
         self.assertEqual(Payment.objects.get(preference_id="pp-usd").amount, Decimal("49.99"))
-
-        self.assertFalse(result)
-        order.refresh_from_db()
-        self.assertEqual(order.status, OrderStatus.PENDING)  # NO se aprobó
-        payment = Payment.objects.get(preference_id="pp-2")
-        self.assertEqual(payment.status, PaymentStatus.IN_REVIEW)
 
 
 class AdminManualPaymentApprovalTest(TestCase):
