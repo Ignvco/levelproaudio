@@ -16,7 +16,7 @@ from rest_framework.test import APIClient
 
 from apps.orders.models import Order, OrderStatus
 from apps.payments.models import Payment, PaymentProvider, PaymentStatus
-from apps.payments.services import process_mercadopago_webhook, capture_paypal_payment
+from apps.payments.services import process_mercadopago_webhook, capture_paypal_payment, create_paypal_order
 
 User = get_user_model()
 
@@ -153,7 +153,7 @@ class PayPalCaptureAmountValidationTest(TestCase):
         mock_paypal_payment.to_dict.return_value = {}
         mock_find.return_value = mock_paypal_payment
 
-        result = capture_paypal_payment("pp-1", "PAYER123")
+        result = capture_paypal_payment("pp-1", "PAYER123", self.user)
 
         self.assertTrue(result)
         order.refresh_from_db()
@@ -171,7 +171,44 @@ class PayPalCaptureAmountValidationTest(TestCase):
         mock_paypal_payment.to_dict.return_value = {}
         mock_find.return_value = mock_paypal_payment
 
-        result = capture_paypal_payment("pp-2", "PAYER123")
+        result = capture_paypal_payment("pp-2", "PAYER123", self.user)
+
+    @patch("apps.payments.services.paypalrestsdk.Payment.find")
+    def test_other_users_payment_is_never_executed(self, mock_find):
+        other = User.objects.create_user(email="other@test.com", username="other", password="x")
+        order = _pending_order(other)
+        self._make_payment(order, preference_id="pp-other")
+        self.assertFalse(capture_paypal_payment("pp-other", "PAYER123", self.user))
+        mock_find.assert_not_called()
+        order.refresh_from_db()
+        self.assertEqual(order.status, OrderStatus.PENDING)
+
+    @patch("apps.payments.services.paypalrestsdk.Payment")
+    @patch("apps.payments.services.configure_paypal")
+    @override_settings(USD_CLP_RATE="1000")
+    def test_clp_creation_saves_usd_amount(self, mock_configure, mock_payment):
+        order = _pending_order(self.user, total="100000")
+        mock_payment.return_value.create.return_value = True
+        mock_payment.return_value.id = "pp-clp"
+        mock_payment.return_value.links = []
+        mock_payment.return_value.to_dict.return_value = {}
+        create_paypal_order(order)
+        self.assertEqual(Payment.objects.get(preference_id="pp-clp").amount, Decimal("100.00"))
+        self.assertEqual(mock_payment.call_args.args[0]["transactions"][0]["amount"]["total"], "100.00")
+
+    @patch("apps.payments.services.paypalrestsdk.Payment")
+    @patch("apps.payments.services.configure_paypal")
+    @override_settings(USD_CLP_RATE="1000")
+    def test_usd_creation_does_not_convert_again(self, mock_configure, mock_payment):
+        order = _pending_order(self.user, total="49.99")
+        order.currency = "USD"
+        order.save(update_fields=["currency"])
+        mock_payment.return_value.create.return_value = True
+        mock_payment.return_value.id = "pp-usd"
+        mock_payment.return_value.links = []
+        mock_payment.return_value.to_dict.return_value = {}
+        create_paypal_order(order)
+        self.assertEqual(Payment.objects.get(preference_id="pp-usd").amount, Decimal("49.99"))
 
         self.assertFalse(result)
         order.refresh_from_db()

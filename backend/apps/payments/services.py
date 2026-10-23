@@ -278,8 +278,16 @@ def create_paypal_order(order: Order) -> dict:
 
     # PayPal no soporta CLP → convertimos el total a USD con una tasa configurable.
     from decimal import Decimal, ROUND_HALF_UP
-    rate = Decimal(str(settings.USD_CLP_RATE or 1))
-    total_usd = (Decimal(str(order.total)) / rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    currency = (getattr(order, "currency", "CLP") or "CLP").upper()
+    if currency == "USD":
+        total_usd = Decimal(str(order.total)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    elif currency == "CLP":
+        rate = Decimal(str(settings.USD_CLP_RATE))
+        if rate <= 0:
+            raise ValueError("USD_CLP_RATE debe ser mayor que cero")
+        total_usd = (Decimal(str(order.total)) / rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    else:
+        raise ValueError("Moneda no admitida para PayPal")
     if total_usd < Decimal("1.00"):
         total_usd = Decimal("1.00")  # PayPal exige mínimo
 
@@ -296,7 +304,7 @@ def create_paypal_order(order: Order) -> dict:
                 "currency": "USD",
             },
             "description": f"LevelPro Audio — Orden #{str(order.id)[:8].upper()} "
-                           f"(${float(order.total):,.0f} CLP)",
+                           f"({order.total} {currency})",
         }],
     })
 
@@ -312,7 +320,7 @@ def create_paypal_order(order: Order) -> dict:
         order=order,
         provider=PaymentProvider.PAYPAL,
         status=PaymentStatus.PENDING,
-        amount=order.total,
+        amount=total_usd,
         currency="USD",
         preference_id=paypal_payment.id,
         payment_url=approve_url or "",
@@ -325,15 +333,22 @@ def create_paypal_order(order: Order) -> dict:
     }
 
 
-def capture_paypal_payment(paypal_payment_id: str, payer_id: str) -> bool:
+def capture_paypal_payment(paypal_payment_id: str, payer_id: str, user) -> bool:
+    # Rechazar antes de contactar a PayPal: el ID proviene del cliente.
+    payment = Payment.objects.filter(
+        preference_id=paypal_payment_id,
+        provider=PaymentProvider.PAYPAL,
+        order__user=user,
+        status=PaymentStatus.PENDING,
+        order__status=OrderStatus.PENDING,
+    ).first()
+    if payment is None:
+        return False
+
     configure_paypal()
     paypal_payment = paypalrestsdk.Payment.find(paypal_payment_id)
 
     if paypal_payment.execute({"payer_id": payer_id}):
-        payment = Payment.objects.filter(
-            preference_id=paypal_payment_id
-        ).first()
-
         if payment:
             # Mismo criterio que en MercadoPago: verificar que lo
             # realmente capturado coincida con lo que se creó acá antes

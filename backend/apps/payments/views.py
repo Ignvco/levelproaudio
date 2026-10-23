@@ -121,7 +121,7 @@ def capture_paypal(request):
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    success = capture_paypal_payment(paypal_payment_id, payer_id)
+    success = capture_paypal_payment(paypal_payment_id, payer_id, request.user)
 
     if success:
         return Response({"status": "approved"})
