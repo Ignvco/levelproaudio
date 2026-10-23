@@ -1,10 +1,12 @@
-FROM node:20-alpine
+FROM node:24.19.0-alpine3.24
 
 WORKDIR /app
 
-COPY package*.json ./
+RUN npm install --global npm@11.9.0 --no-audit --no-fund
 
-RUN npm install
+COPY package.json package-lock.json ./
+
+RUN npm ci --include=dev --no-audit --no-fund
 
 COPY . .
 

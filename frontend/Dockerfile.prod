@@ -1,8 +1,10 @@
 # frontend/Dockerfile.prod
-FROM node:20-alpine AS builder
+FROM node:24.19.0-alpine3.24 AS builder
 WORKDIR /app
-COPY package*.json ./
-RUN npm install
+# Mantener estas versiones alineadas con package.json y .nvmrc.
+RUN npm install --global npm@11.9.0 --no-audit --no-fund
+COPY package.json package-lock.json ./
+RUN npm ci --include=dev --no-audit --no-fund
 COPY . .
 # Vite solo incluye las variables VITE_* que existan en tiempo de BUILD
 # (quedan compiladas dentro del JS, no se pueden cambiar después sin

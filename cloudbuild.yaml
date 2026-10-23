@@ -100,9 +100,11 @@ steps:
     args: ["push", "${_REPO}/frontend:${_TAG}"]
 
   # ── 5. Deploy Backend ────────────────────────────────────────
+  # Ambos deploys esperan las dos imágenes: si falla el build o push
+  # del frontend, el backend tampoco empieza a desplegarse.
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "deploy-backend"
-    waitFor: ["push-backend"]
+    waitFor: ["push-backend", "push-frontend"]
     entrypoint: gcloud
     args:
       - run
@@ -157,7 +159,7 @@ steps:
   # ── 6. Deploy Frontend ───────────────────────────────────────
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "deploy-frontend"
-    waitFor: ["push-frontend"]
+    waitFor: ["push-backend", "push-frontend"]
     entrypoint: gcloud
     args:
       - run
