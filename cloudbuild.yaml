@@ -140,18 +140,13 @@ steps:
       # ── Credenciales de pago (Secret Manager) ──
       - --update-secrets=MP_CL_ACCESS_TOKEN=MP_CL_ACCESS_TOKEN:latest
       - --update-secrets=MP_CL_PUBLIC_KEY=MP_CL_PUBLIC_KEY:latest
+      # Crear y dar acceso ANTES del push: docs/patches/03-webhooks.md.
+      - --update-secrets=MP_CL_WEBHOOK_SECRET=MP_CL_WEBHOOK_SECRET:latest
       - --update-secrets=PAYPAL_CLIENT_ID=PAYPAL_CLIENT_ID:latest
       - --update-secrets=PAYPAL_CLIENT_SECRET=PAYPAL_CLIENT_SECRET:latest
-      # NOTA: para activar la validación de firma de los webhooks de MP
-      # (ver apps/payments/services.py::verify_mp_webhook_signature),
-      # crea estos secrets en Secret Manager con el valor de "Firma secreta"
-      # del panel de MP (Tus integraciones > Webhooks), y descomenta:
-      #   gcloud secrets create MP_CL_WEBHOOK_SECRET --data-file=-
-      #   gcloud secrets create MP_AR_WEBHOOK_SECRET --data-file=-
-      # - --update-secrets=MP_CL_WEBHOOK_SECRET=MP_CL_WEBHOOK_SECRET:latest
+      # AR permanece deshabilitado sin su secreto. Si se habilita esa cuenta,
+      # configurar también sus credenciales y descomentar esta referencia:
       # - --update-secrets=MP_AR_WEBHOOK_SECRET=MP_AR_WEBHOOK_SECRET:latest
-      # Sin esto configurado, el webhook sigue funcionando igual que antes
-      # (solo loguea una advertencia), no se rompe nada mientras tanto.
       # Resend (emails). Remitente de marca con dominio verificado.
       - --set-env-vars=RESEND_FROM_EMAIL=LevelPro Audio <no-responder@levelproaudio.com>
       - --update-secrets=RESEND_API_KEY=RESEND_API_KEY:latest

@@ -219,6 +219,7 @@ MP_AR_PUBLIC_KEY    = env("MP_AR_PUBLIC_KEY",    default="")
 # Secret para validar la firma (header x-signature) de los webhooks de MP.
 # Se obtiene en: Panel de MercadoPago > Tus integraciones > Webhooks > Firma secreta.
 # Uno por cuenta/país si usas credenciales separadas para CL y AR.
+# Si está vacío, el webhook devuelve 503 y no procesa pagos.
 MP_CL_WEBHOOK_SECRET = env("MP_CL_WEBHOOK_SECRET", default="")
 MP_AR_WEBHOOK_SECRET = env("MP_AR_WEBHOOK_SECRET", default="")
 

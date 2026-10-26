@@ -1,11 +1,10 @@
 # apps/payments/services.py
 
-import hashlib
-import hmac
 import mercadopago
 import paypalrestsdk
 from django.conf import settings
 from .models import Payment, PaymentProvider, PaymentStatus
+from .webhooks import verify_mp_webhook_signature  # compatibilidad con imports existentes
 from apps.orders.models import Order, OrderStatus
 
 
@@ -17,65 +16,6 @@ def get_mp_sdk(provider: str):
     else:
         token = settings.MP_CL_ACCESS_TOKEN
     return mercadopago.SDK(token)
-
-
-def verify_mp_webhook_signature(request, provider: str) -> bool:
-    """
-    Valida el header x-signature de MercadoPago (esquema oficial HMAC-SHA256).
-    Ver: https://www.mercadopago.cl/developers/es/docs/checkout-api/additional-content/notifications/webhooks
-
-    Si no hay secret configurado (MP_*_WEBHOOK_SECRET vacío), no bloquea —
-    solo loguea una advertencia, para no romper ambientes donde todavía no
-    se configuró el secret en el panel de MP. Una vez configurado, esta
-    función SIEMPRE debe pasar o el webhook se rechaza.
-    """
-    import logging
-    logger = logging.getLogger(__name__)
-
-    secret = (
-        settings.MP_AR_WEBHOOK_SECRET
-        if provider == PaymentProvider.MERCADOPAGO_AR
-        else settings.MP_CL_WEBHOOK_SECRET
-    )
-    if not secret:
-        logger.warning(
-            "MP webhook secret no configurado para %s — firma no validada.", provider
-        )
-        return True
-
-    x_signature = request.headers.get("x-signature", "")
-    x_request_id = request.headers.get("x-request-id", "")
-    if not x_signature:
-        return False
-
-    # x-signature viene como "ts=163...,v1=abcdef..."
-    parts = dict(p.split("=", 1) for p in x_signature.split(",") if "=" in p)
-    ts = parts.get("ts")
-    v1 = parts.get("v1")
-    if not ts or not v1:
-        return False
-
-    # MercadoPago manda notificaciones en DOS formatos distintos de URL:
-    #   ?id=X&topic=payment          (formato viejo)
-    #   ?data.id=X&type=payment      (formato nuevo)
-    # Antes solo se revisaba "data.id" — para el formato viejo el id
-    # quedaba vacío, el manifest se armaba mal, y la firma NUNCA
-    # coincidía aunque el secreto estuviera bien configurado. Esto tapó
-    # en producción el webhook real de una compra real con plata real.
-    # (mismo orden que usa el propio SDK de referencia de MP: id primero)
-    data_id = (
-        request.query_params.get("id")
-        or request.query_params.get("data.id")
-        or request.data.get("data", {}).get("id", "")
-    )
-    data_id = str(data_id).lower()  # MP pide minúsculas si es alfanumérico
-
-    manifest = f"id:{data_id};request-id:{x_request_id};ts:{ts};"
-    computed = hmac.new(
-        secret.encode(), manifest.encode(), hashlib.sha256
-    ).hexdigest()
-
-    return hmac.compare_digest(computed, v1)
 
 
 def create_enrollment_if_course(order: Order) -> None:
@@ -175,14 +115,11 @@ def create_mercadopago_preference(order: Order, provider: str) -> dict:
 
 
 def process_mercadopago_webhook(data: dict, provider: str) -> None:
-    # MercadoPago manda el topic/type y el id A VECES en el cuerpo, A VECES
-    # solo en los query params de la URL (ej: "?id=X&topic=merchant_order").
-    # Antes esta función solo miraba el cuerpo — si venía vacío (algo común
-    # en estos avisos), se salía sin hacer nada aunque la notificación
-    # trajera todo lo necesario en la URL. Esto tapó en producción el
-    # webhook real de una compra real con plata real.
+    # Las vistas entregan el ID firmado y un payload normalizado. Se mantienen
+    # los alias topic/id para llamadas internas existentes.
     topic = data.get("type") or data.get("topic")
-    if topic not in ["payment", "merchant_order"]:
+    # Una merchant_order tiene otro endpoint e ID; no es un payment.
+    if topic != "payment":
         return
 
     sdk   = get_mp_sdk(provider)

@@ -4,7 +4,7 @@ import json
 import logging
 import traceback
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes, renderer_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes, renderer_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
@@ -13,6 +13,7 @@ from django.utils.decorators import method_decorator
 
 from apps.orders.models import Order
 from .models import PaymentProvider
+from .webhooks import get_mp_webhook_secret, normalize_mp_webhook
 from .services import (
     create_mercadopago_preference,
     process_mercadopago_webhook,
@@ -132,49 +133,41 @@ def capture_paypal(request):
     )
 
 
+def _webhook_mercadopago(request, provider):
+    if not get_mp_webhook_secret(provider):
+        logger.error("Webhook MP deshabilitado: falta el secreto para %s.", provider)
+        return Response({"status": "webhook unavailable"}, status=503)
+    if not verify_mp_webhook_signature(request, provider):
+        logger.warning("Firma inválida en webhook %s, request rechazado.", provider)
+        return Response({"status": "invalid signature"}, status=401)
+    try:
+        data = normalize_mp_webhook(request)
+    except ValueError:
+        return Response({"status": "invalid payload"}, status=400)
+    try:
+        process_mercadopago_webhook(data, provider)
+    except Exception:
+        logger.exception("Error procesando webhook %s.", provider)
+        return Response({"status": "error"}, status=503)
+    return Response({"status": "ok"})
+
+
 @csrf_exempt
 @api_view(["POST"])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def webhook_mercadopago_cl(request):
-    """
-    POST /api/v1/payments/webhook/mercadopago/cl/
-    Webhook de MercadoPago Chile — recibe notificaciones IPN.
-    AllowAny porque MP no se puede autenticar con JWT; en su lugar
-    se valida la firma HMAC del header x-signature.
-    """
-    if not verify_mp_webhook_signature(request, PaymentProvider.MERCADOPAGO_CL):
-        logger.warning("Firma inválida en webhook MP CL, request rechazado.")
-        return Response({"status": "invalid signature"}, status=401)
-    try:
-        # MP manda topic/type e id a veces en el cuerpo, a veces solo en
-        # los query params de la URL — combinamos ambos, el cuerpo gana
-        # si hay conflicto (viene de la fuente más confiable).
-        data = {**request.query_params.dict(), **request.data}
-        process_mercadopago_webhook(data, PaymentProvider.MERCADOPAGO_CL)
-        return Response({"status": "ok"})
-    except Exception as e:
-        logger.error(f"Error webhook MP CL: {e}")
-        return Response({"status": "error"}, status=400)
+    """Notificaciones CL autenticadas por HMAC, independientemente de cookies/JWT."""
+    return _webhook_mercadopago(request, PaymentProvider.MERCADOPAGO_CL)
 
 
 @csrf_exempt
 @api_view(["POST"])
+@authentication_classes([])
 @permission_classes([AllowAny])
 def webhook_mercadopago_ar(request):
-    """
-    POST /api/v1/payments/webhook/mercadopago/ar/
-    Webhook de MercadoPago Argentina.
-    """
-    if not verify_mp_webhook_signature(request, PaymentProvider.MERCADOPAGO_AR):
-        logger.warning("Firma inválida en webhook MP AR, request rechazado.")
-        return Response({"status": "invalid signature"}, status=401)
-    try:
-        data = {**request.query_params.dict(), **request.data}
-        process_mercadopago_webhook(data, PaymentProvider.MERCADOPAGO_AR)
-        return Response({"status": "ok"})
-    except Exception as e:
-        logger.error(f"Error webhook MP AR: {e}")
-        return Response({"status": "error"}, status=400)
+    """Notificaciones AR autenticadas con el secreto de la cuenta argentina."""
+    return _webhook_mercadopago(request, PaymentProvider.MERCADOPAGO_AR)
 
 
 @api_view(["GET"])

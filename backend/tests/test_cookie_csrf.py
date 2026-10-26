@@ -232,9 +232,15 @@ def test_auth_endpoints_reject_foreign_origin_with_matching_token(client, endpoi
 
 
 @patch("apps.payments.views.process_mercadopago_webhook")
-@patch("apps.payments.views.verify_mp_webhook_signature", return_value=True)
-def test_verified_provider_webhook_does_not_need_browser_csrf(verify, process, client):
-    response = client.post(reverse("webhook-mp-cl"), {"type": "payment"}, format="json")
+@override_settings(MP_CL_WEBHOOK_SECRET="csrf-webhook-test-secret")
+def test_verified_provider_webhook_does_not_need_browser_csrf(process, client):
+    import hashlib
+    import hmac
+    manifest = "id:123;request-id:csrf-test;ts:1742505638683;"
+    signature = hmac.new(b"csrf-webhook-test-secret", manifest.encode(), hashlib.sha256).hexdigest()
+    response = client.post(reverse("webhook-mp-cl") + "?data.id=123&type=payment",
+                           {"type": "payment", "data": {"id": "123"}}, format="json",
+                           HTTP_X_SIGNATURE=f"ts=1742505638683,v1={signature}",
+                           HTTP_X_REQUEST_ID="csrf-test")
     assert response.status_code == 200
-    verify.assert_called_once()
     process.assert_called_once()
