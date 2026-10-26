@@ -138,6 +138,7 @@ class BuyStickersView(views.APIView):
         total = price * quantity
 
         order = Order.objects.create(
+            stock_deductions={},  # Compra digital/servicio: no reserva inventario físico.
             user             = request.user,
             status           = "pending",
             total            = total,

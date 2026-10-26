@@ -1,8 +1,8 @@
 # apps/payments/models.py
 
-from django.db import models
+from django.db import models, router, transaction
 from core.models import TimeStampedModel
-from apps.orders.models import Order
+from apps.orders.models import Order, OrderStatus
 
 
 class PaymentProvider(models.TextChoices):
@@ -70,6 +70,19 @@ class Payment(TimeStampedModel):
 
     def __str__(self):
         return f"Payment {self.id} — {self.provider} — {self.status}"
+
+    def save(self, *args, **kwargs):
+        # Mismo bloqueo que la cancelación, antes de guardar el pago y de
+        # disparar sus signals. Un cobro tardío requiere revisión, no reabre
+        # una orden cuyo inventario ya se devolvió.
+        using = kwargs.get("using") or router.db_for_write(type(self), instance=self)
+        with transaction.atomic(using=using):
+            self.order = Order.objects.using(using).select_for_update().get(pk=self.order_id)
+            if self.status == PaymentStatus.APPROVED and self.order.status == OrderStatus.CANCELLED:
+                self.status = PaymentStatus.IN_REVIEW
+                if kwargs.get("update_fields") is not None:
+                    kwargs["update_fields"] = set(kwargs["update_fields"]) | {"status"}
+            return super().save(*args, **kwargs)
 
     @property
     def is_approved(self):

@@ -2,6 +2,7 @@
 # Configuración del panel admin para carritos y pedidos
 
 from django.contrib import admin
+from django.db import connection
 from .models import Cart, CartItem, Order, OrderItem
 
 
@@ -56,6 +57,14 @@ class OrderItemInline(admin.TabularInline):
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
+
+    def get_object(self, request, object_id, from_field=None):
+        obj = super().get_object(request, object_id, from_field)
+        # Django envuelve el POST del formulario en atomic. Leer bajo el
+        # bloqueo evita validar un estado viejo mientras se confirma un pago.
+        if obj is not None and request.method == "POST" and connection.in_atomic_block:
+            return Order.objects.select_for_update().get(pk=obj.pk)
+        return obj
 
     list_display = [
         'id',

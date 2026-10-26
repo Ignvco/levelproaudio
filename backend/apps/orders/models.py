@@ -1,6 +1,7 @@
 # apps/orders/models.py
 
-from django.db import models
+from django.db import models, router, transaction
+from django.core.exceptions import ValidationError
 from django.conf import settings
 from core.models import TimeStampedModel
 from apps.products.models import Product
@@ -126,6 +127,10 @@ class Order(TimeStampedModel):
     # un argentino paga en USD (Payoneer), un chileno en CLP.
     currency = models.CharField(max_length=10, default="CLP")
 
+    # None identifica pedidos históricos sin desglose; {} es una compra nueva
+    # sin consumo de inventario físico (preorden/a pedido).
+    stock_deductions = models.JSONField(null=True, blank=True, editable=False)
+
     # ── Loyalty: canje de puntos aplicado a esta orden ──
     loyalty_points_redeemed = models.PositiveIntegerField(
         default=0,
@@ -162,6 +167,33 @@ class Order(TimeStampedModel):
 
     def __str__(self):
         return f"Order #{self.id}"
+
+    def _validate_status_transition(self, previous_status):
+        if previous_status == OrderStatus.CANCELLED and self.status != OrderStatus.CANCELLED:
+            raise ValidationError({"status": "Una orden cancelada no se puede reabrir. Crea una nueva orden."})
+        if previous_status != OrderStatus.PENDING and self.status == OrderStatus.PENDING:
+            raise ValidationError({"status": "Una orden procesada no puede volver a pendiente."})
+
+    def clean(self):
+        super().clean()
+        if not self._state.adding:
+            previous_status = type(self).objects.get(pk=self.pk).status
+            self._validate_status_transition(previous_status)
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get("update_fields")
+        if self._state.adding or (update_fields is not None and "status" not in update_fields):
+            return super().save(*args, **kwargs)
+        using = kwargs.get("using") or router.db_for_write(type(self), instance=self)
+        with transaction.atomic(using=using):
+            previous = type(self).objects.using(using).select_for_update().get(pk=self.pk)
+            self._validate_status_transition(previous.status)
+            if previous.status == OrderStatus.PENDING and self.status == OrderStatus.CANCELLED:
+                from .inventory import restore_inventory
+                restore_inventory(previous)
+            # Las cancelaciones de pedidos ya pagados/enviados no prueban que
+            # la mercadería haya regresado: su devolución física sigue siendo manual.
+            return super().save(*args, **kwargs)
 
     @property
     def items_count(self):

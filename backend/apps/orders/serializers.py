@@ -1,6 +1,7 @@
 # apps/orders/serializers.py
 
 from rest_framework import serializers
+from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import Cart, CartItem, Order, OrderItem
 from apps.products.serializers import ProductListSerializer
 
@@ -49,6 +50,12 @@ class PaymentSummarySerializer(serializers.Serializer):
 
 
 class OrderSerializer(serializers.ModelSerializer):
+    def update(self, instance, validated_data):
+        try:
+            return super().update(instance, validated_data)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError({"status": exc.messages}) from exc
+
     items          = OrderItemSerializer(many=True, read_only=True)
     items_count    = serializers.IntegerField(read_only=True)
     status_display = serializers.CharField(

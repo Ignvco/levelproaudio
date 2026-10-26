@@ -5,8 +5,10 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db import transaction
+from collections.abc import Mapping
 from .models import Cart, CartItem, Order, OrderItem, OrderStatus
 from .serializers import CartSerializer, OrderSerializer
+from .inventory import InventoryError, prepare_inventory, deduct_inventory
 from apps.products.models import Product
 
 
@@ -106,10 +108,13 @@ class OrderViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def create(self, request):
         data       = request.data
+        if not isinstance(data, Mapping):
+            return Response({"error": "El pedido debe ser un objeto JSON."}, status=400)
         items_data = data.get("items", [])
         # Moneda de la orden (CLP/USD/ARS). El precio se recalcula en el
         # servidor en esta moneda — nunca se confía en el que manda el cliente.
-        currency = (data.get("currency") or "CLP").upper()
+        currency = data.get("currency") or "CLP"
+        currency = currency.upper() if isinstance(currency, str) else "CLP"
         if currency not in ("CLP", "USD", "ARS"):
             currency = "CLP"
 
@@ -120,53 +125,12 @@ class OrderViewSet(viewsets.ModelViewSet):
         _rate_clp = _s.usd_to_clp if _s else None
         _rate_ars = _s.usd_to_ars if _s else None
 
-        if not items_data:
-            return Response(
-                {"error": "La orden debe tener al menos un producto."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        # Verifica stock ANTES de crear la orden, y arma la lista de items
-        # con el precio REAL del producto (nunca el que manda el cliente:
-        # de lo contrario cualquiera podría comprar a cualquier precio).
-        validated_items = []
-        for item_data in items_data:
-            try:
-                product = Product.objects.get(id=item_data["product"], is_active=True)
-            except Product.DoesNotExist:
-                return Response(
-                    {"error": f"Producto {item_data['product']} no existe."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            quantity = int(item_data["quantity"])
-            if quantity < 1:
-                return Response(
-                    {"error": f"Cantidad inválida para {product.name}."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            if product.stock < quantity and product.product_type == Product.ProductType.STOCK:
-                return Response(
-                    {"error": f"Stock insuficiente para {product.name}."},
-                    status=status.HTTP_400_BAD_REQUEST
-                )
-            # Un kit no tiene stock propio: validamos que cada componente
-            # alcance para la cantidad de kits pedida.
-            if product.product_type == Product.ProductType.BUNDLE:
-                for bi in product.bundle_components.select_related("component").all():
-                    comp = bi.component
-                    needed = bi.quantity * quantity
-                    if comp.product_type == Product.ProductType.STOCK and comp.stock < needed:
-                        return Response(
-                            {"error": f"Sin stock suficiente para armar el kit {product.name} (falta {comp.name})."},
-                            status=status.HTTP_400_BAD_REQUEST
-                        )
-            validated_items.append({
-                "product": product,
-                "quantity": quantity,
-                # Precio real de la BD, en la moneda de la orden (manual o
-                # calculado con la tasa). Nunca el que manda el cliente.
-                "price": product.prices_by_currency(_rate_clp, _rate_ars)[currency],
-            })
+        try:
+            validated_items, stock_demand = prepare_inventory(items_data)
+        except InventoryError as exc:
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        for item in validated_items:
+            item["price"] = item["product"].prices_by_currency(_rate_clp, _rate_ars)[currency]
 
         subtotal = sum(
             float(item["price"]) * item["quantity"]
@@ -208,6 +172,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             notes=data.get("notes", ""),
             total=total,
             currency=currency,
+            stock_deductions={str(pk): qty for pk, qty in stock_demand.items()},
             loyalty_points_redeemed=loyalty_points_redeemed,
             loyalty_discount=loyalty_discount,
         )
@@ -239,16 +204,11 @@ class OrderViewSet(viewsets.ModelViewSet):
                 price        = item["price"],
                 quantity     = item["quantity"],
             )
-            if product.product_type == Product.ProductType.BUNDLE:
-                # El kit no tiene stock propio — descuenta de cada componente,
-                # multiplicando por la cantidad de kits comprados.
-                for bi in product.bundle_components.select_related("component").all():
-                    comp = bi.component
-                    comp.stock = max(0, comp.stock - bi.quantity * item["quantity"])
-                    comp.save(update_fields=["stock"])
-            else:
-                product.stock = max(0, product.stock - item["quantity"])
-                product.save(update_fields=["stock"])
+        try:
+            deduct_inventory(stock_demand)
+        except InventoryError as exc:
+            transaction.set_rollback(True)
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(
             OrderSerializer(order).data,
@@ -258,23 +218,13 @@ class OrderViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         order = self.get_object()
+        order = Order.objects.select_for_update().get(pk=order.pk)
 
         if order.status != OrderStatus.PENDING:
             return Response(
                 {"error": "Solo puedes cancelar órdenes pendientes."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        for item in order.items.all():
-            if item.product:
-                if item.product.product_type == Product.ProductType.BUNDLE:
-                    for bi in item.product.bundle_components.select_related("component").all():
-                        comp = bi.component
-                        comp.stock += bi.quantity * item.quantity
-                        comp.save(update_fields=["stock"])
-                else:
-                    item.product.stock += item.quantity
-                    item.product.save(update_fields=["stock"])
 
         order.status = OrderStatus.CANCELLED
         order.save(update_fields=["status"])

@@ -3,6 +3,7 @@
 import mercadopago
 import paypalrestsdk
 from django.conf import settings
+from django.db import transaction
 from .models import Payment, PaymentProvider, PaymentStatus
 from .webhooks import verify_mp_webhook_signature  # compatibilidad con imports existentes
 from apps.orders.models import Order, OrderStatus
@@ -138,66 +139,68 @@ def process_mercadopago_webhook(data: dict, provider: str) -> None:
     if not order_id:
         return
 
-    try:
-        order = Order.objects.get(id=order_id)
-    except Order.DoesNotExist:
-        return
+    confirmation_order = None
+    with transaction.atomic():
+        try:
+            order = Order.objects.select_for_update().get(id=order_id)
+        except Order.DoesNotExist:
+            return
 
-    status_map = {
-        "approved":   PaymentStatus.APPROVED,
-        "pending":    PaymentStatus.PENDING,
-        "in_process": PaymentStatus.IN_REVIEW,
-        "rejected":   PaymentStatus.REJECTED,
-        "cancelled":  PaymentStatus.CANCELLED,
-        "refunded":   PaymentStatus.REFUNDED,
-    }
-
-    internal_status = status_map.get(mp_status, PaymentStatus.PENDING)
-
-    # Si MP dice "aprobado" pero el monto realmente cobrado no coincide
-    # con el total de la orden, NO lo aprobamos automáticamente — misma
-    # clase de riesgo que ya tapamos en la creación de órdenes (nunca
-    # confiar en un monto sin validarlo contra lo que el sistema espera).
-    # Un mismatch legítimo puede pasar por redondeo de moneda o un
-    # descuento aplicado del lado de MP que no se reflejó acá — en esos
-    # casos preferimos que un humano lo revise antes de dar el pedido
-    # por pagado, en vez de aprobar en automático algo que no cuadra.
-    mp_amount = mp_payment.get("transaction_amount")
-    amount_mismatch = False
-    if internal_status == PaymentStatus.APPROVED and mp_amount is not None:
-        expected = float(order.total)
-        tolerance = max(expected * 0.01, 1.0)  # 1% o $1, lo que sea mayor
-        if abs(float(mp_amount) - expected) > tolerance:
-            amount_mismatch = True
-            internal_status = PaymentStatus.IN_REVIEW
-            import logging
-            logging.getLogger(__name__).error(
-                f"MP webhook: monto no coincide para orden {order.id} — "
-                f"esperado ${expected}, MP reporta ${mp_amount}. "
-                f"Pago queda en revisión, NO se marca la orden como pagada."
-            )
-
-    payment, _ = Payment.objects.update_or_create(
-        external_id=str(mp_id),
-        defaults={
-            "order":        order,
-            "provider":     provider,
-            "status":       internal_status,
-            "amount":       mp_payment.get("transaction_amount", order.total),
-            "raw_response": mp_payment,
+        status_map = {
+            "approved":   PaymentStatus.APPROVED,
+            "pending":    PaymentStatus.PENDING,
+            "in_process": PaymentStatus.IN_REVIEW,
+            "rejected":   PaymentStatus.REJECTED,
+            "cancelled":  PaymentStatus.CANCELLED,
+            "refunded":   PaymentStatus.REFUNDED,
         }
-    )
 
-    if internal_status == PaymentStatus.APPROVED and not amount_mismatch:
-        from django.utils import timezone
-        payment.paid_at = timezone.now()
-        payment.save(update_fields=["paid_at"])
-        order.status = OrderStatus.PAID
-        order.save(update_fields=["status"])
-        # ↑ este save() ya dispara el signal enroll_user_in_course de
-        # academy/signals.py — no hace falta (ni conviene) repetir esa
-        # lógica acá para cada proveedor de pago por separado.
-        send_payment_confirmation_email(order)
+        internal_status = status_map.get(mp_status, PaymentStatus.PENDING)
+
+        # Si MP dice "aprobado" pero el monto realmente cobrado no coincide
+        # con el total de la orden, NO lo aprobamos automáticamente — misma
+        # clase de riesgo que ya tapamos en la creación de órdenes (nunca
+        # confiar en un monto sin validarlo contra lo que el sistema espera).
+        # Un mismatch legítimo puede pasar por redondeo de moneda o un
+        # descuento aplicado del lado de MP que no se reflejó acá — en esos
+        # casos preferimos que un humano lo revise antes de dar el pedido
+        # por pagado, en vez de aprobar en automático algo que no cuadra.
+        mp_amount = mp_payment.get("transaction_amount")
+        amount_mismatch = False
+        if internal_status == PaymentStatus.APPROVED and mp_amount is not None:
+            expected = float(order.total)
+            tolerance = max(expected * 0.01, 1.0)  # 1% o $1, lo que sea mayor
+            if abs(float(mp_amount) - expected) > tolerance:
+                amount_mismatch = True
+                internal_status = PaymentStatus.IN_REVIEW
+                import logging
+                logging.getLogger(__name__).error(
+                    f"MP webhook: monto no coincide para orden {order.id} — "
+                    f"esperado ${expected}, MP reporta ${mp_amount}. "
+                    f"Pago queda en revisión, NO se marca la orden como pagada."
+                )
+
+        payment, _ = Payment.objects.update_or_create(
+            external_id=str(mp_id),
+            defaults={
+                "order":        order,
+                "provider":     provider,
+                "status":       internal_status,
+                "amount":       mp_payment.get("transaction_amount", order.total),
+                "raw_response": mp_payment,
+            }
+        )
+
+        if payment.status == PaymentStatus.APPROVED and not amount_mismatch:
+            from django.utils import timezone
+            payment.paid_at = timezone.now()
+            payment.save(update_fields=["paid_at"])
+            order = payment.order
+            # Payment.save y su signal ya aplicaron la transición bajo bloqueo.
+            confirmation_order = order
+
+    if confirmation_order is not None:
+        send_payment_confirmation_email(confirmation_order)
 
 
 # ── PayPal ───────────────────────────────────────────────────
@@ -321,8 +324,9 @@ def capture_paypal_payment(paypal_payment_id: str, payer_id: str, user) -> bool:
             payment.paid_at = timezone.now()
             payment.save()
 
-            payment.order.status = OrderStatus.PAID
-            payment.order.save(update_fields=["status"])
+            if payment.status != PaymentStatus.APPROVED:
+                # Cancelación concurrente: el cobro se conserva en revisión.
+                return False
             send_payment_confirmation_email(payment.order)
             # El signal enroll_user_in_course ya se disparó con el save() de arriba.
 

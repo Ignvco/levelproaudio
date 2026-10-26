@@ -12,6 +12,8 @@ from django.db.models import F as Fdb
 from django.db.models.functions import TruncDay, TruncMonth
 from django.utils import timezone as tz
 from django.utils import timezone
+from django.db import transaction
+from django.core.exceptions import ValidationError as DjangoValidationError
 from django.views.decorators.csrf import csrf_exempt
 from datetime import timedelta
 from core.admin_permissions import IsAdminOrStaff
@@ -205,11 +207,13 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
         return qs
 
     @action(detail=True, methods=["post"])
+    @transaction.atomic
     def update_status(self, request, pk=None):
         from apps.analytics.models import IncomeRecord
         from django.utils import timezone
 
         order      = self.get_object()
+        order      = Order.objects.select_for_update().get(pk=order.pk)
         new_status = request.data.get("status")
         old_status = order.status
         valid      = [s[0] for s in OrderStatus.choices]
@@ -218,7 +222,10 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
             return Response({"error": "Estado inválido."}, status=400)
 
         order.status = new_status
-        order.save(update_fields=["status"])
+        try:
+            order.save(update_fields=["status"])
+        except DjangoValidationError as exc:
+            return Response({"error": " ".join(exc.messages)}, status=400)
         # ↑ este save() ya dispara el signal create_income_on_order_paid,
         # que crea el IncomeRecord + distribuciones si corresponde. No hace
         # falta (ni hay que) repetir esa lógica acá abajo.
@@ -254,11 +261,13 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
         # (evita reenviar el mismo aviso si el admin re-guarda sin cambiar
         # nada). Si el email falla, no rompemos la operación del admin.
         if new_status != old_status:
-            try:
-                from apps.emails import send_order_status_update
-                send_order_status_update(order)
-            except Exception:
-                pass
+            def notify_status():
+                try:
+                    from apps.emails import send_order_status_update
+                    send_order_status_update(order)
+                except Exception:
+                    pass
+            transaction.on_commit(notify_status)
 
         return Response({"status": new_status, "detail": "Estado actualizado."})
 
@@ -428,6 +437,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         return product
 
     
+    @transaction.atomic
     def create(self, request, *args, **kwargs):
         try:
             product = self._save_product(request)
@@ -436,10 +446,13 @@ class AdminProductViewSet(viewsets.ModelViewSet):
             )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
         except Exception as e:
+            transaction.set_rollback(True)
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+    @transaction.atomic
     def update(self, request, *args, **kwargs):
         product = self.get_object()
+        product = Product.objects.select_for_update().get(pk=product.pk)
         try:
             product = self._save_product(request, product)
             serializer = AdminProductDetailSerializer(
@@ -447,6 +460,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
             )
             return Response(serializer.data)
         except Exception as e:
+            transaction.set_rollback(True)
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     def partial_update(self, request, *args, **kwargs):
@@ -948,6 +962,7 @@ def admin_payments(request):
 
 @api_view(["PATCH"])
 @permission_classes([IsAdminOrStaff])
+@transaction.atomic
 def admin_update_payment_status(request, payment_id):
     """PATCH /api/v1/admin/payments/{id}/status/"""
     
@@ -956,6 +971,10 @@ def admin_update_payment_status(request, payment_id):
         payment = Payment.objects.select_related("order").get(id=payment_id)
     except Payment.DoesNotExist:
         return Response({"error": "Pago no encontrado."}, status=404)
+
+    order = Order.objects.select_for_update().get(pk=payment.order_id)
+    payment = Payment.objects.select_for_update().get(pk=payment.pk)
+    payment.order = order
 
     new_status = request.data.get("status")
     valid = ["pending", "approved", "rejected", "cancelled", "refunded"]

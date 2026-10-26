@@ -106,6 +106,7 @@ class ServiceCheckoutView(APIView):
             )
 
         order = Order.objects.create(
+            stock_deductions={},  # Compra digital/servicio: no reserva inventario físico.
             user             = request.user,
             status           = "pending",
             total            = service.price,

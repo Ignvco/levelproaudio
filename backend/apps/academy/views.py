@@ -93,6 +93,7 @@ class CourseViewSet(viewsets.ReadOnlyModelViewSet):
         product = getattr(course, "product", None)
 
         order = Order.objects.create(
+            stock_deductions={},  # Compra digital/servicio: no reserva inventario físico.
             user=request.user,
             email=request.user.email,
             shipping_address="Curso digital — sin envío",

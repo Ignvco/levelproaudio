@@ -11,6 +11,6 @@ def update_order_status(sender, instance, **kwargs):
     """Cuando un pago es aprobado, cambia el estado del pedido a pagado."""
     if instance.status == "approved":
         order = instance.order
-        if order.status != "paid":
+        if order.status == "pending":
             order.status = "paid"
             order.save(update_fields=["status"])  # ← update_fields evita loops
