@@ -1,18 +1,16 @@
 # apps/payments/views.py
 
-import json
 import logging
-import traceback
+from uuid import uuid4
 from rest_framework import status
-from rest_framework.decorators import api_view, authentication_classes, permission_classes, renderer_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
-from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
-from django.utils.decorators import method_decorator
 
 from apps.orders.models import Order
 from .models import PaymentProvider
+from .serializers import CreatePaymentRequestSerializer, CapturePayPalRequestSerializer
 from .webhooks import get_mp_webhook_secret, normalize_mp_webhook
 from .services import (
     create_mercadopago_preference,
@@ -26,6 +24,19 @@ from .services import (
 logger = logging.getLogger(__name__)
 
 
+def _payment_error_response(message, *, operation, provider, order_id=None):
+    """Keep exception details server-side and return an opaque support reference."""
+    error_id = uuid4().hex
+    logger.exception(
+        "Error de pago error_id=%s operation=%s provider=%s order_id=%s",
+        error_id, operation, provider, order_id,
+    )
+    return Response(
+        {"error": message, "error_id": error_id},
+        status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+    )
+
+
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def create_payment(request):
@@ -35,39 +46,30 @@ def create_payment(request):
 
     Crea la intención de pago según el proveedor elegido.
     """
-    order_id = request.data.get("order_id")
-    provider = request.data.get("provider")
-
-    VALID_PROVIDERS = [
-        PaymentProvider.MERCADOPAGO_CL,
-        PaymentProvider.MERCADOPAGO_AR,
-        PaymentProvider.PAYPAL,
-        PaymentProvider.GLOBAL66,
-        PaymentProvider.TRANSFER,
-        PaymentProvider.PAYONEER,
-    ]
-
-    if provider not in VALID_PROVIDERS:
+    serializer = CreatePaymentRequestSerializer(data=request.data)
+    if not serializer.is_valid():
         return Response(
-            {"error": f"Proveedor inválido. Opciones: {VALID_PROVIDERS}"},
+            {"error": "Datos de pago inválidos. Revisa la orden y el proveedor."},
             status=status.HTTP_400_BAD_REQUEST
         )
+    order_id = serializer.validated_data["order_id"]
+    provider = serializer.validated_data["provider"]
 
     try:
-        order = Order.objects.get(id=order_id, user=request.user)
-    except Order.DoesNotExist:
-        return Response(
-            {"error": "Orden no encontrada."},
-            status=status.HTTP_404_NOT_FOUND
-        )
+        try:
+            order = Order.objects.get(id=order_id, user=request.user)
+        except Order.DoesNotExist:
+            return Response(
+                {"error": "Orden no encontrada."},
+                status=status.HTTP_404_NOT_FOUND
+            )
 
-    if order.status != "pending":
-        return Response(
-            {"error": "Esta orden ya fue procesada."},
-            status=status.HTTP_400_BAD_REQUEST
-        )
+        if order.status != "pending":
+            return Response(
+                {"error": "Esta orden ya fue procesada."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-    try:
         if provider in [PaymentProvider.MERCADOPAGO_CL, PaymentProvider.MERCADOPAGO_AR]:
             data = create_mercadopago_preference(order, provider)
 
@@ -92,15 +94,10 @@ def create_payment(request):
 
         return Response({"provider": provider, **data})
 
-    except Exception as e:
-        import traceback
-        logger.error(f"Error creando pago {provider}: {e}\n{traceback.format_exc()}")
-        return Response(
-            {
-                "error": "Error al procesar el pago. Intenta de nuevo.",
-                "detail": str(e),  # detalle real para diagnóstico (config MP/PayPal)
-            },
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+    except Exception:
+        return _payment_error_response(
+            "Error al procesar el pago. Intenta de nuevo.",
+            operation="create", provider=provider, order_id=order_id,
         )
 
 
@@ -113,16 +110,27 @@ def capture_paypal(request):
 
     Captura el pago después de que el usuario aprueba en PayPal.
     """
-    paypal_payment_id = request.data.get("paypal_payment_id")
-    payer_id          = request.data.get("payer_id")
-
-    if not paypal_payment_id or not payer_id:
+    serializer = CapturePayPalRequestSerializer(data=request.data)
+    if not serializer.is_valid():
         return Response(
-            {"error": "Faltan parámetros."},
+            {"error": "Parámetros de PayPal inválidos o incompletos."},
             status=status.HTTP_400_BAD_REQUEST
         )
 
-    success = capture_paypal_payment(paypal_payment_id, payer_id, request.user)
+    try:
+        success = capture_paypal_payment(
+            serializer.validated_data["paypal_payment_id"],
+            serializer.validated_data["payer_id"],
+            request.user,
+        )
+    except Exception:
+        # An SDK timeout can occur after a charge. Do not suggest paying again
+        # or change payment/order status based only on a transport exception.
+        return _payment_error_response(
+            "No pudimos confirmar el pago de PayPal. "
+            "Revisa el estado de tu orden antes de volver a pagar.",
+            operation="capture", provider=PaymentProvider.PAYPAL,
+        )
 
     if success:
         return Response({"status": "approved"})

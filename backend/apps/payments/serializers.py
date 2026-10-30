@@ -1,7 +1,25 @@
 # apps/payments/serializers.py
 
 from rest_framework import serializers
-from .models import Payment
+from .models import Payment, PaymentProvider
+
+
+class CreatePaymentRequestSerializer(serializers.Serializer):
+    order_id = serializers.UUIDField()
+    # CASH is reserved for administration; customers cannot choose it.
+    provider = serializers.ChoiceField(choices=[
+        PaymentProvider.MERCADOPAGO_CL,
+        PaymentProvider.MERCADOPAGO_AR,
+        PaymentProvider.PAYPAL,
+        PaymentProvider.GLOBAL66,
+        PaymentProvider.TRANSFER,
+        PaymentProvider.PAYONEER,
+    ])
+
+
+class CapturePayPalRequestSerializer(serializers.Serializer):
+    paypal_payment_id = serializers.CharField(max_length=255)
+    payer_id = serializers.CharField(max_length=255)
 
 
 class PaymentSerializer(serializers.ModelSerializer):
