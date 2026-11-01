@@ -12,6 +12,8 @@
     "dev": "vite --host 0.0.0.0",
     "start": "vite --host 0.0.0.0 --port 3000",
     "build": "vite build",
+    "test:payment": "node --test tests/payment-return.test.mjs",
+    "test:payment:browser": "node --test tests/payment-return.browser.mjs",
     "lint": "eslint .",
     "preview": "vite preview"
   },
@@ -43,6 +45,7 @@
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "playwright": "1.62.1",
     "postcss": "^8.5.8",
     "tailwindcss": "^4.2.2",
     "vite": "^8.0.1"

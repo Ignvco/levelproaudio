@@ -17,6 +17,7 @@ import { usePrice } from "../hooks/usePrice"
 import { cancelOrder } from "../api/orders.api"
 import { useCartStore } from "../store/cartStore"
 import { useAuthStore } from "../store/authStore"
+import { rememberCheckout } from "./payment/paymentReturn"
 
 const schema = z.object({
   first_name:       z.string().min(1, "Requerido"),
@@ -183,8 +184,10 @@ export default function Checkout() {
         clearCart()
         navigate(`/payment/transfer/${order.id}`, { state: { transferData: paymentData } })
       } else if (selectedMethod === "mercadopago_cl" || selectedMethod === "mercadopago_ar") {
+        rememberCheckout(order.id, { items, pointsToRedeem })
         window.location.href = paymentData.init_point || paymentData.sandbox_url
       } else if (selectedMethod === "paypal") {
+        rememberCheckout(order.id, { items, pointsToRedeem })
         window.location.href = paymentData.approve_url
       }
     } catch (e) {
