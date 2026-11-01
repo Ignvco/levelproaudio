@@ -123,8 +123,8 @@ export default function ProductDetail() {
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh", ...pageTop }}>
-      <Seo type="product" title={product.name}
-        description={product.short_description || product.description?.slice(0, 160)}
+      <Seo type="product" title={product.seo_title || product.name}
+        description={product.seo_description || product.short_description || product.description?.replace(/<[^>]+>/g, "").slice(0, 160)}
         image={imgUrl} />
       <JsonLd data={productSchema} />
       <JsonLd data={breadcrumbSchema} />
@@ -157,7 +157,7 @@ export default function ProductDetail() {
           <div style={{ aspectRatio: "1", borderRadius: "var(--r-2xl)", overflow: "hidden",
             background: "#121212", border: "1px solid rgba(255,255,255,0.06)" }}>
             {imgUrl ? (
-              <img src={imgUrl} alt={product.name} style={{ width: "100%", height: "100%",
+              <img fetchPriority="high" decoding="async" src={imgUrl} alt={product.name} style={{ width: "100%", height: "100%",
                 objectFit: "cover", transition: "transform 600ms cubic-bezier(0.16,1,0.3,1)" }}
                 onMouseEnter={e => e.target.style.transform = "scale(1.04)"}
                 onMouseLeave={e => e.target.style.transform = "scale(1)"} />
@@ -177,7 +177,7 @@ export default function ProductDetail() {
                     flexShrink: 0, padding: 0, cursor: "pointer", background: "#1a1a1a",
                     border: `2px solid ${activeImg === i ? "var(--accent)" : "rgba(255,255,255,0.1)"}`,
                     transition: "border-color var(--dur) var(--ease)" }}>
-                  <img src={mediaUrl(img.image)} alt=""
+                  <img loading="lazy" decoding="async" src={mediaUrl(img.image)} alt=""
                     style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                 </button>
               ))}

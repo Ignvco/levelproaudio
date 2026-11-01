@@ -15,10 +15,10 @@ class PaymentMethodConfigAdmin(admin.ModelAdmin):
 
 @admin.register(BankAccount)
 class BankAccountAdmin(admin.ModelAdmin):
-    list_display  = ["label", "currency", "bank_name", "account_number", "is_active", "order"]
+    list_display  = ["label", "payment_method", "currency", "bank_name", "account_number", "is_active", "order"]
     list_editable = ["is_active", "order"]
-    list_filter   = ["is_active", "currency"]
-    fields = ["label", "currency", "is_active", "order",
+    list_filter   = ["is_active", "payment_method", "currency"]
+    fields = ["label", "payment_method", "currency", "is_active", "order",
               "bank_name", "account_type", "account_number",
               "holder_name", "holder_id", "email", "instructions"]
 

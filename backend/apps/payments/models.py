@@ -145,6 +145,11 @@ class BankAccount(TimeStampedModel):
     (CLP, ARS, distintos bancos) y activarlas/desactivarlas. Se muestran
     en el checkout cuando el cliente elige transferencia.
     """
+    payment_method = models.CharField(
+        max_length=30, default="transfer",
+        choices=[("transfer", "Transferencia bancaria"), ("payoneer", "Payoneer")],
+        help_text="Método que puede usar esta cuenta. La moneda también debe coincidir.",
+    )
     label        = models.CharField(
         max_length=80,
         help_text="Nombre para identificarla (ej: 'Cuenta CLP - Banco Estado').",

@@ -30,3 +30,8 @@ export const getPaymentStatus = async (orderId) => {
   const response = await api.get(`/payments/status/${orderId}/`)
   return response.data
 }
+
+export const getTransferInstructions = async (orderId) => {
+  const response = await api.get(`/payments/transfer/${orderId}/`)
+  return response.data
+}

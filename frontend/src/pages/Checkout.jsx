@@ -116,7 +116,6 @@ export default function Checkout() {
     })),
     [methodsData]
   )
-  const bankAccounts = methodsData?.bank_accounts || []
 
   // Si no hay método elegido y ya llegaron los métodos, elegir el primero
   useEffect(() => {
@@ -177,12 +176,10 @@ export default function Checkout() {
 
       if (selectedMethod === "transfer" || selectedMethod === "payoneer") {
         clearCart()
-        navigate(`/payment/transfer/${order.id}`, {
-          state: { bankAccounts, amount: total, currency }
-        })
+        navigate(`/payment/transfer/${order.id}`)
       } else if (selectedMethod === "global66") {
         clearCart()
-        navigate(`/payment/transfer/${order.id}`, { state: { transferData: paymentData } })
+        navigate(`/payment/transfer/${order.id}`)
       } else if (selectedMethod === "mercadopago_cl" || selectedMethod === "mercadopago_ar") {
         rememberCheckout(order.id, { items, pointsToRedeem })
         window.location.href = paymentData.init_point || paymentData.sandbox_url

@@ -143,7 +143,7 @@ export default function Academy() {
           <div className="academy-grid" style={{ display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "20px" }}>
             {courses.map((course, i) => (
-              <CourseCard key={course.id} course={course} index={i} />
+              <CourseCard key={course.id} course={course} index={i} priority={i === 0} />
             ))}
           </div>
         )}

@@ -1,3 +1,5 @@
+from core.api_errors import api_error_response
+from django.db import transaction
 # apps/loyalty/views.py
 
 from rest_framework.decorators import api_view, permission_classes
@@ -199,6 +201,7 @@ def admin_loyalty_config(request):
 
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
+@transaction.atomic
 def admin_adjust_points(request):
     """
     POST /api/v1/loyalty/admin/adjust/ — ajuste manual de puntos.
@@ -207,8 +210,18 @@ def admin_adjust_points(request):
     if not request.user.is_staff:
         return Response(status=403)
 
-    user_id     = request.data.get("user_id")
-    puntos      = int(request.data.get("puntos") or request.data.get("points") or 0)
+    from rest_framework import serializers
+    class AdjustmentRequest(serializers.Serializer):
+        user_id = serializers.UUIDField()
+        points = serializers.IntegerField(min_value=-2147483647, max_value=2147483647)
+    payload = AdjustmentRequest(data={
+        "user_id": request.data.get("user_id"),
+        "points": request.data.get("puntos") or request.data.get("points") or 0,
+    })
+    if not payload.is_valid():
+        return Response({"error": "Usuario o cantidad de puntos inválidos."}, status=400)
+    user_id = payload.validated_data["user_id"]
+    puntos = payload.validated_data["points"]
     descripcion = (
         request.data.get("descripcion")
         or request.data.get("reason")
@@ -236,5 +249,9 @@ def admin_adjust_points(request):
         return Response({"puntos_disponibles": account.puntos_disponibles})
     except User.DoesNotExist:
         return Response({"error": "Usuario no encontrado"}, status=404)
-    except Exception as e:
-        return Response({"error": str(e)}, status=400)
+    except Exception:
+        transaction.set_rollback(True)
+        return api_error_response(
+            "No se pudo guardar el ajuste de puntos. Revisa el saldo antes de repetirlo.",
+            operation="admin_adjust_points",
+        )

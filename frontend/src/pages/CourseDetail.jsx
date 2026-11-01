@@ -51,7 +51,7 @@ function VideoPlayer({ lesson, title }) {
     const fileSrc = /^https?:\/\//.test(raw) ? raw : mediaUrl(raw)
     return (
       <div style={wrapSt} data-testid="lesson-video-file">
-        <video src={fileSrc} title={title} controls playsInline
+        <video preload="metadata" src={fileSrc} title={title} controls playsInline
           controlsList="nodownload"
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%",
             objectFit: "contain", background: "#000" }} />
@@ -279,8 +279,8 @@ export default function CourseDetail() {
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
-      <Seo title={course.title}
-        description={course.description?.replace(/<[^>]+>/g, "").slice(0, 160)}
+      <Seo title={course.seo_title || course.title}
+        description={course.seo_description || course.description?.replace(/<[^>]+>/g, "").slice(0, 160)}
         image={course.thumbnail ? mediaUrl(course.thumbnail) : undefined} />
       <JsonLd data={{
         "@context": "https://schema.org",

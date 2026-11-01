@@ -1,6 +1,9 @@
 // components/SeoGlobal.jsx — Datos estructurados globales + verificación Search Console
 import { useEffect } from "react"
 import JsonLd from "./JsonLd"
+import Seo from "./Seo"
+import { useLocation } from "react-router-dom"
+import { routeSeo } from "../utils/seoHead"
 import { SITE_URL, absUrl } from "../utils/seo"
 import { useSiteSettings } from "../hooks/useSiteSettings"
 
@@ -9,6 +12,7 @@ const FALLBACK_LOGO = absUrl("/favicon.png")
 
 export default function SeoGlobal() {
   const { instagramUrl, siteName, logoUrl, settings } = useSiteSettings()
+  const { pathname } = useLocation()
 
   // Antes, cambiar el color de marca desde Configuración del sitio no
   // hacía nada — el verde de acento seguía fijo en el CSS. Ahora, si
@@ -41,6 +45,7 @@ export default function SeoGlobal() {
 
   return (
     <>
+      <Seo {...routeSeo(pathname)} priority={0} />
       {GSC && <meta name="google-site-verification" content={GSC} />}
       <JsonLd data={organization} />
       <JsonLd data={website} />

@@ -9,6 +9,7 @@ from .views import (
     webhook_mercadopago_ar,
     payment_status,
     payment_methods,
+    transfer_instructions,
     AdminPaymentMethodViewSet,
     AdminBankAccountViewSet,
 )
@@ -19,6 +20,7 @@ router.register("admin/bank-accounts",   AdminBankAccountViewSet,   basename="ad
 
 urlpatterns = [
     path("payments/methods/",                   payment_methods,         name="payment-methods"),
+    path("payments/transfer/<uuid:order_id>/", transfer_instructions, name="transfer-instructions"),
     path("payments/create/",                    create_payment,          name="payment-create"),
     path("payments/paypal/capture/",            capture_paypal,          name="paypal-capture"),
     path("payments/webhook/mercadopago/cl/",    webhook_mercadopago_cl,  name="webhook-mp-cl"),

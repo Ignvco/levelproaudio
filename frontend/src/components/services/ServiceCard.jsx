@@ -5,7 +5,7 @@ import { BadgeCheck, Clock, Tag, Plus } from "lucide-react"
 import { serviceCover } from "../../utils/serviceCover"
 import { useScrollReveal } from "../../hooks/useScrollReveal"
 
-export default function ServiceCard({ service, index = 0 }) {
+export default function ServiceCard({ service, index = 0, priority = false }) {
   const ref = useScrollReveal({ delay: index * 80 })
   const cover = serviceCover(service)
 
@@ -16,7 +16,7 @@ export default function ServiceCard({ service, index = 0 }) {
 
       {/* Imagen */}
       <div className="profile-card__img">
-        <img src={cover} alt={service.name}
+        <img loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "auto"} decoding="async" src={cover} alt={service.name}
           onError={(e) => {
             e.currentTarget.style.display = "none"
             const fb = e.currentTarget.nextElementSibling

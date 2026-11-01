@@ -66,6 +66,6 @@ class BankAccountSerializer(serializers.ModelSerializer):
     class Meta:
         from .models import BankAccount
         model = BankAccount
-        fields = ["id", "label", "currency", "bank_name", "account_type",
+        fields = ["id", "label", "payment_method", "currency", "bank_name", "account_type",
                   "account_number", "holder_name", "holder_id", "email",
                   "instructions", "is_active", "order"]

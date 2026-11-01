@@ -16,7 +16,7 @@ import { showToast }       from "../ui/ToastNotification"
 import { FavoriteButton }  from "./FavoriteButton"
 import { getProductBadge } from "../../utils/productBadge"
 
-export default function ProductCard({ product }) {
+export default function ProductCard({ product, priority = false }) {
   const { addItem } = useCartStore()
   const { price }   = usePrice()
   const navigate    = useNavigate()
@@ -92,6 +92,8 @@ export default function ProductCard({ product }) {
       }}>
         {currentImg ? (
           <img
+            loading={priority ? "eager" : "lazy"}
+            fetchPriority={priority ? "high" : "auto"} decoding="async"
             src={currentImg}
             alt={product.name}
             data-testid={`product-image-${product.slug}`}
@@ -132,7 +134,7 @@ export default function ProductCard({ product }) {
             justifyContent:"center", padding:"9px",
             boxShadow:"0 4px 14px rgba(0,0,0,0.18)",
           }}>
-            <img src={brandLogo} alt={product.brand_name || ""}
+            <img loading="lazy" decoding="async" src={brandLogo} alt={product.brand_name || ""}
               style={{ width:"100%", height:"100%", objectFit:"contain" }}
               onError={e => { e.target.parentElement.style.display = "none" }} />
           </div>
@@ -189,7 +191,7 @@ export default function ProductCard({ product }) {
 
         {/* Marca como logo (subtítulo) */}
         {brandLogo ? (
-          <img src={brandLogo} alt={product.brand_name || ""}
+          <img loading="lazy" decoding="async" src={brandLogo} alt={product.brand_name || ""}
             style={{ height:"20px", width:"auto", objectFit:"contain",
               objectPosition:"left center", opacity:0.55,
               filter:"brightness(0) invert(1)", alignSelf:"flex-start" }}

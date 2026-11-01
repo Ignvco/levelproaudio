@@ -52,6 +52,7 @@ INSTALLED_APPS = [
 
 # DRF — ahora con JWT como autenticación por defecto
 REST_FRAMEWORK = {
+    "EXCEPTION_HANDLER": "core.api_errors.safe_exception_handler",
 
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 

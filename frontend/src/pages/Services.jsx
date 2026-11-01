@@ -127,7 +127,7 @@ export default function Services() {
           <div className="services-page-grid" style={{ display: "grid",
             gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))", gap: "24px" }}>
             {services.map((s, i) => (
-              <ServiceCard key={s.id} service={s} index={i} />
+              <ServiceCard key={s.id} service={s} index={i} priority={i === 0} />
             ))}
           </div>
         )}

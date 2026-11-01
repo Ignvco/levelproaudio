@@ -261,8 +261,8 @@ export default function ServiceDetail() {
 
   return (
     <div style={{ background: "var(--bg)", minHeight: "100vh" }}>
-      <Seo type="product" title={service.name}
-        description={service.short_description || service.description?.slice(0, 160)}
+      <Seo title={service.name}
+        description={service.short_description || service.description?.replace(/<[^>]+>/g, "").slice(0, 160)}
         image={cover} />
       <JsonLd data={{
         "@context": "https://schema.org",

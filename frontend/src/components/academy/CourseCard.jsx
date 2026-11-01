@@ -10,7 +10,7 @@ const LEVELS = {
   advanced:     "Avanzado",
 }
 
-export default function CourseCard({ course, index = 0 }) {
+export default function CourseCard({ course, index = 0, priority = false }) {
   const ref = useScrollReveal({ delay: index * 80 })
 
   const levelLabel = course.level_display || LEVELS[course.level] || course.level || "Curso"
@@ -27,7 +27,7 @@ export default function CourseCard({ course, index = 0 }) {
       {/* Banner */}
       <div className="folder-card__img">
         {thumb ? (
-          <img src={mediaUrl(thumb)} alt={course.title} />
+          <img loading={priority ? "eager" : "lazy"} fetchPriority={priority ? "high" : "auto"} decoding="async" src={mediaUrl(thumb)} alt={course.title} />
         ) : (
           <div className="folder-card__img-fallback" aria-hidden="true" />
         )}

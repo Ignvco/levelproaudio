@@ -10,55 +10,55 @@ import SeoGlobal from "./components/SeoGlobal"
 import Analytics from "./components/Analytics"
 
 
-import Orders from "./pages/dashboard/Orders"
-import OrderDetail from "./pages/dashboard/OrderDetail"
-import Profile from "./pages/dashboard/Profile"
-import AdminLogin from "./pages/admin/AdminLogin"
+const Orders = lazy(() => import("./pages/dashboard/Orders"))
+const OrderDetail = lazy(() => import("./pages/dashboard/OrderDetail"))
+const Profile = lazy(() => import("./pages/dashboard/Profile"))
+const AdminLogin = lazy(() => import("./pages/admin/AdminLogin"))
 
 
 
 // Layouts
 import MainLayout from "./layouts/MainLayout"
-import DashboardLayout from "./layouts/DashboardLayout"
+const DashboardLayout = lazy(() => import("./layouts/DashboardLayout"))
 
 // Páginas públicas
 import Home from "./pages/Home"
-import Shop from "./pages/Shop"
-import ProductDetail from "./pages/ProductDetail"
-import Login from "./pages/Login"
-import Academy from "./pages/Academy"
-import Services from "./pages/Services"
-import SpecialOrder from "./pages/SpecialOrder"
-import Cart from "./pages/Cart"
-import Register from "./pages/Register"
-import ForgotPassword from "./pages/ForgotPassword"
-import ResetPassword from "./pages/ResetPassword"
-import Terminos from "./pages/legal/Terminos"
-import Privacidad from "./pages/legal/Privacidad"
-import BasesSorteo from "./pages/legal/BasesSorteo"
-import PoliticaGarantia from "./pages/legal/PoliticaGarantia"
-import PoliticaEnvios from "./pages/legal/PoliticaEnvios"
+const Shop = lazy(() => import("./pages/Shop"))
+const ProductDetail = lazy(() => import("./pages/ProductDetail"))
+const Login = lazy(() => import("./pages/Login"))
+const Academy = lazy(() => import("./pages/Academy"))
+const Services = lazy(() => import("./pages/Services"))
+const SpecialOrder = lazy(() => import("./pages/SpecialOrder"))
+const Cart = lazy(() => import("./pages/Cart"))
+const Register = lazy(() => import("./pages/Register"))
+const ForgotPassword = lazy(() => import("./pages/ForgotPassword"))
+const ResetPassword = lazy(() => import("./pages/ResetPassword"))
+const Terminos = lazy(() => import("./pages/legal/Terminos"))
+const Privacidad = lazy(() => import("./pages/legal/Privacidad"))
+const BasesSorteo = lazy(() => import("./pages/legal/BasesSorteo"))
+const PoliticaGarantia = lazy(() => import("./pages/legal/PoliticaGarantia"))
+const PoliticaEnvios = lazy(() => import("./pages/legal/PoliticaEnvios"))
 
 // Páginas protegidas
-import Dashboard from "./pages/Dashboard"
-import Checkout from "./pages/Checkout"
-import OrderConfirmation from "./pages/OrderConfirmation"
+const Dashboard = lazy(() => import("./pages/Dashboard"))
+const Checkout = lazy(() => import("./pages/Checkout"))
+const OrderConfirmation = lazy(() => import("./pages/OrderConfirmation"))
 
 
 //aCADEMY
 // Imports nuevos
-import CourseDetail from "./pages/CourseDetail"
-import MyCourses from "./pages/dashboard/MyCourses"
+const CourseDetail = lazy(() => import("./pages/CourseDetail"))
+const MyCourses = lazy(() => import("./pages/dashboard/MyCourses"))
 
-import ServiceDetail from "./pages/ServiceDetail"
-import MyServices from "./pages/dashboard/MyServices"
-import MyBookings from "./pages/dashboard/MyBookings"
+const ServiceDetail = lazy(() => import("./pages/ServiceDetail"))
+const MyServices = lazy(() => import("./pages/dashboard/MyServices"))
+const MyBookings = lazy(() => import("./pages/dashboard/MyBookings"))
 
 // Imports nuevos
-import PaymentSuccess from "./pages/payment/PaymentSuccess"
-import PaymentFailure from "./pages/payment/PaymentFailure"
-import TransferInstructions from "./pages/payment/TransferInstructions"
-import NotFound from "./pages/NotFound"
+const PaymentSuccess = lazy(() => import("./pages/payment/PaymentSuccess"))
+const PaymentFailure = lazy(() => import("./pages/payment/PaymentFailure"))
+const TransferInstructions = lazy(() => import("./pages/payment/TransferInstructions"))
+const NotFound = lazy(() => import("./pages/NotFound"))
 
 
 
@@ -88,10 +88,10 @@ const AdminLoyalty                 = lazy(() => import("./pages/admin/AdminLoyal
 const AdminBilling                 = lazy(() => import("./pages/admin/AdminBilling"))
 
 // Rewards
-import Rewards from "./pages/Rewards"
-import MyEntries from "./pages/dashboard/MyEntries"
-import MyLoyalty from "./pages/dashboard/MyLoyalty"
-import MyFavorites from "./pages/dashboard/MyFavorites"
+const Rewards = lazy(() => import("./pages/Rewards"))
+const MyEntries = lazy(() => import("./pages/dashboard/MyEntries"))
+const MyLoyalty = lazy(() => import("./pages/dashboard/MyLoyalty"))
+const MyFavorites = lazy(() => import("./pages/dashboard/MyFavorites"))
 const AdminRewards                 = lazy(() => import("./pages/admin/AdminRewards"))
 const AdminRewardsCampaigns        = lazy(() => import("./pages/admin/AdminRewardsCampaigns"))
 const AdminRewardsCampaignDetail   = lazy(() => import("./pages/admin/AdminRewardsCampaignDetail"))
@@ -108,6 +108,10 @@ function AdminLoading() {
       Cargando panel…
     </div>
   )
+}
+
+function PageLoading() {
+  return <div role="status" aria-live="polite" style={{ minHeight: "60vh", display: "grid", placeItems: "center", color: "var(--text-2)" }}>Cargando página…</div>
 }
 
 // ── Rutas protegidas ────────────────────────────────────────
@@ -138,7 +142,7 @@ function App() {
     <PageTransition>
       <SeoGlobal />
       <Analytics />
-      <Routes>
+      <Suspense fallback={<PageLoading />}><Routes>
 
         <Route path="/admin/login" element={<AdminLogin />} />
 
@@ -338,7 +342,7 @@ function App() {
         {/* ── 404 ── */}
         <Route path="*" element={<NotFound />} />
 
-      </Routes>
+      </Routes></Suspense>
       </PageTransition>
    
   )

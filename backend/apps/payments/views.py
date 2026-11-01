@@ -11,6 +11,7 @@ from django.views.decorators.csrf import csrf_exempt
 from apps.orders.models import Order
 from .models import PaymentProvider
 from .serializers import CreatePaymentRequestSerializer, CapturePayPalRequestSerializer
+from .transfer_instructions import bank_accounts_for, instructions_for
 from .webhooks import get_mp_webhook_secret, normalize_mp_webhook
 from .services import (
     create_mercadopago_preference,
@@ -227,31 +228,29 @@ def payment_methods(request):
             "description": m.description,
         })
 
-    # Cuentas bancarias — solo relevantes si transferencia está activa
-    accounts = []
-    transfer_active = PaymentMethodConfig.objects.filter(
-        method="transfer", is_active=True).exists()
-    if transfer_active:
-        qs = BankAccount.objects.filter(is_active=True)
-        # Mostramos las de la moneda pedida; si no hay ninguna en esa
-        # moneda, mostramos todas (mejor dar opciones que dejar vacío).
-        by_currency = qs.filter(currency__iexact=currency)
-        source = by_currency if by_currency.exists() else qs
-        for a in source:
-            accounts.append({
-                "id":            str(a.id),
-                "label":         a.label,
-                "currency":      a.currency,
-                "bank_name":     a.bank_name,
-                "account_type":  a.account_type,
-                "account_number": a.account_number,
-                "holder_name":   a.holder_name,
-                "holder_id":     a.holder_id,
-                "email":         a.email,
-                "instructions":  a.instructions,
-            })
+    # Never offer a different currency or another provider's bank account.
+    manual_methods = [m["id"] for m in methods if m["id"] in ("transfer", "payoneer")]
+    accounts = bank_accounts_for(currency, manual_methods)
 
     return Response({"methods": methods, "bank_accounts": accounts})
+
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def transfer_instructions(request, order_id):
+    try:
+        order = Order.objects.get(id=order_id, user=request.user)
+    except Order.DoesNotExist:
+        return Response({"error": "Orden no encontrada."}, status=404)
+    try:
+        response = Response(instructions_for(order))
+    except Exception:
+        response = _payment_error_response(
+            "No pudimos consultar las instrucciones. Revisa tu pedido antes de transferir.",
+            operation="transfer_instructions", provider="manual", order_id=order_id,
+        )
+    response["Cache-Control"] = "private, no-store"
+    return response
 
 
 # ── Admin: CRUD de métodos de pago y cuentas bancarias ──────────────

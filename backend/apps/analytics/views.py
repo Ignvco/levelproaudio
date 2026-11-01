@@ -1,3 +1,7 @@
+from decimal import InvalidOperation
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.db import IntegrityError
+from core.api_errors import AdminInputError, api_error_response
 # apps/analytics/views.py — VERSION LIMPIA SIN DUPLICADOS
 
 from rest_framework.decorators import api_view, permission_classes
@@ -342,7 +346,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         if "product_type" in data:
             valid_types = dict(Product.ProductType.choices)
             if data["product_type"] not in valid_types:
-                raise ValueError(
+                raise AdminInputError(
                     f'"{data["product_type"]}" no es un tipo de producto válido. '
                     f'Opciones: {", ".join(valid_types.keys())}.'
                 )
@@ -353,7 +357,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         if "badge" in data:
             valid_badges = dict(Product.Badge.choices)
             if data["badge"] and data["badge"] not in valid_badges:
-                raise ValueError(
+                raise AdminInputError(
                     f'"{data["badge"]}" no es una etiqueta válida. '
                     f'Opciones: {", ".join(valid_badges.keys())} (o vacío para ninguna).'
                 )
@@ -445,9 +449,21 @@ class AdminProductViewSet(viewsets.ModelViewSet):
                 product, context=self.get_serializer_context()
             )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
-        except Exception as e:
+        except AdminInputError as exc:
             transaction.set_rollback(True)
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except (DjangoValidationError, IntegrityError, ValueError, TypeError, InvalidOperation):
+            transaction.set_rollback(True)
+            return api_error_response(
+                "Datos de producto inválidos. Revisa los campos y sus relaciones.",
+                operation="admin_product_validation", status_code=400,
+            )
+        except Exception:
+            transaction.set_rollback(True)
+            return api_error_response(
+                "No se pudo guardar el producto. Revisa los datos y el estado del producto.",
+                operation="admin_product_save",
+            )
 
     @transaction.atomic
     def update(self, request, *args, **kwargs):
@@ -459,9 +475,21 @@ class AdminProductViewSet(viewsets.ModelViewSet):
                 product, context=self.get_serializer_context()
             )
             return Response(serializer.data)
-        except Exception as e:
+        except AdminInputError as exc:
             transaction.set_rollback(True)
-            return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except (DjangoValidationError, IntegrityError, ValueError, TypeError, InvalidOperation):
+            transaction.set_rollback(True)
+            return api_error_response(
+                "Datos de producto inválidos. Revisa los campos y sus relaciones.",
+                operation="admin_product_validation", status_code=400,
+            )
+        except Exception:
+            transaction.set_rollback(True)
+            return api_error_response(
+                "No se pudo guardar el producto. Revisa los datos y el estado del producto.",
+                operation="admin_product_save",
+            )
 
     def partial_update(self, request, *args, **kwargs):
         return self.update(request, *args, **kwargs)
@@ -673,12 +701,11 @@ def admin_lesson_video_upload_url(request):
             service_account_email=credentials.service_account_email,
             access_token=credentials.token,
         )
-    except Exception as e:
-        return Response({
-            "error": f"No se pudo generar la URL de subida: {e}. "
-                     f"Revisá que la cuenta de servicio tenga el permiso "
-                     f"'Service Account Token Creator' sobre sí misma."
-        }, status=500)
+    except Exception:
+        return api_error_response(
+            "No se pudo preparar la subida del video. Contacta a soporte con la referencia.",
+            operation="admin_lesson_upload_url",
+        )
 
     return Response({"upload_url": upload_url, "object_path": object_path, "content_type": content_type})
 
@@ -1373,13 +1400,20 @@ def update_request_status(request, pk):
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 def admin_create_enrollment(request):
-    user_id   = request.data.get("user_id")
-    course_id = request.data.get("course_id")
+    from rest_framework import serializers
+    class EnrollmentRequest(serializers.Serializer):
+        user_id = serializers.UUIDField()
+        course_id = serializers.UUIDField()
+    payload = EnrollmentRequest(data=request.data)
+    if not payload.is_valid():
+        return Response({"error": "Usuario o curso inválido."}, status=400)
+    user_id = payload.validated_data["user_id"]
+    course_id = payload.validated_data["course_id"]
     try:
         user   = User.objects.get(id=user_id)
         course = Course.objects.get(id=course_id)
-    except (User.DoesNotExist, Course.DoesNotExist) as e:
-        return Response({"error": str(e)}, status=404)
+    except (User.DoesNotExist, Course.DoesNotExist):
+        return Response({"error": "Usuario o curso no encontrado."}, status=404)
 
     enrollment, created = Enrollment.objects.get_or_create(
         user=user, course=course

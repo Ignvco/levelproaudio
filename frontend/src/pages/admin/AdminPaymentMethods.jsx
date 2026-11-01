@@ -97,6 +97,7 @@ function AccountModal({ item, onClose }) {
   const isEdit = !!item?.id
   const [form, setForm] = useState({
     label:          item?.label          || "",
+    payment_method: item?.payment_method || "transfer",
     currency:       item?.currency       || "CLP",
     bank_name:      item?.bank_name       || "",
     account_type:   item?.account_type    || "",
@@ -134,6 +135,13 @@ function AccountModal({ item, onClose }) {
       onSave={() => save.mutate()} saving={save.isPending}>
       <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
         {field("Etiqueta", "label", "Ej: Cuenta CLP - Banco Estado")}
+        <FormField label="Método de esta cuenta">
+          <select style={formInputStyle} value={form.payment_method}
+            onChange={e => setForm(p => ({ ...p, payment_method: e.target.value }))}>
+            <option value="transfer">Transferencia bancaria</option>
+            <option value="payoneer">Payoneer</option>
+          </select>
+        </FormField>
         <FormField label="Moneda">
           <select style={formInputStyle} value={form.currency}
             onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}>
@@ -295,7 +303,7 @@ export default function AdminPaymentMethods() {
                 <tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left",
                   color: "var(--text-3)", fontSize: "11px", textTransform: "uppercase" }}>
                   <th style={{ padding: "12px 16px" }}>Etiqueta</th>
-                  <th style={{ padding: "12px 16px" }}>Moneda</th>
+                  <th style={{ padding: "12px 16px" }}>Método / Moneda</th>
                   <th style={{ padding: "12px 16px" }}>Banco</th>
                   <th style={{ padding: "12px 16px" }}>Cuenta</th>
                   <th style={{ padding: "12px 16px" }}>Estado</th>
@@ -306,7 +314,7 @@ export default function AdminPaymentMethods() {
                 {accounts.map(a => (
                   <tr key={a.id} style={{ borderBottom: "1px solid var(--border)" }}>
                     <td style={{ padding: "12px 16px" }}>{a.label}</td>
-                    <td style={{ padding: "12px 16px" }}>{a.currency}</td>
+                    <td style={{ padding: "12px 16px" }}>{a.payment_method === "payoneer" ? "Payoneer" : "Transferencia"} / {a.currency}</td>
                     <td style={{ padding: "12px 16px" }}>{a.bank_name}</td>
                     <td style={{ padding: "12px 16px", fontFamily: "monospace" }}>{a.account_number}</td>
                     <td style={{ padding: "12px 16px" }}>

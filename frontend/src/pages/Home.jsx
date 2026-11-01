@@ -182,9 +182,7 @@ export default function Home() {
 
       {/* Contenido del Home por encima de las capas de fondo */}
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column" }}>
-      <Seo
-        title="Equipamiento de Audio Profesional en Chile"
-        description="Micrófonos, interfaces de audio, monitores de estudio, cursos, mezcla, mastering y servicios de audio profesional en Chile y Argentina." />
+      <Seo />
 
       {/* ═════════════════════════════════════════════════════════════
           HERO — split · left copy · right console-inspired glass
@@ -505,7 +503,7 @@ export default function Home() {
                 data-testid={`pillar-${p.title.toLowerCase()}`}
                 className="eco-card">
                 {p.bg && (
-                  <img className="eco-card__bg" src={mediaUrl(p.bg)}
+                  <img loading="lazy" decoding="async" className="eco-card__bg" src={mediaUrl(p.bg)}
                     alt="" aria-hidden="true" />
                 )}
                 <span className="eco-card__scrim" aria-hidden="true" />
@@ -751,7 +749,7 @@ export default function Home() {
             borderRadius: "var(--r-xl)", overflow: "hidden",
             flexShrink: 0,
           }}>
-            <img src={s.testimonial_photo_url ? mediaUrl(s.testimonial_photo_url) : AVATARS.male} alt=""
+            <img loading="lazy" decoding="async" src={s.testimonial_photo_url ? mediaUrl(s.testimonial_photo_url) : AVATARS.male} alt=""
               style={{ width: "100%", height: "100%", objectFit: "cover",
                 filter: "grayscale(15%) contrast(1.05)" }} />
           </div>

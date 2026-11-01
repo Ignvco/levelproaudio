@@ -16,22 +16,19 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=2" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#0a0a0a" />
-    <!-- Estos meta tags son el "primer vistazo" del sitio — los bots de
-         WhatsApp/Facebook/Twitter los leen SIN ejecutar JavaScript, así
-         que el <Seo> dinámico de React no les llega. Se completan en
-         el build con las variables VITE_SITE_* (ver .env.example). -->
-    <title>%VITE_SITE_NAME% — %VITE_SITE_TAGLINE%</title>
-    <meta name="description" content="%VITE_SITE_DESCRIPTION%" />
-    <meta property="og:site_name" content="%VITE_SITE_NAME%" />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="%VITE_SITE_NAME% — %VITE_SITE_TAGLINE%" />
-    <meta property="og:description" content="%VITE_SITE_DESCRIPTION%" />
-    <meta property="og:image" content="%VITE_SITE_URL%/og-image.png" />
-    <meta property="og:image:width" content="1200" />
-    <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="%VITE_SITE_NAME%" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="%VITE_SITE_URL%/og-image.png" />
+    <!-- nginx replaces this block with metadata from the requested public page.
+         Vite dev/preview uses the fallback; production includes the fragment. -->
+    <!--# block name="seo_fallback" -->
+    <title data-initial-seo>LevelPro Audio</title>
+    <meta data-initial-seo name="description" content="Equipamiento, academia y servicios de audio profesional." />
+    <meta data-initial-seo name="robots" content="noindex, nofollow" />
+    <meta data-initial-seo property="og:title" content="LevelPro Audio" />
+    <meta data-initial-seo property="og:description" content="Equipamiento, academia y servicios de audio profesional." />
+    <meta data-initial-seo property="og:type" content="website" />
+    <meta data-initial-seo property="og:image" content="%VITE_SITE_URL%/og-image.png" />
+    <meta data-initial-seo name="twitter:card" content="summary_large_image" />
+    <!--# endblock -->
+    <!--# include virtual="/_seo/head" stub="seo_fallback" -->
   </head>
   <body>
     <div id="root"></div>

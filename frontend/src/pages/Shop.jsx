@@ -346,7 +346,7 @@ export default function Shop() {
                     style={{ animation: `fadeUp 500ms cubic-bezier(0.16,1,0.3,1) ${i * 45}ms both` }}>
                     {view === "list"
                       ? <ProductRow product={product} />
-                      : <ProductCard product={product} />}
+                      : <ProductCard product={product} priority={i === 0} />}
                   </div>
                 ))}
               </div>

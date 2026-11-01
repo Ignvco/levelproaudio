@@ -1,7 +1,8 @@
 """SEO — sitemap.xml dinámico generado desde la base de datos."""
 from django.conf import settings
 from django.http import HttpResponse
-from django.utils.text import Truncator  # noqa: F401 (por si se usa a futuro)
+from django.utils.html import escape
+from urllib.parse import quote
 
 from apps.products.models import Product, Category
 from apps.services.models import Service
@@ -18,7 +19,7 @@ def _lastmod(obj):
 
 
 def _url_xml(loc, lastmod=None, changefreq=None, priority=None):
-    parts = [f"<loc>{loc}</loc>"]
+    parts = [f"<loc>{escape(loc)}</loc>"]
     if lastmod:
         parts.append(f"<lastmod>{lastmod}</lastmod>")
     if changefreq:
@@ -37,6 +38,7 @@ def sitemap_view(request):
         ("/", "daily", "1.0"),
         ("/shop", "daily", "0.9"),
         ("/services", "weekly", "0.8"),
+        ("/bajo-pedido", "weekly", "0.7"),
         ("/academy", "weekly", "0.8"),
         ("/rewards", "weekly", "0.7"),
         ("/terminos", "yearly", "0.3"),
@@ -50,7 +52,7 @@ def sitemap_view(request):
 
     # Categorías (URL actual: /shop?category=<slug>)
     for cat in Category.objects.filter(is_active=True):
-        rows.append(_url_xml(f"{base}/shop?category={cat.slug}",
+        rows.append(_url_xml(f"{base}/shop?category={quote(cat.slug, safe='')}",
                              lastmod=_lastmod(cat), changefreq="weekly", priority="0.7"))
 
     # Productos activos
@@ -75,3 +77,23 @@ def sitemap_view(request):
         + "\n</urlset>\n"
     )
     return HttpResponse(xml, content_type="application/xml; charset=utf-8")
+
+
+# Included by nginx in the initial HTML, for users and crawlers alike.
+from django.views.decorators.http import require_GET
+from .metadata import metadata_for, render_head
+
+
+@require_GET
+def head_view(request):
+    import logging
+    try:
+        uri = request.headers.get("X-SEO-Path") or request.GET.get("path", "/")
+        response = HttpResponse(render_head(metadata_for(uri)), content_type="text/html; charset=utf-8")
+    except Exception:
+        logging.getLogger(__name__).exception("Unable to render public SEO metadata")
+        # An empty response triggers nginx's safe SSI fallback.
+        response = HttpResponse("", status=503)
+    response["Cache-Control"] = "no-store"
+    response["X-Robots-Tag"] = "noindex"
+    return response
