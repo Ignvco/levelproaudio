@@ -12,6 +12,7 @@ from apps.orders.models import Order
 from .models import PaymentProvider
 from .serializers import CreatePaymentRequestSerializer, CapturePayPalRequestSerializer
 from .transfer_instructions import bank_accounts_for, instructions_for
+from .payment_availability import method_can_checkout, method_has_payment_instructions
 from .webhooks import get_mp_webhook_secret, normalize_mp_webhook
 from .services import (
     create_mercadopago_preference,
@@ -69,6 +70,14 @@ def create_payment(request):
             return Response(
                 {"error": "Esta orden ya fue procesada."},
                 status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # The client's selection is advisory. Recheck against the actual order
+        # currency and current admin config, even if the frontend is stale.
+        if not method_can_checkout(provider, order.currency):
+            return Response(
+                {"error": "Este método de pago no está disponible para la moneda del pedido."},
+                status=status.HTTP_400_BAD_REQUEST,
             )
 
         if provider in [PaymentProvider.MERCADOPAGO_CL, PaymentProvider.MERCADOPAGO_AR]:
@@ -220,7 +229,7 @@ def payment_methods(request):
 
     methods = []
     for m in PaymentMethodConfig.objects.filter(is_active=True):
-        if not m.available_for_currency(currency):
+        if not m.available_for_currency(currency) or not method_has_payment_instructions(m.method, currency):
             continue
         methods.append({
             "id":          m.method,

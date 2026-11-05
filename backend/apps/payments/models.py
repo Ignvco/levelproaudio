@@ -104,6 +104,7 @@ class PaymentMethodConfig(TimeStampedModel):
         MERCADOPAGO_CL = "mercadopago_cl", "MercadoPago Chile"
         MERCADOPAGO_AR = "mercadopago_ar", "MercadoPago Argentina"
         PAYPAL     = "paypal",      "PayPal"
+        GLOBAL66   = "global66",    "Transferencia Global66"
 
     method   = models.CharField(max_length=30, choices=Method.choices, unique=True)
     is_active = models.BooleanField(default=False, verbose_name="Activo en el checkout")

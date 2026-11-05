@@ -19,6 +19,7 @@ class PaymentMethodConfigTest(TestCase):
 
     def test_only_active_methods_returned(self):
         PaymentMethodConfig.objects.create(method="transfer", is_active=True)
+        BankAccount.objects.create(label="CLP", currency="CLP", bank_name="Test", account_number="1", holder_name="LP")
         PaymentMethodConfig.objects.create(method="paypal", is_active=False)
         resp = self.client.get("/api/v1/payments/methods/")
         ids = [m["id"] for m in resp.data["methods"]]
@@ -29,6 +30,8 @@ class PaymentMethodConfigTest(TestCase):
         # Payoneer solo en USD; transferencia en CLP
         PaymentMethodConfig.objects.create(method="payoneer", is_active=True, currencies="USD")
         PaymentMethodConfig.objects.create(method="transfer", is_active=True, currencies="CLP")
+        BankAccount.objects.create(label="CLP", currency="CLP", bank_name="Test", account_number="1", holder_name="LP")
+        BankAccount.objects.create(label="USD", payment_method="payoneer", currency="USD", bank_name="Test", account_number="2", holder_name="LP")
 
         resp_clp = self.client.get("/api/v1/payments/methods/?currency=CLP")
         ids_clp = [m["id"] for m in resp_clp.data["methods"]]
@@ -42,6 +45,7 @@ class PaymentMethodConfigTest(TestCase):
 
     def test_method_without_currency_shown_for_all(self):
         PaymentMethodConfig.objects.create(method="transfer", is_active=True, currencies="")
+        BankAccount.objects.create(label="ARS", currency="ARS", bank_name="Test", account_number="3", holder_name="LP")
         resp = self.client.get("/api/v1/payments/methods/?currency=ARS")
         ids = [m["id"] for m in resp.data["methods"]]
         self.assertIn("transfer", ids)
@@ -96,6 +100,13 @@ class TransferPaymentFlowTest(TestCase):
             user=self.user, status="pending", total=Decimal("50000"),
             email="tf@test.com", shipping_address="Calle 1")
         self.client = APIClient()
+        PaymentMethodConfig.objects.update_or_create(
+            method="transfer", defaults={"is_active": True, "currencies": "CLP"},
+        )
+        BankAccount.objects.create(
+            label="CLP", currency="CLP", bank_name="Test",
+            account_number="123", holder_name="LevelPro",
+        )
 
     def test_transfer_creates_pending_payment(self):
         from apps.payments.models import Payment

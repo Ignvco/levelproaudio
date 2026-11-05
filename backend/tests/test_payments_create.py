@@ -14,6 +14,7 @@ from unittest.mock import patch
 from rest_framework.test import APIClient
 from apps.users.models import User
 from apps.orders.models import Order, OrderStatus
+from apps.payments.models import PaymentMethodConfig
 
 
 def _make_order(user, status=OrderStatus.PENDING, total="50000"):
@@ -83,6 +84,10 @@ def test_create_payment_rejects_invalid_provider():
 def test_create_payment_success_delegates_to_mercadopago_service(mock_create_pref):
     user = User.objects.create_user(email="user@test.com", username="user", password="x")
     order = _make_order(user, total="50000")
+    PaymentMethodConfig.objects.update_or_create(
+        method="mercadopago_cl",
+        defaults={"is_active": True, "currencies": "CLP"},
+    )
     mock_create_pref.return_value = {"init_point": "https://mp.example.com/checkout/123"}
 
     client = APIClient()
