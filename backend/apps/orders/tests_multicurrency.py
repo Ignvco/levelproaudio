@@ -6,6 +6,7 @@ from rest_framework.test import APIClient
 
 from apps.products.models import Category, Product
 from apps.site_settings.models import SiteSettings
+from apps.payments.models import PaymentMethodConfig, BankAccount
 
 User = get_user_model()
 
@@ -82,6 +83,18 @@ class PayoneerPaymentTest(TestCase):
             price=Decimal("100000"), price_usd=Decimal("105"), stock=10, is_active=True)
         self.client = APIClient()
         self.client.force_authenticate(user=self.user)
+        # Patch 13: Payoneer must be enabled and have an active USD account.
+        # These are synthetic test fixtures, never real payment credentials.
+        PaymentMethodConfig.objects.update_or_create(
+            method="payoneer",
+            defaults={"is_active": True, "currencies": "USD"},
+        )
+        BankAccount.objects.create(
+            payment_method="payoneer", label="Cuenta Payoneer USD (test)",
+            currency="USD", bank_name="Payoneer Test",
+            account_number="TEST-ONLY-USD", holder_name="LevelPro Test",
+            is_active=True,
+        )
 
     def test_payoneer_creates_pending_payment(self):
         from apps.payments.models import Payment
