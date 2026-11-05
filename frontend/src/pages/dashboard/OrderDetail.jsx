@@ -14,7 +14,10 @@ import {
   Package,
 } from "lucide-react"
 import { getOrder, cancelOrder } from "../../api/orders.api"
-import { createPayment } from "../../api/payments.api"
+import { createPayment, getPaymentMethods } from "../../api/payments.api"
+import {
+  availableOrderPaymentMethods, selectedOrderPaymentMethod, paymentNextStep,
+} from "./dashboardPaymentMethods"
 import {
   AdminPageHeader,
   StatusBadge,
@@ -32,11 +35,15 @@ const STATUS_CONFIG = {
   cancelled: { label: "Cancelado",  tone: "danger",  step: -1, desc: "Este pedido fue cancelado y el stock ha sido restablecido." },
 }
 
-const PAYMENT_METHODS = [
-  { id: "mercadopago_cl", label: "MercadoPago Chile",   Icon: CreditCard, desc: "Tarjetas de crédito, débito y Webpay" },
-  { id: "paypal",         label: "PayPal",              Icon: Globe,      desc: "Tarjetas internacionales en USD" },
-  { id: "global66",       label: "Transferencia Bancaria", Icon: Landmark,   desc: "Verificación directa y comprobante" },
-]
+// Solo iconos: nombres, descripciones y disponibilidad vienen del backend.
+const PAYMENT_ICONS = {
+  mercadopago_cl: CreditCard,
+  mercadopago_ar: CreditCard,
+  paypal: Globe,
+  transfer: Landmark,
+  payoneer: Globe,
+  global66: Landmark,
+}
 
 const TRACKING_STEPS = ["Confirmado", "Preparación", "Despacho", "Entregado"]
 
@@ -92,29 +99,49 @@ function OrderTracking({ status }) {
 function PaymentPanel({ order, onCancelled }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
-  const [method, setMethod] = useState("mercadopago_cl")
+  const [requestedMethod, setRequestedMethod] = useState("")
   const [error, setError] = useState("")
   const [showCancel, setShowCancel] = useState(false)
+  const orderCurrency = (order.currency || "CLP").toUpperCase()
+  const { data: methodsData, isPending: methodsLoading, isError: methodsError } = useQuery({
+    queryKey: ["payment-methods", orderCurrency],
+    queryFn: () => getPaymentMethods(orderCurrency),
+  })
+  const paymentMethods = availableOrderPaymentMethods(methodsData).map(m => ({
+    ...m, Icon: PAYMENT_ICONS[m.id] || CreditCard, desc: m.description || "",
+  }))
+  const method = selectedOrderPaymentMethod(requestedMethod, paymentMethods)
 
   const payMutation = useMutation({
-    mutationFn: () => createPayment(order.id, method),
-    onSuccess: (data) => {
-      if (method === "mercadopago_cl" || method === "mercadopago_ar") {
-        window.location.href = data.sandbox_url || data.init_point
-      } else if (method === "paypal") {
-        window.location.href = data.approve_url
+    mutationFn: provider => createPayment(order.id, provider, orderCurrency),
+    onSuccess: (data, provider) => {
+      const next = paymentNextStep(provider, data, order.id)
+      if (!next) {
+        setError("El proveedor no devolvió instrucciones de pago. Revisa el estado de tu pedido antes de volver a intentar.")
+      } else if (next.type === "external") {
+        window.location.href = next.url
       } else {
-        navigate(`/payment/transfer/${order.id}`, { state: { transferData: data } })
+        navigate(next.url)
       }
     },
-    onError: () => setError("No se pudo iniciar la pasarela de pago. Intenta de nuevo."),
+    onError: e => setError(e?.response?.data?.error || "No se pudo iniciar el pago. Revisa tu pedido antes de reintentar."),
   })
+
+  const startPayment = () => {
+    if (payMutation.isPending) return
+    if (methodsLoading || methodsError || !method || !paymentMethods.some(m => m.id === method)) {
+      setError("No hay un método de pago disponible para la moneda de este pedido.")
+      return
+    }
+    setError("")
+    payMutation.mutate(method)
+  }
 
   const cancelMutation = useMutation({
     mutationFn: () => cancelOrder(order.id),
     onSuccess: () => {
-      queryClient.invalidateQueries(["order", order.id])
-      queryClient.invalidateQueries(["orders"])
+      queryClient.invalidateQueries({ queryKey: ["order", order.id] })
+      queryClient.invalidateQueries({ queryKey: ["orders"] })
       onCancelled?.()
     },
     onError: () => setError("No se pudo cancelar la orden."),
@@ -128,13 +155,20 @@ function PaymentPanel({ order, onCancelled }) {
       style={{ border: "1px solid rgba(245, 158, 11, 0.35)" }}
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
-        {PAYMENT_METHODS.map(m => {
+        {methodsLoading && <p role="status" style={{ fontSize: "12.5px", color: "var(--admin-text-secondary)" }}>Consultando medios de pago para {orderCurrency}...</p>}
+        {methodsError && <p role="alert" style={{ fontSize: "12.5px", color: "var(--admin-danger)" }}>No pudimos consultar los medios de pago. Actualiza la página antes de continuar.</p>}
+        {!methodsLoading && !methodsError && paymentMethods.length === 0 && (
+          <p role="status" style={{ fontSize: "12.5px", color: "var(--admin-text-secondary)" }}>
+            No hay medios de pago disponibles para {orderCurrency}. Contacta a LevelPro Audio para completar tu pedido.
+          </p>
+        )}
+        {paymentMethods.map(m => {
           const active = method === m.id
           return (
             <button
               key={m.id}
               type="button"
-              onClick={() => setMethod(m.id)}
+              onClick={() => { setRequestedMethod(m.id); setError("") }}
               data-testid={`od-method-${m.id}`}
               style={{
                 display: "flex",
@@ -186,15 +220,15 @@ function PaymentPanel({ order, onCancelled }) {
 
       <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
         <PrimaryButton
-          onClick={() => payMutation.mutate()}
+          onClick={startPayment}
           loading={payMutation.isPending}
-          disabled={payMutation.isPending}
+          disabled={payMutation.isPending || methodsLoading || methodsError || !method}
           data-testid="od-pay"
           style={{ width: "100%", justifyContent: "center" }}
         >
           {payMutation.isPending
             ? "Procesando pago..."
-            : method === "global66"
+            : ["global66", "transfer", "payoneer"].includes(method)
             ? "Ver instrucciones de transferencia"
             : "Continuar con el pago"}
           {!payMutation.isPending && <ArrowRight size={15} style={{ marginLeft: "4px" }} />}
@@ -258,7 +292,7 @@ export default function OrderDetail() {
   const { data: order, isLoading, isError } = useQuery({
     queryKey: ["order", id],
     queryFn: () => getOrder(id),
-    refetchInterval: (data) => (data?.status === "pending" ? 5000 : false),
+    refetchInterval: query => (query.state.data?.status === "pending" ? 5000 : false),
   })
 
   if (isLoading) {
@@ -294,6 +328,9 @@ export default function OrderDetail() {
 
   const shortId = (order.id || "").slice(0, 8).toUpperCase()
   const statusInfo = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending
+  const formatAmount = value => new Intl.NumberFormat("es-CL", {
+    style: "currency", currency: (order.currency || "CLP").toUpperCase(),
+  }).format(Number(value) || 0)
   const rawDate = order.created_at || order.created
   const d = rawDate ? new Date(rawDate) : null
   const formattedDate = d && !Number.isNaN(d.getTime())
@@ -412,12 +449,12 @@ export default function OrderDetail() {
                         {item.product_name}
                       </p>
                       <p style={{ fontSize: "12px", color: "var(--admin-text-secondary)", fontFamily: "var(--font-mono)" }}>
-                        ${Number(item.price).toLocaleString("es-CL")} × {item.quantity} ud{item.quantity !== 1 ? "s" : ""}
+                        {formatAmount(item.price)} × {item.quantity} ud{item.quantity !== 1 ? "s" : ""}
                       </p>
                     </div>
                   </div>
                   <p style={{ fontSize: "14px", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--admin-text)", flexShrink: 0 }}>
-                    ${Number(item.subtotal || item.price * item.quantity).toLocaleString("es-CL")}
+                    {formatAmount(item.subtotal ?? Number(item.price) * item.quantity)}
                   </p>
                 </div>
               ))}
@@ -433,7 +470,7 @@ export default function OrderDetail() {
                 borderTop: "1px solid var(--admin-border)",
               }}
             >
-              <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--admin-text)" }}>Total Pagado</span>
+              <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--admin-text)" }}>Total del pedido</span>
               <span
                 style={{
                   fontFamily: "var(--font-display)",
@@ -443,7 +480,7 @@ export default function OrderDetail() {
                   color: "var(--admin-primary-text)",
                 }}
               >
-                ${Number(order.total).toLocaleString("es-CL")}
+                {formatAmount(order.total)}
               </span>
             </div>
           </SectionCard>
