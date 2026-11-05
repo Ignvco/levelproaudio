@@ -1,0 +1,496 @@
+diff --git a/docs/patches/13.2-dashboard-v2-payment-sync.md b/docs/patches/13.2-dashboard-v2-payment-sync.md
+new file mode 100644
+--- /dev/null
++++ b/docs/patches/13.2-dashboard-v2-payment-sync.md
+@@ -0,0 +1,70 @@
++# Patch 13.2 — Compatibilidad Dashboard Experience V2 con Patch 13
++
++**Base exacta:** `2dd2ae90909b55babe2467469c4fc2765cbeae8b` (V2 integrada en `main`).  
++**Rama de preparación:** `fix/patch-13-2-dashboard-v2-payments`.
++
++## Objetivo
++
++Sin modificar la identidad visual, los estilos ni la estructura de Dashboard V2,
++sincronizar la pantalla de pedido pendiente y la administración de medios de pago
++con las reglas del backend incorporadas en el Patch 13.
++
++## Cambios
++
++- El detalle de pedido ya **no ofrece tres opciones fijas**. Consulta
++  `GET /api/v1/payments/methods/?currency=<moneda de la orden>`.
++- Se conservan los iconos, tarjetas, radios, botones y navegación visual V2;
++  el backend define id, texto y disponibilidad.
++- Si el listado está cargando, falla o está vacío, se informa sin crear pagos.
++- Si se cambia o desactiva un método, la selección anterior no se reutiliza.
++  `POST /payments/create/` recibe la moneda de la orden y el proveedor válido.
++- MercadoPago Chile/Argentina y PayPal usan el enlace devuelto por la API;
++  transferencias, Payoneer y Global66 abren las instrucciones de la orden.
++  No se navega a URLs vacías o ajenas a HTTPS.
++- Se corrige el formato del importe del pedido en CLP, ARS y USD, además de
++  la etiqueta que decía «Total Pagado» en pedidos todavía pendientes.
++- Se corrige la firma de `refetchInterval` de React Query v5 y la invalidación
++  de caché tras cancelar un pedido.
++- Administración: se incluye Global66 (CLP) en el selector; dLocal queda
++  rotulado como «próximamente» e inhabilitado para nuevas altas/activación.
++  Se aclara que un método configurado puede no ser visible si le faltan
++  cuentas/alias o no admite la moneda. No se simula su disponibilidad.
++- Tras editar cuentas o métodos, se invalida la caché de disponibilidad.
++
++## Alcance
++
++Solo frontend, pruebas unitarias y documentación. **No se cambian**
++`backend/`, modelos, migraciones, backend de cobros, `cloudbuild.yaml`,
++estilos, tokens de marca, layouts V2 ni dependencias. No ejecuta pasarelas.
++
++## Pruebas
++
++Desde `frontend` (Node/npm; no se requiere Python):
++
++```bash
++npm ci
++npm run test:unit
++npm run build
++```
++
++Se añade `dashboard-payment-methods.test.mjs` a `test:unit` para validar
++cinco casos: API vacía, selección obsoleta, filtrado de proveedor no implementado,
++redirects HTTPS y rutas de transferencias.
++
++Validación funcional antes de desplegar:
++- Pedido pendiente CLP, USD, ARS: los métodos coinciden con la API.
++- Cuenta activa/inactiva y alias Global66: la opción aparece o desaparece.
++- Tras activar/desactivar una cuenta, no deben quedar opciones engañosas.
++- Pedido sin métodos: CTA de pago deshabilitado; cancelar pedido permanece habilitado.
++- Pago por transferencia: instrucciones correctas, sin duplicar intentos manualmente.
++- Retorno Mercado Pago/PayPal y cancelación: comprobar resultado autenticado.
++- Dashboard admin/usuario V2: comparar con diseños aprobados.
++
++**No marcar funcionalidad de cobro como certificada sin pruebas con sandbox.**
++Los flujos de idempotencia, expiración y reconciliación corresponden al Patch 14.
++
++## Aplicación
++
++`git apply --check --index patch-13-2-dashboard-v2-payments.patch`,
++`git apply --index patch-13-2-dashboard-v2-payments.patch`, probar y luego commit/push.
++Partir de la base exacta indicada; no aplicar en ramas con cambios pendientes.
+diff --git a/frontend/package.json b/frontend/package.json
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -16,7 +16,7 @@
+     "test:payment:browser": "node --test tests/payment-return.browser.mjs",
+     "lint": "eslint .",
+     "preview": "vite preview",
+-    "test:unit": "node --test tests/payment-return.test.mjs tests/jsonld.test.mjs tests/seo.test.mjs",
++    "test:unit": "node --test tests/payment-return.test.mjs tests/jsonld.test.mjs tests/seo.test.mjs tests/dashboard-payment-methods.test.mjs",
+     "test:browser": "node --test tests/payment-return.browser.mjs tests/transfer-instructions.browser.mjs tests/jsonld.browser.mjs tests/seo.browser.mjs tests/routes.browser.mjs",
+     "test:nginx": "node --test tests/seo-nginx.test.mjs",
+     "check:bundle": "node scripts/check-bundle.mjs"
+diff --git a/frontend/src/pages/admin/AdminPaymentMethods.jsx b/frontend/src/pages/admin/AdminPaymentMethods.jsx
+--- a/frontend/src/pages/admin/AdminPaymentMethods.jsx
++++ b/frontend/src/pages/admin/AdminPaymentMethods.jsx
+@@ -16,11 +16,12 @@
+ 
+ const METHOD_OPTIONS = [
+   { value: "transfer",       label: "Transferencia bancaria" },
+-  { value: "dlocal",         label: "dLocal Go" },
++  { value: "dlocal",         label: "dLocal Go (próximamente)", disabled: true },
+   { value: "payoneer",       label: "Payoneer (USD)" },
+   { value: "mercadopago_cl", label: "MercadoPago Chile" },
+   { value: "mercadopago_ar", label: "MercadoPago Argentina" },
+   { value: "paypal",         label: "PayPal" },
++  { value: "global66",       label: "Global66 (CLP)" },
+ ]
+ 
+ // ─────────────────────────── Métodos de pago ───────────────────────────
+@@ -29,19 +30,23 @@
+   const isEdit = !!item?.id
+   const [form, setForm] = useState({
+     method:      item?.method      || "transfer",
+-    is_active:   item?.is_active   ?? true,
++    is_active:   item?.is_active   ?? false,
+     label:       item?.label       || "",
+     description: item?.description || "",
+     currencies:  item?.currencies  || "",
+     order:       item?.order       ?? 0,
+   })
+ 
++  const unsupported = form.method === "dlocal"
+   const save = useMutation({
+-    mutationFn: () => isEdit
+-      ? updatePaymentMethod(item.id, form)
+-      : createPaymentMethod(form),
++    // Never reactivate an unimplemented integration from the admin UI.
++    mutationFn: () => {
++      const payload = unsupported ? { ...form, is_active: false } : form
++      return isEdit ? updatePaymentMethod(item.id, payload) : createPaymentMethod(payload)
++    },
+     onSuccess: () => {
+       qc.invalidateQueries({ queryKey: ["admin-payment-methods"] })
++      qc.invalidateQueries({ queryKey: ["payment-methods"] })
+       showToast(isEdit ? "Método actualizado" : "Método agregado")
+       onClose()
+     },
+@@ -55,18 +60,24 @@
+         <FormField label="Método">
+           <select style={formInputStyle} value={form.method} disabled={isEdit}
+             onChange={e => setForm(p => ({ ...p, method: e.target.value }))}>
+-            {METHOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
++            {METHOD_OPTIONS.map(o => <option key={o.value} value={o.value} disabled={o.disabled && !isEdit}>{o.label}</option>)}
+           </select>
+         </FormField>
+         <FormField label="Activo en el checkout">
+           <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+-            <input type="checkbox" checked={form.is_active}
++            <input type="checkbox" checked={form.is_active && !unsupported} disabled={unsupported}
+               onChange={e => setForm(p => ({ ...p, is_active: e.target.checked }))} />
+             <span style={{ fontSize: "13px", color: "var(--text-2)" }}>
+-              {form.is_active ? "Se muestra en el checkout" : "Oculto"}
++              {unsupported ? "Integración no disponible" : form.is_active ? "Activado (sujeto a disponibilidad)" : "Inactivo"}
+             </span>
+           </label>
+         </FormField>
++        {unsupported && <p role="status" style={{ fontSize: "12px", color: "var(--admin-text-secondary)" }}>
++          dLocal aún no permite crear pagos en la plataforma. Guardar este método lo dejará inactivo.
++        </p>}
++        {form.method === "global66" && <p role="status" style={{ fontSize: "12px", color: "var(--admin-text-secondary)" }}>
++          Global66 requiere el alias configurado en el servidor y solo está disponible para CLP. Las cuentas de la tabla inferior no sustituyen ese alias.
++        </p>}
+         <FormField label="Nombre visible (opcional)">
+           <input style={formInputStyle} value={form.label}
+             onChange={e => setForm(p => ({ ...p, label: e.target.value }))}
+@@ -116,6 +127,7 @@
+       : createBankAccount(form),
+     onSuccess: () => {
+       qc.invalidateQueries({ queryKey: ["admin-bank-accounts"] })
++      qc.invalidateQueries({ queryKey: ["payment-methods"] })
+       showToast(isEdit ? "Cuenta actualizada" : "Cuenta agregada")
+       onClose()
+     },
+@@ -193,13 +205,14 @@
+     onSuccess: () => {
+       qc.invalidateQueries({ queryKey: ["admin-payment-methods"] })
+       qc.invalidateQueries({ queryKey: ["admin-bank-accounts"] })
++      qc.invalidateQueries({ queryKey: ["payment-methods"] })
+       showToast("Eliminado")
+       setToDelete(null)
+     },
+     onError: () => showToast("No se pudo eliminar.", "error"),
+   })
+ 
+-  const activeMethods = methods.filter(m => m.is_active).length
++  const activeMethods = methods.filter(m => m.is_active && m.method !== "dlocal").length
+   const activeAccounts = accounts.filter(a => a.is_active).length
+ 
+   return (
+@@ -225,7 +238,7 @@
+       )}
+ 
+       <div className="lp-kpi-strip">
+-        <StatCard variant="primary" label="Pasarelas activas" value={activeMethods} sub="Visibles en checkout" Icon={CheckCircle2} />
++        <StatCard variant="primary" label="Métodos habilitados" value={activeMethods} sub="Sujetos a disponibilidad" Icon={CheckCircle2} />
+         <StatCard variant="ink" label="Métodos configurados" value={methods.length} sub="Total registrados" Icon={CreditCard} />
+         <StatCard variant="light" label="Cuentas bancarias" value={activeAccounts} sub={`${accounts.length} totales`} Icon={Landmark} />
+       </div>
+@@ -233,7 +246,7 @@
+       {/* Sección: métodos */}
+       <SectionCard
+         title="Métodos activos"
+-        description="Pasarelas y medios de pago habilitados en el checkout"
++        description="Medios configurados. Su disponibilidad depende de la moneda y de las cuentas o alias activos."
+         action={
+           <PrimaryButton size="sm" onClick={() => setMethodModal("new")}>
+             <Plus size={14} /> Agregar método
+@@ -258,11 +271,11 @@
+                   <tr key={m.id}>
+                     <td style={{ fontWeight: 700, color: "var(--admin-text)" }}>{m.label || m.method_display}</td>
+                     <td>
+-                      <StatusBadge tone={m.is_active ? "success" : "neutral"}>
+-                        {m.is_active ? "Activo" : "Inactivo"}
++                      <StatusBadge tone={m.method === "dlocal" ? "neutral" : m.is_active ? "success" : "neutral"}>
++                        {m.method === "dlocal" ? "No integrado" : m.is_active ? "Habilitado" : "Inactivo"}
+                       </StatusBadge>
+                     </td>
+-                    <td>{m.currencies || "Todas"}</td>
++                    <td>{m.currencies || "Según proveedor"}</td>
+                     <td style={{ textAlign: "right" }}>
+                       <div style={{ display: "inline-flex", gap: "6px" }}>
+                         <IconButton ghost onClick={() => setMethodModal(m)} aria-label="Editar método"><Pencil size={14} /></IconButton>
+diff --git a/frontend/src/pages/dashboard/OrderDetail.jsx b/frontend/src/pages/dashboard/OrderDetail.jsx
+--- a/frontend/src/pages/dashboard/OrderDetail.jsx
++++ b/frontend/src/pages/dashboard/OrderDetail.jsx
+@@ -14,8 +14,11 @@
+   Package,
+ } from "lucide-react"
+ import { getOrder, cancelOrder } from "../../api/orders.api"
+-import { createPayment } from "../../api/payments.api"
++import { createPayment, getPaymentMethods } from "../../api/payments.api"
+ import {
++  availableOrderPaymentMethods, selectedOrderPaymentMethod, paymentNextStep,
++} from "./dashboardPaymentMethods"
++import {
+   AdminPageHeader,
+   StatusBadge,
+   SecondaryButton,
+@@ -32,11 +35,15 @@
+   cancelled: { label: "Cancelado",  tone: "danger",  step: -1, desc: "Este pedido fue cancelado y el stock ha sido restablecido." },
+ }
+ 
+-const PAYMENT_METHODS = [
+-  { id: "mercadopago_cl", label: "MercadoPago Chile",   Icon: CreditCard, desc: "Tarjetas de crédito, débito y Webpay" },
+-  { id: "paypal",         label: "PayPal",              Icon: Globe,      desc: "Tarjetas internacionales en USD" },
+-  { id: "global66",       label: "Transferencia Bancaria", Icon: Landmark,   desc: "Verificación directa y comprobante" },
+-]
++// Solo iconos: nombres, descripciones y disponibilidad vienen del backend.
++const PAYMENT_ICONS = {
++  mercadopago_cl: CreditCard,
++  mercadopago_ar: CreditCard,
++  paypal: Globe,
++  transfer: Landmark,
++  payoneer: Globe,
++  global66: Landmark,
++}
+ 
+ const TRACKING_STEPS = ["Confirmado", "Preparación", "Despacho", "Entregado"]
+ 
+@@ -92,29 +99,49 @@
+ function PaymentPanel({ order, onCancelled }) {
+   const navigate = useNavigate()
+   const queryClient = useQueryClient()
+-  const [method, setMethod] = useState("mercadopago_cl")
++  const [requestedMethod, setRequestedMethod] = useState("")
+   const [error, setError] = useState("")
+   const [showCancel, setShowCancel] = useState(false)
++  const orderCurrency = (order.currency || "CLP").toUpperCase()
++  const { data: methodsData, isPending: methodsLoading, isError: methodsError } = useQuery({
++    queryKey: ["payment-methods", orderCurrency],
++    queryFn: () => getPaymentMethods(orderCurrency),
++  })
++  const paymentMethods = availableOrderPaymentMethods(methodsData).map(m => ({
++    ...m, Icon: PAYMENT_ICONS[m.id] || CreditCard, desc: m.description || "",
++  }))
++  const method = selectedOrderPaymentMethod(requestedMethod, paymentMethods)
+ 
+   const payMutation = useMutation({
+-    mutationFn: () => createPayment(order.id, method),
+-    onSuccess: (data) => {
+-      if (method === "mercadopago_cl" || method === "mercadopago_ar") {
+-        window.location.href = data.sandbox_url || data.init_point
+-      } else if (method === "paypal") {
+-        window.location.href = data.approve_url
++    mutationFn: provider => createPayment(order.id, provider, orderCurrency),
++    onSuccess: (data, provider) => {
++      const next = paymentNextStep(provider, data, order.id)
++      if (!next) {
++        setError("El proveedor no devolvió instrucciones de pago. Revisa el estado de tu pedido antes de volver a intentar.")
++      } else if (next.type === "external") {
++        window.location.href = next.url
+       } else {
+-        navigate(`/payment/transfer/${order.id}`, { state: { transferData: data } })
++        navigate(next.url)
+       }
+     },
+-    onError: () => setError("No se pudo iniciar la pasarela de pago. Intenta de nuevo."),
++    onError: e => setError(e?.response?.data?.error || "No se pudo iniciar el pago. Revisa tu pedido antes de reintentar."),
+   })
+ 
++  const startPayment = () => {
++    if (payMutation.isPending) return
++    if (methodsLoading || methodsError || !method || !paymentMethods.some(m => m.id === method)) {
++      setError("No hay un método de pago disponible para la moneda de este pedido.")
++      return
++    }
++    setError("")
++    payMutation.mutate(method)
++  }
++
+   const cancelMutation = useMutation({
+     mutationFn: () => cancelOrder(order.id),
+     onSuccess: () => {
+-      queryClient.invalidateQueries(["order", order.id])
+-      queryClient.invalidateQueries(["orders"])
++      queryClient.invalidateQueries({ queryKey: ["order", order.id] })
++      queryClient.invalidateQueries({ queryKey: ["orders"] })
+       onCancelled?.()
+     },
+     onError: () => setError("No se pudo cancelar la orden."),
+@@ -128,13 +155,20 @@
+       style={{ border: "1px solid rgba(245, 158, 11, 0.35)" }}
+     >
+       <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "16px" }}>
+-        {PAYMENT_METHODS.map(m => {
++        {methodsLoading && <p role="status" style={{ fontSize: "12.5px", color: "var(--admin-text-secondary)" }}>Consultando medios de pago para {orderCurrency}...</p>}
++        {methodsError && <p role="alert" style={{ fontSize: "12.5px", color: "var(--admin-danger)" }}>No pudimos consultar los medios de pago. Actualiza la página antes de continuar.</p>}
++        {!methodsLoading && !methodsError && paymentMethods.length === 0 && (
++          <p role="status" style={{ fontSize: "12.5px", color: "var(--admin-text-secondary)" }}>
++            No hay medios de pago disponibles para {orderCurrency}. Contacta a LevelPro Audio para completar tu pedido.
++          </p>
++        )}
++        {paymentMethods.map(m => {
+           const active = method === m.id
+           return (
+             <button
+               key={m.id}
+               type="button"
+-              onClick={() => setMethod(m.id)}
++              onClick={() => { setRequestedMethod(m.id); setError("") }}
+               data-testid={`od-method-${m.id}`}
+               style={{
+                 display: "flex",
+@@ -186,15 +220,15 @@
+ 
+       <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+         <PrimaryButton
+-          onClick={() => payMutation.mutate()}
++          onClick={startPayment}
+           loading={payMutation.isPending}
+-          disabled={payMutation.isPending}
++          disabled={payMutation.isPending || methodsLoading || methodsError || !method}
+           data-testid="od-pay"
+           style={{ width: "100%", justifyContent: "center" }}
+         >
+           {payMutation.isPending
+             ? "Procesando pago..."
+-            : method === "global66"
++            : ["global66", "transfer", "payoneer"].includes(method)
+             ? "Ver instrucciones de transferencia"
+             : "Continuar con el pago"}
+           {!payMutation.isPending && <ArrowRight size={15} style={{ marginLeft: "4px" }} />}
+@@ -258,7 +292,7 @@
+   const { data: order, isLoading, isError } = useQuery({
+     queryKey: ["order", id],
+     queryFn: () => getOrder(id),
+-    refetchInterval: (data) => (data?.status === "pending" ? 5000 : false),
++    refetchInterval: query => (query.state.data?.status === "pending" ? 5000 : false),
+   })
+ 
+   if (isLoading) {
+@@ -294,6 +328,9 @@
+ 
+   const shortId = (order.id || "").slice(0, 8).toUpperCase()
+   const statusInfo = STATUS_CONFIG[order.status] || STATUS_CONFIG.pending
++  const formatAmount = value => new Intl.NumberFormat("es-CL", {
++    style: "currency", currency: (order.currency || "CLP").toUpperCase(),
++  }).format(Number(value) || 0)
+   const rawDate = order.created_at || order.created
+   const d = rawDate ? new Date(rawDate) : null
+   const formattedDate = d && !Number.isNaN(d.getTime())
+@@ -412,12 +449,12 @@
+                         {item.product_name}
+                       </p>
+                       <p style={{ fontSize: "12px", color: "var(--admin-text-secondary)", fontFamily: "var(--font-mono)" }}>
+-                        ${Number(item.price).toLocaleString("es-CL")} × {item.quantity} ud{item.quantity !== 1 ? "s" : ""}
++                        {formatAmount(item.price)} × {item.quantity} ud{item.quantity !== 1 ? "s" : ""}
+                       </p>
+                     </div>
+                   </div>
+                   <p style={{ fontSize: "14px", fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--admin-text)", flexShrink: 0 }}>
+-                    ${Number(item.subtotal || item.price * item.quantity).toLocaleString("es-CL")}
++                    {formatAmount(item.subtotal ?? Number(item.price) * item.quantity)}
+                   </p>
+                 </div>
+               ))}
+@@ -433,7 +470,7 @@
+                 borderTop: "1px solid var(--admin-border)",
+               }}
+             >
+-              <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--admin-text)" }}>Total Pagado</span>
++              <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--admin-text)" }}>Total del pedido</span>
+               <span
+                 style={{
+                   fontFamily: "var(--font-display)",
+@@ -443,7 +480,7 @@
+                   color: "var(--admin-primary-text)",
+                 }}
+               >
+-                ${Number(order.total).toLocaleString("es-CL")}
++                {formatAmount(order.total)}
+               </span>
+             </div>
+           </SectionCard>
+diff --git a/frontend/src/pages/dashboard/dashboardPaymentMethods.js b/frontend/src/pages/dashboard/dashboardPaymentMethods.js
+new file mode 100644
+--- /dev/null
++++ b/frontend/src/pages/dashboard/dashboardPaymentMethods.js
+@@ -0,0 +1,35 @@
++// dashboardPaymentMethods.js — lógica pura del panel de pedidos.
++const EXECUTABLE_METHODS = new Set([
++  "mercadopago_cl", "mercadopago_ar", "paypal",
++  "transfer", "payoneer", "global66",
++])
++
++export function availableOrderPaymentMethods(response) {
++  return Array.isArray(response?.methods)
++    ? response.methods.filter(m => EXECUTABLE_METHODS.has(m?.id))
++    : []
++}
++
++export function selectedOrderPaymentMethod(requested, methods) {
++  if (!Array.isArray(methods) || methods.length === 0) return ""
++  return methods.some(m => m.id === requested) ? requested : methods[0].id
++}
++
++export function paymentNextStep(provider, response, orderId) {
++  if (provider === "mercadopago_cl" || provider === "mercadopago_ar") {
++    const url = response?.init_point || response?.sandbox_url
++    return typeof url === "string" && url.startsWith("https://")
++      ? { type: "external", url }
++      : null
++  }
++  if (provider === "paypal") {
++    const url = response?.approve_url
++    return typeof url === "string" && url.startsWith("https://")
++      ? { type: "external", url }
++      : null
++  }
++  if (["transfer", "payoneer", "global66"].includes(provider) && orderId) {
++    return { type: "internal", url: `/payment/transfer/${orderId}` }
++  }
++  return null
++}
+diff --git a/frontend/tests/dashboard-payment-methods.test.mjs b/frontend/tests/dashboard-payment-methods.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/frontend/tests/dashboard-payment-methods.test.mjs
+@@ -0,0 +1,42 @@
++import test from "node:test"
++import assert from "node:assert/strict"
++import {
++  availableOrderPaymentMethods, selectedOrderPaymentMethod, paymentNextStep,
++} from "../src/pages/dashboard/dashboardPaymentMethods.js"
++
++test("no se inventan métodos de pago cuando la API no devuelve opciones", () => {
++  assert.deepEqual(availableOrderPaymentMethods(undefined), [])
++  assert.deepEqual(availableOrderPaymentMethods({ methods: [] }), [])
++  assert.equal(selectedOrderPaymentMethod("paypal", []), "")
++})
++
++test("los métodos para ARS/USD/CLP dependen de la respuesta del backend", () => {
++  const methods = availableOrderPaymentMethods({
++    methods: [{ id: "mercadopago_ar" }, { id: "payoneer" }, { id: "transfer" }],
++  })
++  assert.deepEqual(methods.map(m => m.id), ["mercadopago_ar", "payoneer", "transfer"])
++  assert.equal(selectedOrderPaymentMethod("mercadopago_cl", methods), "mercadopago_ar")
++  assert.equal(selectedOrderPaymentMethod("payoneer", methods), "payoneer")
++})
++
++test("dlocal y proveedores desconocidos nunca aparecen antes de su implementación", () => {
++  assert.deepEqual(
++    availableOrderPaymentMethods({ methods: [{ id: "dlocal" }, { id: "bitcoin" }, { id: "paypal" }] }).map(m => m.id),
++    ["paypal"],
++  )
++})
++
++test("redirige a MP Chile, MP Argentina y PayPal solo con un enlace HTTPS válido", () => {
++  assert.deepEqual(paymentNextStep("mercadopago_cl", { init_point: "https://mp.test/1" }, "id"), { type: "external", url: "https://mp.test/1" })
++  assert.deepEqual(paymentNextStep("mercadopago_ar", { init_point: "https://mp.test/2" }, "id"), { type: "external", url: "https://mp.test/2" })
++  assert.deepEqual(paymentNextStep("paypal", { approve_url: "https://pp.test/1" }, "id"), { type: "external", url: "https://pp.test/1" })
++  assert.equal(paymentNextStep("paypal", {}, "id"), null)
++  assert.equal(paymentNextStep("mercadopago_cl", { init_point: "javascript:alert(1)" }, "id"), null)
++})
++
++test("transferencias, Payoneer y Global66 usan instrucciones de la orden existente", () => {
++  for (const method of ["transfer", "payoneer", "global66"]) {
++    assert.deepEqual(paymentNextStep(method, {}, "ord123"), { type: "internal", url: "/payment/transfer/ord123" })
++  }
++  assert.equal(paymentNextStep("dlocal", {}, "ord123"), null)
++})
