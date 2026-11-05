@@ -8,9 +8,12 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getTaxDashboard, upsertTaxDocument } from "../../api/admin.api"
-import { AdminPageHeader, StatusBadge, FormModal, FormField, formInputStyle, PrimaryButton } from "../../components/admin/ui"
+import {
+  AdminPageHeader, StatusBadge, FormModal, FormField, formInputStyle,
+  SecondaryButton, StatCard, EmptyState, SkeletonTable,
+} from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
-import { ExternalLink, FileText, Inbox } from "lucide-react"
+import { ExternalLink, FileText, Inbox, CheckCircle2, Clock3 } from "lucide-react"
 
 const SII_URL = "https://www4.sii.cl/consdcvinternetui/"
 
@@ -45,19 +48,23 @@ function RecordModal({ row, onClose }) {
   })
 
   return (
-    <FormModal title={`Documento — Orden #${row.order_short}`} onClose={onClose}
+    <FormModal open title={`Documento — Orden #${row.order_short}`} onClose={onClose}
       onSave={() => save.mutate()} saving={save.isPending}>
       <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-        <div style={{ padding: "12px 14px", background: "var(--surface-2)",
-          borderRadius: "var(--r-md)", fontSize: "13px", color: "var(--text-2)" }}>
+        <div style={{
+          padding: "12px 14px", background: "var(--surface-2)",
+          borderRadius: "var(--r-md)", fontSize: "13px", color: "var(--text-2)",
+        }}>
           <strong style={{ color: "var(--text)" }}>{row.cliente}</strong><br/>
           {row.email} · {money(row.total)}
         </div>
 
         <a href={SII_URL} target="_blank" rel="noreferrer"
-          style={{ display: "inline-flex", alignItems: "center", gap: "8px",
-            alignSelf: "flex-start", fontSize: "13px", color: "var(--accent)",
-            textDecoration: "none", fontWeight: 600 }}>
+          style={{
+            display: "inline-flex", alignItems: "center", gap: "8px",
+            alignSelf: "flex-start", fontSize: "13px", color: "var(--admin-primary-text)",
+            textDecoration: "none", fontWeight: 700,
+          }}>
           <ExternalLink size={15} /> Gestionar en SII
         </a>
 
@@ -111,72 +118,80 @@ export default function AdminBilling() {
     queryKey: ["tax-dashboard"], queryFn: getTaxDashboard,
   })
   const rows = data?.results || []
+  const emittedCount = rows.filter(r => r.documento?.estado === "emitido").length
+  const pendingCount = rows.filter(r => !r.documento || r.documento.estado === "pendiente").length
 
   return (
-    <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page">
       <AdminPageHeader
+        eyebrow="LEVELPRO / TRIBUTARIO"
         title="Documentación Tributaria"
-        subtitle="Registro y seguimiento de boletas/facturas emitidas en el SII. LevelPro no emite documentos — solo lleva la trazabilidad."
+        description="Registro y seguimiento de boletas/facturas emitidas en el SII. LevelPro no emite documentos — solo lleva la trazabilidad."
+        actions={
+          <SecondaryButton href={SII_URL} target="_blank" rel="noreferrer">
+            Portal SII <ExternalLink size={14} />
+          </SecondaryButton>
+        }
       />
 
       {editing && <RecordModal row={editing} onClose={() => setEditing(null)} />}
 
+      <div className="lp-kpi-strip">
+        <StatCard variant="ink" label="Órdenes pagadas" value={rows.length} sub="Base tributable" Icon={FileText} />
+        <StatCard variant="primary" label="Emitidos en SII" value={emittedCount} sub="Con folio registrado" Icon={CheckCircle2} />
+        <StatCard variant="light" label="Pendientes de emitir" value={pendingCount} sub={pendingCount > 0 ? "Por registrar en SII" : "Al día"} Icon={Clock3} />
+      </div>
+
       {isLoading ? (
-        <p style={{ color: "var(--text-3)", padding: "40px 0" }}>Cargando…</p>
+        <SkeletonTable rows={5} />
       ) : rows.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-3)" }}>
-          <Inbox size={40} style={{ opacity: 0.4, marginBottom: "12px" }} />
-          <p>No hay órdenes pagadas todavía.</p>
+        <div className="au-card">
+          <EmptyState Icon={Inbox} title="Sin órdenes pagadas" description="No hay órdenes pagadas todavía para registrar documentación tributaria." />
         </div>
       ) : (
-        <div style={{ overflowX: "auto", border: "1px solid var(--border)",
-          borderRadius: "var(--r-lg)" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left",
-                color: "var(--text-3)", fontSize: "11px", textTransform: "uppercase",
-                letterSpacing: "0.05em" }}>
-                <th style={{ padding: "12px 16px" }}>Pedido</th>
-                <th style={{ padding: "12px 16px" }}>Cliente</th>
-                <th style={{ padding: "12px 16px" }}>Monto</th>
-                <th style={{ padding: "12px 16px" }}>Pago</th>
-                <th style={{ padding: "12px 16px" }}>Documento</th>
-                <th style={{ padding: "12px 16px" }}>Estado</th>
-                <th style={{ padding: "12px 16px" }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map(r => (
-                <tr key={r.order_id} style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "12px 16px", fontFamily: "var(--font-mono)" }}>#{r.order_short}</td>
-                  <td style={{ padding: "12px 16px" }}>{r.cliente}</td>
-                  <td style={{ padding: "12px 16px" }}>{money(r.total)}</td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <StatusBadge tone="success">Pagado</StatusBadge>
-                  </td>
-                  <td style={{ padding: "12px 16px" }}>
-                    {r.documento
-                      ? <span>{r.documento.tipo_label}{r.documento.numero_externo ? ` · ${r.documento.numero_externo}` : ""}</span>
-                      : <span style={{ color: "var(--text-3)" }}>—</span>}
-                  </td>
-                  <td style={{ padding: "12px 16px" }}>
-                    {r.documento
-                      ? <StatusBadge tone={ESTADO_TONE[r.documento.estado] || "neutral"}>{r.documento.estado_label}</StatusBadge>
-                      : <StatusBadge tone="warning">Pendiente</StatusBadge>}
-                  </td>
-                  <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                    <button onClick={() => setEditing(r)}
-                      style={{ display: "inline-flex", alignItems: "center", gap: "6px",
-                        background: "var(--surface-2)", border: "1px solid var(--border)",
-                        borderRadius: "var(--r-md)", padding: "7px 12px", cursor: "pointer",
-                        color: "var(--text)", fontSize: "12px", fontWeight: 600 }}>
-                      <FileText size={13} /> Registrar
-                    </button>
-                  </td>
+        <div className="au-card au-table-wrap">
+          <div className="au-tscroll">
+            <table className="au-table">
+              <thead>
+                <tr>
+                  <th>Pedido</th>
+                  <th>Cliente</th>
+                  <th>Monto</th>
+                  <th>Pago</th>
+                  <th>Documento</th>
+                  <th>Estado</th>
+                  <th style={{ width: 130 }} />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map(r => (
+                  <tr key={r.order_id}>
+                    <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text)" }}>#{r.order_short}</td>
+                    <td style={{ color: "var(--admin-text)", fontWeight: 500 }}>{r.cliente}</td>
+                    <td style={{ fontWeight: 700, color: "var(--admin-primary-text)" }}>{money(r.total)}</td>
+                    <td>
+                      <StatusBadge tone="success">Pagado</StatusBadge>
+                    </td>
+                    <td>
+                      {r.documento
+                        ? <span style={{ color: "var(--admin-text)", fontWeight: 500 }}>{r.documento.tipo_label}{r.documento.numero_externo ? ` · ${r.documento.numero_externo}` : ""}</span>
+                        : <span style={{ color: "var(--admin-text-muted)" }}>—</span>}
+                    </td>
+                    <td>
+                      {r.documento
+                        ? <StatusBadge tone={ESTADO_TONE[r.documento.estado] || "neutral"}>{r.documento.estado_label}</StatusBadge>
+                        : <StatusBadge tone="warning">Pendiente</StatusBadge>}
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      <SecondaryButton size="sm" onClick={() => setEditing(r)}>
+                        <FileText size={13} /> Registrar
+                      </SecondaryButton>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

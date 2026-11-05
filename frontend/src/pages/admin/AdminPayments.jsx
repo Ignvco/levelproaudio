@@ -2,7 +2,7 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminPayments, updatePaymentStatus } from "../../api/admin.api"
-import { StatCard, DataTable, StatusBadge, AdminPageHeader } from "../../components/admin/ui"
+import { StatCard, DataTable, StatusBadge, AdminPageHeader, SecondaryButton } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
 import { Inbox, Bell } from "lucide-react"
 
@@ -21,17 +21,6 @@ const PROVIDERS = {
   paypal:"PayPal", global66:"Global66", transfer:"Transferencia", cash:"Manual",
 }
 
-function Badge({ status }) {
-  const s = STATUS[status] || { label:status, color:"#888" }
-  return (
-    <span style={{ padding:"2px 10px", borderRadius:"var(--r-full)", fontSize:"11px",
-      fontWeight:500, color:s.color, background:`${s.color}14`,
-      border:`1px solid ${s.color}30`, whiteSpace:"nowrap" }}>
-      {s.label}
-    </span>
-  )
-}
-
 function StatusSelector({ paymentId, current }) {
   const queryClient = useQueryClient()
   const mutation    = useMutation({
@@ -48,6 +37,7 @@ function StatusSelector({ paymentId, current }) {
   })
   return (
     <select value={current}
+      className="au-select"
       onChange={e => {
         const v = e.target.value
         if (["rejected","cancelled","refunded"].includes(v)) {
@@ -57,10 +47,7 @@ function StatusSelector({ paymentId, current }) {
       }}
       disabled={mutation.isPending}
       onClick={e => e.stopPropagation()}
-      style={{ padding:"6px 10px", borderRadius:"var(--r-md)", fontSize:"12px",
-        background:"var(--surface-3)", border:"1px solid var(--border)", color:"var(--text)",
-        cursor:"pointer", outline:"none", minWidth:"130px",
-        opacity: mutation.isPending ? 0.5 : 1 }}>
+      style={{ minWidth:"135px", opacity: mutation.isPending ? 0.5 : 1 }}>
       {Object.entries(STATUS).map(([v,{label}]) => (
         <option key={v} value={v}>{label}</option>
       ))}
@@ -77,16 +64,13 @@ export default function AdminPayments() {
   })
   const payments = data?.results || []
 
-  // Transferencias pendientes: son las que esperan TU acción manual
-  // (aprobar cuando llega el comprobante). Un MP pendiente se resuelve
-  // solo; una transferencia pendiente te está esperando.
   const pendingTransfers = payments.filter(
     p => p.status === "pending" && (p.provider === "transfer" || p.provider === "global66")
   )
 
   const columns = [
     { key:"order_id", header:"Orden", sortable:true,
-      render:p => <span style={{ fontFamily:"monospace", fontWeight:600, fontSize:12.5 }}>#{p.order_id?.slice(0,8).toUpperCase()}</span> },
+      render:p => <span style={{ fontFamily:"var(--font-mono)", fontWeight:700, fontSize:12.5, color:"var(--admin-text)" }}>#{p.order_id?.slice(0,8).toUpperCase()}</span> },
     { key:"order_email", header:"Email", sortable:true,
       render:p => <span style={{ color:"var(--admin-text-muted)" }}>{p.order_email}</span> },
     { key:"provider", header:"Método",
@@ -102,11 +86,13 @@ export default function AdminPayments() {
             <StatusBadge tone={TONE[p.status] || "neutral"}>{STATUS[p.status]?.label || p.status}</StatusBadge>
             {isPendingTransfer && (
               <span title="Transferencia esperando tu aprobación"
-                style={{ display:"inline-flex", alignItems:"center", gap:"3px",
+                style={{
+                  display:"inline-flex", alignItems:"center", gap:"3px",
                   fontSize:"10.5px", fontWeight:700, color:"#D97706",
-                  padding:"1px 7px", borderRadius:"var(--r-full)",
+                  padding:"2px 8px", borderRadius:"9999px",
                   background:"rgba(217,119,6,0.12)", border:"1px solid rgba(217,119,6,0.3)",
-                  whiteSpace:"nowrap" }}>
+                  whiteSpace:"nowrap",
+                }}>
                 ● revisá
               </span>
             )}
@@ -118,49 +104,54 @@ export default function AdminPayments() {
   ]
 
   return (
-    <div className="au-page" style={{ padding:"clamp(24px, 4vw, 40px)" }}>
-
-      <AdminPageHeader eyebrow="Ventas" title="Pagos"
+    <div className="au-page">
+      <AdminPageHeader
+        eyebrow="LEVELPRO / VENTAS"
+        title="Pagos"
         description={data?.total_approved > 0
           ? `Total aprobado: $${Number(data.total_approved).toLocaleString("es-CL")}`
-          : undefined} />
+          : "Conciliación de transacciones, pasarelas y transferencias"}
+        actions={<SecondaryButton to="/admin/payment-methods" size="sm">Métodos de pago</SecondaryButton>}
+      />
 
-      {/* Aviso: transferencias esperando aprobación manual */}
       {pendingTransfers.length > 0 && (
         <div
           onClick={() => setStatusFilter("pending")}
-          style={{ display:"flex", alignItems:"center", gap:"14px", cursor:"pointer",
-            padding:"14px 18px", borderRadius:"var(--r-lg)", marginBottom:"20px",
-            background:"rgba(217,119,6,0.08)", border:"1px solid rgba(217,119,6,0.3)" }}>
-          <div style={{ display:"flex", alignItems:"center", justifyContent:"center",
-            width:"38px", height:"38px", borderRadius:"50%", flexShrink:0,
-            background:"rgba(217,119,6,0.15)", color:"#D97706" }}>
-            <Bell size={18} />
+          className="lp-callout lp-callout--warning"
+          style={{ cursor:"pointer" }}>
+          <div style={{ display:"flex", alignItems:"center", gap:"14px", flex:1, minWidth:0 }}>
+            <span className="lp-alert-icon"><Bell size={18} /></span>
+            <div style={{ minWidth:0 }}>
+              <p style={{ fontSize:"14px", fontWeight:700, color:"var(--admin-text)" }}>
+                {pendingTransfers.length} transferencia{pendingTransfers.length !== 1 ? "s" : ""} esperando tu aprobación
+              </p>
+              <p style={{ fontSize:"12.5px", color:"var(--admin-text-muted)" }}>
+                Revisá que el comprobante haya llegado y aprobá el pago para procesar el pedido.
+              </p>
+            </div>
           </div>
-          <div style={{ flex:1 }}>
-            <p style={{ fontSize:"14px", fontWeight:700, color:"var(--admin-text)" }}>
-              {pendingTransfers.length} transferencia{pendingTransfers.length !== 1 ? "s" : ""} esperando tu aprobación
-            </p>
-            <p style={{ fontSize:"12.5px", color:"var(--admin-text-muted)" }}>
-              Revisá que el comprobante haya llegado y aprobá el pago para procesar el pedido.
-            </p>
-          </div>
-          <span style={{ fontSize:"12px", fontWeight:600, color:"#D97706", whiteSpace:"nowrap" }}>
+          <span style={{ fontSize:"12px", fontWeight:700, color:"#D97706", whiteSpace:"nowrap" }}>
             Ver pendientes →
           </span>
         </div>
       )}
 
       {/* KPIs rápidos por estado */}
-      <div className="au-grid" style={{ gridTemplateColumns:"repeat(auto-fill, minmax(160px, 1fr))" }}>
+      <div className="au-grid" style={{ gridTemplateColumns:"repeat(auto-fill, minmax(175px, 1fr))" }}>
         {Object.entries(STATUS).map(([s, { label }]) => {
           const count = payments.filter(p => p.status === s).length
           const active = statusFilter === s
           return (
-            <StatCard key={s} variant="compact" label={label} value={count}
+            <StatCard
+              key={s}
+              variant={active ? "primary" : s === "approved" ? "ink" : "light"}
+              size="compact"
+              label={label}
+              value={count}
               onClick={() => setStatusFilter(active ? "" : s)}
               badge={active ? <span className="au-lp__delta au-lp__delta--pos">activo</span> : null}
-              testId={`payment-kpi-${s}`} />
+              testId={`payment-kpi-${s}`}
+            />
           )
         })}
       </div>

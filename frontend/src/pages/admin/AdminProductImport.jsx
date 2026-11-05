@@ -2,6 +2,7 @@
 import { useState, useRef } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { importProducts, downloadTemplate } from "../../api/admin.api"
+import { AdminPageHeader, SectionCard, PrimaryButton, SecondaryButton } from "../../components/admin/ui"
 
 export default function AdminProductImport() {
   const [file, setFile]         = useState(null)
@@ -30,133 +31,106 @@ export default function AdminProductImport() {
   }
 
   return (
-    <div style={{ padding: "clamp(24px, 4vw, 40px)", maxWidth: "700px" }}>
-      <div style={{ marginBottom: "32px" }}>
-        <h1 style={{ fontFamily: "var(--font-display)",
-          fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 800,
-          letterSpacing: "-0.02em", marginBottom: "6px" }}>
-          Importar productos
-        </h1>
-        <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
-          Cargá múltiples productos desde un archivo Excel (.xlsx)
-        </p>
-      </div>
+    <div className="au-page">
+      <AdminPageHeader
+        eyebrow="LEVELPRO / CATÁLOGO"
+        title="Importar productos"
+        description="Cargá múltiples productos desde un archivo Excel (.xlsx)"
+        breadcrumbs={[
+          { label: "Productos", to: "/admin/products" },
+          { label: "Importar" },
+        ]}
+        actions={
+          <SecondaryButton to="/admin/products" size="sm">
+            ← Volver a Productos
+          </SecondaryButton>
+        }
+      />
 
-      {/* Paso 1 — Descargar template */}
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-2xl)", padding: "24px", marginBottom: "16px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
-          <div style={{ width: "36px", height: "36px", borderRadius: "50%",
-            background: "var(--accent-dim)", border: "1px solid var(--accent-glow)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "var(--accent-text)", fontSize: "14px", fontWeight: 700, flexShrink: 0 }}>
-            1
-          </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "6px" }}>
-              Descargá la plantilla
-            </p>
-            <p style={{ fontSize: "13px", color: "var(--text-3)", marginBottom: "14px",
-              lineHeight: 1.6 }}>
-              Usá esta plantilla como base. Completá los campos y guardá como .xlsx.
-            </p>
-            <button onClick={handleDownloadTemplate} className="btn btn-ghost"
-              style={{ padding: "9px 18px", fontSize: "13px" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "18px", alignItems: "start" }}>
+        {/* Paso 1 — Descargar template */}
+        <SectionCard
+          eyebrow="PASO 1"
+          title="Descargá la plantilla oficial"
+          description="Usá esta plantilla como base. Completá los campos obligatorios (nombre, precio, SKU, stock) y guardá como .xlsx."
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap", paddingTop: "8px" }}>
+            <span style={{ fontSize: "12px", color: "var(--admin-text-muted)", fontFamily: "var(--font-mono)" }}>
+              template_productos.xlsx
+            </span>
+            <SecondaryButton onClick={handleDownloadTemplate}>
               ⬇ Descargar template
-            </button>
+            </SecondaryButton>
           </div>
-        </div>
-      </div>
+        </SectionCard>
 
-      {/* Paso 2 — Subir archivo */}
-      <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-2xl)", padding: "24px", marginBottom: "16px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", gap: "16px" }}>
-          <div style={{ width: "36px", height: "36px", borderRadius: "50%",
-            background: "var(--surface-2)", border: "1px solid var(--border)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            color: "var(--text-3)", fontSize: "14px", fontWeight: 700, flexShrink: 0 }}>
-            2
-          </div>
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "6px" }}>
-              Subí el archivo completado
-            </p>
-            <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv"
-              onChange={e => setFile(e.target.files?.[0])}
-              style={{ display: "none" }} />
-            <button onClick={() => fileRef.current?.click()} style={{
-              width: "100%", padding: "36px 24px", borderRadius: "var(--r-xl)",
-              background: file ? "rgba(26,255,110,0.04)" : "var(--surface-2)",
-              border: `2px dashed ${file ? "var(--accent)" : "var(--border)"}`,
-              color: file ? "var(--accent)" : "var(--text-3)",
-              fontSize: "14px", cursor: "pointer", marginBottom: "14px",
-              transition: "all var(--dur) var(--ease)",
-            }}>
-              {file ? `✓ ${file.name}` : "Seleccionar archivo .xlsx"}
-            </button>
+        {/* Paso 2 — Subir archivo */}
+        <SectionCard
+          eyebrow="PASO 2"
+          title="Subí el archivo completado"
+          description="Formatos admitidos: .xlsx, .xls y .csv codificado en UTF-8."
+        >
+          <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv"
+            onChange={e => setFile(e.target.files?.[0])}
+            style={{ display: "none" }} />
+          <button type="button" onClick={() => fileRef.current?.click()} style={{
+            width: "100%", padding: "32px 20px", borderRadius: "16px",
+            background: file ? "var(--admin-primary-soft)" : "var(--admin-surface-soft)",
+            border: `2px dashed ${file ? "var(--admin-primary)" : "var(--admin-border-strong)"}`,
+            color: file ? "var(--admin-primary-text)" : "var(--admin-text-secondary)",
+            fontSize: "13.5px", fontWeight: 700, cursor: "pointer", marginBottom: "14px",
+            transition: "all 180ms ease",
+          }}>
+            {file ? `✓ ${file.name}` : "Seleccionar archivo .xlsx"}
+          </button>
 
-            {error && (
-              <div style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
-                background: "rgba(255,77,77,0.08)", border: "1px solid rgba(255,77,77,0.2)",
-                color: "var(--danger)", fontSize: "13px", marginBottom: "12px" }}>
-                {error}
-              </div>
-            )}
+          {error && (
+            <div style={{ padding: "10px 14px", borderRadius: "12px",
+              background: "var(--admin-danger-soft)", border: "1px solid rgba(239,68,68,0.25)",
+              color: "#B91C1C", fontSize: "13px", fontWeight: 600, marginBottom: "12px" }}>
+              {error}
+            </div>
+          )}
 
-            <button
-              onClick={() => importMutation.mutate()}
-              disabled={!file || importMutation.isPending}
-              className="btn btn-accent"
-              style={{ justifyContent: "center", fontSize: "14px", padding: "12px 24px",
-                opacity: (!file || importMutation.isPending) ? 0.5 : 1 }}>
-              {importMutation.isPending ? "⏳ Importando..." : "🚀 Importar productos"}
-            </button>
-          </div>
-        </div>
+          <PrimaryButton
+            onClick={() => importMutation.mutate()}
+            disabled={!file || importMutation.isPending}
+            loading={importMutation.isPending}
+            style={{ width: "100%" }}
+          >
+            {importMutation.isPending ? "⏳ Importando..." : "🚀 Importar productos"}
+          </PrimaryButton>
+        </SectionCard>
       </div>
 
       {/* Resultado */}
       {result && (
-        <div style={{ background: "var(--surface)",
-          border: "1px solid rgba(26,255,110,0.2)",
-          borderRadius: "var(--r-2xl)", padding: "24px",
-          animation: "scaleIn 300ms var(--ease)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px",
-            marginBottom: "16px" }}>
-            <span style={{ fontSize: "28px" }}>✅</span>
-            <div>
-              <p style={{ fontSize: "15px", fontWeight: 500, color: "var(--accent-text)" }}>
-                Importación completada
-              </p>
-              <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
-                {result.created?.length || 0} creados · {result.updated?.length || 0} actualizados
-                {result.errors?.length > 0 && ` · ${result.errors.length} errores`}
-              </p>
-            </div>
-          </div>
-
+        <SectionCard
+          eyebrow="RESULTADO DE IMPORTACIÓN"
+          title="Importación completada"
+          description={`${result.created?.length || 0} creados · ${result.updated?.length || 0} actualizados${result.errors?.length > 0 ? ` · ${result.errors.length} errores` : ""}`}
+          actions={
+            <SecondaryButton size="sm" onClick={() => setResult(null)}>
+              Importar más productos
+            </SecondaryButton>
+          }
+        >
           {result.errors?.length > 0 && (
-            <div style={{ padding: "12px 14px", borderRadius: "var(--r-lg)",
-              background: "rgba(255,77,77,0.06)", border: "1px solid rgba(255,77,77,0.2)" }}>
-              <p style={{ fontSize: "12px", fontWeight: 600, color: "#EF4444",
+            <div style={{ padding: "12px 14px", borderRadius: "12px",
+              background: "var(--admin-danger-soft)", border: "1px solid rgba(239,68,68,0.25)" }}>
+              <p style={{ fontSize: "12px", fontWeight: 700, color: "#B91C1C",
                 marginBottom: "8px" }}>
                 Filas con errores:
               </p>
               {result.errors.map((err, i) => (
-                <p key={i} style={{ fontSize: "12px", color: "var(--text-2)",
+                <p key={i} style={{ fontSize: "12px", color: "var(--admin-text)",
                   marginBottom: "4px" }}>
                   Fila {err.row} ({err.name}): {err.error}
                 </p>
               ))}
             </div>
           )}
-
-          <button onClick={() => setResult(null)} className="btn btn-ghost"
-            style={{ marginTop: "14px", fontSize: "13px", padding: "8px 16px" }}>
-            Importar más productos
-          </button>
-        </div>
+        </SectionCard>
       )}
     </div>
   )

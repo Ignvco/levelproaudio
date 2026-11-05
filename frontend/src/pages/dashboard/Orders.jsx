@@ -1,64 +1,181 @@
-// pages/dashboard/Orders.jsx — tabla con DataTable (búsqueda + orden + paginación) como el admin
+// pages/dashboard/Orders.jsx — LevelPro Dashboard Experience V2 (Usuario / Pedidos)
 import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
-import { ShoppingBag } from "lucide-react"
+import { ShoppingBag, Package, Clock, CheckCircle2, DollarSign } from "lucide-react"
 import { getOrders } from "../../api/orders.api"
-import { AdminPageHeader, DataTable, StatusBadge } from "../../components/admin/ui"
+import {
+  AdminPageHeader,
+  DataTable,
+  StatusBadge,
+  StatCard,
+  PrimaryButton,
+} from "../../components/admin/ui"
 
-const statusMap = {
+const STATUS_MAP = {
   pending:   { label: "Pendiente",  tone: "warning" },
-  paid:      { label: "Pagado",     tone: "success" },
+  paid:      { label: "En proceso", tone: "success" },
   shipped:   { label: "Enviado",    tone: "info" },
-  completed: { label: "Completado", tone: "success" },
+  completed: { label: "Entregado",  tone: "success" },
   cancelled: { label: "Cancelado",  tone: "danger" },
 }
 
 export default function Orders() {
   const navigate = useNavigate()
   const { data, isLoading } = useQuery({ queryKey: ["orders"], queryFn: getOrders })
-  const orders = (data?.results || data || []).map(o => ({
-    ...o, short_id: o.id.slice(0, 8).toUpperCase(),
+
+  const rawOrders = data?.results ?? data
+  const orders = (Array.isArray(rawOrders) ? rawOrders : []).map(o => ({
+    ...o,
+    short_id: (o.id || "").slice(0, 8).toUpperCase(),
   }))
 
+  const totalOrders = orders.length
+  const inProgressCount = orders.filter(o => o.status === "paid" || o.status === "shipped").length
+  const pendingCount = orders.filter(o => o.status === "pending").length
+  const totalSpent = orders
+    .filter(o => o.status !== "cancelled")
+    .reduce((acc, o) => acc + (Number(o.total) || 0), 0)
+
   const columns = [
-    { key: "short_id", header: "Pedido", sortable: true, render: o => (
-      <span style={{ fontFamily: "monospace", fontSize: "13px", fontWeight: 700,
-        color: "var(--admin-page-text)" }}>#{o.short_id}</span>
-    )},
-    { key: "items_count", header: "Productos", sortable: true, render: o => (
-      <span style={{ color: "var(--admin-text-muted)" }}>
-        {o.items_count} producto{o.items_count !== 1 ? "s" : ""}
-      </span>
-    )},
-    { key: "total", header: "Total", sortable: true, align: "right", render: o => (
-      <span style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
-        ${Number(o.total).toLocaleString("es-CL")}
-      </span>
-    )},
-    { key: "status", header: "Estado", render: o => {
-      const s = statusMap[o.status] || { label: o.status, tone: "neutral" }
-      return <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
-    }},
-    { key: "created_at", header: "Fecha", sortable: true, render: o => (
-      <span style={{ color: "var(--admin-text-muted)", whiteSpace: "nowrap" }}>
-        {new Date(o.created_at).toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" })}
-      </span>
-    )},
+    {
+      key: "short_id",
+      header: "N° Pedido",
+      sortable: true,
+      render: o => (
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: "13px", fontWeight: 700, color: "var(--admin-text)" }}>
+          #{o.short_id}
+        </span>
+      ),
+    },
+    {
+      key: "created_at",
+      header: "Fecha",
+      sortable: true,
+      render: o => {
+        const raw = o.created_at || o.created
+        if (!raw) return <span style={{ color: "var(--admin-text-muted)" }}>—</span>
+        const d = new Date(raw)
+        const formatted = Number.isNaN(d.getTime())
+          ? String(raw)
+          : d.toLocaleDateString("es-CL", { day: "numeric", month: "short", year: "numeric" })
+        return <span style={{ color: "var(--admin-text-secondary)", whiteSpace: "nowrap" }}>{formatted}</span>
+      },
+    },
+    {
+      key: "items_count",
+      header: "Productos",
+      sortable: true,
+      render: o => {
+        const count = o.items_count ?? o.items?.length ?? 1
+        return (
+          <span style={{ color: "var(--admin-text-secondary)" }}>
+            {count} producto{count !== 1 ? "s" : ""}
+          </span>
+        )
+      },
+    },
+    {
+      key: "total",
+      header: "Total",
+      sortable: true,
+      align: "right",
+      render: o => (
+        <span style={{ fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--admin-primary-text)" }}>
+          ${Number(o.total).toLocaleString("es-CL")}
+        </span>
+      ),
+    },
+    {
+      key: "status",
+      header: "Estado",
+      render: o => {
+        const s = STATUS_MAP[o.status] || { label: o.status, tone: "neutral" }
+        return <StatusBadge tone={s.tone}>{s.label}</StatusBadge>
+      },
+    },
+    {
+      key: "actions",
+      header: "",
+      align: "right",
+      render: o => (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            navigate(`/dashboard/orders/${o.id}`)
+          }}
+          className="au-pill-btn au-pill-btn--edit"
+          style={{ padding: "6px 14px", textDecoration: "none", fontSize: "12px", fontWeight: 600 }}
+        >
+          Ver detalle →
+        </button>
+      ),
+    },
   ]
 
   return (
-    <div className="au-page" style={{ padding: "clamp(20px, 3vw, 40px) clamp(20px, 4vw, 48px)" }} data-testid="orders-page">
-      <AdminPageHeader eyebrow="Mi cuenta" title="Mis pedidos"
-        description={`${orders.length} pedido${orders.length !== 1 ? "s" : ""}`} />
+    <div className="au-page" data-testid="orders-page">
+      <AdminPageHeader
+        eyebrow="LEVELPRO / MI CUENTA"
+        title="Mis pedidos"
+        description={`${totalOrders} pedido${totalOrders !== 1 ? "s" : ""} registrado${totalOrders !== 1 ? "s" : ""} en tu cuenta`}
+        breadcrumbs={[
+          { label: "Inicio", to: "/dashboard" },
+          { label: "Mis pedidos" },
+        ]}
+        actions={
+          <PrimaryButton to="/shop" size="sm">
+            + Explorar tienda
+          </PrimaryButton>
+        }
+      />
+
+      {/* KPI Strip */}
+      <div className="lp-grid-kpi">
+        <StatCard
+          variant="ink"
+          Icon={Package}
+          label="Total pedidos"
+          value={totalOrders}
+          sub={`${orders.filter(o => o.status === "completed").length} completados`}
+        />
+        <StatCard
+          variant="primary"
+          Icon={CheckCircle2}
+          label="En proceso / ruta"
+          value={inProgressCount}
+          sub="Preparación y despacho"
+        />
+        <StatCard
+          variant="light"
+          Icon={Clock}
+          label="Pendientes"
+          value={pendingCount}
+          sub={pendingCount > 0 ? "Requiere pago" : "Al día"}
+        />
+        <StatCard
+          variant="light"
+          Icon={DollarSign}
+          label="Total compras"
+          value={`$${totalSpent.toLocaleString("es-CL")}`}
+          sub="Inversión acumulada"
+        />
+      </div>
 
       <DataTable
-        columns={columns} data={orders} loading={isLoading}
+        columns={columns}
+        data={orders}
+        loading={isLoading}
         getRowId={o => o.id}
-        searchable searchKeys={["short_id"]} searchPlaceholder="Buscar por N° de pedido..."
+        searchable
+        searchKeys={["short_id"]}
+        searchPlaceholder="Buscar por N° de pedido..."
         onRowClick={o => navigate(`/dashboard/orders/${o.id}`)}
-        emptyIcon={ShoppingBag} emptyTitle="Sin pedidos todavía"
-        emptyDesc="Explorá la tienda y realizá tu primer pedido."
-        testId="orders-table" />
+        emptyIcon={ShoppingBag}
+        emptyTitle="Sin pedidos todavía"
+        emptyDesc="Explora nuestro catálogo de equipamiento profesional y realiza tu primer pedido."
+        testId="orders-table"
+      />
     </div>
   )
 }

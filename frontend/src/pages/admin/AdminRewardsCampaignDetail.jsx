@@ -1,6 +1,6 @@
 // pages/admin/AdminRewardsCampaignDetail.jsx — Gestión detallada
 import { useState } from "react"
-import { useParams, Link, useNavigate } from "react-router-dom"
+import { useParams, Link } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   adminGetCampaign, adminUpdateCampaign,
@@ -12,16 +12,11 @@ import {
 import { getProducts } from "../../api/products.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../components/ui/ToastNotification"
-
-const chip = (color, bg) => ({
-  fontSize:"10px", padding:"3px 9px", borderRadius:"var(--r-full)",
-  background:bg, color, fontWeight:700,
-  letterSpacing:"0.06em", textTransform:"uppercase",
-})
+import { AdminPageHeader, StatCard, SectionCard, SecondaryButton, StatusBadge } from "../../components/admin/ui"
+import { Ticket, Users, Package, Award } from "lucide-react"
 
 export default function AdminRewardsCampaignDetail() {
   const { id } = useParams()
-  const nav    = useNavigate()
   const qc     = useQueryClient()
   const [showProductPicker, setShowProductPicker] = useState(false)
 
@@ -86,9 +81,9 @@ export default function AdminRewardsCampaignDetail() {
     onError:    (e) => showToast(e?.response?.data?.detail || "No se pudo finalizar la campaña. Verificá antes de asumir que se cerró.", "error"),
   })
 
-  if (isLoading || !c) return (
-    <div style={{ padding:"40px" }}>
-      <p style={{ color:"var(--text-3)" }}>Cargando…</p>
+  if (isLoading || !c || !Array.isArray(c.reward_products)) return (
+    <div className="au-page">
+      <p style={{ color:"var(--admin-text-muted)" }}>Cargando…</p>
     </div>
   )
 
@@ -111,88 +106,58 @@ export default function AdminRewardsCampaignDetail() {
   }
 
   return (
-    <div style={{ padding:"clamp(28px, 4vw, 40px)", maxWidth:"1080px" }}>
-      {/* Header */}
-      <Link to="/admin/rewards/campaigns" style={{
-        fontSize:"12px", color:"var(--text-3)",
-        textDecoration:"none", marginBottom:"12px", display:"inline-block",
-      }}>← Todas las campañas</Link>
-
-      <div style={{ display:"flex", justifyContent:"space-between",
-        alignItems:"start", marginBottom:"28px", flexWrap:"wrap", gap:"12px" }}>
-        <div>
-          <div style={{ display:"flex", gap:"10px", alignItems:"center",
-            marginBottom:"6px" }}>
-            <h1 style={{ fontFamily:"var(--font-display)",
-              fontSize:"26px", fontWeight:400,
-              letterSpacing:"-0.01em" }}>
-              {c.name}
-            </h1>
-            <span style={chip(
-              c.status === "active" ? "var(--accent)" :
-              c.status === "finished" ? "#D97706" : "var(--text-3)",
-              c.status === "active" ? "rgba(26,255,110,0.1)" :
-              c.status === "finished" ? "rgba(250,204,21,0.08)" :
-              "rgba(255,255,255,0.05)"
-            )}>
+    <div className="au-page">
+      <AdminPageHeader
+        eyebrow="LEVELPRO / REWARDS"
+        title={c.name}
+        description={`🏆 ${c.main_prize}`}
+        breadcrumbs={[
+          { label: "Rewards", to: "/admin/rewards" },
+          { label: "Campañas", to: "/admin/rewards/campaigns" },
+          { label: c.name },
+        ]}
+        actions={
+          <>
+            <StatusBadge tone={c.status === "active" ? "success" : c.status === "finished" ? "warning" : "neutral"}>
               {c.status}
-            </span>
-          </div>
-          <p style={{ fontSize:"14px", color:"var(--text-2)" }}>🏆 {c.main_prize}</p>
-        </div>
-
-        <div style={{ display:"flex", gap:"8px", flexWrap:"wrap" }}>
-          {c.status !== "finished" && c.status !== "active" && (
-            <button data-testid="btn-publish"
-              onClick={() => update.mutate({ status:"active" })}
-              className="btn btn-accent"
-              style={{ padding:"9px 18px", fontSize:"13px" }}>
-              Publicar
-            </button>
-          )}
-          {c.status === "active" && !c.is_drawn && (
-            <button data-testid="btn-finish"
-              onClick={() => finish.mutate()}
-              style={{
-                padding:"9px 18px", fontSize:"13px",
-                background:"transparent", border:"1px solid var(--border)",
-                color:"var(--text-2)", borderRadius:"var(--r-full)",
-                cursor:"pointer",
-              }}>
-              Cerrar campaña
-            </button>
-          )}
-          {!c.is_drawn && (
-            <button data-testid="btn-draw"
-              onClick={() => {
-                if (confirm(`¿Ejecutar sorteo? Esta acción NO se puede repetir.\n\n${c.total_entries} participaciones · Se seleccionará 1 ganador + ${c.backup_winners_count} suplente(s).`)) {
-                  draw.mutate()
-                }
-              }}
-              disabled={draw.isPending || c.total_entries === 0}
-              style={{
-                padding:"9px 18px", fontSize:"13px",
-                background:"var(--accent)", color:"#000",
-                border:"none", borderRadius:"var(--r-full)",
-                cursor:"pointer", fontWeight:600,
-                opacity: c.total_entries === 0 ? 0.4 : 1,
-              }}>
-              {draw.isPending ? "Sorteando…" : "🎲 Ejecutar sorteo"}
-            </button>
-          )}
-        </div>
-      </div>
+            </StatusBadge>
+            {c.status !== "finished" && c.status !== "active" && (
+              <button data-testid="btn-publish"
+                type="button"
+                onClick={() => update.mutate({ status:"active" })}
+                className="au-btn au-btn--primary">
+                Publicar
+              </button>
+            )}
+            {c.status === "active" && !c.is_drawn && (
+              <button data-testid="btn-finish"
+                type="button"
+                onClick={() => finish.mutate()}
+                className="au-btn au-btn--secondary">
+                Cerrar campaña
+              </button>
+            )}
+            {!c.is_drawn && (
+              <button data-testid="btn-draw"
+                type="button"
+                onClick={() => {
+                  if (confirm(`¿Ejecutar sorteo? Esta acción NO se puede repetir.\n\n${c.total_entries} participaciones · Se seleccionará 1 ganador + ${c.backup_winners_count} suplente(s).`)) {
+                    draw.mutate()
+                  }
+                }}
+                disabled={draw.isPending || c.total_entries === 0}
+                className="au-btn au-btn--primary"
+                style={{ opacity: c.total_entries === 0 ? 0.45 : 1 }}>
+                {draw.isPending ? "Sorteando…" : "🎲 Ejecutar sorteo"}
+              </button>
+            )}
+          </>
+        }
+      />
 
       {/* Aviso de visibilidad pública */}
       {(notStarted || expired) && (
-        <div data-testid="visibility-warning" style={{
-          padding:"14px 20px", marginBottom:"20px",
-          background:"rgba(250,204,21,0.06)",
-          border:"1px solid rgba(250,204,21,0.3)",
-          borderRadius:"var(--r-lg)",
-          fontSize:"13px", color:"#D97706", display:"flex",
-          alignItems:"center", gap:"10px",
-        }}>
+        <div data-testid="visibility-warning" className="lp-callout lp-callout--warning">
           <span style={{ fontSize:"18px" }}>⚠️</span>
           <div>
             {notStarted && (
@@ -218,153 +183,105 @@ export default function AdminRewardsCampaignDetail() {
       )}
 
       {livePublic && (
-        <div style={{
-          padding:"10px 16px", marginBottom:"20px",
-          background:"rgba(26,255,110,0.06)",
-          border:"1px solid rgba(26,255,110,0.25)",
-          borderRadius:"var(--r-lg)",
-          fontSize:"12px", color:"var(--accent-text)",
-          display:"inline-flex", alignItems:"center", gap:"8px",
-        }}>
+        <div className="lp-callout lp-callout--success" style={{ width: "fit-content", padding: "8px 14px" }}>
           <span style={{ width:"7px", height:"7px", borderRadius:"50%",
-            background:"var(--accent)",
+            background:"var(--admin-primary)",
             animation:"lp-pulse 2s ease-in-out infinite" }} />
           Visible en <strong style={{ marginLeft:"3px" }}>/rewards</strong>
         </div>
       )}
 
-      {/* Panel de fechas editable */}
-      <div style={{
-        padding:"18px 22px", marginBottom:"28px",
-        background:"var(--surface)", border:"1px solid var(--border)",
-        borderRadius:"var(--r-xl)",
-      }}>
-        <h3 style={{ fontSize:"13px", fontWeight:600, color:"var(--text-2)",
-          letterSpacing:"0.08em", textTransform:"uppercase",
-          marginBottom:"14px" }}>
-          Fechas
-        </h3>
-        <div style={{
-          display:"grid",
-          gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))",
-          gap:"12px",
-        }}>
-          {[
-            ["Inicio",         "start_date"],
-            ["Cierre compra",  "end_date"],
-            ["Fecha del sorteo","draw_date"],
-          ].map(([label, field]) => (
-            <div key={field}>
-              <label style={{ fontSize:"11px", fontWeight:600,
-                color:"var(--text-3)", letterSpacing:"0.06em",
-                textTransform:"uppercase", marginBottom:"6px",
-                display:"block" }}>
-                {label}
-              </label>
-              <input type="datetime-local"
-                data-testid={`edit-${field}`}
-                defaultValue={toLocalInput(c[field])}
-                onBlur={e => {
-                  if (e.target.value && e.target.value !== toLocalInput(c[field])) {
-                    update.mutate({ [field]: e.target.value })
-                  }
-                }}
-                style={{
-                  width:"100%", padding:"9px 12px",
-                  background:"var(--surface-2)",
-                  border:"1px solid var(--border)",
-                  borderRadius:"var(--r-md)", color:"var(--text)",
-                  fontSize:"13px", outline:"none",
-                  fontFamily:"var(--font-sans)",
-                  colorScheme:"dark",
-                }} />
-            </div>
-          ))}
-        </div>
-        <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"10px" }}>
-          Los cambios se guardan al hacer clic fuera del campo (blur).
-        </p>
-      </div>
-
-      {/* Precio por sticker */}
-      <div style={{ marginBottom:"32px", padding:"20px",
-        background:"var(--surface)", border:"1px solid var(--border)",
-        borderRadius:"var(--r-lg)" }}>
-        <h3 style={{ fontSize:"14px", fontWeight:600, color:"var(--text-2)",
-          letterSpacing:"0.08em", textTransform:"uppercase", marginBottom:"12px" }}>
-          Precio por sticker
-        </h3>
-        <div style={{ display:"flex", alignItems:"center", gap:"12px", flexWrap:"wrap" }}>
-          <input type="number" min="0" step="100"
-            data-testid="edit-sticker-price"
-            defaultValue={c.sticker_price}
-            onBlur={e => {
-              if (e.target.value && String(e.target.value) !== String(c.sticker_price)) {
-                update.mutate({ sticker_price: e.target.value })
-              }
-            }}
-            style={{ width:"180px", padding:"9px 12px",
-              background:"var(--surface-2)", border:"1px solid var(--border)",
-              borderRadius:"var(--r-md)", color:"var(--text)", fontSize:"14px",
-              outline:"none", fontFamily:"var(--font-sans)" }} />
-          <span style={{ fontSize:"12px", color:"var(--text-3)" }}>
-            CLP · cada sticker = 1 ticket de participación
-          </span>
-        </div>
-      </div>
-
       {/* KPIs */}
-      <div style={{
-        display:"grid",
-        gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))",
-        gap:"10px", marginBottom:"32px",
-      }}>
-        {[
-          ["Participaciones", c.total_entries,      "var(--accent)"],
-          ["Participantes",   c.total_participants, "var(--text)"],
-          ["Productos",       c.reward_products.length, "var(--text)"],
-          ["Suplentes",       c.backup_winners_count,   "var(--text)"],
-        ].map(([label, value, color]) => (
-          <div key={label} style={{
-            padding:"18px", background:"var(--surface)",
-            border:"1px solid var(--border)", borderRadius:"var(--r-lg)",
+      <div className="lp-grid-kpi">
+        <StatCard variant="ink" Icon={Ticket} label="Participaciones" value={c.total_entries} sub="Tickets acumulados" />
+        <StatCard variant="primary" Icon={Users} label="Participantes" value={c.total_participants} sub="Usuarios únicos" />
+        <StatCard variant="light" Icon={Package} label="Productos" value={c.reward_products.length} sub="Asociados a campaña" />
+        <StatCard variant="light" Icon={Award} label="Suplentes" value={c.backup_winners_count} sub="Configurados en sorteo" />
+      </div>
+
+      {/* Panel de fechas + Precio por sticker */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px", alignItems: "start" }}>
+        <SectionCard eyebrow="CRONOGRAMA" title="Fechas" description="Los cambios se guardan al hacer clic fuera del campo (blur).">
+          <div style={{
+            display:"grid",
+            gridTemplateColumns:"repeat(auto-fit, minmax(180px, 1fr))",
+            gap:"12px",
           }}>
-            <p style={{ fontSize:"11px", color:"var(--text-3)",
-              letterSpacing:"0.1em", textTransform:"uppercase",
-              marginBottom:"8px" }}>{label}</p>
-            <p style={{ fontSize:"22px", fontWeight:600, color,
-              fontVariantNumeric:"tabular-nums" }}>{value}</p>
+            {[
+              ["Inicio",         "start_date"],
+              ["Cierre compra",  "end_date"],
+              ["Fecha del sorteo","draw_date"],
+            ].map(([label, field]) => (
+              <div key={field}>
+                <label style={{ fontSize:"11px", fontWeight:700,
+                  color:"var(--admin-text-muted)", letterSpacing:"0.06em",
+                  textTransform:"uppercase", marginBottom:"6px",
+                  display:"block" }}>
+                  {label}
+                </label>
+                <input type="datetime-local"
+                  data-testid={`edit-${field}`}
+                  defaultValue={toLocalInput(c[field])}
+                  onBlur={e => {
+                    if (e.target.value && e.target.value !== toLocalInput(c[field])) {
+                      update.mutate({ [field]: e.target.value })
+                    }
+                  }}
+                  style={{
+                    width:"100%", padding:"9px 12px",
+                    background:"var(--admin-surface-soft)",
+                    border:"1px solid var(--admin-border-strong)",
+                    borderRadius:"10px", color:"var(--admin-text)",
+                    fontSize:"13px", outline:"none",
+                    fontFamily:"var(--font-sans)",
+                    colorScheme:"light",
+                  }} />
+              </div>
+            ))}
           </div>
-        ))}
+        </SectionCard>
+
+        <SectionCard eyebrow="TICKET UNITARIO" title="Precio por sticker" description="CLP · cada sticker = 1 ticket de participación">
+          <div style={{ display:"flex", alignItems:"center", gap:"12px", flexWrap:"wrap" }}>
+            <input type="number" min="0" step="100"
+              data-testid="edit-sticker-price"
+              defaultValue={c.sticker_price}
+              onBlur={e => {
+                if (e.target.value && String(e.target.value) !== String(c.sticker_price)) {
+                  update.mutate({ sticker_price: e.target.value })
+                }
+              }}
+              style={{ width:"180px", padding:"9px 12px",
+                background:"var(--admin-surface-soft)", border:"1px solid var(--admin-border-strong)",
+                borderRadius:"10px", color:"var(--admin-text)", fontSize:"14px", fontWeight: 700,
+                outline:"none", fontFamily:"var(--font-mono)" }} />
+            <span style={{ fontSize:"12px", color:"var(--admin-text-secondary)" }}>
+              CLP por ticket directo
+            </span>
+          </div>
+        </SectionCard>
       </div>
 
       {/* Productos participantes */}
-      <div style={{ marginBottom:"32px" }}>
-        <div style={{ display:"flex", justifyContent:"space-between",
-          alignItems:"center", marginBottom:"14px" }}>
-          <h3 style={{ fontSize:"14px", fontWeight:600, color:"var(--text-2)",
-            letterSpacing:"0.08em", textTransform:"uppercase" }}>
-            Productos participantes
-          </h3>
+      <SectionCard
+        eyebrow="CATÁLOGO VINCULADO"
+        title="Productos participantes"
+        actions={
           <button data-testid="btn-add-product"
+            type="button"
             onClick={() => setShowProductPicker(!showProductPicker)}
-            style={{
-              padding:"7px 14px", fontSize:"12px",
-              background:"transparent", border:"1px solid var(--border)",
-              color:"var(--text-2)", borderRadius:"var(--r-full)",
-              cursor:"pointer",
-            }}>
+            className="au-btn au-btn--secondary au-btn--sm">
             {showProductPicker ? "Ocultar" : "+ Agregar producto"}
           </button>
-        </div>
-
+        }
+      >
         {showProductPicker && (
           <div style={{
-            padding:"18px", marginBottom:"14px",
-            background:"var(--surface)", border:"1px solid var(--border)",
-            borderRadius:"var(--r-lg)", maxHeight:"320px", overflowY:"auto",
+            padding:"16px", marginBottom:"14px",
+            background:"var(--admin-surface-soft)", border:"1px solid var(--admin-border)",
+            borderRadius:"14px", maxHeight:"320px", overflowY:"auto",
           }}>
-            <p style={{ fontSize:"11px", color:"var(--text-3)",
+            <p style={{ fontSize:"12px", color:"var(--admin-text-secondary)",
               marginBottom:"12px" }}>
               Seleccioná un producto del catálogo para agregar. Podés configurar
               cuántas participaciones da cada unidad.
@@ -373,23 +290,19 @@ export default function AdminRewardsCampaignDetail() {
               <div key={p.id} style={{
                 display:"flex", justifyContent:"space-between",
                 alignItems:"center", padding:"8px 0",
-                borderBottom:"1px solid var(--border)",
+                borderBottom:"1px solid var(--admin-border)", gap: "10px",
               }}>
-                <span style={{ fontSize:"13px", color:"var(--text)" }}>
+                <span style={{ fontSize:"13px", fontWeight: 600, color:"var(--admin-text)" }}>
                   {p.name} — ${Number(p.price).toLocaleString("es-CL")}
                 </span>
                 <button data-testid={`btn-add-${p.id}`}
+                  type="button"
                   onClick={() => addProduct.mutate({
                     product: p.id,
                     entries_per_purchase: 5,
                     is_active: true,
                   })}
-                  style={{
-                    padding:"5px 12px", fontSize:"11px",
-                    background:"var(--accent)", color:"#000",
-                    border:"none", borderRadius:"var(--r-full)",
-                    cursor:"pointer", fontWeight:600,
-                  }}>
+                  className="au-btn au-btn--primary au-btn--sm">
                   Agregar (5 tickets)
                 </button>
               </div>
@@ -400,20 +313,20 @@ export default function AdminRewardsCampaignDetail() {
         <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
           {c.reward_products.map(rp => (
             <div key={rp.id} style={{
-              padding:"14px 18px", background:"var(--surface)",
-              border:"1px solid var(--border)", borderRadius:"var(--r-lg)",
-              display:"flex", alignItems:"center", gap:"14px",
+              padding:"12px 16px", background:"var(--admin-surface-soft)",
+              border:"1px solid var(--admin-border)", borderRadius:"14px",
+              display:"flex", alignItems:"center", gap:"14px", flexWrap: "wrap",
             }}>
               {rp.product_image && (
                 <img src={mediaUrl(rp.product_image)} alt=""
-                  style={{ width:"40px", height:"40px", borderRadius:"var(--r-md)",
+                  style={{ width:"40px", height:"40px", borderRadius:"10px",
                     objectFit:"cover" }} />
               )}
               <div style={{ flex:1, minWidth:0 }}>
-                <p style={{ fontSize:"14px", color:"var(--text)" }}>
+                <p style={{ fontSize:"13.5px", fontWeight: 700, color:"var(--admin-text)" }}>
                   {rp.product_name}
                 </p>
-                <p style={{ fontSize:"12px", color:"var(--text-3)" }}>
+                <p style={{ fontSize:"12px", color:"var(--admin-text-muted)", fontFamily: "var(--font-mono)" }}>
                   ${Number(rp.product_price).toLocaleString("es-CL")}
                 </p>
               </div>
@@ -425,88 +338,72 @@ export default function AdminRewardsCampaignDetail() {
                   })}
                   style={{
                     width:"70px", padding:"6px 10px",
-                    background:"var(--surface-2)",
-                    border:"1px solid var(--border)",
-                    borderRadius:"var(--r-md)", color:"var(--text)",
-                    fontSize:"13px", textAlign:"center",
+                    background:"var(--admin-surface)",
+                    border:"1px solid var(--admin-border-strong)",
+                    borderRadius:"10px", color:"var(--admin-text)",
+                    fontSize:"13px", fontWeight: 700, textAlign:"center",
                   }} />
-                <span style={{ fontSize:"11px", color:"var(--text-3)" }}>tickets/u</span>
+                <span style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>tickets/u</span>
               </div>
-              <button onClick={() => delProduct.mutate(rp.id)}
-                style={{
-                  padding:"6px 12px", fontSize:"11px",
-                  background:"transparent",
-                  border:"1px solid rgba(239,68,68,0.3)",
-                  color:"#ef4444", borderRadius:"var(--r-full)",
-                  cursor:"pointer",
-                }}>
+              <button type="button" onClick={() => delProduct.mutate(rp.id)}
+                className="au-pill-btn au-pill-btn--del"
+                style={{ flex: "none", padding:"6px 12px", fontSize:"11px" }}>
                 Quitar
               </button>
             </div>
           ))}
           {c.reward_products.length === 0 && (
-            <p style={{ fontSize:"13px", color:"var(--text-3)",
+            <p style={{ fontSize:"13px", color:"var(--admin-text-secondary)",
               padding:"18px", textAlign:"center" }}>
               Todavía no agregaste productos. Sin productos participantes,
               nadie puede ganar tickets.
             </p>
           )}
         </div>
-      </div>
+      </SectionCard>
 
       {/* Ganadores */}
       {winners.length > 0 && (
-        <div>
-          <h3 style={{ fontSize:"14px", fontWeight:600, color:"var(--text-2)",
-            letterSpacing:"0.08em", textTransform:"uppercase",
-            marginBottom:"14px" }}>
-            🏆 Ganadores
-          </h3>
+        <SectionCard eyebrow="RESULTADO DEL SORTEO" title="🏆 Ganadores">
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
             {winners.map(w => (
               <div key={w.id} style={{
                 padding:"14px 18px",
                 background: w.is_backup
-                  ? "var(--surface)"
-                  : "linear-gradient(135deg, rgba(26,255,110,0.08) 0%, transparent 100%)",
+                  ? "var(--admin-surface-soft)"
+                  : "var(--admin-primary-soft)",
                 border: w.is_backup
-                  ? "1px solid var(--border)"
-                  : "1px solid rgba(26,255,110,0.3)",
-                borderRadius:"var(--r-lg)",
+                  ? "1px solid var(--admin-border)"
+                  : "1px solid rgba(26,255,110,0.35)",
+                borderRadius:"14px",
                 display:"flex", justifyContent:"space-between",
                 alignItems:"center",
               }}>
                 <div>
-                  <p style={{ fontSize:"14px", fontWeight:500 }}>
+                  <p style={{ fontSize:"14px", fontWeight:800, color: "var(--admin-text)" }}>
                     {w.is_backup
                       ? `Suplente #${w.backup_position}`
                       : "🏆 GANADOR PRINCIPAL"}
                   </p>
-                  <p style={{ fontSize:"12px", color:"var(--text-2)",
+                  <p style={{ fontSize:"12.5px", color:"var(--admin-text-secondary)",
                     marginTop:"2px" }}>
                     {w.user_name} · {w.user_email}
                   </p>
-                  <p style={{ fontSize:"11px", color:"var(--text-3)",
-                    marginTop:"2px", fontFamily:"monospace" }}>
+                  <p style={{ fontSize:"11px", color:"var(--admin-text-muted)",
+                    marginTop:"2px", fontFamily:"var(--font-mono)" }}>
                     Ticket: {w.unique_code}
                   </p>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </SectionCard>
       )}
 
-      <div style={{ display:"flex", gap:"12px", marginTop:"32px" }}>
-        <Link to={`/admin/rewards/entries?campaign=${id}`}
-          style={{
-            padding:"9px 18px", fontSize:"13px",
-            background:"var(--surface)", border:"1px solid var(--border)",
-            color:"var(--text)", borderRadius:"var(--r-full)",
-            textDecoration:"none",
-          }}>
+      <div style={{ display:"flex", gap:"12px" }}>
+        <SecondaryButton to={`/admin/rewards/entries?campaign=${id}`}>
           Ver todas las participaciones →
-        </Link>
+        </SecondaryButton>
       </div>
     </div>
   )

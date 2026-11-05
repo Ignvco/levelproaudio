@@ -34,40 +34,47 @@ export default function AdminLogin() {
       minHeight: "100vh",
       display: "flex", alignItems: "center", justifyContent: "center",
       padding: "clamp(24px, 5vw, 60px)",
-      background: `radial-gradient(ellipse 50% 50% at 50% 30%,
-        rgba(26,255,110,0.05) 0%, transparent 70%), var(--bg)`,
+      background: `radial-gradient(ellipse 55% 45% at 50% 22%,
+        rgba(26,255,110,0.08) 0%, transparent 70%), #0A0B0D`,
     }}>
-      <div style={{ width: "100%", maxWidth: "360px" }} className="animate-fade-up">
+      <div style={{
+        width: "100%", maxWidth: "400px",
+        background: "#13161B",
+        border: "1px solid rgba(255,255,255,0.08)",
+        borderRadius: "24px",
+        padding: "36px 32px",
+        boxShadow: "0 24px 64px rgba(0,0,0,0.45)",
+      }} className="animate-fade-up">
 
-        {/* Logo */}
-        <div style={{ textAlign: "center", marginBottom: "40px" }}>
+        {/* Logo + Badge */}
+        <div style={{ textAlign: "center", marginBottom: "28px" }}>
           <img src={logoUrl || logo} alt={siteName}
-            style={{ height: "32px", margin: "0 auto 16px" }} />
+            style={{ height: "32px", margin: "0 auto 14px" }} />
           <div style={{ display: "inline-flex", alignItems: "center", gap: "8px",
-            padding: "4px 12px", borderRadius: "var(--r-full)",
-            background: "var(--accent-dim)", border: "1px solid var(--accent-glow)" }}>
+            padding: "5px 12px", borderRadius: "9999px",
+            background: "rgba(26,255,110,0.1)", border: "1px solid rgba(26,255,110,0.25)" }}>
             <span style={{ width: "6px", height: "6px", borderRadius: "50%",
-              background: "var(--accent)", display: "inline-block" }} />
-            <span style={{ fontSize: "11px", fontWeight: 600,
-              color: "var(--accent-text)", letterSpacing: "0.08em" }}>
-              PANEL ADMIN
+              background: "#1AFF6E", boxShadow: "0 0 8px #1AFF6E", display: "inline-block" }} />
+            <span style={{ fontSize: "10.5px", fontWeight: 800,
+              color: "#1AFF6E", letterSpacing: "0.08em", fontFamily: "var(--font-mono)" }}>
+              LP AUDIO · PANEL ADMIN
             </span>
           </div>
         </div>
 
         <form onSubmit={handleSubmit}
-          style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+          style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {error && (
-            <div style={{ padding: "12px 16px", borderRadius: "var(--r-md)",
-              background: "rgba(255,77,77,0.08)", border: "1px solid rgba(255,77,77,0.2)",
-              color: "var(--danger)", fontSize: "13px" }}>
+            <div style={{ padding: "12px 16px", borderRadius: "12px",
+              background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.28)",
+              color: "#F87171", fontSize: "13px", fontWeight: 600 }}>
               {error}
             </div>
           )}
 
           <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "8px" }}>Email</label>
+            <label style={{ display: "block", fontSize: "11.5px", fontWeight: 700,
+              color: "rgba(255,255,255,0.7)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Email</label>
             <input type="email" value={email}
               onChange={e => setEmail(e.target.value)}
               className="input" placeholder="admin@levelproaudio.com"
@@ -75,8 +82,8 @@ export default function AdminLogin() {
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-              color: "var(--text-2)", marginBottom: "8px" }}>Contraseña</label>
+            <label style={{ display: "block", fontSize: "11.5px", fontWeight: 700,
+              color: "rgba(255,255,255,0.7)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Contraseña</label>
             <input type="password" value={password}
               onChange={e => setPassword(e.target.value)}
               className="input" placeholder="••••••••"
@@ -84,8 +91,8 @@ export default function AdminLogin() {
           </div>
 
           <button type="submit" disabled={loading} className="btn btn-accent"
-            style={{ justifyContent: "center", padding: "14px",
-              fontSize: "14px", marginTop: "4px", opacity: loading ? 0.7 : 1 }}>
+            style={{ justifyContent: "center", padding: "14px", borderRadius: "9999px",
+              fontSize: "14px", fontWeight: 700, marginTop: "6px", opacity: loading ? 0.7 : 1 }}>
             {loading ? "Verificando..." : "Ingresar al admin"}
           </button>
         </form>

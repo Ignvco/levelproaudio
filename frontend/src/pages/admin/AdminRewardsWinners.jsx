@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { adminListWinners, adminUpdateWinner, adminListCampaigns } from "../../api/rewards.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../components/ui/ToastNotification"
+import { AdminPageHeader, SecondaryButton, PrimaryButton } from "../../components/admin/ui"
 
 function WinnerCard({ w }) {
   const qc = useQueryClient()
@@ -26,41 +27,34 @@ function WinnerCard({ w }) {
   })
 
   return (
-    <div style={{
-      padding:"20px 22px",
-      background: w.is_backup
-        ? "var(--surface)"
-        : "linear-gradient(135deg, rgba(26,255,110,0.06) 0%, transparent 100%)",
-      border: w.is_backup
-        ? "1px solid var(--border)"
-        : "1px solid rgba(26,255,110,0.25)",
-      borderRadius:"var(--r-xl)",
+    <div className="au-card au-panel" style={{
+      borderLeft: w.is_backup ? "4px solid var(--admin-border-strong)" : "4px solid var(--admin-primary)",
     }}>
       <div style={{ display:"flex", justifyContent:"space-between",
-        alignItems:"start", gap:"14px", marginBottom:"14px" }}>
+        alignItems:"flex-start", gap:"14px", marginBottom:"14px" }}>
         <div>
-          <p style={{ fontSize:"11px", color:"var(--accent-text)",
-            letterSpacing:"0.1em", textTransform:"uppercase",
-            fontWeight:700, marginBottom:"4px" }}>
+          <p style={{ fontSize:"11px", color:"var(--admin-primary-text)",
+            letterSpacing:"0.08em", textTransform:"uppercase",
+            fontWeight:800, marginBottom:"4px" }}>
             {w.is_backup ? `Suplente #${w.backup_position}` : "🏆 Ganador principal"}
           </p>
-          <p style={{ fontSize:"16px", fontWeight:500, color:"var(--text)" }}>
+          <p style={{ fontSize:"16px", fontWeight:800, color:"var(--admin-text)" }}>
             {w.user_name || w.user_email}
           </p>
-          <p style={{ fontSize:"12px", color:"var(--text-3)" }}>
+          <p style={{ fontSize:"12px", color:"var(--admin-text-secondary)" }}>
             {w.user_email}
           </p>
-          <p style={{ fontSize:"12px", color:"var(--text-3)", marginTop:"6px" }}>
-            Campaña: <span style={{ color:"var(--text-2)" }}>{w.campaign_name}</span>
+          <p style={{ fontSize:"12px", color:"var(--admin-text-muted)", marginTop:"6px" }}>
+            Campaña: <span style={{ color:"var(--admin-text)", fontWeight: 700 }}>{w.campaign_name}</span>
           </p>
-          <p style={{ fontSize:"11px", color:"var(--text-3)", fontFamily:"monospace",
+          <p style={{ fontSize:"11px", color:"var(--admin-text-muted)", fontFamily:"var(--font-mono)",
             marginTop:"2px" }}>
             Ticket: {w.unique_code}
           </p>
         </div>
         {w.proof_url && (
           <img src={mediaUrl(w.proof_url)} alt="Evidencia"
-            style={{ width:"80px", height:"80px", borderRadius:"var(--r-md)",
+            style={{ width:"80px", height:"80px", borderRadius:"12px",
               objectFit:"cover" }} />
         )}
       </div>
@@ -69,29 +63,23 @@ function WinnerCard({ w }) {
         value={notes} onChange={e => setNotes(e.target.value)} rows={2}
         style={{
           width:"100%", padding:"10px 12px",
-          background:"var(--surface-2)", border:"1px solid var(--border)",
-          borderRadius:"var(--r-md)", color:"var(--text)",
+          background:"var(--admin-surface-soft)", border:"1px solid var(--admin-border-strong)",
+          borderRadius:"10px", color:"var(--admin-text)",
           fontSize:"13px", outline:"none", resize:"vertical",
           fontFamily:"var(--font-sans)",
         }} />
 
       <div style={{ display:"flex", justifyContent:"space-between",
-        alignItems:"center", marginTop:"10px", gap:"10px" }}>
-        <label style={{ fontSize:"12px", color:"var(--text-3)", cursor:"pointer" }}>
+        alignItems:"center", marginTop:"12px", gap:"10px", flexWrap: "wrap" }}>
+        <label style={{ fontSize:"12px", fontWeight: 600, color:"var(--admin-text-secondary)", cursor:"pointer" }}>
           📷 {file ? file.name : "Adjuntar evidencia"}
           <input type="file" accept="image/*"
             onChange={e => setFile(e.target.files?.[0] || null)}
             style={{ display:"none" }} />
         </label>
-        <button onClick={() => save.mutate()} disabled={save.isPending}
-          style={{
-            padding:"8px 16px", fontSize:"12px",
-            background:"var(--accent)", color:"#000",
-            border:"none", borderRadius:"var(--r-full)",
-            cursor:"pointer", fontWeight:600,
-          }}>
+        <PrimaryButton size="sm" onClick={() => save.mutate()} disabled={save.isPending} loading={save.isPending}>
           {save.isPending ? "Guardando…" : "Guardar"}
-        </button>
+        </PrimaryButton>
       </div>
     </div>
   )
@@ -100,50 +88,49 @@ function WinnerCard({ w }) {
 export default function AdminRewardsWinners() {
   const [campaignFilter, setCampaignFilter] = useState("")
 
-  const { data: winners = [], isLoading } = useQuery({
+  const { data: rawWinners, isLoading } = useQuery({
     queryKey: ["admin-winners", campaignFilter],
     queryFn:  () => adminListWinners(campaignFilter),
   })
-  const { data: campaigns = [] } = useQuery({
+  const { data: rawCampaigns } = useQuery({
     queryKey: ["admin-campaigns"],
     queryFn:  adminListCampaigns,
   })
+  const winners = Array.isArray(rawWinners) ? rawWinners : []
+  const campaigns = Array.isArray(rawCampaigns) ? rawCampaigns : []
 
   return (
-    <div style={{ padding:"clamp(28px, 4vw, 40px)" }}>
-      <div style={{ display:"flex", justifyContent:"space-between",
-        alignItems:"start", marginBottom:"28px", flexWrap:"wrap", gap:"12px" }}>
-        <div>
-          <p style={{ fontSize:"12px", color:"var(--accent-text)",
-            letterSpacing:"0.1em", textTransform:"uppercase",
-            fontWeight:600, marginBottom:"6px" }}>
-            Rewards
-          </p>
-          <h1 style={{ fontSize:"28px", fontWeight:500 }}>Ganadores</h1>
-        </div>
-        <select value={campaignFilter}
-          onChange={e => setCampaignFilter(e.target.value)}
-          style={{
-            padding:"9px 14px", background:"var(--surface)",
-            border:"1px solid var(--border)", borderRadius:"var(--r-md)",
-            color:"var(--text)", fontSize:"13px", outline:"none",
-          }}>
-          <option value="">Todas las campañas</option>
-          {campaigns.map(c => (
-            <option key={c.id} value={c.id}>{c.name}</option>
-          ))}
-        </select>
-      </div>
+    <div className="au-page">
+      <AdminPageHeader
+        eyebrow="LEVELPRO / REWARDS"
+        title="Ganadores"
+        description={`${winners.length} ganadores y suplentes sorteados`}
+        breadcrumbs={[
+          { label: "Rewards", to: "/admin/rewards" },
+          { label: "Ganadores" },
+        ]}
+        actions={
+          <>
+            <SecondaryButton to="/admin/rewards" size="sm">← Dashboard</SecondaryButton>
+            <select value={campaignFilter}
+              onChange={e => setCampaignFilter(e.target.value)}
+              className="au-select">
+              <option value="">Todas las campañas</option>
+              {campaigns.map(c => (
+                <option key={c.id} value={c.id}>{c.name}</option>
+              ))}
+            </select>
+          </>
+        }
+      />
 
-      {isLoading && <p style={{ color:"var(--text-3)" }}>Cargando…</p>}
+      {isLoading && <p style={{ color:"var(--admin-text-muted)" }}>Cargando…</p>}
 
       {!isLoading && winners.length === 0 && (
-        <p style={{ padding:"40px", textAlign:"center",
-          background:"var(--surface)", borderRadius:"var(--r-lg)",
-          border:"1px solid var(--border)", color:"var(--text-3)" }}>
+        <div className="au-card au-panel" style={{ padding:"44px", textAlign:"center", color:"var(--admin-text-secondary)" }}>
           Todavía no hay ganadores. Ejecutá el sorteo de una campaña
           para que aparezcan acá.
-        </p>
+        </div>
       )}
 
       <div style={{

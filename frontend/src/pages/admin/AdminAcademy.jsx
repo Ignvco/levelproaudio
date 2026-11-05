@@ -8,9 +8,9 @@ import {
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../components/ui/ToastNotification"
 import { Link } from "react-router-dom"
-import { Pencil, Trash2 } from "lucide-react"
+import { Pencil, Trash2, GraduationCap, BookOpen, Users } from "lucide-react"
 import BulkImportPanel from "../../components/admin/BulkImportPanel"
-import { FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
 
 function CourseModal({ course, onClose, onSave }) {
   const [form, setForm]       = useState({
@@ -133,7 +133,11 @@ export default function AdminAcademy() {
       setToDelete(null)
     },
   })
-  const courses = data?.results || data || []
+  const rawCourses = data?.results ?? data
+  const courses = Array.isArray(rawCourses) ? rawCourses : []
+  const publishedCount = courses.filter(c => c.is_published !== false).length
+  const totalLessons = courses.reduce((acc, c) => acc + (Number(c.total_lessons) || 0), 0)
+  const totalEnrollments = courses.reduce((acc, c) => acc + (Number(c.enrollment_count) || 0), 0)
 
   const LEVELS = {
     beginner:     { label: "Principiante", color: "#0F9940" },
@@ -142,7 +146,7 @@ export default function AdminAcademy() {
   }
 
   return (
-    <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page">
       {modal && (
         <CourseModal
           course={modal === "new" ? null : modal}
@@ -163,61 +167,74 @@ export default function AdminAcademy() {
       />
 
       {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between",
-        alignItems: "flex-start", marginBottom: "28px", gap: "16px" }}>
-        <div>
-          <h1 style={{ fontFamily: "var(--font-display)",
-            fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 800,
-            letterSpacing: "-0.02em", marginBottom: "6px" }}>
-            Academia
-          </h1>
-          <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
-            {courses.length} cursos publicados
-          </p>
-        </div>
-        <div style={{ display: "flex", gap: "10px" }}>
-          <Link to="/admin/enrollments" className="btn btn-ghost"
-            style={{ padding: "10px 16px", fontSize: "13px" }}>
-            Inscripciones →
-          </Link>
-          <button onClick={() => setModal("new")} className="btn btn-accent"
-            style={{ padding: "10px 20px", fontSize: "13px" }}>
-            + Nuevo curso
-          </button>
-        </div>
+      <AdminPageHeader
+        eyebrow="LEVELPRO / ACADEMIA"
+        title="Academia"
+        description={`${courses.length} cursos registrados · ${publishedCount} publicados`}
+        actions={
+          <>
+            <SecondaryButton to="/admin/academy/modules" size="sm">Módulos</SecondaryButton>
+            <SecondaryButton to="/admin/academy/lessons" size="sm">Lecciones</SecondaryButton>
+            <SecondaryButton to="/admin/academy/enrollments" size="sm">Inscripciones</SecondaryButton>
+            <SecondaryButton to="/admin/academy/certifications" size="sm">Certificaciones</SecondaryButton>
+            <PrimaryButton onClick={() => setModal("new")}>+ Nuevo curso</PrimaryButton>
+          </>
+        }
+      />
+
+      {/* KPI Strip */}
+      <div className="lp-kpi-strip">
+        <StatCard
+          variant="ink"
+          Icon={GraduationCap}
+          label="Cursos publicados"
+          value={publishedCount}
+          sub={`${courses.length} cursos totales`}
+        />
+        <StatCard
+          variant="primary"
+          Icon={BookOpen}
+          label="Total lecciones"
+          value={totalLessons}
+          sub="Contenido formativo activo"
+        />
+        <StatCard
+          variant="light"
+          Icon={Users}
+          label="Inscritos totales"
+          value={totalEnrollments}
+          sub="Matrículas acumuladas"
+        />
       </div>
 
       {/* Bulk import */}
-      <div style={{ marginBottom: "22px" }}>
-        <BulkImportPanel
-          endpoint="/admin/courses/import/"
-          entityLabel="cursos"
-          templateColumns={["titulo", "precio", "descripcion_corta", "nivel", "duracion_horas", "publicado"]}
-          templateExample={["Mezcla y Master Pro", "89990", "Curso avanzado de mezcla", "avanzado", "12", "si"]}
-          invalidateKey="admin-courses"
-          testId="bulk-import-courses" />
-      </div>
+      <BulkImportPanel
+        endpoint="/admin/courses/import/"
+        entityLabel="cursos"
+        templateColumns={["titulo", "precio", "descripcion_corta", "nivel", "duracion_horas", "publicado"]}
+        templateExample={["Mezcla y Master Pro", "89990", "Curso avanzado de mezcla", "avanzado", "12", "si"]}
+        invalidateKey="admin-courses"
+        testId="bulk-import-courses"
+      />
 
       {isLoading ? (
         <div style={{ display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "14px" }}>
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: "200px" }} />
+            <div key={i} className="skeleton" style={{ height: "200px", borderRadius: "20px" }} />
           ))}
         </div>
       ) : courses.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "80px 24px",
-          background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-2xl)" }}>
-          <p style={{ fontSize: "40px", marginBottom: "12px" }}>🎬</p>
+        <div className="au-card au-panel" style={{ textAlign: "center", padding: "64px 24px" }}>
+          <p style={{ fontSize: "38px", marginBottom: "10px" }}>🎬</p>
           <h3 style={{ fontFamily: "var(--font-display)", fontWeight: 800,
-            fontSize: "1.4rem", marginBottom: "8px" }}>Sin cursos</h3>
-          <p style={{ fontSize: "14px", color: "var(--text-3)", marginBottom: "20px" }}>
+            fontSize: "1.3rem", marginBottom: "6px" }}>Sin cursos</h3>
+          <p style={{ fontSize: "13.5px", color: "var(--admin-text-secondary)", marginBottom: "18px" }}>
             Crea el primer curso de la academia.
           </p>
-          <button onClick={() => setModal("new")} className="btn btn-accent">
+          <PrimaryButton onClick={() => setModal("new")}>
             + Nuevo curso
-          </button>
+          </PrimaryButton>
         </div>
       ) : (
         <div style={{ display: "grid",
@@ -228,7 +245,7 @@ export default function AdminAcademy() {
               <div key={course.id} className="au-acard">
                 <div className="au-acard__strip" />
                 <div className="au-acard__head">
-                  <span className="au-acard__tag" style={{ background: lvl.color, color: "#000" }}>{lvl.label}</span>
+                  <span className="au-acard__tag" style={{ background: lvl.color, color: "#fff" }}>{lvl.label}</span>
                   <div style={{ display: "flex", gap: "6px" }}>
                     {course.is_free && <span className="au-acard__tag" style={{ background: "var(--accent)", color: "#00160b" }}>Gratis</span>}
                     {!course.is_published && <span className="au-acard__tag" style={{ background: "#f59e0b", color: "#000" }}>Borrador</span>}

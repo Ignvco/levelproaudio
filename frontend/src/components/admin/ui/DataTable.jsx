@@ -101,7 +101,6 @@ export function DataTable({
   if (loading) return <SkeletonTable rows={initialPageSize > 6 ? 6 : initialPageSize} />
 
   const showToolbar = searchable || filters.length > 0 || toolbarExtra
-  const colCount = columns.length + (selectable ? 1 : 0) + (rowActions ? 1 : 0)
 
   return (
     <div className="au-card au-table-wrap" data-testid={testId}>

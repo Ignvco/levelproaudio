@@ -2,7 +2,8 @@
 import { Link } from "react-router-dom"
 import { ChevronRight } from "lucide-react"
 
-export function AdminPageHeader({ eyebrow, title, description, actions, breadcrumbs, testId }) {
+export function AdminPageHeader({ eyebrow, title, description, subtitle, actions, breadcrumbs, testId }) {
+  const desc = description || subtitle
   return (
     <div className="au-header" data-testid={testId || "admin-page-header"}>
       <div>
@@ -18,7 +19,7 @@ export function AdminPageHeader({ eyebrow, title, description, actions, breadcru
         )}
         {eyebrow && <p className="au-eyebrow">{eyebrow}</p>}
         <h1 className="au-title">{title}</h1>
-        {description && <p className="au-desc">{description}</p>}
+        {desc && <p className="au-desc">{desc}</p>}
       </div>
       {actions && <div className="au-header__actions">{actions}</div>}
     </div>

@@ -8,9 +8,9 @@ import {
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../components/ui/ToastNotification"
-import { DataTable, StatusBadge, AdminPageHeader, PrimaryButton, FormModal, ConfirmationModal } from "../../components/admin/ui"
+import { DataTable, StatusBadge, AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, ConfirmationModal } from "../../components/admin/ui"
 import { useSiteSettings } from "../../hooks/useSiteSettings"
-import { Pencil, Trash2, Package } from "lucide-react"
+import { Pencil, Trash2, Package, CheckCircle2, Star, AlertTriangle } from "lucide-react"
 
 const inputSt = {
   width: "100%", padding: "10px 14px",
@@ -915,8 +915,13 @@ export default function AdminProducts() {
     )},
   ]
 
+  const totalCount = data?.count ?? products.length
+  const activeCount = products.filter(p => p.is_active).length
+  const featuredCount = products.filter(p => p.is_featured).length
+  const lowStockCount = products.filter(p => (p.stock ?? 0) <= (p.stock_min ?? 3)).length
+
   return (
-    <div className="au-page" style={{ padding: "clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page">
 
       {/* Modal */}
       {modal && (
@@ -940,55 +945,87 @@ export default function AdminProducts() {
         testId="delete-product-modal"
       />
 
-      <AdminPageHeader eyebrow="Catálogo" title="Productos"
-        description={`${data?.count || products.length} productos`}
+      <AdminPageHeader
+        eyebrow="LEVELPRO / CATÁLOGO"
+        title="Productos"
+        description={`${totalCount} productos en catálogo · ${categories.length} categorías · ${brands.length} marcas`}
         actions={
-          <PrimaryButton onClick={() => setModal("new")} data-testid="new-product-btn">
-            + Nuevo producto
-          </PrimaryButton>
-        } />
+          <>
+            <SecondaryButton to="/admin/products/import" size="sm">
+              Importar .xlsx
+            </SecondaryButton>
+            <SecondaryButton to="/admin/inventory" size="sm">
+              Inventario
+            </SecondaryButton>
+            <PrimaryButton onClick={() => setModal("new")} data-testid="new-product-btn">
+              + Nuevo producto
+            </PrimaryButton>
+          </>
+        }
+      />
 
-      {/* Búsqueda + filtro categoría */}
-      <div style={{ display: "flex", gap: "10px", marginBottom: "18px",
-        flexWrap: "wrap" }}>
-        <input value={search} onChange={e => setSearch(e.target.value)}
-          placeholder="Buscar producto..." data-testid="products-search"
-          style={{ ...inputSt, maxWidth: "280px" }}
-          onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
-          onBlur={e => e.target.style.borderColor = "var(--border)"} />
-        <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
-          style={{ ...inputSt, maxWidth: "200px" }}>
-          <option value="">Todas las categorías</option>
-          {categories.map(c => (
-            <option key={c.id} value={c.slug}>{c.name}</option>
-          ))}
-        </select>
+      {/* KPI Strip */}
+      <div className="lp-grid-kpi">
+        <StatCard
+          variant="ink"
+          Icon={Package}
+          label="Catálogo visible"
+          value={totalCount}
+          sub={`${categories.length} categorías · ${brands.length} marcas`}
+        />
+        <StatCard
+          variant="primary"
+          Icon={CheckCircle2}
+          label="Productos activos"
+          value={activeCount}
+          sub="Publicados en tienda"
+        />
+        <StatCard
+          variant="light"
+          Icon={Star}
+          label="Destacados"
+          value={featuredCount}
+          sub="Visibles en portada"
+        />
+        <StatCard
+          variant="light"
+          Icon={AlertTriangle}
+          label="Stock bajo / agotado"
+          value={lowStockCount}
+          sub={lowStockCount > 0 ? "Revisar en Inventario" : "Stock saludable"}
+        />
       </div>
 
-      {/* Toggle Activos / Inactivos / Todos */}
-      <div style={{ display:"flex", gap:"6px", marginBottom:"18px",
-        padding:"3px", background:"var(--surface)",
-        border:"1px solid var(--border)", borderRadius:"var(--r-full)",
-        width:"fit-content" }}>
-        {[
-          ["active",   "Activos"  ],
-          ["inactive", "Inactivos"],
-          ["all",      "Todos"    ],
-        ].map(([val, label]) => (
-          <button key={val} onClick={() => setStatusFilter(val)}
-            data-testid={`filter-status-${val}`}
-            style={{
-              padding:"6px 14px", fontSize:"12px",
-              borderRadius:"var(--r-full)", cursor:"pointer",
-              border:"none",
-              background: statusFilter === val ? "var(--accent)" : "transparent",
-              color: statusFilter === val ? "#000" : "var(--text-2)",
-              fontWeight: statusFilter === val ? 600 : 400,
-              transition: "all var(--dur) var(--ease)",
-            }}>
-            {label}
-          </button>
-        ))}
+      {/* Barra de búsqueda, categoría y estado */}
+      <div className="au-card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", flex: "1 1 340px" }}>
+          <input value={search} onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar producto por nombre o SKU..." data-testid="products-search"
+            className="au-input"
+            style={{ flex: "1 1 260px", maxWidth: "340px" }} />
+          <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
+            className="au-select"
+            style={{ maxWidth: "220px" }}>
+            <option value="">Todas las categorías</option>
+            {categories.map(c => (
+              <option key={c.id} value={c.slug}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="lp-seg-tabs">
+          {[
+            ["active",   "Activos"  ],
+            ["inactive", "Inactivos"],
+            ["all",      "Todos"    ],
+          ].map(([val, label]) => (
+            <button key={val} type="button" onClick={() => setStatusFilter(val)}
+              data-testid={`filter-status-${val}`}
+              className={`lp-seg-tab${statusFilter === val ? " is-active" : ""}`}>
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       <DataTable

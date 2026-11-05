@@ -1,357 +1,546 @@
-// pages/admin/AdminDashboard.jsx — Rediseño estética "Quixotic": limpio, premium,
-// tarjetas blancas muy redondeadas, fondo gris claro, verde de marca. Toda la
-// data es real (getAdminDashboard, getAnalytics); no se inventan cifras.
+// pages/admin/AdminDashboard.jsx — Dashboard Experience V2 (Admin Home)
+// Composición aprobada LevelPro Audio: header ejecutivo, barra de contexto,
+// 4 KPIs (ink, primary, light, light), gráfico de rendimiento comercial +
+// efectividad operativa del mes, tabla de últimas órdenes y alertas operativas.
+// 100% conectado a datos reales (getAdminDashboard, getAnalytics).
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link, useNavigate } from "react-router-dom"
 import {
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Cell,
-  AreaChart, Area,
 } from "recharts"
 import {
-  DollarSign, ShoppingBag, Users, Package, Clock, ArrowRight, ArrowUpRight,
-  RefreshCw, Eye, Wifi, CreditCard, Boxes,
+  Wallet, ShoppingBag, Users, Package, Clock, ArrowRight, ArrowUpRight,
+  RefreshCw, Calendar, AlertTriangle, Wrench, ChevronRight, GraduationCap,
 } from "lucide-react"
 import { getAdminDashboard, getAnalytics } from "../../api/admin.api"
 import {
-  AdminPageHeader, StatCard, ChartCard, SectionCard,
-  DataTable, StatusBadge, SecondaryButton, EmptyState,
+  AdminPageHeader, StatCard, ChartCard,
+  StatusBadge, SecondaryButton, EmptyState, ErrorState,
 } from "../../components/admin/ui"
+import Button from "../../components/ui/Button"
 
-const clp = (n) => `$${Math.round(n || 0).toLocaleString("es-CL")}`
+const clp = (n) => `$ ${Math.round(n || 0).toLocaleString("es-CL")}`
+
+const ORDER_STATUS_MAP = {
+  paid:      { label: "Pagado",     tone: "success" },
+  completed: { label: "Completado", tone: "success" },
+  shipped:   { label: "Enviado",    tone: "info"    },
+  pending:   { label: "Pendiente",  tone: "warning" },
+  cancelled: { label: "Cancelado",  tone: "danger"  },
+  refunded:  { label: "Reembolsado",tone: "neutral" },
+}
 
 /* ── Tooltip del gráfico de barras ───────────────────────────────── */
 function SalesTooltip({ active, payload, label }) {
   if (!active || !payload?.length) return null
   return (
-    <div style={{ background: "#0D0D0F", color: "#fff", padding: "10px 14px", borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,.25)" }}>
+    <div style={{
+      background: "#101112", color: "#fff", padding: "10px 14px",
+      borderRadius: 12, boxShadow: "0 8px 24px rgba(0,0,0,.25)",
+    }}>
       <p style={{ fontSize: 11, color: "#9CA3AF", marginBottom: 3 }}>{label}</p>
-      <p style={{ fontSize: 15, fontWeight: 700, color: "#1AFF6E" }}>{clp(payload[0].value)}</p>
+      <p style={{ fontSize: 14, fontWeight: 800, color: "#1AFF6E" }}>{clp(payload[0].value)}</p>
     </div>
   )
 }
 
-/* ── Gráfico central de barras (Engagement Rate → Ventas) ────────── */
-function SalesBars({ data, period }) {
-  const fmtDay = (d) => { try { return new Date(d).toLocaleDateString("es-CL", { day: "2-digit", month: "short" }) } catch { return d } }
-  const raw = (data || [])
-  const points = (period === "annual" ? raw.slice(-12) : raw.slice(-14))
-    .map((d) => ({ day: fmtDay(d.date), total: d.total || 0 }))
+/* ── Gráfico central de barras (Rendimiento comercial) ───────────── */
+function SalesBars({ dailyData, monthlyData, period }) {
+  const fmtDay = (d) => {
+    try {
+      return new Date(d).toLocaleDateString("es-CL", { day: "2-digit", month: "short" })
+    } catch {
+      return d
+    }
+  }
+  const fmtMonth = (m) => {
+    try {
+      return new Date(m).toLocaleDateString("es-CL", { month: "short" })
+    } catch {
+      return m
+    }
+  }
+
+  const points = period === "annual" && Array.isArray(monthlyData) && monthlyData.length > 0
+    ? monthlyData.slice(-12).map((d) => ({ label: fmtMonth(d.month), total: d.total || 0 }))
+    : (dailyData || []).slice(-12).map((d) => ({ label: fmtDay(d.date), total: d.total || 0 }))
+
   const max = Math.max(...points.map((p) => p.total), 1)
+
   return (
-    <ResponsiveContainer width="100%" height={260}>
-      <BarChart data={points} margin={{ top: 24, right: 6, left: -14, bottom: 0 }} barCategoryGap="26%">
-        <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#EEF0F3" />
-        <XAxis dataKey="day" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "#98A2B3" }} interval="preserveStartEnd" />
-        <YAxis tickLine={false} axisLine={false} width={52} tick={{ fontSize: 11, fill: "#98A2B3" }}
-          tickFormatter={(v) => (v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)} />
-        <Tooltip cursor={{ fill: "rgba(26,255,110,0.05)" }} content={<SalesTooltip />} />
-        <Bar dataKey="total" radius={[20, 20, 20, 20]} maxBarSize={44}>
-          {points.map((p, i) => <Cell key={i} fill={p.total >= max * 0.85 ? "#0F9940" : p.total >= max * 0.45 ? "#7BC99B" : "#D9E5DD"} />)}
+    <ResponsiveContainer width="100%" height={200}>
+      <BarChart data={points} margin={{ top: 12, right: 6, left: -16, bottom: 0 }} barCategoryGap="24%">
+        <CartesianGrid strokeDasharray="4 4" vertical={false} stroke="#EBEFF2" />
+        <XAxis
+          dataKey="label"
+          tickLine={false}
+          axisLine={false}
+          tick={{ fontSize: 10.5, fill: "#98A2B3", fontWeight: 600 }}
+          interval="preserveStartEnd"
+        />
+        <YAxis
+          tickLine={false}
+          axisLine={false}
+          width={50}
+          tick={{ fontSize: 10.5, fill: "#98A2B3" }}
+          tickFormatter={(v) => (v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : v >= 1000 ? `${Math.round(v / 1000)}k` : `${v}`)}
+        />
+        <Tooltip cursor={{ fill: "rgba(26,255,110,0.06)" }} content={<SalesTooltip />} />
+        <Bar dataKey="total" isAnimationActive={false} radius={[8, 8, 4, 4]} maxBarSize={36}>
+          {points.map((p, i) => (
+            <Cell
+              key={i}
+              fill={p.total >= max * 0.75 ? "#1A9D4E" : p.total >= max * 0.35 ? "#95CDA9" : "#D7E2DB"}
+            />
+          ))}
         </Bar>
       </BarChart>
     </ResponsiveContainer>
   )
 }
 
-/* ── Mini area-chart (Total balance) ─────────────────────────────── */
-function BalanceArea({ data }) {
-  const points = (data || []).slice(-20).map((d, i) => ({ i, v: d.total || 0 }))
-  if (!points.length) return null
-  return (
-    <ResponsiveContainer width="100%" height={90}>
-      <AreaChart data={points} margin={{ top: 6, right: 0, left: 0, bottom: 0 }}>
-        <defs>
-          <linearGradient id="balGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#1AFF6E" stopOpacity={0.35} />
-            <stop offset="100%" stopColor="#1AFF6E" stopOpacity={0} />
-          </linearGradient>
-        </defs>
-        <Area type="monotone" dataKey="v" stroke="#0F9940" strokeWidth={2.5} fill="url(#balGrad)" />
-      </AreaChart>
-    </ResponsiveContainer>
-  )
+function getInitials(nameOrEmail) {
+  if (!nameOrEmail) return "LP"
+  const clean = String(nameOrEmail).trim()
+  const parts = clean.split(/\s+/)
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+  return clean.slice(0, 2).toUpperCase()
+}
+
+function formatShortDate(iso) {
+  if (!iso) return "—"
+  try {
+    return new Date(iso).toLocaleDateString("es-CL", { day: "2-digit", month: "short" })
+  } catch {
+    return "—"
+  }
 }
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const [period, setPeriod] = useState("monthly")
 
-  const { data, isLoading, refetch, isFetching } = useQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin-dashboard"], queryFn: getAdminDashboard, refetchInterval: 60000,
   })
   const { data: analytics } = useQuery({
     queryKey: ["admin-analytics"], queryFn: getAnalytics, refetchInterval: 120000,
   })
 
-  const rev = data?.revenue || {}, orders = data?.orders || {}, users = data?.users || {}
-  const products = data?.products || {}, academy = data?.academy || {}, chart = data?.sales_chart || []
-  const actions = data?.actions || {}
-  const pending = actions.pending_orders || [], lowStock = actions.low_stock || []
-  const unread = actions.unread_service_requests || 0
-
-  const activeProducts = Math.max((products.total || 0) - (products.out_of_stock || 0) - (products.low_stock || 0), 0)
-  const today = new Date().toLocaleDateString("es-CL", { weekday: "long", year: "numeric", month: "long", day: "numeric" })
-
-  const orderColumns = [
-    { key: "user_name", header: "Cliente", sortable: true, render: (r) => (
-      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ width: 34, height: 34, borderRadius: 10, background: "var(--admin-primary-soft)", color: "var(--admin-primary-text)", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 13, flexShrink: 0 }}>
-          {(r.user_name || "?").charAt(0).toUpperCase()}
-        </span>
-        <div style={{ minWidth: 0 }}>
-          <p style={{ fontSize: 13, fontWeight: 600, color: "var(--admin-text)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.user_name || "—"}</p>
-          <p style={{ fontSize: 11.5, color: "var(--admin-text-muted)", fontFamily: "monospace" }}>#{r.short_id}</p>
-        </div>
+  if (isError) {
+    return (
+      <div className="au-page" data-testid="admin-dashboard">
+        <ErrorState
+          title="No pudimos cargar el resumen del negocio"
+          description="Verifica tu conexión o intenta actualizar nuevamente."
+          onRetry={() => refetch()}
+        />
       </div>
-    ) },
-    { key: "items_count", header: "Items", align: "center", render: (r) => <span style={{ color: "var(--admin-text-muted)", fontSize: 13 }}>{r.items_count}</span> },
-    { key: "estado", header: "Estado", render: () => (
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12.5, color: "var(--admin-warning)" }}>
-        <span style={{ width: 7, height: 7, borderRadius: "50%", background: "var(--admin-warning)" }} /> Pendiente
-      </span>
-    ) },
-    { key: "total", header: "Total", sortable: true, align: "right", render: (r) => <span style={{ fontWeight: 700, color: "var(--admin-text)", fontVariantNumeric: "tabular-nums" }}>{clp(r.total)}</span> },
-  ]
+    )
+  }
+
+  const rev      = data?.revenue || {}
+  const orders   = data?.orders || {}
+  const users    = data?.users || {}
+  const products = data?.products || {}
+  const academy  = data?.academy || {}
+  const chart    = data?.sales_chart || []
+  const actions  = data?.actions || {}
+  const pending  = actions.pending_orders || []
+  const recent   = data?.recent_orders || []
+  const unread   = actions.unread_service_requests || 0
+
+  const monthlySeries = analytics?.sales_by_month || []
+  const avgOrderValue = analytics?.kpis?.avg_order_value || 0
+
+  const activeProducts = Math.max(
+    (products.total || 0) - (products.out_of_stock || 0) - (products.low_stock || 0),
+    0
+  )
+
+  // Porcentaje real de órdenes gestionadas (confirmadas/completadas sobre total)
+  const totalOrdersCount = orders.total || 0
+  const pendingOrdersCount = orders.pending || 0
+  const managedOrdersCount = Math.max(totalOrdersCount - pendingOrdersCount, 0)
+  const fulfillmentPct = totalOrdersCount > 0
+    ? Math.min(100, Math.max(0, Math.round((managedOrdersCount / totalOrdersCount) * 100)))
+    : 0
+
+  // Lista de órdenes para la tabla inferior: prioriza recent_orders reales o pending_orders
+  const ordersList = (recent.length > 0 ? recent : pending).slice(0, 5).map((o) => ({
+    id: o.id,
+    shortId: o.short_id || String(o.id || "").slice(0, 8).toUpperCase(),
+    clientName: o.user_name || o.email?.split("@")[0] || "Cliente",
+    email: o.email || "",
+    status: o.status || "pending",
+    total: o.total || 0,
+    created: o.created || o.created_at,
+  }))
+
+  const currentMonthLabel = new Date().toLocaleDateString("es-CL", {
+    month: "long",
+    year: "numeric",
+  })
+  const formattedMonthLabel = currentMonthLabel.charAt(0).toUpperCase() + currentMonthLabel.slice(1)
 
   return (
     <div className="au-page" data-testid="admin-dashboard">
+      {/* Header ejecutivo */}
       <AdminPageHeader
-        eyebrow="Panel"
-        title="Dashboard"
-        description={today.charAt(0).toUpperCase() + today.slice(1)}
-        actions={<SecondaryButton onClick={() => refetch()} testId="dashboard-refresh">
-          <RefreshCw size={14} className={isFetching ? "spin" : ""} /> Actualizar
-        </SecondaryButton>}
+        eyebrow="LEVELPRO / BUSINESS OVERVIEW"
+        title="Control total. Visión clara."
+        description="Todo lo importante de tu negocio, organizado en un solo espacio."
+        actions={
+          <>
+            <SecondaryButton onClick={() => refetch()} testId="dashboard-refresh">
+              <RefreshCw size={14} className={isFetching ? "spin" : ""} /> Actualizar
+            </SecondaryButton>
+            <Button
+              variant="green"
+              size="sm"
+              arrow
+              to="/admin/products"
+              testId="dashboard-new-product"
+            >
+              Nuevo producto
+            </Button>
+          </>
+        }
       />
 
-      {/* ═══ FILA HERO ═══════════════════════════════════════════════
-          Izq: card destacada (ingresos, estilo tarjeta) + ingresos semana.
-          Centro: gráfico grande de ventas. Der: balance con area-chart. */}
-      <div className="dash-hero">
-        {/* Columna izquierda */}
-        <div className="dash-hero__left">
-          {/* Card destacada verde (VISA → Ingresos totales) */}
-          <div className="dash-feature" data-testid="dash-feature-revenue">
-            <div className="dash-feature__head">
-              <div>
-                <p className="dash-feature__label">Ingresos totales</p>
-                <p className="dash-feature__sublabel">Acumulado histórico</p>
-              </div>
-              <Wifi size={22} style={{ opacity: 0.85, transform: "rotate(90deg)" }} />
-            </div>
-            <div className="dash-feature__amount">{clp(rev.total)}</div>
-            <div className="dash-feature__foot">
-              <span className="dash-feature__chip"><CreditCard size={14} /> LevelPro Audio</span>
-              <span style={{ fontSize: 12.5, opacity: 0.85 }}>Este mes {clp(rev.this_month)}</span>
-            </div>
-          </div>
-
-          {/* Ingresos del mes (dato real) */}
-          <div className="au-card dash-week" data-testid="dash-month-revenue">
-            <div>
-              <p style={{ fontSize: 12.5, color: "var(--admin-text-muted)", marginBottom: 6 }}>Ingresos del mes</p>
-              <p style={{ fontSize: 26, fontWeight: 800, color: "var(--admin-text)", letterSpacing: "-0.02em" }}>{clp(rev.this_month)}</p>
-            </div>
-            <span className="au-stat__icon" style={{ width: 44, height: 44, borderRadius: 13 }}><DollarSign size={20} /></span>
-          </div>
+      {/* Barra de contexto: navegación rápida a módulos reales + mes actual */}
+      <div className="lp-context-bar">
+        <div className="lp-view-tabs" role="navigation" aria-label="Vistas rápidas de negocio">
+          <Link to="/admin" className="lp-view-tab active">Resumen</Link>
+          <Link to="/admin/orders" className="lp-view-tab">Ventas</Link>
+          <Link to="/admin/inventory" className="lp-view-tab">Inventario</Link>
+          <Link to="/admin/finance" className="lp-view-tab">Finanzas</Link>
         </div>
+        <div className="lp-datepill" aria-label="Período actual">
+          <Calendar size={14} />
+          <span>{formattedMonthLabel}</span>
+        </div>
+      </div>
 
-        {/* Columna centro — gráfico grande */}
+      {/* ═══ FILA 1: 4 KPIs (StatCard) ═══════════════════════════════ */}
+      <div className="lp-grid-kpi">
+        <StatCard
+          variant="ink"
+          Icon={Wallet}
+          label="INGRESOS TOTALES"
+          value={clp(rev.total)}
+          sub="Acumulado"
+          badge={<span className="au-lp__delta">Mes {clp(rev.this_month)}</span>}
+          to="/admin/finance"
+          loading={isLoading}
+          testId="dash-feature-revenue"
+        />
+
+        <StatCard
+          variant="primary"
+          Icon={ShoppingBag}
+          label="PEDIDOS"
+          value={(orders.total || 0).toLocaleString("es-CL")}
+          sub={`${orders.pending || 0} por gestionar`}
+          badge={<span className="au-lp__delta">{orders.today || 0} hoy</span>}
+          to="/admin/orders"
+          loading={isLoading}
+          testId="kpi-orders"
+        />
+
+        <StatCard
+          variant="light"
+          Icon={Users}
+          label="CLIENTES"
+          value={(users.total || 0).toLocaleString("es-CL")}
+          sub={`+${users.new_week || 0} esta semana`}
+          badge={<span className="au-lp__delta">+{users.new_month || 0} mes</span>}
+          to="/admin/users"
+          loading={isLoading}
+          testId="kpi-users"
+        />
+
+        <StatCard
+          variant="light"
+          Icon={Package}
+          label="CATÁLOGO"
+          value={(products.total || 0).toLocaleString("es-CL")}
+          sub="Productos activos"
+          badge={
+            products.low_stock > 0 ? (
+              <span className="au-lp__delta au-lp__delta--warn">• {products.low_stock} stock bajo</span>
+            ) : (
+              <span className="au-lp__delta">{activeProducts} disponibles</span>
+            )
+          }
+          to="/admin/inventory"
+          loading={isLoading}
+          testId="kpi-products"
+        />
+      </div>
+
+      {/* ═══ FILA 2: RENDIMIENTO COMERCIAL + RESUMEN DEL MES ═════════ */}
+      <div className="lp-dashboard-grid">
         <ChartCard
-          title="Ventas recientes"
-          description="Actividad de la tienda"
+          title="Rendimiento comercial"
+          description="Evolución de las ventas y actividad de tu tienda"
           period={
-            <div className="au-seg" role="tablist" style={{ marginLeft: "auto" }}>
-              <button className={`au-seg__btn ${period === "monthly" ? "is-active" : ""}`} onClick={() => setPeriod("monthly")}>Mensual</button>
-              <button className={`au-seg__btn ${period === "annual" ? "is-active" : ""}`} onClick={() => setPeriod("annual")}>Anual</button>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <div className="au-seg" role="tablist" aria-label="Período del gráfico">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={period === "monthly"}
+                  className={`au-seg__btn ${period === "monthly" ? "is-active" : ""}`}
+                  onClick={() => setPeriod("monthly")}
+                >
+                  Mensual
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={period === "annual"}
+                  className={`au-seg__btn ${period === "annual" ? "is-active" : ""}`}
+                  onClick={() => setPeriod("annual")}
+                >
+                  Anual
+                </button>
+              </div>
+              <Link
+                to="/admin/finance"
+                className="lp-topicon"
+                style={{ width: 32, height: 32 }}
+                aria-label="Ir a Finanzas"
+              >
+                <ArrowUpRight size={15} />
+              </Link>
             </div>
           }
-          loading={isLoading} isEmpty={chart.length === 0}
-          emptyDesc="Cuando registres ventas las verás acá."
-          testId="admin-sales-chart">
-          <SalesBars data={chart} period={period} />
+          loading={isLoading}
+          isEmpty={chart.length === 0 && monthlySeries.length === 0}
+          emptyDesc="Cuando registres ventas las verás reflejadas en este gráfico."
+          testId="admin-sales-chart"
+        >
+          <SalesBars dailyData={chart} monthlyData={monthlySeries} period={period} />
+          <div style={{
+            display: "flex", justifyContent: "space-between", alignItems: "center",
+            flexWrap: "wrap", gap: 10, marginTop: 10, fontSize: 11.5, color: "#7B838E",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#1A9D4E" }} />
+                Ventas confirmadas
+              </span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#D7E2DB" }} />
+                Actividad diaria
+              </span>
+            </div>
+            <span style={{ color: "#0F9940", fontWeight: 750 }} data-testid="dash-month-revenue">
+              Últimos 30 días: {clp(rev.last_30_days)}
+            </span>
+          </div>
         </ChartCard>
 
-        {/* Columna derecha — balance del mes con area-chart */}
-        <div className="au-card dash-balance" data-testid="dash-balance">
-          <div className="dash-balance__head">
+        {/* Panel derecho: Efectividad y balance real del mes */}
+        <article className="au-card au-panel" data-testid="dash-balance">
+          <div className="au-panel__head">
             <div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: "var(--admin-text)" }}>Ventas del mes</p>
-              <p style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>Últimos 30 días</p>
+              <h2 className="au-panel__title">Actividad del mes</h2>
+              <p className="au-panel__desc">Efectividad de órdenes e ingresos del período</p>
             </div>
-            <Link to="/admin/orders" className="au-iconbtn au-iconbtn--ghost" aria-label="Ver órdenes">
-              <ArrowUpRight size={16} />
-            </Link>
+            <span className="au-lp__tag">EN CURSO</span>
           </div>
-          <p style={{ fontSize: 13, color: "var(--admin-text-muted)", textAlign: "center", marginTop: 6 }}>Total del período</p>
-          <p style={{ fontSize: 32, fontWeight: 800, color: "var(--admin-text)", textAlign: "center", letterSpacing: "-0.02em", marginBottom: 4 }}>
-            {clp(rev.last_30_days)}
-          </p>
-          <BalanceArea data={chart} />
-          <div className="dash-balance__actions">
-            <Link to="/admin/orders" className="au-btn au-btn--primary" style={{ flex: 1, justifyContent: "center" }}>
-              Ver órdenes <ArrowRight size={15} />
-            </Link>
-            <Link to="/admin/products" className="au-btn au-btn--secondary" style={{ flex: 1, justifyContent: "center" }}>
-              Productos
-            </Link>
-          </div>
-        </div>
-      </div>
 
-      {/* ═══ FILA KPIs ═══════════════════════════════════════════════ */}
-      <div className="au-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px,1fr))" }}>
-        <StatCard Icon={ShoppingBag} label="PEDIDOS" value={orders.total || 0}
-          sub={`${orders.today || 0} hoy`} to="/admin/orders" loading={isLoading} testId="kpi-orders" />
-        <StatCard Icon={Users} label="USUARIOS" value={users.total || 0}
-          sub={`+${users.new_week || 0} esta semana`} to="/admin/users" loading={isLoading} testId="kpi-users" />
-        <StatCard Icon={Package} label="PRODUCTOS" value={products.total || 0}
-          sub={`${activeProducts} activos`}
-          badge={products.out_of_stock > 0 ? <span className="au-lp__delta au-lp__delta--neg">{products.out_of_stock} agotados</span> : null}
-          to="/admin/products" loading={isLoading} testId="kpi-products" />
-        <StatCard Icon={Boxes} label="ACADEMIA" value={academy.total_enrollments || 0}
-          sub={academy.enrollments_month > 0 ? `+${academy.enrollments_month} este mes` : "inscripciones"}
-          to="/admin/enrollments" loading={isLoading} testId="kpi-academy" />
-      </div>
-
-      {/* ═══ FILA ACTIVIDAD ══════════════════════════════════════════
-          Izq: tabla de órdenes (Payment History). Der: card de refund/
-          crédito → stock, + usuarios recientes (Mandatory Payments). */}
-      <div className="dash-activity">
-        {/* Tabla de actividad reciente */}
-        <div className="au-card" style={{ padding: 20 }} data-testid="dash-orders">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
-            <div>
-              <h2 className="au-panel__title">Órdenes por confirmar</h2>
-              <p className="au-panel__desc">Actividad reciente de la tienda</p>
-            </div>
-            <Link to="/admin/orders" className="au-iconbtn au-iconbtn--ghost" aria-label="Ver todas">
-              <ArrowUpRight size={16} />
-            </Link>
-          </div>
-          <DataTable
-            columns={orderColumns} data={pending} loading={isLoading}
-            getRowId={(r) => r.id}
-            onRowClick={(r) => navigate(`/admin/orders?id=${r.id}`)}
-            rowActions={(r) => [{ label: "Ver orden", icon: Eye, onClick: () => navigate(`/admin/orders?id=${r.id}`) }]}
-            initialPageSize={6} emptyTitle="No hay órdenes pendientes" emptyDesc="Todas las órdenes están al día."
-            emptyIcon={Clock} testId="dashboard-orders-table" searchable={false} />
-        </div>
-
-        {/* Columna derecha */}
-        <div className="dash-activity__side">
-          {/* Card destacada — stock / inventario (Amount of credit) */}
-          <div className="au-card dash-credit" data-testid="dash-stock">
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
-              <span className="au-stat__icon" style={{ width: 42, height: 42, borderRadius: 12 }}><Boxes size={19} /></span>
-              <div>
-                <p style={{ fontSize: 14, fontWeight: 700, color: "var(--admin-text)" }}>Stock del catálogo</p>
-                <p style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>Productos activos disponibles</p>
+          {isLoading ? (
+            <div className="au-skel" style={{ height: 165 }} />
+          ) : (
+            <div className="lp-performance">
+              <div
+                className="lp-ring"
+                style={{
+                  background: `conic-gradient(#1A9D4E 0 ${fulfillmentPct}%, #E9F2EB ${fulfillmentPct}% 100%)`,
+                }}
+                aria-label={`${fulfillmentPct}% de órdenes gestionadas`}
+              >
+                <div className="lp-ring__num">
+                  {fulfillmentPct}<small>%</small>
+                </div>
               </div>
-            </div>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
-              <span style={{ fontSize: 34, fontWeight: 800, color: "var(--admin-text)", letterSpacing: "-0.02em" }}>{activeProducts}</span>
-              {products.low_stock > 0 && (
-                <span style={{ fontSize: 12, fontWeight: 700, color: "var(--admin-warning)", background: "rgba(217,119,6,0.1)", padding: "3px 9px", borderRadius: 100 }}>
-                  {products.low_stock} stock bajo
+
+              <div className="lp-ring-desc">
+                <span className="lp-ring-desc__eyebrow">INGRESOS DEL MES</span>
+                <strong className="lp-ring-desc__val">{clp(rev.this_month)}</strong>
+                <p className="lp-ring-desc__text">
+                  {orders.this_month || 0} órdenes este mes
+                  {avgOrderValue > 0 ? ` · Ticket prom. ${clp(avgOrderValue)}` : ""}.
+                </p>
+                <div className="lp-tinyprogress">
+                  <span style={{ width: `${fulfillmentPct}%` }} />
+                </div>
+                <span style={{ fontSize: 11, color: "#8D959E", fontWeight: 700 }}>
+                  {managedOrdersCount} gestionadas de {totalOrdersCount} órdenes totales
                 </span>
-              )}
-            </div>
-
-            {/* Usuarios nuevos (dato real: users.new_week) */}
-            <div className="dash-credit__users">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <p style={{ fontSize: 13, fontWeight: 700, color: "var(--admin-text)" }}>Usuarios nuevos</p>
-                  <p style={{ fontSize: 11.5, color: "var(--admin-text-muted)" }}>Registrados esta semana</p>
-                </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ fontSize: 24, fontWeight: 800, color: "var(--admin-primary-text)" }}>+{users.new_week || 0}</span>
-                  <Link to="/admin/users" className="au-iconbtn au-iconbtn--ghost" aria-label="Ver usuarios">
-                    <ArrowUpRight size={15} />
-                  </Link>
-                </div>
               </div>
             </div>
+          )}
+        </article>
+      </div>
+
+      {/* ═══ FILA 3: ÚLTIMAS ÓRDENES + REQUIERE TU ATENCIÓN ══════════ */}
+      <div className="lp-lower-grid">
+        {/* Tabla compacta de Últimas órdenes */}
+        <article className="au-card au-panel" data-testid="dash-orders">
+          <div className="au-panel__head" style={{ marginBottom: 12 }}>
+            <div>
+              <h2 className="au-panel__title">Últimas órdenes</h2>
+              <p className="au-panel__desc">Actividad reciente de tus clientes</p>
+            </div>
+            <Link
+              to="/admin/orders"
+              style={{
+                fontSize: 12, color: "#0F9940", fontWeight: 800,
+                textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 4,
+              }}
+            >
+              Ver todas <ArrowRight size={14} />
+            </Link>
           </div>
 
-          {/* Solicitudes de servicio */}
-          <SectionCard title="Solicitudes de servicio"
-            action={<Link to="/admin/services" style={{ fontSize: 12, color: "var(--admin-primary-text)", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 3, fontWeight: 600 }}>Ver todo <ArrowRight size={12} /></Link>}
-            testId="dash-service-requests">
-            {unread > 0
-              ? <p style={{ fontSize: 13, color: "var(--admin-text-muted)", padding: "13px 15px", background: "var(--admin-surface-secondary)", borderRadius: 12 }}>Tenés <strong style={{ color: "var(--admin-primary-text)" }}>{unread}</strong> cotizaciones esperando respuesta.</p>
-              : <EmptyState title="Sin solicitudes nuevas ✓" />}
-          </SectionCard>
-        </div>
+          {isLoading ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {[0, 1, 2].map((k) => (
+                <div key={k} className="au-skel" style={{ height: 52 }} />
+              ))}
+            </div>
+          ) : ordersList.length === 0 ? (
+            <EmptyState
+              Icon={Clock}
+              title="Sin órdenes recientes"
+              description="Cuando tus clientes realicen compras aparecerán aquí."
+            />
+          ) : (
+            <div data-testid="dashboard-orders-table">
+              <div className="lp-orders-mini__head">
+                <span>Cliente</span>
+                <span>Estado</span>
+                <span>Total</span>
+                <span>Fecha</span>
+              </div>
+              {ordersList.map((o) => {
+                const st = ORDER_STATUS_MAP[o.status] || { label: o.status, tone: "neutral" }
+                return (
+                  <div
+                    key={o.id}
+                    className="lp-orders-mini__row"
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => navigate(`/admin/orders?id=${o.id}`)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault()
+                        navigate(`/admin/orders?id=${o.id}`)
+                      }
+                    }}
+                  >
+                    <div className="lp-buyer">
+                      <span className="lp-buyer__ico">{getInitials(o.clientName)}</span>
+                      <div style={{ minWidth: 0 }}>
+                        <div className="lp-buyer__name">{o.clientName}</div>
+                        <div className="lp-buyer__id">#{o.shortId}</div>
+                      </div>
+                    </div>
+                    <div>
+                      <StatusBadge tone={st.tone}>{st.label}</StatusBadge>
+                    </div>
+                    <span style={{ fontWeight: 800, color: "#14161A", fontVariantNumeric: "tabular-nums" }}>
+                      {clp(o.total)}
+                    </span>
+                    <span style={{ color: "#9199A1", fontSize: 11.5 }}>
+                      {formatShortDate(o.created)}
+                    </span>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </article>
+
+        {/* Alertas operativas: Requiere tu atención */}
+        <article className="au-card au-panel" data-testid="dash-stock">
+          <div className="au-panel__head" style={{ marginBottom: 8 }}>
+            <div>
+              <h2 className="au-panel__title">Requiere tu atención</h2>
+              <p className="au-panel__desc">Prioridades operativas de hoy</p>
+            </div>
+            <Link
+              to="/admin/orders"
+              className="lp-topicon"
+              style={{ width: 32, height: 32 }}
+              aria-label="Ver órdenes pendientes"
+            >
+              <ArrowUpRight size={15} />
+            </Link>
+          </div>
+
+          <div className="lp-alert-list">
+            <Link to="/admin/inventory" className="lp-alert-row" data-testid="alert-low-stock">
+              <span className="lp-alert-icon">
+                <AlertTriangle size={18} />
+              </span>
+              <span className="lp-alert-text">
+                <strong>{products.low_stock || 0} productos con stock bajo</strong>
+                <span>
+                  {products.out_of_stock > 0
+                    ? `${products.out_of_stock} agotados · Revisa disponibilidad e inventario`
+                    : "Revisa disponibilidad e inventario"}
+                </span>
+              </span>
+              <ChevronRight size={16} style={{ color: "#BBC0C6", flexShrink: 0 }} />
+            </Link>
+
+            <Link to="/admin/orders" className="lp-alert-row" data-testid="alert-pending-orders">
+              <span className="lp-alert-icon lp-alert-icon--green">
+                <ShoppingBag size={18} />
+              </span>
+              <span className="lp-alert-text">
+                <strong>{orders.pending || 0} órdenes por gestionar</strong>
+                <span>Compras y confirmaciones pendientes</span>
+              </span>
+              <ChevronRight size={16} style={{ color: "#BBC0C6", flexShrink: 0 }} />
+            </Link>
+
+            <Link to="/admin/services" className="lp-alert-row" data-testid="dash-service-requests">
+              <span className="lp-alert-icon lp-alert-icon--dark">
+                <Wrench size={18} />
+              </span>
+              <span className="lp-alert-text">
+                <strong>{unread} solicitudes de servicios</strong>
+                <span>Clientes a la espera de respuesta</span>
+              </span>
+              <ChevronRight size={16} style={{ color: "#BBC0C6", flexShrink: 0 }} />
+            </Link>
+
+            <Link to="/admin/academy/enrollments" className="lp-alert-row" data-testid="kpi-academy">
+              <span className="lp-alert-icon lp-alert-icon--green">
+                <GraduationCap size={18} />
+              </span>
+              <span className="lp-alert-text">
+                <strong>{academy.total_enrollments || 0} inscripciones en Academia</strong>
+                <span>
+                  {academy.enrollments_month > 0
+                    ? `+${academy.enrollments_month} nuevas este mes`
+                    : "Gestión de alumnos y cursos"}
+                </span>
+              </span>
+              <ChevronRight size={16} style={{ color: "#BBC0C6", flexShrink: 0 }} />
+            </Link>
+          </div>
+        </article>
       </div>
 
       <style>{`
-        /* ── Layout general del dashboard ── */
-        .admin-root .dash-hero {
-          display: grid;
-          grid-template-columns: minmax(300px, 340px) minmax(0, 1fr) minmax(280px, 320px);
-          gap: 16px;
-          align-items: stretch;
-        }
-        .admin-root .dash-hero__left { display: flex; flex-direction: column; gap: 16px; }
-
-        /* Card destacada verde (VISA → ingresos) */
-        .admin-root .dash-feature {
-          background: linear-gradient(150deg, #1AA85A 0%, #0F9940 60%, #0C7A33 100%);
-          border-radius: var(--admin-radius-lg);
-          padding: 22px;
-          color: #fff;
-          box-shadow: 0 16px 40px rgba(15,153,64,0.28);
-          display: flex; flex-direction: column; gap: 18px;
-          flex: 1;
-          position: relative; overflow: hidden;
-        }
-        .admin-root .dash-feature::after {
-          content: ""; position: absolute; top: -40%; right: -20%;
-          width: 260px; height: 260px; border-radius: 50%;
-          background: radial-gradient(circle, rgba(255,255,255,0.12), transparent 70%);
-          pointer-events: none;
-        }
-        .admin-root .dash-feature__head { display: flex; justify-content: space-between; align-items: flex-start; }
-        .admin-root .dash-feature__label { font-size: 15px; font-weight: 700; }
-        .admin-root .dash-feature__sublabel { font-size: 12px; opacity: 0.8; margin-top: 2px; }
-        .admin-root .dash-feature__amount { font-size: 38px; font-weight: 800; letterSpacing: -0.03em; line-height: 1; }
-        .admin-root .dash-feature__foot { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
-        .admin-root .dash-feature__chip {
-          display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 600;
-          background: rgba(255,255,255,0.18); padding: 5px 11px; border-radius: 100px; backdrop-filter: blur(4px);
-        }
-
-        /* Ingresos de la semana */
-        .admin-root .dash-week {
-          padding: 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px;
-        }
-
-        /* Balance derecha */
-        .admin-root .dash-balance { padding: 20px; display: flex; flex-direction: column; }
-        .admin-root .dash-balance__head { display: flex; justify-content: space-between; align-items: flex-start; }
-        .admin-root .dash-balance__actions { display: flex; gap: 10px; margin-top: 16px; }
-
-        /* Fila de actividad */
-        .admin-root .dash-activity {
-          display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); gap: 16px; align-items: start;
-        }
-        .admin-root .dash-activity__side { display: flex; flex-direction: column; gap: 16px; }
-        .admin-root .dash-credit { padding: 20px; }
-        .admin-root .dash-credit__users { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--admin-border); }
-
-        /* ── Responsive ── */
-        @media (max-width: 1180px) {
-          .admin-root .dash-hero { grid-template-columns: minmax(280px, 320px) minmax(0, 1fr); }
-          .admin-root .dash-balance { grid-column: 1 / -1; }
-        }
-        @media (max-width: 900px) {
-          .admin-root .dash-hero { grid-template-columns: 1fr; }
-          .admin-root .dash-activity { grid-template-columns: 1fr; }
-        }
-
         .admin-root .spin { animation: au-spin 1s linear infinite; }
         @keyframes au-spin { to { transform: rotate(360deg); } }
       `}</style>

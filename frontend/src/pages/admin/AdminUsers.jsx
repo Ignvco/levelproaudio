@@ -2,8 +2,8 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { getAdminUsers } from "../../api/admin.api"
-import { DataTable, StatusBadge, AdminPageHeader } from "../../components/admin/ui"
-import { Users as UsersIcon } from "lucide-react"
+import { DataTable, StatusBadge, AdminPageHeader, StatCard } from "../../components/admin/ui"
+import { Users as UsersIcon, UserCheck, ShieldCheck } from "lucide-react"
 
 const roleOf = (u) => u.is_superuser ? "super" : u.is_staff ? "admin" : "cliente"
 const ROLE = {
@@ -20,9 +20,11 @@ export default function AdminUsers() {
     queryFn:  () => getAdminUsers({}),
   })
 
-  const users = (data?.results || data || [])
-    .map(u => ({ ...u, _role: roleOf(u) }))
-    .filter(u => !roleFilter || u._role === roleFilter)
+  const allUsers = (data?.results || data || []).map(u => ({ ...u, _role: roleOf(u) }))
+  const users = allUsers.filter(u => !roleFilter || u._role === roleFilter)
+  const totalCount = data?.count || allUsers.length
+  const clientCount = allUsers.filter(u => u._role === "cliente").length
+  const staffCount = allUsers.filter(u => u._role === "admin" || u._role === "super").length
 
   const columns = [
     { key:"first_name", header:"Usuario", sortable:true, render:u => (
@@ -33,27 +35,54 @@ export default function AdminUsers() {
           {(u.first_name?.[0] || u.email?.[0] || "U").toUpperCase()}
         </div>
         <div style={{ minWidth:0 }}>
-          <p style={{ fontSize:13, fontWeight:600, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
+          <p style={{ fontSize:13, fontWeight:700, color:"var(--admin-text)", overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
             {u.first_name || u.last_name ? `${u.first_name||""} ${u.last_name||""}`.trim() : "Sin nombre"}
           </p>
           {u.phone && <p style={{ fontSize:11, color:"var(--admin-text-muted)" }}>{u.phone}</p>}
         </div>
       </div>
     ) },
-    { key:"email", header:"Email", sortable:true, render:u => <span style={{ color:"var(--admin-text-muted)" }}>{u.email}</span> },
-    { key:"orders_count", header:"Pedidos", sortable:true, align:"center", render:u => u.orders_count || 0 },
+    { key:"email", header:"Email", sortable:true, render:u => <span style={{ color:"var(--admin-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "12.5px" }}>{u.email}</span> },
+    { key:"orders_count", header:"Pedidos", sortable:true, align:"center", render:u => <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{u.orders_count || 0}</span> },
     { key:"_role", header:"Rol", render:u => <StatusBadge tone={ROLE[u._role].tone}>{ROLE[u._role].label}</StatusBadge> },
     { key:"date_joined", header:"Registro", sortable:true, render:u => (
-      <span style={{ color:"var(--admin-text-muted)" }}>
+      <span style={{ color:"var(--admin-text-muted)", fontFamily: "var(--font-mono)", fontSize: "12px" }}>
         {new Date(u.date_joined).toLocaleDateString("es-CL", { day:"numeric", month:"short", year:"2-digit" })}
       </span>
     ) },
   ]
 
   return (
-    <div className="au-page" style={{ padding:"clamp(24px, 4vw, 40px)" }}>
-      <AdminPageHeader eyebrow="Clientes" title="Usuarios"
-        description={`${data?.count || (data?.results || data || []).length || 0} usuarios registrados`} />
+    <div className="au-page">
+      <AdminPageHeader
+        eyebrow="LEVELPRO / CLIENTES"
+        title="Usuarios"
+        description={`${totalCount} usuarios registrados en la plataforma`}
+      />
+
+      <div className="lp-kpi-strip">
+        <StatCard
+          variant="ink"
+          Icon={UsersIcon}
+          label="Total usuarios"
+          value={totalCount}
+          sub="Cuentas registradas"
+        />
+        <StatCard
+          variant="primary"
+          Icon={UserCheck}
+          label="Clientes"
+          value={clientCount}
+          sub="Compradores y alumnos"
+        />
+        <StatCard
+          variant="light"
+          Icon={ShieldCheck}
+          label="Equipo Staff / Admin"
+          value={staffCount}
+          sub="Con acceso administrativo"
+        />
+      </div>
 
       <DataTable
         columns={columns} data={users} loading={isLoading}

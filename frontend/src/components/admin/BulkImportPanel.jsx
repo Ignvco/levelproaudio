@@ -62,32 +62,21 @@ export default function BulkImportPanel({
   }
 
   return (
-    <div data-testid={testId} style={{
-      padding:"18px 22px",
-      background:"var(--surface)", border:"1px solid var(--border)",
-      borderRadius:"var(--r-xl)",
-    }}>
+    <div data-testid={testId} className="au-card au-panel">
       <div style={{ display:"flex", justifyContent:"space-between",
         alignItems:"start", gap:"14px", marginBottom:"14px",
         flexWrap:"wrap" }}>
         <div>
-          <p style={{ fontSize:"11px", color:"var(--accent-text)",
-            letterSpacing:"0.1em", textTransform:"uppercase",
-            fontWeight:600, marginBottom:"4px" }}>
+          <p className="au-eyebrow" style={{ marginBottom:"4px" }}>
             Importación masiva
           </p>
-          <p style={{ fontSize:"13px", color:"var(--text-2)" }}>
+          <p style={{ fontSize:"13px", color:"var(--admin-text-muted)" }}>
             Cargá {entityLabel} en lote desde Excel (.xlsx) o CSV.
           </p>
         </div>
         <button onClick={downloadTemplate}
           data-testid={`${testId}-template`}
-          style={{
-            padding:"7px 14px", fontSize:"12px",
-            background:"transparent", border:"1px solid var(--border)",
-            color:"var(--text-2)", borderRadius:"var(--r-full)",
-            cursor:"pointer",
-          }}>
+          className="au-btn au-btn--secondary au-btn--sm">
           ↓ Plantilla CSV
         </button>
       </div>

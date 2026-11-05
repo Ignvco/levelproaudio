@@ -6,8 +6,12 @@ import {
   getAdminModules, createAdminModule,
   updateAdminModule, deleteAdminModule, getAdminCourses,
 } from "../../api/admin.api"
-import { FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import {
+  AdminPageHeader, PrimaryButton, SecondaryButton, IconButton,
+  FormModal, FormField, formInputStyle, ConfirmationModal,
+} from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
+import { Pencil, Trash2 } from "lucide-react"
 
 function ModuleModal({ module, courseId, courses = [], onClose, onSave }) {
   const [form, setForm]     = useState({
@@ -91,12 +95,14 @@ export default function AdminModules() {
     },
   })
 
-  const modules = data?.results || data || []
-  const courses = coursesData?.results || coursesData || []
+  const rawModules = data?.results ?? data
+  const modules = Array.isArray(rawModules) ? rawModules : []
+  const rawCourses = coursesData?.results ?? coursesData
+  const courses = Array.isArray(rawCourses) ? rawCourses : []
   const currentCourse = courses.find(c => c.id.toString() === courseFilter)
 
   return (
-    <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page">
       {modal && (
         <ModuleModal
           module={modal === "new" ? null : modal}
@@ -118,100 +124,80 @@ export default function AdminModules() {
         testId="delete-module-modal"
       />
 
-      {/* Header */}
-      <div style={{ display: "flex", justifyContent: "space-between",
-        alignItems: "flex-start", marginBottom: "28px", gap: "16px",
-        flexWrap: "wrap" }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px",
-            marginBottom: "8px", fontSize: "13px", color: "var(--text-3)" }}>
-            <Link to="/admin/academy" className="hover-accent"
-              style={{ transition: "color var(--dur)" }}>
-              Academia
-            </Link>
-            <span>/</span>
-            <span style={{ color: "var(--text-2)" }}>
-              {currentCourse?.title || "Todos los módulos"}
-            </span>
-          </div>
-          <h1 style={{ fontFamily: "var(--font-display)",
-            fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 800,
-            letterSpacing: "-0.02em", marginBottom: "6px" }}>
-            Módulos
-          </h1>
-          <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
-            {modules.length} módulos
-          </p>
-        </div>
-        <button onClick={() => setModal("new")} className="btn btn-accent"
-          style={{ padding: "10px 20px", fontSize: "13px" }}>
-          + Nuevo módulo
-        </button>
-      </div>
+      <AdminPageHeader
+        eyebrow="LEVELPRO / ACADEMIA"
+        title="Módulos"
+        description={`${modules.length} módulos configurados`}
+        breadcrumbs={[
+          { label: "Academia", to: "/admin/academy" },
+          { label: currentCourse?.title || "Todos los módulos" },
+        ]}
+        actions={
+          <>
+            <SecondaryButton to="/admin/academy" size="sm">← Cursos</SecondaryButton>
+            <PrimaryButton onClick={() => setModal("new")}>+ Nuevo módulo</PrimaryButton>
+          </>
+        }
+      />
 
       {isLoading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: "56px" }} />
+            <div key={i} className="skeleton" style={{ height: "56px", borderRadius: "14px" }} />
           ))}
         </div>
       ) : (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-xl)", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-          <div style={{ display: "grid", gridTemplateColumns: "48px 3fr 2fr 1.4fr 80px", minWidth: "600px",
-            padding: "10px 20px", borderBottom: "1px solid var(--border)",
-            fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
-            textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            <span>#</span><span>Título</span>
-            <span>Curso</span><span>Lecciones</span><span />
+        <div className="au-card au-table-wrap">
+          <div className="au-tscroll">
+            <table className="au-table">
+              <thead>
+                <tr>
+                  <th style={{ width: "60px" }}>#</th>
+                  <th>Título</th>
+                  <th>Curso</th>
+                  <th>Lecciones</th>
+                  <th style={{ width: "96px", textAlign: "right" }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {modules.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: "42px", textAlign: "center", color: "var(--admin-text-secondary)" }}>
+                      Sin módulos. Crea el primero arriba.
+                    </td>
+                  </tr>
+                ) : modules.map((mod) => (
+                  <tr key={mod.id}>
+                    <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text-muted)" }}>
+                      {mod.order}
+                    </td>
+                    <td>
+                      <p style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--admin-text)" }}>{mod.title}</p>
+                    </td>
+                    <td style={{ color: "var(--admin-text-secondary)" }}>
+                      {mod.course_title || courses.find(c => c.id === mod.course)?.title || "—"}
+                    </td>
+                    <td>
+                      <Link
+                        to={`/admin/academy/lessons?module=${mod.id}`}
+                        data-testid={`module-lessons-link-${mod.id}`}
+                        className="au-pill-btn au-pill-btn--edit"
+                        style={{ display: "inline-flex", padding: "5px 12px", textDecoration: "none", fontSize: "12px" }}
+                      >
+                        {mod.lessons_count ?? 0} lecciones →
+                      </Link>
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      <div style={{ display: "inline-flex", gap: "6px" }}>
+                        <IconButton icon={Pencil} label="Editar" onClick={() => setModal(mod)} />
+                        <IconButton icon={Trash2} label="Eliminar" danger onClick={() => setToDelete(mod)} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {modules.length === 0 ? (
-            <div style={{ padding: "48px", textAlign: "center",
-              color: "var(--text-3)", fontSize: "14px" }}>
-              Sin módulos. Crea el primero arriba.
-            </div>
-          ) : modules.map((mod, i) => (
-            <div key={mod.id} style={{
-              display: "grid", gridTemplateColumns: "48px 3fr 2fr 1.4fr 80px", minWidth: "600px",
-              padding: "13px 20px", alignItems: "center",
-              borderTop: i > 0 ? "1px solid var(--border)" : "none", gap: "8px",
-              transition: "background var(--dur) var(--ease)",
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2)"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-            >
-              <span style={{ fontSize: "13px", fontWeight: 600,
-                color: "var(--text-3)" }}>{mod.order}</span>
-              <div>
-                <p style={{ fontSize: "13px", fontWeight: 500 }}>{mod.title}</p>
-              </div>
-              <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                {mod.course_title || courses.find(c => c.id === mod.course)?.title || "—"}
-              </span>
-              <Link to={`/admin/academy/lessons?module=${mod.id}`}
-                data-testid={`module-lessons-link-${mod.id}`}
-                style={{
-                  fontSize: "12px", fontWeight: 500, textDecoration: "none",
-                  color: "#60a5fa", justifySelf: "start",
-                  padding: "4px 10px", borderRadius: "var(--r-full)",
-                  background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)",
-                }}>
-                {mod.lessons_count ?? 0} lecciones →
-              </Link>
-              <div style={{ display: "flex", gap: "6px" }}>
-                <button onClick={() => setModal(mod)} style={{
-                  padding: "4px 8px", borderRadius: "var(--r-sm)", fontSize: "11px",
-                  cursor: "pointer", color: "#60a5fa",
-                  background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)",
-                }}>✎</button>
-                <button onClick={() => setToDelete(mod)} style={{
-                  padding: "4px 8px", borderRadius: "var(--r-sm)", fontSize: "11px",
-                  cursor: "pointer", color: "#EF4444",
-                  background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)",
-                }}>×</button>
-              </div>
-            </div>
-          ))}
         </div>
       )}
     </div>

@@ -10,7 +10,8 @@ import {
 import { getServiceCategories } from "../../api/services.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../components/ui/ToastNotification"
-import { FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { AdminPageHeader, PrimaryButton, StatCard, FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { Wrench, Inbox, CalendarCheck } from "lucide-react"
 
 const inputSt = formInputStyle
 
@@ -46,25 +47,22 @@ function RequestCard({ req, reqMutation }) {
   const dirty = note !== (req.admin_notes || "")
 
   return (
-    <div style={{
-      background: "var(--surface)", border: "1px solid var(--border)",
-      borderRadius: "var(--r-xl)", padding: "20px 24px",
-    }}>
+    <div className="au-card au-panel">
       <div style={{ display: "flex", justifyContent: "space-between",
         alignItems: "flex-start", flexWrap: "wrap", gap: "12px",
         marginBottom: "14px" }}>
         <div>
-          <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "4px" }}>
+          <p style={{ fontSize: "14.5px", fontWeight: 700, color: "var(--admin-text)", marginBottom: "4px" }}>
             {req.service_name}
           </p>
-          <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+          <p style={{ fontSize: "12.5px", color: "var(--admin-text-secondary)" }}>
             {req.name} · {req.email}
             {req.phone && ` · ${req.phone}`}
           </p>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
           <StatusBadge status={req.status} map={REQ_STATUS} />
-          <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
+          <span style={{ fontSize: "12px", color: "var(--admin-text-muted)", fontFamily: "var(--font-mono)" }}>
             {new Date(req.created_at).toLocaleDateString("es-CL", {
               day: "numeric", month: "short", year: "numeric"
             })}
@@ -73,10 +71,10 @@ function RequestCard({ req, reqMutation }) {
       </div>
 
       {req.message && (
-        <p style={{ fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6,
-          padding: "12px 14px", background: "var(--surface-2)",
-          borderRadius: "var(--r-md)", marginBottom: "14px",
-          border: "1px solid var(--border)" }}>
+        <p style={{ fontSize: "13px", color: "var(--admin-text-secondary)", lineHeight: 1.6,
+          padding: "12px 14px", background: "var(--admin-surface-soft)",
+          borderRadius: "12px", marginBottom: "14px",
+          border: "1px solid var(--admin-border)" }}>
           &quot;{req.message}&quot;
         </p>
       )}
@@ -85,13 +83,14 @@ function RequestCard({ req, reqMutation }) {
         {Object.entries(REQ_STATUS).map(([s, { label, color }]) => (
           s !== req.status && (
             <button key={s}
+              type="button"
               onClick={() => reqMutation.mutate({ id: req.id, data: { status: s } })}
               disabled={reqMutation.isPending}
               style={{
-                padding: "5px 12px", borderRadius: "var(--r-full)",
-                fontSize: "12px", cursor: "pointer", fontWeight: 500,
-                color, background: `${color}10`, border: `1px solid ${color}25`,
-                transition: "all var(--dur) var(--ease)",
+                padding: "5px 12px", borderRadius: "9999px",
+                fontSize: "12px", cursor: "pointer", fontWeight: 600,
+                color, background: `${color}12`, border: `1px solid ${color}30`,
+                transition: "all 180ms ease",
                 opacity: reqMutation.isPending ? 0.5 : 1,
               }}>
               → {label}
@@ -102,8 +101,8 @@ function RequestCard({ req, reqMutation }) {
 
       {/* Respuesta visible para el cliente */}
       <div>
-        <label style={{ display: "block", fontSize: "11px", fontWeight: 600,
-          color: "var(--text-3)", letterSpacing: "0.06em", textTransform: "uppercase",
+        <label style={{ display: "block", fontSize: "11px", fontWeight: 700,
+          color: "var(--admin-text-muted)", letterSpacing: "0.06em", textTransform: "uppercase",
           marginBottom: "6px" }}>
           Respuesta (el cliente la ve en &quot;Mis servicios&quot;)
         </label>
@@ -111,12 +110,16 @@ function RequestCard({ req, reqMutation }) {
           placeholder="Ej: Te contactamos por email con la cotización..."
           style={{ ...inputSt, resize: "vertical", fontSize: "13px" }} />
         {dirty && (
-          <button
-            onClick={() => reqMutation.mutate({ id: req.id, data: { status: req.status, admin_notes: note } })}
-            disabled={reqMutation.isPending}
-            className="btn btn-accent" style={{ marginTop: "8px", padding: "7px 16px", fontSize: "12px" }}>
-            {reqMutation.isPending ? "Guardando..." : "Guardar respuesta"}
-          </button>
+          <div style={{ marginTop: "10px" }}>
+            <PrimaryButton
+              size="sm"
+              onClick={() => reqMutation.mutate({ id: req.id, data: { status: req.status, admin_notes: note } })}
+              disabled={reqMutation.isPending}
+              loading={reqMutation.isPending}
+            >
+              {reqMutation.isPending ? "Guardando..." : "Guardar respuesta"}
+            </PrimaryButton>
+          </div>
         )}
       </div>
     </div>
@@ -168,47 +171,72 @@ export default function AdminServices() {
   const services = servicesData?.results || servicesData || []
   const requests = requestsData?.results || requestsData || []
   const bookings = bookingsData?.results || bookingsData || []
+  const pendingReqs = requests.filter(r => r.status === "pending").length
+  const activeServices = services.filter(s => s.is_active !== false).length
 
   return (
-    <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page">
       {/* Header */}
-      <div style={{ marginBottom: "28px" }}>
-        <h1 style={{ fontFamily: "var(--font-display)",
-          fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 800,
-          letterSpacing: "-0.02em", marginBottom: "6px" }}>
-          Servicios
-        </h1>
-        <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
-          {requests.length} solicitudes · {services.length} servicios activos
-        </p>
+      <AdminPageHeader
+        eyebrow="LEVELPRO / SERVICIOS"
+        title="Servicios"
+        description={`${requests.length} solicitudes recibidas · ${services.length} servicios publicados`}
+        actions={
+          <PrimaryButton onClick={() => setModal("new")} data-testid="btn-new-service">
+            + Nuevo servicio
+          </PrimaryButton>
+        }
+      />
+
+      {/* KPI Strip */}
+      <div className="lp-kpi-strip">
+        <StatCard
+          variant="ink"
+          Icon={Inbox}
+          label="Solicitudes recibidas"
+          value={requests.length}
+          sub={pendingReqs > 0 ? `${pendingReqs} pendientes de respuesta` : "Al día"}
+        />
+        <StatCard
+          variant="primary"
+          Icon={Wrench}
+          label="Servicios activos"
+          value={activeServices}
+          sub={`${services.length} registrados en total`}
+        />
+        <StatCard
+          variant="light"
+          Icon={CalendarCheck}
+          label="Reservas agendadas"
+          value={bookings.length}
+          sub="Sesiones y asesorías"
+        />
       </div>
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: "0", marginBottom: "24px",
-        borderBottom: "1px solid var(--border)" }}>
+      <div className="lp-seg-tabs">
         {TABS.map((t, i) => (
-          <button key={t} type="button" onClick={() => setTab(i)} style={{
-            padding: "9px 20px", fontSize: "13px", cursor: "pointer",
-            background: "none", border: "none",
-            borderBottom: tab === i ? "2px solid var(--accent)" : "2px solid transparent",
-            color: tab === i ? "var(--accent)" : "var(--text-3)",
-            fontWeight: tab === i ? 500 : 400, marginBottom: "-1px",
-          }}>
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(i)}
+            className={`lp-seg-tab${tab === i ? " is-active" : ""}`}
+          >
             {t}
-            {i === 0 && requests.filter(r => r.status === "pending").length > 0 && (
+            {i === 0 && pendingReqs > 0 && (
               <span style={{
                 marginLeft: "6px", padding: "1px 6px",
-                borderRadius: "var(--r-full)", fontSize: "10px",
-                background: "#D97706", color: "#000", fontWeight: 700,
+                borderRadius: "9999px", fontSize: "10px",
+                background: "#D97706", color: "#fff", fontWeight: 700,
               }}>
-                {requests.filter(r => r.status === "pending").length}
+                {pendingReqs}
               </span>
             )}
             {i === 2 && bookings.filter(b => b.status === "pending").length > 0 && (
               <span style={{
                 marginLeft: "6px", padding: "1px 6px",
-                borderRadius: "var(--r-full)", fontSize: "10px",
-                background: "#D97706", color: "#000", fontWeight: 700,
+                borderRadius: "9999px", fontSize: "10px",
+                background: "#D97706", color: "#fff", fontWeight: 700,
               }}>
                 {bookings.filter(b => b.status === "pending").length}
               </span>
@@ -222,15 +250,13 @@ export default function AdminServices() {
         loadingReqs ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="skeleton" style={{ height: "72px" }} />
+              <div key={i} className="skeleton" style={{ height: "72px", borderRadius: "16px" }} />
             ))}
           </div>
         ) : requests.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "80px",
-            background: "var(--surface)", border: "1px solid var(--border)",
-            borderRadius: "var(--r-2xl)", color: "var(--text-3)" }}>
-            <p style={{ fontSize: "40px", marginBottom: "12px" }}>🔧</p>
-            <p style={{ fontSize: "15px" }}>Sin solicitudes pendientes</p>
+          <div className="au-card au-panel" style={{ textAlign: "center", padding: "56px", color: "var(--admin-text-secondary)" }}>
+            <p style={{ fontSize: "36px", marginBottom: "10px" }}>🔧</p>
+            <p style={{ fontSize: "14px", fontWeight: 600 }}>Sin solicitudes pendientes</p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -245,34 +271,31 @@ export default function AdminServices() {
       {tab === 1 && (
         <>
           <div style={{ display:"flex", justifyContent:"space-between",
-            alignItems:"center", marginBottom:"18px" }}>
-            <p style={{ fontSize:"13px", color:"var(--text-3)" }}>
+            alignItems:"center", gap: "12px", flexWrap: "wrap" }}>
+            <p style={{ fontSize:"13px", color:"var(--admin-text-secondary)", fontWeight: 600 }}>
               {services.length} servicios registrados
             </p>
-            <button onClick={() => setModal("new")}
-              data-testid="btn-new-service"
-              className="btn btn-accent"
-              style={{ padding:"9px 18px", fontSize:"13px" }}>
+            <PrimaryButton onClick={() => setModal("new")} size="sm">
               + Nuevo servicio
-            </button>
+            </PrimaryButton>
           </div>
 
           {loadingServices ? (
             <div style={{ display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "12px" }}>
+              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "14px" }}>
               {[...Array(4)].map((_, i) => (
-                <div key={i} className="skeleton" style={{ height: "120px" }} />
+                <div key={i} className="skeleton" style={{ height: "160px", borderRadius: "20px" }} />
               ))}
             </div>
           ) : (
             <div style={{ display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "12px" }}>
+              gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "14px" }}>
               {services.map(s => (
                 <div key={s.id} className="au-acard">
                   <div className="au-acard__strip" />
                   <div className="au-acard__head">
                     <span className="au-acard__tag">{s.category_name || "Servicio"}</span>
-                    <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, color: s.is_active ? "#1AFF6E" : "#8c8c8c" }}>
+                    <span style={{ display:"flex", alignItems:"center", gap:6, fontSize:11, fontWeight: 700, color: s.is_active ? "#0B8A3E" : "#8c8c8c" }}>
                       <span className="au-acard__dot" style={{ background: s.is_active ? "#1AFF6E" : "#6b6b6b" }} />
                       {s.is_active ? "Activo" : "Inactivo"}
                     </span>
@@ -292,17 +315,14 @@ export default function AdminServices() {
                 </div>
               ))}
               {services.length === 0 && (
-                <div style={{ gridColumn:"1/-1", padding:"48px 24px",
-                  textAlign:"center", color:"var(--text-3)",
-                  background:"var(--surface)", border:"1px solid var(--border)",
-                  borderRadius:"var(--r-xl)" }}>
+                <div className="au-card au-panel" style={{ gridColumn:"1/-1", padding:"48px 24px",
+                  textAlign:"center", color:"var(--admin-text-secondary)" }}>
                   <p style={{ fontSize:"14px", marginBottom:"12px" }}>
                     No hay servicios creados aún.
                   </p>
-                  <button onClick={() => setModal("new")} className="btn btn-accent"
-                    style={{ padding:"10px 22px", fontSize:"13px" }}>
+                  <PrimaryButton onClick={() => setModal("new")}>
                     Crear el primer servicio
-                  </button>
+                  </PrimaryButton>
                 </div>
               )}
             </div>
@@ -315,61 +335,58 @@ export default function AdminServices() {
         loadingBookings ? (
           <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="skeleton" style={{ height: "72px" }} />
+              <div key={i} className="skeleton" style={{ height: "72px", borderRadius: "16px" }} />
             ))}
           </div>
         ) : bookings.length === 0 ? (
-          <div style={{ textAlign: "center", padding: "80px",
-            background: "var(--surface)", border: "1px solid var(--border)",
-            borderRadius: "var(--r-2xl)", color: "var(--text-3)" }}>
-            <p style={{ fontSize: "40px", marginBottom: "12px" }}>📅</p>
-            <p style={{ fontSize: "15px" }}>Sin reservas todavía</p>
+          <div className="au-card au-panel" style={{ textAlign: "center", padding: "56px", color: "var(--admin-text-secondary)" }}>
+            <p style={{ fontSize: "36px", marginBottom: "10px" }}>📅</p>
+            <p style={{ fontSize: "14px", fontWeight: 600 }}>Sin reservas todavía</p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
             {bookings.map(b => (
-              <div key={b.id} style={{
-                background: "var(--surface)", border: "1px solid var(--border)",
-                borderRadius: "var(--r-xl)", padding: "18px 24px",
+              <div key={b.id} className="au-card au-panel" style={{
                 display: "flex", justifyContent: "space-between",
                 alignItems: "center", flexWrap: "wrap", gap: "14px",
               }}>
                 <div>
-                  <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "4px" }}>
+                  <p style={{ fontSize: "14.5px", fontWeight: 700, color: "var(--admin-text)", marginBottom: "4px" }}>
                     {b.service_name}
                   </p>
-                  <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
+                  <p style={{ fontSize: "12.5px", color: "var(--admin-text-secondary)" }}>
                     {b.user_email} · {new Date(b.scheduled_date).toLocaleString("es-CL", {
                       day: "numeric", month: "short", year: "numeric",
                       hour: "2-digit", minute: "2-digit",
                     })}
                   </p>
                   {b.notes && (
-                    <p style={{ fontSize: "12px", color: "var(--text-2)", marginTop: "6px" }}>
+                    <p style={{ fontSize: "12.5px", color: "var(--admin-text-muted)", marginTop: "6px" }}>
                       &quot;{b.notes}&quot;
                     </p>
                   )}
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
                   <span style={{
-                    padding: "4px 12px", borderRadius: "var(--r-full)",
-                    fontSize: "12px", fontWeight: 500,
+                    padding: "4px 12px", borderRadius: "9999px",
+                    fontSize: "12px", fontWeight: 600,
                     color: BOOKING_STATUS[b.status]?.color || "#888",
                     background: `${BOOKING_STATUS[b.status]?.color || "#888"}14`,
                     border: `1px solid ${BOOKING_STATUS[b.status]?.color || "#888"}30`,
                   }}>
                     {BOOKING_STATUS[b.status]?.label || b.status}
                   </span>
-                  <div style={{ display: "flex", gap: "6px" }}>
+                  <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
                     {Object.entries(BOOKING_STATUS).map(([s, { label, color }]) => (
                       s !== b.status && (
                         <button key={s}
+                          type="button"
                           onClick={() => bookingMutation.mutate({ id: b.id, status: s })}
                           disabled={bookingMutation.isPending}
                           style={{
-                            padding: "5px 12px", borderRadius: "var(--r-full)",
-                            fontSize: "12px", cursor: "pointer", fontWeight: 500,
-                            color, background: `${color}10`, border: `1px solid ${color}25`,
+                            padding: "5px 12px", borderRadius: "9999px",
+                            fontSize: "12px", cursor: "pointer", fontWeight: 600,
+                            color, background: `${color}12`, border: `1px solid ${color}30`,
                             opacity: bookingMutation.isPending ? 0.5 : 1,
                           }}>
                           → {label}

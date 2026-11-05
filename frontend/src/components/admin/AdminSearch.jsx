@@ -140,7 +140,7 @@ const Row = ({ Icon, main, sub, right, onClick, testId }) => (
     onMouseLeave={e => e.currentTarget.style.background = "transparent"}>
     <span style={{ width:"36px", height:"36px", borderRadius:"10px", background:"rgba(26,255,110,0.12)",
       color:"#0F9940", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
-      <Icon size={17} />
+      {Icon && <Icon size={17} />}
     </span>
     <div style={{ flex:1, minWidth:0 }}>
       <p style={{ fontSize:"13.5px", fontWeight:600, color:"#14161A", overflow:"hidden",
