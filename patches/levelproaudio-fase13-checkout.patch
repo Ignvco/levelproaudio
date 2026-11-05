@@ -1,0 +1,522 @@
+diff --git a/backend/apps/payments/migrations/0007_global66_payment_method.py b/backend/apps/payments/migrations/0007_global66_payment_method.py
+new file mode 100644
+--- /dev/null
++++ b/backend/apps/payments/migrations/0007_global66_payment_method.py
+@@ -0,0 +1,40 @@
++from django.db import migrations, models
++
++
++def seed_global66(apps, schema_editor):
++    # Existing installations may already have this method: never overwrite it.
++    apps.get_model("payments", "PaymentMethodConfig").objects.get_or_create(
++        method="global66",
++        defaults={
++            "label": "Global66",
++            "description": "Transferencia bancaria Global66",
++            "currencies": "CLP",
++            "order": 5,
++            "is_active": False,
++        },
++    )
++
++
++class Migration(migrations.Migration):
++    dependencies = [("payments", "0006_bankaccount_payment_method")]
++
++    operations = [
++        migrations.AlterField(
++            model_name="paymentmethodconfig",
++            name="method",
++            field=models.CharField(
++                max_length=30,
++                unique=True,
++                choices=[
++                    ("transfer", "Transferencia bancaria"),
++                    ("dlocal", "dLocal Go"),
++                    ("payoneer", "Payoneer (USD)"),
++                    ("mercadopago_cl", "MercadoPago Chile"),
++                    ("mercadopago_ar", "MercadoPago Argentina"),
++                    ("paypal", "PayPal"),
++                    ("global66", "Transferencia Global66"),
++                ],
++            ),
++        ),
++        migrations.RunPython(seed_global66, migrations.RunPython.noop),
++    ]
+diff --git a/backend/apps/payments/models.py b/backend/apps/payments/models.py
+--- a/backend/apps/payments/models.py
++++ b/backend/apps/payments/models.py
+@@ -104,6 +104,7 @@
+         MERCADOPAGO_CL = "mercadopago_cl", "MercadoPago Chile"
+         MERCADOPAGO_AR = "mercadopago_ar", "MercadoPago Argentina"
+         PAYPAL     = "paypal",      "PayPal"
++        GLOBAL66   = "global66",    "Transferencia Global66"
+ 
+     method   = models.CharField(max_length=30, choices=Method.choices, unique=True)
+     is_active = models.BooleanField(default=False, verbose_name="Activo en el checkout")
+diff --git a/backend/apps/payments/payment_availability.py b/backend/apps/payments/payment_availability.py
+new file mode 100644
+--- /dev/null
++++ b/backend/apps/payments/payment_availability.py
+@@ -0,0 +1,44 @@
++"""Centralized checkout payment availability rules.
++
++Both public method discovery and POST creation must agree. We do not create
++payment intents for unsupported currencies or manual methods without details.
++"""
++from django.conf import settings
++
++from .models import BankAccount, PaymentMethodConfig, PaymentProvider
++
++
++SUPPORTED_CURRENCIES = {
++    PaymentProvider.MERCADOPAGO_CL: frozenset({"CLP"}),
++    PaymentProvider.MERCADOPAGO_AR: frozenset({"ARS"}),
++    PaymentProvider.PAYPAL: frozenset({"CLP", "USD"}),
++    PaymentProvider.TRANSFER: frozenset({"CLP", "USD", "ARS"}),
++    PaymentProvider.PAYONEER: frozenset({"USD"}),
++    PaymentProvider.GLOBAL66: frozenset({"CLP"}),
++}
++
++
++def method_has_payment_instructions(provider, currency):
++    """Return False for a method that would create an unpayable intent."""
++    currency = (currency or "").strip().upper()
++    if currency not in SUPPORTED_CURRENCIES.get(provider, frozenset()):
++        return False
++    if provider in (PaymentProvider.TRANSFER, PaymentProvider.PAYONEER):
++        return BankAccount.objects.filter(
++            payment_method=provider, currency__iexact=currency, is_active=True
++        ).exists()
++    if provider == PaymentProvider.GLOBAL66:
++        return bool((getattr(settings, "GLOBAL66_ALIAS", "") or "").strip())
++    return True
++
++
++def method_can_checkout(provider, currency):
++    """A method must be active, configured for currency and executable."""
++    config = PaymentMethodConfig.objects.filter(
++        method=provider, is_active=True
++    ).first()
++    return bool(
++        config
++        and config.available_for_currency(currency)
++        and method_has_payment_instructions(provider, currency)
++    )
+diff --git a/backend/apps/payments/tests_checkout_availability.py b/backend/apps/payments/tests_checkout_availability.py
+new file mode 100644
+--- /dev/null
++++ b/backend/apps/payments/tests_checkout_availability.py
+@@ -0,0 +1,134 @@
++"""Regression coverage for the public checkout and payment creation contract."""
++from decimal import Decimal
++from unittest.mock import patch
++
++from django.contrib.auth import get_user_model
++from django.test import TestCase, override_settings
++from rest_framework.test import APIClient
++
++from apps.orders.models import Order
++from apps.payments.models import BankAccount, Payment, PaymentMethodConfig
++
++
++METHODS_URL = "/api/v1/payments/methods/"
++CREATE_URL = "/api/v1/payments/create/"
++
++
++class CheckoutPaymentAvailabilityTest(TestCase):
++    def setUp(self):
++        PaymentMethodConfig.objects.all().delete()
++        self.user = get_user_model().objects.create_user(
++            email="availability@example.test", username="availability", password="x"
++        )
++        self.order = Order.objects.create(
++            user=self.user, email=self.user.email, shipping_address="Test",
++            total=Decimal("25000"), currency="CLP", status="pending",
++        )
++        self.client = APIClient()
++        self.client.force_authenticate(user=self.user)
++
++    def enable(self, provider, currencies=""):
++        return PaymentMethodConfig.objects.create(
++            method=provider, is_active=True, currencies=currencies
++        )
++
++    def add_account(self, provider="transfer", currency="CLP", active=True):
++        return BankAccount.objects.create(
++            label="Test", bank_name="Test bank", account_number="123",
++            holder_name="LevelPro", payment_method=provider, currency=currency,
++            is_active=active,
++        )
++
++    def create(self, provider):
++        return self.client.post(
++            CREATE_URL, {"order_id": str(self.order.pk), "provider": provider},
++            format="json",
++        )
++
++    def methods(self, currency):
++        response = self.client.get(METHODS_URL, {"currency": currency})
++        self.assertEqual(response.status_code, 200)
++        return [entry["id"] for entry in response.data["methods"]]
++
++    def test_inactive_provider_cannot_create_payment(self):
++        PaymentMethodConfig.objects.create(method="paypal", is_active=False)
++        self.assertNotIn("paypal", self.methods("CLP"))
++        self.assertEqual(self.create("paypal").status_code, 400)
++        self.assertFalse(Payment.objects.exists())
++
++    def test_active_transfer_without_account_is_not_payable(self):
++        self.enable("transfer", "CLP")
++        self.assertNotIn("transfer", self.methods("CLP"))
++        self.assertEqual(self.create("transfer").status_code, 400)
++        self.assertFalse(Payment.objects.exists())
++
++    def test_inactive_or_wrong_method_account_is_not_accepted(self):
++        self.enable("transfer")
++        self.add_account(active=False)
++        self.add_account(provider="payoneer")
++        self.assertNotIn("transfer", self.methods("CLP"))
++        self.assertEqual(self.create("transfer").status_code, 400)
++        self.assertFalse(Payment.objects.exists())
++
++    def test_active_transfer_with_account_can_create_pending_payment(self):
++        self.enable("transfer", "CLP")
++        self.add_account()
++        self.assertIn("transfer", self.methods("CLP"))
++        response = self.create("transfer")
++        self.assertEqual(response.status_code, 200, response.data)
++        self.assertEqual(response.data["status"], "pending")
++        self.assertEqual(Payment.objects.get(order=self.order).currency, "CLP")
++
++    def test_currency_restriction_cannot_be_bypassed_by_post(self):
++        self.enable("transfer", "USD")
++        self.add_account(currency="CLP")
++        self.assertNotIn("transfer", self.methods("CLP"))
++        self.assertEqual(self.create("transfer").status_code, 400)
++        self.assertFalse(Payment.objects.exists())
++
++    def test_payoneer_only_available_in_usd(self):
++        self.enable("payoneer")
++        self.add_account(provider="payoneer", currency="USD")
++        self.assertNotIn("payoneer", self.methods("CLP"))
++        self.assertIn("payoneer", self.methods("USD"))
++        self.assertEqual(self.create("payoneer").status_code, 400)
++
++    def test_paypal_ars_is_not_shown_even_with_unrestricted_admin_config(self):
++        self.enable("paypal")
++        self.order.currency = "ARS"
++        self.order.save(update_fields=["currency"])
++        self.assertNotIn("paypal", self.methods("ARS"))
++        self.assertEqual(self.create("paypal").status_code, 400)
++        self.assertFalse(Payment.objects.exists())
++
++    def test_marketplace_country_currency_mismatch_is_rejected(self):
++        self.enable("mercadopago_cl")
++        self.order.currency = "ARS"
++        self.order.save(update_fields=["currency"])
++        self.assertNotIn("mercadopago_cl", self.methods("ARS"))
++        self.assertEqual(self.create("mercadopago_cl").status_code, 400)
++
++    def test_placeholder_dlocal_cannot_be_offered_as_operational(self):
++        self.enable("dlocal")
++        self.assertNotIn("dlocal", self.methods("CLP"))
++        self.assertEqual(self.create("dlocal").status_code, 400)
++        self.assertFalse(Payment.objects.exists())
++
++    @override_settings(GLOBAL66_ALIAS="")
++    def test_global66_without_alias_is_not_payable(self):
++        self.enable("global66", "CLP")
++        self.assertNotIn("global66", self.methods("CLP"))
++        self.assertEqual(self.create("global66").status_code, 400)
++        self.assertFalse(Payment.objects.exists())
++
++    @override_settings(GLOBAL66_ALIAS="TEST-ALIAS")
++    def test_global66_can_be_offered_only_when_configured(self):
++        self.enable("global66", "CLP")
++        self.assertIn("global66", self.methods("CLP"))
++        self.assertNotIn("global66", self.methods("ARS"))
++
++    def test_invalid_provider_never_calls_gateway(self):
++        with patch("apps.payments.views.create_paypal_order") as gateway:
++            response = self.create("cash")
++        self.assertEqual(response.status_code, 400)
++        gateway.assert_not_called()
+diff --git a/backend/apps/payments/tests_method_config.py b/backend/apps/payments/tests_method_config.py
+--- a/backend/apps/payments/tests_method_config.py
++++ b/backend/apps/payments/tests_method_config.py
+@@ -19,6 +19,7 @@
+ 
+     def test_only_active_methods_returned(self):
+         PaymentMethodConfig.objects.create(method="transfer", is_active=True)
++        BankAccount.objects.create(label="CLP", currency="CLP", bank_name="Test", account_number="1", holder_name="LP")
+         PaymentMethodConfig.objects.create(method="paypal", is_active=False)
+         resp = self.client.get("/api/v1/payments/methods/")
+         ids = [m["id"] for m in resp.data["methods"]]
+@@ -29,6 +30,8 @@
+         # Payoneer solo en USD; transferencia en CLP
+         PaymentMethodConfig.objects.create(method="payoneer", is_active=True, currencies="USD")
+         PaymentMethodConfig.objects.create(method="transfer", is_active=True, currencies="CLP")
++        BankAccount.objects.create(label="CLP", currency="CLP", bank_name="Test", account_number="1", holder_name="LP")
++        BankAccount.objects.create(label="USD", payment_method="payoneer", currency="USD", bank_name="Test", account_number="2", holder_name="LP")
+ 
+         resp_clp = self.client.get("/api/v1/payments/methods/?currency=CLP")
+         ids_clp = [m["id"] for m in resp_clp.data["methods"]]
+@@ -42,6 +45,7 @@
+ 
+     def test_method_without_currency_shown_for_all(self):
+         PaymentMethodConfig.objects.create(method="transfer", is_active=True, currencies="")
++        BankAccount.objects.create(label="ARS", currency="ARS", bank_name="Test", account_number="3", holder_name="LP")
+         resp = self.client.get("/api/v1/payments/methods/?currency=ARS")
+         ids = [m["id"] for m in resp.data["methods"]]
+         self.assertIn("transfer", ids)
+@@ -96,6 +100,13 @@
+             user=self.user, status="pending", total=Decimal("50000"),
+             email="tf@test.com", shipping_address="Calle 1")
+         self.client = APIClient()
++        PaymentMethodConfig.objects.update_or_create(
++            method="transfer", defaults={"is_active": True, "currencies": "CLP"},
++        )
++        BankAccount.objects.create(
++            label="CLP", currency="CLP", bank_name="Test",
++            account_number="123", holder_name="LevelPro",
++        )
+ 
+     def test_transfer_creates_pending_payment(self):
+         from apps.payments.models import Payment
+diff --git a/backend/apps/payments/views.py b/backend/apps/payments/views.py
+--- a/backend/apps/payments/views.py
++++ b/backend/apps/payments/views.py
+@@ -12,6 +12,7 @@
+ from .models import PaymentProvider
+ from .serializers import CreatePaymentRequestSerializer, CapturePayPalRequestSerializer
+ from .transfer_instructions import bank_accounts_for, instructions_for
++from .payment_availability import method_can_checkout, method_has_payment_instructions
+ from .webhooks import get_mp_webhook_secret, normalize_mp_webhook
+ from .services import (
+     create_mercadopago_preference,
+@@ -71,6 +72,14 @@
+                 status=status.HTTP_400_BAD_REQUEST
+             )
+ 
++        # The client's selection is advisory. Recheck against the actual order
++        # currency and current admin config, even if the frontend is stale.
++        if not method_can_checkout(provider, order.currency):
++            return Response(
++                {"error": "Este método de pago no está disponible para la moneda del pedido."},
++                status=status.HTTP_400_BAD_REQUEST,
++            )
++
+         if provider in [PaymentProvider.MERCADOPAGO_CL, PaymentProvider.MERCADOPAGO_AR]:
+             data = create_mercadopago_preference(order, provider)
+ 
+@@ -220,7 +229,7 @@
+ 
+     methods = []
+     for m in PaymentMethodConfig.objects.filter(is_active=True):
+-        if not m.available_for_currency(currency):
++        if not m.available_for_currency(currency) or not method_has_payment_instructions(m.method, currency):
+             continue
+         methods.append({
+             "id":          m.method,
+diff --git a/backend/tests/test_payment_api_errors.py b/backend/tests/test_payment_api_errors.py
+--- a/backend/tests/test_payment_api_errors.py
++++ b/backend/tests/test_payment_api_errors.py
+@@ -10,7 +10,7 @@
+ from rest_framework.test import APIClient
+ 
+ from apps.orders.models import Order, OrderStatus
+-from apps.payments.models import Payment, PaymentProvider, PaymentStatus
++from apps.payments.models import Payment, PaymentProvider, PaymentStatus, PaymentMethodConfig, BankAccount
+ from apps.users.models import User
+ 
+ 
+@@ -95,6 +95,14 @@
+     client, order, provider, service, debug, settings, caplog
+ ):
+     settings.DEBUG = debug
++    # Exercise the provider's actual execution path, not availability rejection.
++    order.currency = "ARS" if provider == "mercadopago_ar" else "CLP"
++    order.save(update_fields=["currency"])
++    PaymentMethodConfig.objects.update_or_create(
++        method=provider, defaults={"is_active": True, "currencies": order.currency},
++    )
++    if provider == "global66":
++        settings.GLOBAL66_ALIAS = "TEST-ALIAS"
+     with patch(f"apps.payments.views.{service}", side_effect=RuntimeError(PRIVATE_DETAIL)):
+         with caplog.at_level(logging.ERROR):
+             response = client.post(CREATE_URL, {
+@@ -111,6 +119,15 @@
+ 
+ @pytest.mark.parametrize("provider", ["transfer", "payoneer"])
+ def test_manual_payment_storage_error_is_private(client, order, provider, caplog):
++    order.currency = "USD" if provider == "payoneer" else "CLP"
++    order.save(update_fields=["currency"])
++    PaymentMethodConfig.objects.update_or_create(
++        method=provider, defaults={"is_active": True, "currencies": order.currency},
++    )
++    BankAccount.objects.create(
++        label="Test account", payment_method=provider, currency=order.currency,
++        bank_name="Test bank", account_number="TEST-ACCOUNT", holder_name="LP",
++    )
+     with patch("apps.payments.models.Payment.objects.create", side_effect=RuntimeError(PRIVATE_DETAIL)):
+         response = client.post(CREATE_URL, {
+             "order_id": str(order.pk), "provider": provider,
+@@ -271,6 +288,9 @@
+ 
+ 
+ def test_error_references_are_unique(client, order):
++    PaymentMethodConfig.objects.update_or_create(
++        method="paypal", defaults={"is_active": True, "currencies": "CLP"},
++    )
+     with patch("apps.payments.views.create_paypal_order", side_effect=RuntimeError(PRIVATE_DETAIL)):
+         responses = [client.post(CREATE_URL, {
+             "order_id": str(order.pk), "provider": "paypal",
+diff --git a/backend/tests/test_payments_create.py b/backend/tests/test_payments_create.py
+--- a/backend/tests/test_payments_create.py
++++ b/backend/tests/test_payments_create.py
+@@ -14,6 +14,7 @@
+ from rest_framework.test import APIClient
+ from apps.users.models import User
+ from apps.orders.models import Order, OrderStatus
++from apps.payments.models import PaymentMethodConfig
+ 
+ 
+ def _make_order(user, status=OrderStatus.PENDING, total="50000"):
+@@ -83,6 +84,10 @@
+ def test_create_payment_success_delegates_to_mercadopago_service(mock_create_pref):
+     user = User.objects.create_user(email="user@test.com", username="user", password="x")
+     order = _make_order(user, total="50000")
++    PaymentMethodConfig.objects.update_or_create(
++        method="mercadopago_cl",
++        defaults={"is_active": True, "currencies": "CLP"},
++    )
+     mock_create_pref.return_value = {"init_point": "https://mp.example.com/checkout/123"}
+ 
+     client = APIClient()
+diff --git a/docs/patches/13-checkout-payment-availability.md b/docs/patches/13-checkout-payment-availability.md
+new file mode 100644
+--- /dev/null
++++ b/docs/patches/13-checkout-payment-availability.md
+@@ -0,0 +1,58 @@
++# Patch 13 — Disponibilidad real de medios de pago en checkout
++
++Base: `d80a610c2a624c59228977ea98cc28cdcd6b2de4` (`main`, patches 01–12).
++Rama: `fix/fase13-checkout-payment-availability`.
++
++## Problemas corregidos
++
++1. `POST /api/v1/payments/create/` podía registrar pagos por transferencia/Payoneer sin cuenta activa o con proveedor deshabilitado.
++2. El endpoint de métodos podía ofrecer proveedores en monedas que su servicio no procesa, especialmente PayPal en ARS y Mercado Pago fuera de su moneda.
++3. Un `dlocal` activo se mostraba pese a carecer todavía de implementación de creación de pago.
++4. Checkout conservaba el medio de pago anterior cuando cambiaba la moneda.
++5. Global66 tenía flujo de pago, pero faltaba en las opciones administrables de `PaymentMethodConfig`.
++
++## Comportamiento esperado
++
++- El listado público y el POST aplican las mismas condiciones.
++- Transferencia y Payoneer necesitan una cuenta activa del método y de la moneda exacta.
++- Payoneer solo USD; MercadoPago Chile solo CLP; MercadoPago Argentina solo ARS.
++- PayPal solo CLP (conversión a USD) o USD; no ARS.
++- Global66 solo CLP y con alias configurado; nueva opción administrativa inicialmente INACTIVA.
++- dLocal queda oculto hasta implementar su integración real.
++- Un método rechazado devuelve HTTP 400 sin crear `Payment` ni llamar a la pasarela.
++- El frontend muestra estados de consulta/error/sin métodos y no procesa una selección inválida o desactualizada.
++
++## Migración
++
++Aplicar `python manage.py migrate` en el backend: `payments.0007_global66_payment_method`.
++La migración agrega Global66 al selector del administrador y lo registra inactivo, sin sobrescribir configuraciones existentes.
++No habilitar proveedores por defecto.
++
++## QA requerida antes de incorporar a main
++
++Desde el directorio `backend` y con el entorno de pruebas configurado:
++
++```bash
++python manage.py makemigrations --check --dry-run
++python -m pytest apps/payments/tests_checkout_availability.py apps/payments/tests_method_config.py tests/test_payments_create.py tests/test_payment_api_errors.py -q
++python -m pytest -q
++```
++
++Desde `frontend`:
++
++```bash
++npm ci
++npm run build
++```
++
++Probar manualmente CLP, ARS y USD: carga de métodos, cuenta activa/inactiva, cambio de moneda, selección antigua, transferencia, PayPal y retorno sin pago.
++Validar un pedido real con credenciales de sandbox antes de cualquier despliegue.
++No activar Global66 sin verificar cuenta bancaria, alias y conciliación.
++No desplegar en producción sin validación completa.
++
++## Fuera de alcance
++
++- Verificación en vivo de credenciales MP/PayPal, disponibilidad bancaria y trazabilidad de pagos.
++- Idempotencia de intentos repetidos y expiración/conciliación de órdenes pendientes.
++- Implementación de dLocal o cuenta Mercado Pago Argentina.
++- Validación de correos, fulfillment e inventario extremo a extremo.
+diff --git a/frontend/src/pages/Checkout.jsx b/frontend/src/pages/Checkout.jsx
+--- a/frontend/src/pages/Checkout.jsx
++++ b/frontend/src/pages/Checkout.jsx
+@@ -103,7 +103,7 @@
+   // Métodos de pago activos para la moneda elegida (configurables desde
+   // el admin). Un argentino en USD ve Payoneer; un chileno en CLP ve
+   // transferencia/dLocal. Filtrado por el backend.
+-  const { data: methodsData } = useQuery({
++  const { data: methodsData, isPending: methodsLoading, isError: methodsError } = useQuery({
+     queryKey: ["payment-methods", currency],
+     queryFn:  () => getPaymentMethods(currency),
+   })
+@@ -117,12 +117,13 @@
+     [methodsData]
+   )
+ 
+-  // Si no hay método elegido y ya llegaron los métodos, elegir el primero
++  // Never retain a payment provider selected for a previous currency.
+   useEffect(() => {
+-    if (!selectedMethod && paymentMethods.length > 0) {
+-      setSelectedMethod(paymentMethods[0].id)
++    if (!paymentMethods.some(m => m.id === selectedMethod)) {
++      setSelectedMethod(paymentMethods[0]?.id || "")
+     }
+   }, [selectedMethod, paymentMethods])
++  const selectedMethodAvailable = paymentMethods.some(m => m.id === selectedMethod)
+ 
+   const { register, handleSubmit, formState: { errors } } = useForm({
+     resolver: zodResolver(schema),
+@@ -139,6 +140,10 @@
+ 
+   const onSubmit = async (data) => {
+     if (!items.length) return
++    if (methodsLoading || methodsError || !selectedMethodAvailable) {
++      setServerError("Selecciona un método de pago disponible para la moneda actual.")
++      return
++    }
+     setIsLoading(true)
+     setServerError("")
+     try {
+@@ -298,6 +303,13 @@
+ 
+               <Section title="Método de pago" icon={CreditCard}>
+                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
++                  {methodsLoading && <p role="status" style={{ fontSize: "13px", color: "var(--text-3)" }}>Consultando medios de pago...</p>}
++                  {methodsError && <p role="alert" style={{ fontSize: "13px", color: "var(--danger)" }}>No pudimos consultar los métodos de pago. Vuelve a intentarlo.</p>}
++                  {!methodsLoading && !methodsError && paymentMethods.length === 0 && (
++                    <p role="status" style={{ fontSize: "13px", color: "var(--text-3)" }}>
++                      No hay medios de pago disponibles para {currency}. Contacta a LevelPro Audio.
++                    </p>
++                  )}
+                   {paymentMethods.map(m => {
+                     const active = selectedMethod === m.id
+                     return (
+@@ -398,7 +410,7 @@
+                 </div>
+               )}
+ 
+-              <Button type="submit" disabled={!selectedMethod}
++              <Button type="submit" disabled={!selectedMethodAvailable || methodsLoading || methodsError || isLoading}
+                 loading={isLoading} testId="checkout-submit"
+                 variant="green" size="md" arrow
+                 style={{ width: "100%", justifyContent: "space-between" }}>
