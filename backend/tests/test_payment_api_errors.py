@@ -10,7 +10,7 @@ import pytest
 from rest_framework.test import APIClient
 
 from apps.orders.models import Order, OrderStatus
-from apps.payments.models import Payment, PaymentProvider, PaymentStatus
+from apps.payments.models import Payment, PaymentProvider, PaymentStatus, PaymentMethodConfig, BankAccount
 from apps.users.models import User
 
 
@@ -95,6 +95,14 @@ def test_create_hides_internal_error_and_logs_reference(
     client, order, provider, service, debug, settings, caplog
 ):
     settings.DEBUG = debug
+    # Exercise the provider's actual execution path, not availability rejection.
+    order.currency = "ARS" if provider == "mercadopago_ar" else "CLP"
+    order.save(update_fields=["currency"])
+    PaymentMethodConfig.objects.update_or_create(
+        method=provider, defaults={"is_active": True, "currencies": order.currency},
+    )
+    if provider == "global66":
+        settings.GLOBAL66_ALIAS = "TEST-ALIAS"
     with patch(f"apps.payments.views.{service}", side_effect=RuntimeError(PRIVATE_DETAIL)):
         with caplog.at_level(logging.ERROR):
             response = client.post(CREATE_URL, {
@@ -111,6 +119,15 @@ def test_create_hides_internal_error_and_logs_reference(
 
 @pytest.mark.parametrize("provider", ["transfer", "payoneer"])
 def test_manual_payment_storage_error_is_private(client, order, provider, caplog):
+    order.currency = "USD" if provider == "payoneer" else "CLP"
+    order.save(update_fields=["currency"])
+    PaymentMethodConfig.objects.update_or_create(
+        method=provider, defaults={"is_active": True, "currencies": order.currency},
+    )
+    BankAccount.objects.create(
+        label="Test account", payment_method=provider, currency=order.currency,
+        bank_name="Test bank", account_number="TEST-ACCOUNT", holder_name="LP",
+    )
     with patch("apps.payments.models.Payment.objects.create", side_effect=RuntimeError(PRIVATE_DETAIL)):
         response = client.post(CREATE_URL, {
             "order_id": str(order.pk), "provider": provider,
@@ -271,6 +288,9 @@ def test_unknown_order_stays_404(client):
 
 
 def test_error_references_are_unique(client, order):
+    PaymentMethodConfig.objects.update_or_create(
+        method="paypal", defaults={"is_active": True, "currencies": "CLP"},
+    )
     with patch("apps.payments.views.create_paypal_order", side_effect=RuntimeError(PRIVATE_DETAIL)):
         responses = [client.post(CREATE_URL, {
             "order_id": str(order.pk), "provider": "paypal",
