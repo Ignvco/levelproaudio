@@ -103,7 +103,7 @@ export default function Checkout() {
   // Métodos de pago activos para la moneda elegida (configurables desde
   // el admin). Un argentino en USD ve Payoneer; un chileno en CLP ve
   // transferencia/dLocal. Filtrado por el backend.
-  const { data: methodsData } = useQuery({
+  const { data: methodsData, isPending: methodsLoading, isError: methodsError } = useQuery({
     queryKey: ["payment-methods", currency],
     queryFn:  () => getPaymentMethods(currency),
   })
@@ -117,12 +117,13 @@ export default function Checkout() {
     [methodsData]
   )
 
-  // Si no hay método elegido y ya llegaron los métodos, elegir el primero
+  // Never retain a payment provider selected for a previous currency.
   useEffect(() => {
-    if (!selectedMethod && paymentMethods.length > 0) {
-      setSelectedMethod(paymentMethods[0].id)
+    if (!paymentMethods.some(m => m.id === selectedMethod)) {
+      setSelectedMethod(paymentMethods[0]?.id || "")
     }
   }, [selectedMethod, paymentMethods])
+  const selectedMethodAvailable = paymentMethods.some(m => m.id === selectedMethod)
 
   const { register, handleSubmit, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
@@ -139,6 +140,10 @@ export default function Checkout() {
 
   const onSubmit = async (data) => {
     if (!items.length) return
+    if (methodsLoading || methodsError || !selectedMethodAvailable) {
+      setServerError("Selecciona un método de pago disponible para la moneda actual.")
+      return
+    }
     setIsLoading(true)
     setServerError("")
     try {
@@ -298,6 +303,13 @@ export default function Checkout() {
 
               <Section title="Método de pago" icon={CreditCard}>
                 <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  {methodsLoading && <p role="status" style={{ fontSize: "13px", color: "var(--text-3)" }}>Consultando medios de pago...</p>}
+                  {methodsError && <p role="alert" style={{ fontSize: "13px", color: "var(--danger)" }}>No pudimos consultar los métodos de pago. Vuelve a intentarlo.</p>}
+                  {!methodsLoading && !methodsError && paymentMethods.length === 0 && (
+                    <p role="status" style={{ fontSize: "13px", color: "var(--text-3)" }}>
+                      No hay medios de pago disponibles para {currency}. Contacta a LevelPro Audio.
+                    </p>
+                  )}
                   {paymentMethods.map(m => {
                     const active = selectedMethod === m.id
                     return (
@@ -398,7 +410,7 @@ export default function Checkout() {
                 </div>
               )}
 
-              <Button type="submit" disabled={!selectedMethod}
+              <Button type="submit" disabled={!selectedMethodAvailable || methodsLoading || methodsError || isLoading}
                 loading={isLoading} testId="checkout-submit"
                 variant="green" size="md" arrow
                 style={{ width: "100%", justifyContent: "space-between" }}>
