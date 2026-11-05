@@ -16,11 +16,12 @@ import { CreditCard, Landmark, Plus, Pencil, Trash2, CheckCircle2 } from "lucide
 
 const METHOD_OPTIONS = [
   { value: "transfer",       label: "Transferencia bancaria" },
-  { value: "dlocal",         label: "dLocal Go" },
+  { value: "dlocal",         label: "dLocal Go (próximamente)", disabled: true },
   { value: "payoneer",       label: "Payoneer (USD)" },
   { value: "mercadopago_cl", label: "MercadoPago Chile" },
   { value: "mercadopago_ar", label: "MercadoPago Argentina" },
   { value: "paypal",         label: "PayPal" },
+  { value: "global66",       label: "Global66 (CLP)" },
 ]
 
 // ─────────────────────────── Métodos de pago ───────────────────────────
@@ -29,19 +30,23 @@ function MethodModal({ item, onClose }) {
   const isEdit = !!item?.id
   const [form, setForm] = useState({
     method:      item?.method      || "transfer",
-    is_active:   item?.is_active   ?? true,
+    is_active:   item?.is_active   ?? false,
     label:       item?.label       || "",
     description: item?.description || "",
     currencies:  item?.currencies  || "",
     order:       item?.order       ?? 0,
   })
 
+  const unsupported = form.method === "dlocal"
   const save = useMutation({
-    mutationFn: () => isEdit
-      ? updatePaymentMethod(item.id, form)
-      : createPaymentMethod(form),
+    // Never reactivate an unimplemented integration from the admin UI.
+    mutationFn: () => {
+      const payload = unsupported ? { ...form, is_active: false } : form
+      return isEdit ? updatePaymentMethod(item.id, payload) : createPaymentMethod(payload)
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-payment-methods"] })
+      qc.invalidateQueries({ queryKey: ["payment-methods"] })
       showToast(isEdit ? "Método actualizado" : "Método agregado")
       onClose()
     },
@@ -55,18 +60,24 @@ function MethodModal({ item, onClose }) {
         <FormField label="Método">
           <select style={formInputStyle} value={form.method} disabled={isEdit}
             onChange={e => setForm(p => ({ ...p, method: e.target.value }))}>
-            {METHOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            {METHOD_OPTIONS.map(o => <option key={o.value} value={o.value} disabled={o.disabled && !isEdit}>{o.label}</option>)}
           </select>
         </FormField>
         <FormField label="Activo en el checkout">
           <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
-            <input type="checkbox" checked={form.is_active}
+            <input type="checkbox" checked={form.is_active && !unsupported} disabled={unsupported}
               onChange={e => setForm(p => ({ ...p, is_active: e.target.checked }))} />
             <span style={{ fontSize: "13px", color: "var(--text-2)" }}>
-              {form.is_active ? "Se muestra en el checkout" : "Oculto"}
+              {unsupported ? "Integración no disponible" : form.is_active ? "Activado (sujeto a disponibilidad)" : "Inactivo"}
             </span>
           </label>
         </FormField>
+        {unsupported && <p role="status" style={{ fontSize: "12px", color: "var(--admin-text-secondary)" }}>
+          dLocal aún no permite crear pagos en la plataforma. Guardar este método lo dejará inactivo.
+        </p>}
+        {form.method === "global66" && <p role="status" style={{ fontSize: "12px", color: "var(--admin-text-secondary)" }}>
+          Global66 requiere el alias configurado en el servidor y solo está disponible para CLP. Las cuentas de la tabla inferior no sustituyen ese alias.
+        </p>}
         <FormField label="Nombre visible (opcional)">
           <input style={formInputStyle} value={form.label}
             onChange={e => setForm(p => ({ ...p, label: e.target.value }))}
@@ -116,6 +127,7 @@ function AccountModal({ item, onClose }) {
       : createBankAccount(form),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-bank-accounts"] })
+      qc.invalidateQueries({ queryKey: ["payment-methods"] })
       showToast(isEdit ? "Cuenta actualizada" : "Cuenta agregada")
       onClose()
     },
@@ -193,13 +205,14 @@ export default function AdminPaymentMethods() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["admin-payment-methods"] })
       qc.invalidateQueries({ queryKey: ["admin-bank-accounts"] })
+      qc.invalidateQueries({ queryKey: ["payment-methods"] })
       showToast("Eliminado")
       setToDelete(null)
     },
     onError: () => showToast("No se pudo eliminar.", "error"),
   })
 
-  const activeMethods = methods.filter(m => m.is_active).length
+  const activeMethods = methods.filter(m => m.is_active && m.method !== "dlocal").length
   const activeAccounts = accounts.filter(a => a.is_active).length
 
   return (
@@ -225,7 +238,7 @@ export default function AdminPaymentMethods() {
       )}
 
       <div className="lp-kpi-strip">
-        <StatCard variant="primary" label="Pasarelas activas" value={activeMethods} sub="Visibles en checkout" Icon={CheckCircle2} />
+        <StatCard variant="primary" label="Métodos habilitados" value={activeMethods} sub="Sujetos a disponibilidad" Icon={CheckCircle2} />
         <StatCard variant="ink" label="Métodos configurados" value={methods.length} sub="Total registrados" Icon={CreditCard} />
         <StatCard variant="light" label="Cuentas bancarias" value={activeAccounts} sub={`${accounts.length} totales`} Icon={Landmark} />
       </div>
@@ -233,7 +246,7 @@ export default function AdminPaymentMethods() {
       {/* Sección: métodos */}
       <SectionCard
         title="Métodos activos"
-        description="Pasarelas y medios de pago habilitados en el checkout"
+        description="Medios configurados. Su disponibilidad depende de la moneda y de las cuentas o alias activos."
         action={
           <PrimaryButton size="sm" onClick={() => setMethodModal("new")}>
             <Plus size={14} /> Agregar método
@@ -258,11 +271,11 @@ export default function AdminPaymentMethods() {
                   <tr key={m.id}>
                     <td style={{ fontWeight: 700, color: "var(--admin-text)" }}>{m.label || m.method_display}</td>
                     <td>
-                      <StatusBadge tone={m.is_active ? "success" : "neutral"}>
-                        {m.is_active ? "Activo" : "Inactivo"}
+                      <StatusBadge tone={m.method === "dlocal" ? "neutral" : m.is_active ? "success" : "neutral"}>
+                        {m.method === "dlocal" ? "No integrado" : m.is_active ? "Habilitado" : "Inactivo"}
                       </StatusBadge>
                     </td>
-                    <td>{m.currencies || "Todas"}</td>
+                    <td>{m.currencies || "Según proveedor"}</td>
                     <td style={{ textAlign: "right" }}>
                       <div style={{ display: "inline-flex", gap: "6px" }}>
                         <IconButton ghost onClick={() => setMethodModal(m)} aria-label="Editar método"><Pencil size={14} /></IconButton>
