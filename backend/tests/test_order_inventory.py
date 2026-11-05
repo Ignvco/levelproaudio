@@ -285,8 +285,12 @@ def test_cancellation_during_paypal_capture_is_recorded_for_review(client, produ
             assert cancel(client, order.pk).status_code == 200
             return True
         captured.execute.side_effect = execute
-        captured.transactions = []
-        captured.to_dict.return_value = {"id": "pp-race"}
+        # Valid money data ensures this still exercises the cancellation guard,
+        # rather than being rejected first by capture amount/currency validation.
+        captured.to_dict.return_value = {
+            "id": "pp-race",
+            "transactions": [{"amount": {"total": "1.00", "currency": "USD"}}],
+        }
         assert capture_paypal_payment("pp-race", "payer", buyer) is False
     payment.refresh_from_db()
     assert payment.status == "in_review"

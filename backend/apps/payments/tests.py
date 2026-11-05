@@ -149,8 +149,9 @@ class PayPalCaptureAmountValidationTest(TestCase):
 
         mock_paypal_payment = MagicMock()
         mock_paypal_payment.execute.return_value = True
-        mock_paypal_payment.transactions = [MagicMock(amount=MagicMock(total="100.00"))]
-        mock_paypal_payment.to_dict.return_value = {}
+        mock_paypal_payment.to_dict.return_value = {
+            "transactions": [{"amount": {"total": "100.00", "currency": "USD"}}],
+        }
         mock_find.return_value = mock_paypal_payment
 
         result = capture_paypal_payment("pp-1", "PAYER123", self.user)
@@ -167,8 +168,9 @@ class PayPalCaptureAmountValidationTest(TestCase):
 
         mock_paypal_payment = MagicMock()
         mock_paypal_payment.execute.return_value = True
-        mock_paypal_payment.transactions = [MagicMock(amount=MagicMock(total="1.00"))]  # mucho menos
-        mock_paypal_payment.to_dict.return_value = {}
+        mock_paypal_payment.to_dict.return_value = {
+            "transactions": [{"amount": {"total": "1.00", "currency": "USD"}}],  # mucho menos
+        }
         mock_find.return_value = mock_paypal_payment
 
         result = capture_paypal_payment("pp-2", "PAYER123", self.user)

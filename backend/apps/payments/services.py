@@ -1,5 +1,7 @@
 # apps/payments/services.py
 
+from decimal import Decimal, InvalidOperation
+
 import mercadopago
 import paypalrestsdk
 from django.conf import settings
@@ -217,7 +219,7 @@ def create_paypal_order(order: Order) -> dict:
     configure_paypal()
 
     # PayPal no soporta CLP → convertimos el total a USD con una tasa configurable.
-    from decimal import Decimal, ROUND_HALF_UP
+    from decimal import ROUND_HALF_UP
     currency = (getattr(order, "currency", "CLP") or "CLP").upper()
     if currency == "USD":
         total_usd = Decimal(str(order.total)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
@@ -273,6 +275,36 @@ def create_paypal_order(order: Order) -> dict:
     }
 
 
+def _paypal_capture_matches_payment(response, payment: Payment) -> bool:
+    """Require fresh, unambiguous money data before approving a capture."""
+    if not isinstance(response, dict):
+        return False
+    transactions = response.get("transactions")
+    # create_paypal_order sends exactly one transaction per local payment.
+    if not isinstance(transactions, list) or len(transactions) != 1:
+        return False
+    if not isinstance(transactions[0], dict):
+        return False
+    amount = transactions[0].get("amount")
+    if not isinstance(amount, dict):
+        return False
+    currency = amount.get("currency")
+    if not isinstance(currency, str) or not currency or currency != payment.currency:
+        return False
+    try:
+        captured = Decimal(str(amount.get("total")))
+        expected = Decimal(str(payment.amount))
+    except InvalidOperation:
+        return False
+    if not captured.is_finite() or not expected.is_finite() or captured <= 0 or expected <= 0:
+        return False
+
+    # Preserve the existing tolerance (1%, minimum 0.01), using decimals.
+    # Compare bounds without subtracting an arbitrarily large provider value.
+    tolerance = max(expected * Decimal("0.01"), Decimal("0.01"))
+    return expected - tolerance <= captured <= expected + tolerance
+
+
 def capture_paypal_payment(paypal_payment_id: str, payer_id: str, user) -> bool:
     # Rechazar antes de contactar a PayPal: el ID proviene del cliente.
     payment = Payment.objects.filter(
@@ -287,52 +319,37 @@ def capture_paypal_payment(paypal_payment_id: str, payer_id: str, user) -> bool:
 
     configure_paypal()
     paypal_payment = paypalrestsdk.Payment.find(paypal_payment_id)
+    # execute() merges its response into the find() resource. Clear old amounts
+    # so an incomplete execute response cannot silently reuse pre-capture data.
+    # execute sends only the explicit payer_id payload, not this resource.
+    paypal_payment.transactions = []
+    if not paypal_payment.execute({"payer_id": payer_id}):
+        return False
 
-    if paypal_payment.execute({"payer_id": payer_id}):
-        if payment:
-            # Mismo criterio que en MercadoPago: verificar que lo
-            # realmente capturado coincida con lo que se creó acá antes
-            # de dar el pago por aprobado.
-            captured_amount = None
-            try:
-                captured_amount = float(paypal_payment.transactions[0].amount.total)
-            except (AttributeError, IndexError, ValueError, TypeError):
-                pass
+    payment.raw_response = paypal_payment.to_dict()
+    if not _paypal_capture_matches_payment(payment.raw_response, payment):
+        payment.status = PaymentStatus.IN_REVIEW
+        payment.paid_at = None
+        payment.save()
+        import logging
+        logging.getLogger(__name__).error(
+            "PayPal capture: monto o moneda no verificables para orden %s. "
+            "Pago queda en revisión, NO se marca la orden como pagada.",
+            payment.order_id,
+        )
+        return False
 
-            expected = float(payment.amount)
-            tolerance = max(expected * 0.01, 0.01)
-            amount_mismatch = (
-                captured_amount is not None
-                and abs(captured_amount - expected) > tolerance
-            )
+    from django.utils import timezone
+    payment.status = PaymentStatus.APPROVED
+    payment.paid_at = timezone.now()
+    payment.save()
 
-            from django.utils import timezone
-            payment.raw_response = paypal_payment.to_dict()
-
-            if amount_mismatch:
-                payment.status = PaymentStatus.IN_REVIEW
-                payment.save()
-                import logging
-                logging.getLogger(__name__).error(
-                    f"PayPal capture: monto no coincide para orden {payment.order_id} — "
-                    f"esperado ${expected}, PayPal capturó ${captured_amount}. "
-                    f"Pago queda en revisión, NO se marca la orden como pagada."
-                )
-                return False
-
-            payment.status  = PaymentStatus.APPROVED
-            payment.paid_at = timezone.now()
-            payment.save()
-
-            if payment.status != PaymentStatus.APPROVED:
-                # Cancelación concurrente: el cobro se conserva en revisión.
-                return False
-            send_payment_confirmation_email(payment.order)
-            # El signal enroll_user_in_course ya se disparó con el save() de arriba.
-
-        return True
-
-    return False
+    if payment.status != PaymentStatus.APPROVED:
+        # Cancelación concurrente: el cobro se conserva en revisión.
+        return False
+    send_payment_confirmation_email(payment.order)
+    # El signal enroll_user_in_course ya se disparó con el save() de arriba.
+    return True
 
 
 # ── Global66 ─────────────────────────────────────────────────

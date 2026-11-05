@@ -221,8 +221,9 @@ def test_error_after_successful_capture_does_not_reverse_payment(client, paypal_
     with patch("apps.payments.services.configure_paypal"):
         with patch("apps.payments.services.paypalrestsdk.Payment.find") as find:
             find.return_value.execute.return_value = True
-            find.return_value.transactions[0].amount.total = "50.00"
-            find.return_value.to_dict.return_value = {}
+            find.return_value.to_dict.return_value = {
+                "transactions": [{"amount": {"total": "50.00", "currency": "USD"}}],
+            }
             with patch(
                 "apps.payments.services.send_payment_confirmation_email",
                 side_effect=RuntimeError(PRIVATE_DETAIL),
