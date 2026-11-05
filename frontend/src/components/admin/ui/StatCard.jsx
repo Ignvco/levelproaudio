@@ -14,8 +14,12 @@ export function MetricBadge({ delta, className = "" }) {
 }
 
 /**
- * StatCard — lenguaje de las cards del front LevelPro (ProductCard / CourseCard).
- * variant: "dark" (default) | "primary" (glow verde) | "light" | "compact"
+ * StatCard — tarjeta KPI oficial de LevelPro Audio.
+ * variant:
+ *  - "dark" | "light" → superficie clara (#FFFFFF) por compatibilidad con vistas existentes
+ *  - "primary"        → superficie verde marca (#1AFF6E) con texto oscuro (#00160B)
+ *  - "ink"            → superficie negra destacada (#141517) con texto blanco y acento #1AFF6E
+ *  - "compact"        → versión compacta para grillas densas
  */
 export function StatCard({
   Icon, label, value, sub, delta, deltaSuffix = "%", badge,

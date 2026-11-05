@@ -2,10 +2,10 @@
 import { useState, useRef } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminBrands, createAdminBrand, updateAdminBrand, deleteAdminBrand } from "../../api/admin.api"
-import { Tag, ArrowUpRight } from "lucide-react"
+import { Tag, ArrowUpRight, CheckCircle2, Globe } from "lucide-react"
 import { mediaUrl } from "../../utils/mediaUrl"
 import BulkImportPanel from "../../components/admin/BulkImportPanel"
-import { FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { AdminPageHeader, PrimaryButton, StatCard, FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
 
 function BrandModal({ brand, onClose, onSave }) {
@@ -129,9 +129,11 @@ export default function AdminBrands() {
     },
   })
   const brands = data?.results || data || []
+  const activeCount = brands.filter(b => b.is_active !== false).length
+  const withWebCount = brands.filter(b => !!b.website).length
 
   return (
-    <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page">
       {modal && (
         <BrandModal
           brand={modal === "new" ? null : modal}
@@ -151,44 +153,60 @@ export default function AdminBrands() {
         testId="delete-brand-modal"
       />
 
-      <div style={{ display: "flex", justifyContent: "space-between",
-        alignItems: "flex-start", marginBottom: "28px", gap: "16px" }}>
-        <div>
-          <h1 style={{ fontFamily: "var(--font-display)",
-            fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 800,
-            letterSpacing: "-0.02em", marginBottom: "6px" }}>
-            Marcas
-          </h1>
-          <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
-            {brands.length} marcas registradas
-          </p>
-        </div>
-        <button onClick={() => setModal("new")} className="btn btn-accent"
-          style={{ padding: "10px 20px", fontSize: "13px" }}>
-          + Nueva marca
-        </button>
+      <AdminPageHeader
+        eyebrow="LEVELPRO / CATÁLOGO"
+        title="Marcas"
+        description={`${brands.length} marcas registradas en el catálogo oficial`}
+        actions={
+          <PrimaryButton onClick={() => setModal("new")}>
+            + Nueva marca
+          </PrimaryButton>
+        }
+      />
+
+      <div className="lp-kpi-strip">
+        <StatCard
+          variant="ink"
+          Icon={Tag}
+          label="Total marcas"
+          value={brands.length}
+          sub="Registradas en catálogo"
+        />
+        <StatCard
+          variant="primary"
+          Icon={CheckCircle2}
+          label="Marcas activas"
+          value={activeCount}
+          sub="Visibles en tienda"
+        />
+        <StatCard
+          variant="light"
+          Icon={Globe}
+          label="Con sitio web"
+          value={withWebCount}
+          sub="Enlace oficial configurado"
+        />
       </div>
 
-      <div style={{ marginBottom: "22px" }}>
-        <BulkImportPanel
-          endpoint="/admin/brands/import/"
-          entityLabel="marcas"
-          templateColumns={["nombre", "sitio_web", "activo"]}
-          templateExample={["Neumann", "https://www.neumann.com", "si"]}
-          invalidateKey="admin-brands"
-          testId="bulk-import-brands" />
-      </div>
+      <BulkImportPanel
+        endpoint="/admin/brands/import/"
+        entityLabel="marcas"
+        templateColumns={["nombre", "sitio_web", "activo"]}
+        templateExample={["Neumann", "https://www.neumann.com", "si"]}
+        invalidateKey="admin-brands"
+        testId="bulk-import-brands"
+      />
 
       {isLoading ? (
         <div style={{ display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: "12px" }}>
+          gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "14px" }}>
           {[...Array(6)].map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: "100px" }} />
+            <div key={i} className="skeleton" style={{ height: "140px", borderRadius: "18px" }} />
           ))}
         </div>
       ) : (
         <div style={{ display: "grid",
-          gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "12px" }}>
+          gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "14px" }}>
           {brands.map(brand => (
             <div key={brand.id} className="au-pcard">
               <div className="au-pcard__head">

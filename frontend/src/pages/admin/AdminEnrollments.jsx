@@ -5,7 +5,8 @@ import {
   getAdminEnrollments, createAdminEnrollment,
   getAdminCourses, getAdminUsers,
 } from "../../api/admin.api"
-import { FormModal, FormField, formInputStyle } from "../../components/admin/ui"
+import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, FormField, formInputStyle } from "../../components/admin/ui"
+import { Users, CheckCircle2, GraduationCap } from "lucide-react"
 
 function EnrollModal({ courses, users, onClose, onSave }) {
   const [form, setForm]     = useState({ user: "", course: "" })
@@ -74,9 +75,13 @@ export default function AdminEnrollments() {
   const enrollments = data?.results || data || []
   const courses     = coursesData?.results || coursesData || []
   const users       = usersData?.results   || usersData   || []
+  const completedCount = enrollments.filter(e => (e.progress_percentage || 0) >= 100).length
+  const avgProgress = enrollments.length > 0
+    ? Math.round(enrollments.reduce((acc, e) => acc + (Number(e.progress_percentage) || 0), 0) / enrollments.length)
+    : 0
 
   return (
-    <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page">
       {modal && (
         <EnrollModal
           courses={courses} users={users}
@@ -85,88 +90,108 @@ export default function AdminEnrollments() {
         />
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between",
-        alignItems: "flex-start", marginBottom: "28px", gap: "16px" }}>
-        <div>
-          <h1 style={{ fontFamily: "var(--font-display)",
-            fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 800,
-            letterSpacing: "-0.02em", marginBottom: "6px" }}>
-            Inscripciones
-          </h1>
-          <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
-            {enrollments.length} inscripciones totales
-          </p>
-        </div>
-        <button onClick={() => setModal(true)} className="btn btn-accent"
-          style={{ padding: "10px 20px", fontSize: "13px" }}>
-          + Inscripción manual
-        </button>
+      <AdminPageHeader
+        eyebrow="LEVELPRO / ACADEMIA"
+        title="Inscripciones"
+        description={`${enrollments.length} inscripciones registradas`}
+        breadcrumbs={[
+          { label: "Academia", to: "/admin/academy" },
+          { label: "Inscripciones" },
+        ]}
+        actions={
+          <>
+            <SecondaryButton to="/admin/academy" size="sm">← Cursos</SecondaryButton>
+            <PrimaryButton onClick={() => setModal(true)}>+ Inscripción manual</PrimaryButton>
+          </>
+        }
+      />
+
+      <div className="lp-kpi-strip">
+        <StatCard
+          variant="ink"
+          Icon={Users}
+          label="Inscripciones totales"
+          value={enrollments.length}
+          sub="Alumnos matriculados"
+        />
+        <StatCard
+          variant="primary"
+          Icon={CheckCircle2}
+          label="Cursos completados"
+          value={completedCount}
+          sub="Avance 100%"
+        />
+        <StatCard
+          variant="light"
+          Icon={GraduationCap}
+          label="Avance promedio"
+          value={`${avgProgress}%`}
+          sub="Sobre matrículas activas"
+        />
       </div>
 
       {isLoading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: "56px" }} />
+            <div key={i} className="skeleton" style={{ height: "56px", borderRadius: "14px" }} />
           ))}
         </div>
       ) : (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-xl)", overflow: "hidden" }}>
-          <div style={{ display: "grid",
-            gridTemplateColumns: "2fr 2fr 1fr 1fr",
-            padding: "10px 20px", borderBottom: "1px solid var(--border)",
-            fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
-            textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            <span>Curso</span><span>Usuario</span>
-            <span>Progreso</span><span>Fecha</span>
+        <div className="au-card au-table-wrap">
+          <div className="au-tscroll">
+            <table className="au-table">
+              <thead>
+                <tr>
+                  <th>Curso</th>
+                  <th>Usuario</th>
+                  <th>Progreso</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                {enrollments.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} style={{ padding: "42px", textAlign: "center", color: "var(--admin-text-secondary)" }}>
+                      Sin inscripciones todavía.
+                    </td>
+                  </tr>
+                ) : enrollments.map((enr) => (
+                  <tr key={enr.id}>
+                    <td>
+                      <p style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--admin-text)" }}>
+                        {enr.course_title}
+                      </p>
+                    </td>
+                    <td style={{ color: "var(--admin-text-secondary)", fontFamily: "var(--font-mono)", fontSize: "12.5px" }}>
+                      {enr.user_email}
+                    </td>
+                    <td>
+                      <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: "120px" }}>
+                        <div style={{ flex: 1, height: "6px", borderRadius: "9999px",
+                          background: "var(--admin-surface-muted)", overflow: "hidden" }}>
+                          <div style={{
+                            height: "100%", borderRadius: "9999px",
+                            width: `${enr.progress_percentage || 0}%`,
+                            background: "var(--admin-primary)",
+                            transition: "width 600ms ease",
+                          }} />
+                        </div>
+                        <span style={{ fontSize: "11.5px", color: "var(--admin-primary-text)",
+                          fontWeight: 700, fontFamily: "var(--font-mono)", flexShrink: 0 }}>
+                          {enr.progress_percentage || 0}%
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ fontSize: "12px", color: "var(--admin-text-muted)", fontFamily: "var(--font-mono)" }}>
+                      {new Date(enr.enrolled_at || enr.created_at).toLocaleDateString("es-CL", {
+                        day: "numeric", month: "short", year: "2-digit"
+                      })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-
-          {enrollments.length === 0 ? (
-            <div style={{ padding: "48px", textAlign: "center",
-              color: "var(--text-3)", fontSize: "14px" }}>
-              Sin inscripciones todavía.
-            </div>
-          ) : enrollments.map((enr, i) => (
-            <div key={enr.id} style={{
-              display: "grid", gridTemplateColumns: "2fr 2fr 1fr 1fr",
-              padding: "14px 20px", alignItems: "center",
-              borderTop: i > 0 ? "1px solid var(--border)" : "none",
-              gap: "8px", transition: "background var(--dur) var(--ease)",
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2)"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-            >
-              <p style={{ fontSize: "13px", overflow: "hidden",
-                textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {enr.course_title}
-              </p>
-              <p style={{ fontSize: "13px", overflow: "hidden",
-                textOverflow: "ellipsis", whiteSpace: "nowrap",
-                color: "var(--text-2)" }}>
-                {enr.user_email}
-              </p>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <div style={{ flex: 1, height: "4px", borderRadius: "2px",
-                  background: "var(--surface-3)", overflow: "hidden" }}>
-                  <div style={{
-                    height: "100%", borderRadius: "2px",
-                    width: `${enr.progress_percentage || 0}%`,
-                    background: "var(--accent)",
-                    transition: "width 600ms var(--ease)",
-                  }} />
-                </div>
-                <span style={{ fontSize: "11px", color: "var(--accent-text)",
-                  fontWeight: 500, flexShrink: 0 }}>
-                  {enr.progress_percentage || 0}%
-                </span>
-              </div>
-              <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                {new Date(enr.enrolled_at || enr.created_at).toLocaleDateString("es-CL", {
-                  day: "numeric", month: "short", year: "2-digit"
-                })}
-              </span>
-            </div>
-          ))}
         </div>
       )}
     </div>

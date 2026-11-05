@@ -1,17 +1,32 @@
 // pages/dashboard/MyBookings.jsx
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { Link } from "react-router-dom"
-import { Calendar, X } from "lucide-react"
+import {
+  Calendar,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  X,
+  ArrowRight,
+  HelpCircle,
+} from "lucide-react"
 import { getBookings, cancelBooking } from "../../api/services.api"
-import { ConfirmationModal } from "../../components/admin/ui"
+import {
+  AdminPageHeader,
+  StatCard,
+  StatusBadge,
+  PrimaryButton,
+  SecondaryButton,
+  DangerButton,
+  ConfirmationModal,
+} from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
 
-const statusColors = {
-  pending:   { color: "#facc15", label: "Pendiente"  },
-  confirmed: { color: "#60a5fa", label: "Confirmada" },
-  completed: { color: "#4ade80", label: "Completada" },
-  cancelled: { color: "#f87171", label: "Cancelada"  },
+const STATUS_MAP = {
+  pending:   { label: "Pendiente",  status: "warning" },
+  confirmed: { label: "Confirmada", status: "info" },
+  completed: { label: "Completada", status: "active" },
+  cancelled: { label: "Cancelada",  status: "danger" },
 }
 
 export default function MyBookings() {
@@ -20,7 +35,9 @@ export default function MyBookings() {
     queryKey: ["my-bookings"],
     queryFn:  getBookings,
   })
-  const bookings = data?.results || data || []
+
+  const raw = data?.results || data || []
+  const bookings = Array.isArray(raw) ? raw : []
   const [toCancel, setToCancel] = useState(null)
 
   const cancelMutation = useMutation({
@@ -28,6 +45,7 @@ export default function MyBookings() {
     onSuccess: () => {
       queryClient.invalidateQueries(["my-bookings"])
       setToCancel(null)
+      showToast("Reserva cancelada correctamente")
     },
     onError: (e) => {
       showToast(e?.response?.data?.detail || "No se pudo cancelar la reserva. Intentá de nuevo.", "error")
@@ -35,94 +53,177 @@ export default function MyBookings() {
     },
   })
 
+  const confirmedCount = bookings.filter((b) => b.status === "confirmed").length
+  const pendingCount = bookings.filter((b) => b.status === "pending").length
+
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return "—"
+    try {
+      const d = new Date(dateStr)
+      return isNaN(d.getTime())
+        ? dateStr
+        : d.toLocaleString("es-CL", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          })
+    } catch {
+      return dateStr
+    }
+  }
+
   return (
-    <div style={{ padding: "clamp(32px, 5vw, 56px)", maxWidth: "800px" }}>
-      <div style={{ marginBottom: "32px" }}>
-        <p style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600,
-          letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "8px" }}>
-          Mi cuenta
-        </p>
-        <h1 className="display-bold" style={{ fontFamily: "var(--font-display)",
-          fontSize: "clamp(1.7rem, 3vw, 2.4rem)", fontWeight: 800,
-          letterSpacing: "-0.03em" }}>
-          Mis reservas
-        </h1>
+    <div className="au-page" data-testid="dashboard-bookings-page">
+      <AdminPageHeader
+        title="Mis reservas"
+        description="Fechas y horas agendadas para tus visitas técnicas, instalaciones y servicios de calibración."
+        breadcrumb={[
+          { label: "Mi cuenta", to: "/dashboard" },
+          { label: "Reservas" },
+        ]}
+        actions={
+          <PrimaryButton to="/services" icon={<Calendar size={16} />}>
+            Nueva reserva
+          </PrimaryButton>
+        }
+      />
+
+      {/* KPI Strip */}
+      <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
+        <StatCard
+          title="Total reservas"
+          value={bookings.length}
+          icon={<Calendar size={20} />}
+          description="Historial acumulado"
+        />
+        <StatCard
+          title="Confirmadas"
+          value={confirmedCount}
+          icon={<CheckCircle2 size={20} />}
+          description="Agendadas formalmente"
+          variant={confirmedCount > 0 ? "emerald" : "default"}
+        />
+        <StatCard
+          title="Pendientes"
+          value={pendingCount}
+          icon={<Clock size={20} />}
+          description="Por confirmar horario"
+          variant={pendingCount > 0 ? "amber" : "default"}
+        />
       </div>
 
-      {isLoading && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-          {[...Array(3)].map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: "80px" }} />
+      {/* Bookings list */}
+      {isLoading ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="au-skeleton" style={{ height: "88px", borderRadius: "var(--admin-radius-lg)" }} />
           ))}
         </div>
-      )}
-
-      {!isLoading && bookings.length === 0 && (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-2xl)", padding: "64px 32px", textAlign: "center" }}>
-          <div style={{ width: "64px", height: "64px", borderRadius: "50%",
-            background: "rgba(26,255,110,0.08)", border: "1px solid rgba(26,255,110,0.2)",
-            color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center",
-            margin: "0 auto 18px" }}><Calendar size={26} /></div>
-          <h3 className="display-bold" style={{ fontFamily: "var(--font-display)", fontWeight: 800,
-            fontSize: "1.4rem", letterSpacing: "-0.02em", marginBottom: "8px" }}>
-            Sin reservas todavía
-          </h3>
-          <p style={{ fontSize: "14px", color: "var(--text-3)", marginBottom: "28px" }}>
-            Reservá una fecha desde cualquier servicio.
-          </p>
-          <Link to="/services" className="btn btn-accent">Ver servicios →</Link>
+      ) : bookings.length === 0 ? (
+        <div
+          className="au-card"
+          style={{
+            padding: "56px 24px",
+            textAlign: "center",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "14px",
+          }}
+        >
+          <div
+            style={{
+              width: "56px",
+              height: "56px",
+              borderRadius: "50%",
+              background: "rgba(26,255,110,0.1)",
+              border: "1px solid rgba(26,255,110,0.3)",
+              color: "#16a34a",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            <Calendar size={24} />
+          </div>
+          <div>
+            <h3 style={{ fontSize: "17px", fontWeight: 700, margin: "0 0 6px", color: "var(--admin-primary-text)" }}>
+              No tienes reservas activas
+            </h3>
+            <p style={{ fontSize: "14px", color: "var(--admin-muted-text)", margin: 0, maxWidth: "420px" }}>
+              Agenda una fecha y hora desde cualquiera de nuestros servicios disponibles para coordinar tu atención.
+            </p>
+          </div>
+          <PrimaryButton to="/services" icon={<Calendar size={16} />}>
+            Agendar un servicio
+          </PrimaryButton>
         </div>
-      )}
-
-      {!isLoading && bookings.length > 0 && (
+      ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          {bookings.map(b => {
-            const s = statusColors[b.status] || { color: "#888", label: b.status_display || b.status }
+          {bookings.map((b) => {
+            const statusMeta = STATUS_MAP[b.status] || { label: b.status_display || b.status || "Desconocido", status: "gray" }
             const canCancel = b.status === "pending" || b.status === "confirmed"
+
             return (
-              <div key={b.id} style={{ background: "var(--surface)",
-                border: "1px solid var(--border)", borderRadius: "var(--r-xl)",
-                padding: "20px 24px", display: "flex", alignItems: "center",
-                justifyContent: "space-between", gap: "16px", flexWrap: "wrap" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <div style={{ width: "8px", height: "8px", borderRadius: "50%",
-                    background: s.color, flexShrink: 0 }} />
-                  <div>
-                    <p style={{ fontSize: "14px", fontWeight: 500, marginBottom: "4px" }}>
-                      {b.service_name}
-                    </p>
-                    <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                      {new Date(b.scheduled_date).toLocaleString("es-CL", {
-                        day: "numeric", month: "long", year: "numeric",
-                        hour: "2-digit", minute: "2-digit",
-                      })}
+              <div
+                key={b.id}
+                className="au-card"
+                data-testid={`booking-card-${b.id}`}
+                style={{
+                  padding: "18px 22px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "16px",
+                  flexWrap: "wrap",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0, flex: 1 }}>
+                  <div
+                    style={{
+                      width: "44px",
+                      height: "44px",
+                      borderRadius: "var(--admin-radius-md)",
+                      background: "var(--admin-surface-muted)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      color: "var(--admin-primary-text)",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Calendar size={20} />
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+                      <p style={{ fontSize: "15px", fontWeight: 600, color: "var(--admin-primary-text)", margin: 0 }}>
+                        {b.service_name || "Servicio técnico"}
+                      </p>
+                    </div>
+                    <p style={{ fontSize: "13px", fontWeight: 500, color: "var(--admin-muted-text)", margin: "3px 0 0" }}>
+                      🗓️ {formatDateTime(b.scheduled_date)}
                     </p>
                     {b.notes && (
-                      <p style={{ fontSize: "12px", color: "var(--text-2)", marginTop: "4px" }}>
-                        &quot;{b.notes}&quot;
+                      <p style={{ fontSize: "12px", color: "var(--admin-muted-text)", margin: "4px 0 0", fontStyle: "italic" }}>
+                        &ldquo;{b.notes}&rdquo;
                       </p>
                     )}
                   </div>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <span style={{
-                    padding: "4px 12px", borderRadius: "var(--r-full)",
-                    fontSize: "12px", fontWeight: 500,
-                    color: s.color, background: `${s.color}14`,
-                    border: `1px solid ${s.color}30`,
-                  }}>
-                    {s.label}
-                  </span>
+
+                <div style={{ display: "flex", alignItems: "center", gap: "12px", flexShrink: 0 }}>
+                  <StatusBadge status={statusMeta.status} label={statusMeta.label} />
                   {canCancel && (
-                    <button onClick={() => setToCancel(b)}
+                    <DangerButton
+                      size="sm"
+                      onClick={() => setToCancel(b)}
                       data-testid={`cancel-booking-${b.id}`}
-                      style={{ background: "none", border: "1px solid var(--border)",
-                        borderRadius: "var(--r-full)", padding: "6px",
-                        color: "var(--text-3)", cursor: "pointer",
-                        display: "flex", alignItems: "center" }}>
-                      <X size={14} />
-                    </button>
+                      icon={<X size={14} />}
+                    >
+                      Cancelar
+                    </DangerButton>
                   )}
                 </div>
               </div>
@@ -131,16 +232,46 @@ export default function MyBookings() {
         </div>
       )}
 
+      {/* Confirmation Modal */}
       <ConfirmationModal
-        open={!!toCancel}
+        open={Boolean(toCancel)}
         title="¿Cancelar la reserva?"
-        description={toCancel ? `Se cancelará tu reserva de "${toCancel.service_name}".` : ""}
+        description={toCancel ? `Se cancelará la reserva para "${toCancel.service_name}" agendada para el ${formatDateTime(toCancel.scheduled_date)}.` : ""}
         danger
         loading={cancelMutation.isPending}
         onConfirm={() => cancelMutation.mutate(toCancel.id)}
         onCancel={() => setToCancel(null)}
         testId="cancel-booking-modal"
       />
+
+      {/* Helpful banner */}
+      <div
+        className="au-card"
+        style={{
+          marginTop: "24px",
+          padding: "20px 24px",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "16px",
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+          <HelpCircle size={20} style={{ color: "var(--admin-muted-text)" }} />
+          <div>
+            <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--admin-primary-text)", margin: 0 }}>
+              ¿Necesitas reprogramar o consultar dudas?
+            </p>
+            <p style={{ fontSize: "12px", color: "var(--admin-muted-text)", margin: "2px 0 0" }}>
+              Puedes comunicarte con soporte técnico para ajustar la fecha de tu visita o coordinar detalles adicionales.
+            </p>
+          </div>
+        </div>
+        <SecondaryButton to="/services" icon={<ArrowRight size={14} />}>
+          Ver servicios
+        </SecondaryButton>
+      </div>
     </div>
   )
 }

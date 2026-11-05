@@ -4,11 +4,11 @@ import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Gift, Ticket, Users, DollarSign } from "lucide-react"
 import { adminGetRewardsDashboard } from "../../api/rewards.api"
-import { StatCard, AdminPageHeader } from "../../components/admin/ui"
+import { StatCard, AdminPageHeader, SectionCard, SecondaryButton, StatusBadge } from "../../components/admin/ui"
 import { useSiteSettings } from "../../hooks/useSiteSettings"
 
-function KpiCard({ label, value, subtitle, accent, testId, Icon }) {
-  return <StatCard variant={accent ? "primary" : "dark"} Icon={Icon} label={label} value={value} sub={subtitle} testId={testId} />
+function KpiCard({ label, value, subtitle, variant = "light", testId, Icon }) {
+  return <StatCard variant={variant} Icon={Icon} label={label} value={value} sub={subtitle} testId={testId} />
 }
 
 function useCountdownDisplay(seconds) {
@@ -36,73 +36,72 @@ export default function AdminRewards() {
 
   const remainingLabel = useCountdownDisplay(data?.current_campaign?.seconds_remaining)
 
-  if (isLoading) return (
-    <div style={{ padding:"40px" }}>
-      <p style={{ color:"var(--text-3)" }}>Cargando…</p>
+  if (isLoading || !data || !data.totals) return (
+    <div className="au-page">
+      <div className="lp-grid-kpi">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="skeleton" style={{ height: "130px", borderRadius: "20px" }} />
+        ))}
+      </div>
     </div>
   )
 
   return (
-    <div style={{ padding:"clamp(28px, 4vw, 40px)" }}>
+    <div className="au-page">
       {/* Header */}
-      <div style={{ marginBottom:"32px" }}>
-        <AdminPageHeader eyebrow={`${siteName} Rewards`} title="Dashboard de campañas"
-          actions={
+      <AdminPageHeader
+        eyebrow={`LEVELPRO / ${(siteName || "LEVELPRO").toUpperCase()} REWARDS`}
+        title="Dashboard de campañas"
+        description="Seguimiento de sorteos, participaciones y conversión en tienda"
+        actions={
+          <>
+            <SecondaryButton to="/admin/rewards/entries" size="sm">Participaciones</SecondaryButton>
+            <SecondaryButton to="/admin/rewards/winners" size="sm">Ganadores</SecondaryButton>
             <Link to="/admin/rewards/campaigns" data-testid="btn-manage-campaigns"
               className="au-btn au-btn--primary" style={{ textDecoration:"none" }}>
               + Nueva campaña
             </Link>
-          } />
-      </div>
+          </>
+        }
+      />
 
       {/* KPIs globales */}
-      <div style={{
-        display:"grid",
-        gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))",
-        gap:"14px", marginBottom:"32px",
-      }}>
-        <KpiCard testId="kpi-campaigns" label="Campañas totales" value={data.totals.campaigns} Icon={Gift} />
-        <KpiCard testId="kpi-entries" label="Participaciones" value={data.totals.entries} accent Icon={Ticket} />
-        <KpiCard testId="kpi-participants" label="Participantes únicos" value={data.totals.participants} Icon={Users} />
-        <KpiCard testId="kpi-revenue" label="Ingresos relacionados"
+      <div className="lp-grid-kpi">
+        <KpiCard testId="kpi-campaigns" variant="ink" label="Campañas totales" value={data.totals.campaigns} subtitle="Histórico en sistema" Icon={Gift} />
+        <KpiCard testId="kpi-entries" variant="primary" label="Participaciones" value={data.totals.entries} subtitle="Tickets generados" Icon={Ticket} />
+        <KpiCard testId="kpi-participants" variant="light" label="Participantes únicos" value={data.totals.participants} subtitle="Clientes participando" Icon={Users} />
+        <KpiCard testId="kpi-revenue" variant="light" label="Ingresos relacionados"
           value={`$${Number(data.totals.related_revenue).toLocaleString("es-CL")}`}
           subtitle="Órdenes que generaron tickets" Icon={DollarSign} />
       </div>
 
       {/* Campaña actual */}
       {data.current_campaign ? (
-        <div style={{
-          padding:"28px 32px",
-          background:"linear-gradient(135deg, rgba(26,255,110,0.08) 0%, rgba(26,255,110,0.02) 100%), #FCFCFC",
-          border:"1px solid rgba(26,255,110,0.25)",
-          borderRadius:"var(--r-2xl)",
-          marginBottom:"32px",
-        }}>
+        <div className="lp-user-hero">
           <div style={{ display:"flex", justifyContent:"space-between",
-            alignItems:"start", flexWrap:"wrap", gap:"20px" }}>
+            alignItems:"flex-start", flexWrap:"wrap", gap:"20px", position: "relative", zIndex: 1 }}>
             <div style={{ minWidth:0, flex:1 }}>
-              <p style={{ fontSize:"11px", color:"var(--accent-text)",
-                letterSpacing:"0.1em", textTransform:"uppercase",
-                fontWeight:700, marginBottom:"8px" }}>
-                Campaña activa
-              </p>
+              <div className="au-eyebrow">
+                <span className="lp-hero-dot" />
+                CAMPAÑA ACTIVA EN TIENDA
+              </div>
               <h2 style={{ fontFamily:"var(--font-display)",
-                fontSize:"28px", fontWeight:800,
-                letterSpacing:"-0.01em", marginBottom:"6px" }}>
+                fontSize:"clamp(1.6rem, 2.4vw, 2.2rem)", fontWeight:800,
+                letterSpacing:"-0.03em", marginBottom:"6px", color: "#fff" }}>
                 {data.current_campaign.name}
               </h2>
-              <p style={{ fontSize:"14px", color:"var(--text-2)" }}>
+              <p style={{ fontSize:"14px", color:"rgba(255,255,255,0.78)" }}>
                 🏆 {data.current_campaign.main_prize}
               </p>
             </div>
             <div style={{ textAlign:"right" }}>
-              <p style={{ fontSize:"11px", color:"var(--text-3)",
+              <p style={{ fontSize:"11px", color:"rgba(255,255,255,0.6)",
                 textTransform:"uppercase", letterSpacing:"0.08em",
-                marginBottom:"4px" }}>
+                marginBottom:"4px", fontWeight: 700 }}>
                 Tiempo restante
               </p>
-              <p style={{ fontSize:"22px", fontWeight:600,
-                color:"var(--accent-text)", fontVariantNumeric:"tabular-nums" }}>
+              <p style={{ fontSize:"22px", fontWeight:800,
+                color:"#1AFF6E", fontFamily:"var(--font-mono)" }}>
                 {remainingLabel}
               </p>
             </div>
@@ -111,8 +110,9 @@ export default function AdminRewards() {
           <div style={{
             display:"grid",
             gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",
-            gap:"12px", marginTop:"24px",
-            paddingTop:"20px", borderTop:"1px solid rgba(26,255,110,0.15)",
+            gap:"12px", marginTop:"22px",
+            paddingTop:"18px", borderTop:"1px solid rgba(255,255,255,0.1)",
+            position: "relative", zIndex: 1,
           }}>
             {[
               ["Participaciones", data.current_campaign.total_entries],
@@ -121,94 +121,79 @@ export default function AdminRewards() {
               ["Conversión",      `${data.current_campaign.conversion_rate}%`],
             ].map(([label, value]) => (
               <div key={label}>
-                <p style={{ fontSize:"11px", color:"var(--text-3)",
+                <p style={{ fontSize:"11px", color:"rgba(255,255,255,0.58)",
                   textTransform:"uppercase", letterSpacing:"0.08em",
-                  marginBottom:"4px" }}>{label}</p>
-                <p style={{ fontSize:"20px", fontWeight:600,
-                  color:"var(--text)", fontVariantNumeric:"tabular-nums" }}>{value}</p>
+                  marginBottom:"4px", fontWeight: 700 }}>{label}</p>
+                <p style={{ fontSize:"20px", fontWeight:800,
+                  color:"#fff", fontFamily:"var(--font-mono)" }}>{value}</p>
               </div>
             ))}
           </div>
 
           <div style={{ marginTop:"20px", display:"flex", gap:"10px",
-            flexWrap:"wrap" }}>
+            flexWrap:"wrap", position: "relative", zIndex: 1 }}>
             <Link to={`/admin/rewards/campaigns/${data.current_campaign.id}`}
-              className="btn btn-accent"
-              style={{ padding:"9px 18px", fontSize:"13px" }}>
+              className="au-btn au-btn--primary"
+              style={{ textDecoration:"none" }}>
               Gestionar campaña →
             </Link>
             <Link to={`/admin/rewards/entries?campaign=${data.current_campaign.id}`}
+              className="au-btn au-btn--secondary"
               style={{
-                padding:"9px 18px", fontSize:"13px",
-                border:"1px solid var(--border)", color:"var(--text-2)",
-                borderRadius:"var(--r-full)", textDecoration:"none",
+                textDecoration:"none",
+                background:"rgba(255,255,255,0.08)",
+                borderColor:"rgba(255,255,255,0.16)",
+                color:"#fff",
               }}>
               Ver participaciones
             </Link>
           </div>
         </div>
       ) : (
-        <div style={{
-          padding:"32px", background:"var(--surface)",
-          border:"1px solid var(--border)", borderRadius:"var(--r-xl)",
-          textAlign:"center", marginBottom:"32px",
-        }}>
-          <p style={{ fontSize:"14px", color:"var(--text-2)" }}>
-            No hay campañas activas.
+        <div className="au-card au-panel" style={{ padding:"40px", textAlign:"center" }}>
+          <p style={{ fontSize:"14px", color:"var(--admin-text-secondary)", marginBottom: "14px" }}>
+            No hay campañas activas en este momento.
           </p>
-          <Link to="/admin/rewards/campaigns" className="btn btn-accent"
-            style={{ marginTop:"14px", padding:"10px 20px", fontSize:"13px" }}>
+          <Link to="/admin/rewards/campaigns" className="au-btn au-btn--primary"
+            style={{ textDecoration:"none" }}>
             Crear la primera campaña
           </Link>
         </div>
       )}
 
       {/* Historial */}
-      <h3 style={{ fontSize:"14px", fontWeight:600, color:"var(--text-2)",
-        letterSpacing:"0.08em", textTransform:"uppercase",
-        marginBottom:"14px" }}>
-        Campañas recientes
-      </h3>
-      <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-        {data.recent_campaigns.map(c => (
-          <Link key={c.id} to={`/admin/rewards/campaigns/${c.id}`}
-            style={{
-              padding:"14px 20px", background:"var(--surface)",
-              border:"1px solid var(--border)", borderRadius:"var(--r-lg)",
-              display:"flex", justifyContent:"space-between", alignItems:"center",
-              textDecoration:"none", transition:"background 150ms",
-            }}
-            onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2)"}
-            onMouseLeave={e => e.currentTarget.style.background = "var(--surface)"}>
-            <div style={{ minWidth:0 }}>
-              <p style={{ fontSize:"14px", fontWeight:500, color:"var(--text)" }}>
-                {c.name}
-              </p>
-              <p style={{ fontSize:"12px", color:"var(--text-3)",
-                marginTop:"2px" }}>
-                Sorteo · {new Date(c.draw_date).toLocaleDateString("es-CL")}
-              </p>
-            </div>
-            <div style={{ display:"flex", alignItems:"center", gap:"14px" }}>
-              <span style={{ fontSize:"13px", color:"var(--text-2)",
-                fontVariantNumeric:"tabular-nums" }}>
-                {c.entries} tickets
-              </span>
-              <span style={{
-                fontSize:"11px", padding:"3px 10px",
-                borderRadius:"var(--r-full)", fontWeight:600,
-                letterSpacing:"0.06em", textTransform:"uppercase",
-                background: c.status === "active"
-                  ? "rgba(26,255,110,0.1)" : "rgba(255,255,255,0.04)",
-                color: c.status === "active"
-                  ? "var(--accent)" : "var(--text-3)",
+      <SectionCard eyebrow="HISTORIAL" title="Campañas recientes">
+        <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
+          {data.recent_campaigns.map(c => (
+            <Link key={c.id} to={`/admin/rewards/campaigns/${c.id}`}
+              style={{
+                padding:"14px 18px", background:"var(--admin-surface-soft)",
+                border:"1px solid var(--admin-border)", borderRadius:"14px",
+                display:"flex", justifyContent:"space-between", alignItems:"center",
+                textDecoration:"none", transition:"background 150ms", gap: "12px", flexWrap: "wrap",
               }}>
-                {c.status}
-              </span>
-            </div>
-          </Link>
-        ))}
-      </div>
+              <div style={{ minWidth:0 }}>
+                <p style={{ fontSize:"14px", fontWeight:700, color:"var(--admin-text)" }}>
+                  {c.name}
+                </p>
+                <p style={{ fontSize:"12px", color:"var(--admin-text-muted)",
+                  marginTop:"2px", fontFamily: "var(--font-mono)" }}>
+                  Sorteo · {new Date(c.draw_date).toLocaleDateString("es-CL")}
+                </p>
+              </div>
+              <div style={{ display:"flex", alignItems:"center", gap:"14px" }}>
+                <span style={{ fontSize:"13px", fontWeight: 700, color:"var(--admin-text-secondary)",
+                  fontFamily:"var(--font-mono)" }}>
+                  {c.entries} tickets
+                </span>
+                <StatusBadge tone={c.status === "active" ? "success" : c.status === "finished" ? "warning" : "neutral"}>
+                  {c.status}
+                </StatusBadge>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </SectionCard>
     </div>
   )
 }

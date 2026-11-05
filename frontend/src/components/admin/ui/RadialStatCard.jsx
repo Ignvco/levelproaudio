@@ -4,6 +4,7 @@ import { MetricBadge } from "./StatCard"
 import { EmptyState } from "./EmptyState"
 
 // Paleta derivada de la marca (verdes/teales + neutros cálidos)
+// eslint-disable-next-line react-refresh/only-export-components
 export const BRAND_CHART_COLORS = ["#1AFF6E", "#0F9940", "#14B8A6", "#5EEAD4", "#A7F3D0", "#CA8A04", "#78716C", "#D6D3D1"]
 
 export function RadialStatCard({

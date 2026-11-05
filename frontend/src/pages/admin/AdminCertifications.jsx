@@ -8,11 +8,12 @@ import {
   updateAdminCertification, deleteAdminCertification, getAdminCourses,
 } from "../../api/admin.api"
 import {
-  AdminPageHeader, StatusBadge, FormModal, FormField, formInputStyle,
+  AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, IconButton,
+  StatusBadge, FormModal, FormField, formInputStyle,
   ConfirmationModal, EmptyState,
 } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
-import { Award, Plus, Pencil, Trash2 } from "lucide-react"
+import { Award, Plus, Pencil, Trash2, CheckCircle2, BookOpen } from "lucide-react"
 
 function CertModal({ item, onClose }) {
   const qc = useQueryClient()
@@ -123,18 +124,52 @@ export default function AdminCertifications() {
     onError: () => showToast("No se pudo eliminar.", "error"),
   })
 
-  const iconBtn = {
-    display: "inline-flex", padding: "6px", borderRadius: "var(--r-md)",
-    cursor: "pointer", border: "1px solid var(--border)",
-    background: "transparent", color: "var(--text-2)",
-  }
+  const publishedCount = certs.filter(c => c.is_published).length
+  const linkedCoursesCount = certs.reduce((acc, c) => acc + (c.courses?.length || 0), 0)
 
   return (
-    <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page">
       <AdminPageHeader
+        eyebrow="LEVELPRO / ACADEMIA"
         title="Certificaciones"
         subtitle="Rutas de certificación profesional: un conjunto de cursos que, al completarse todos, otorgan un sello al alumno."
+        breadcrumbs={[
+          { label: "Academia", to: "/admin/academy" },
+          { label: "Certificaciones" },
+        ]}
+        actions={
+          <>
+            <SecondaryButton to="/admin/academy" size="sm">← Cursos</SecondaryButton>
+            <PrimaryButton icon={Plus} onClick={() => setModal("new")}>
+              Nueva certificación
+            </PrimaryButton>
+          </>
+        }
       />
+
+      <div className="lp-kpi-strip">
+        <StatCard
+          variant="ink"
+          Icon={Award}
+          label="Rutas de certificación"
+          value={certs.length}
+          sub="Configuradas en Academia"
+        />
+        <StatCard
+          variant="primary"
+          Icon={CheckCircle2}
+          label="Publicadas"
+          value={publishedCount}
+          sub="Visibles para alumnos"
+        />
+        <StatCard
+          variant="light"
+          Icon={BookOpen}
+          label="Cursos vinculados"
+          value={linkedCoursesCount}
+          sub="Requisitos acumulados"
+        />
+      </div>
 
       {modal && <CertModal item={modal === "new" ? null : modal} onClose={() => setModal(null)} />}
       {toDelete && (
@@ -149,54 +184,49 @@ export default function AdminCertifications() {
         />
       )}
 
-      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: "16px" }}>
-        <button onClick={() => setModal("new")}
-          style={{ display: "inline-flex", alignItems: "center", gap: "6px",
-            padding: "8px 14px", borderRadius: "var(--r-md)", cursor: "pointer",
-            fontSize: "13px", fontWeight: 600, border: "none",
-            background: "var(--accent)", color: "#000" }}>
-          <Plus size={15} /> Nueva certificación
-        </button>
-      </div>
-
       {certs.length === 0 ? (
-        <EmptyState Icon={Award}
-          title="Sin certificaciones"
-          description="Creá una ruta agrupando varios cursos." />
+        <div className="au-card au-panel">
+          <EmptyState Icon={Award}
+            title="Sin certificaciones"
+            description="Creá una ruta agrupando varios cursos." />
+        </div>
       ) : (
-        <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
-            <thead>
-              <tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left",
-                color: "var(--text-3)", fontSize: "11px", textTransform: "uppercase" }}>
-                <th style={{ padding: "12px 16px" }}>Título</th>
-                <th style={{ padding: "12px 16px" }}>Cursos</th>
-                <th style={{ padding: "12px 16px" }}>Estado</th>
-                <th style={{ padding: "12px 16px" }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {certs.map(c => (
-                <tr key={c.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                  <td style={{ padding: "12px 16px" }}>{c.title}</td>
-                  <td style={{ padding: "12px 16px", color: "var(--text-3)" }}>
-                    {c.courses?.length || 0} curso{(c.courses?.length || 0) !== 1 ? "s" : ""}
-                  </td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <StatusBadge tone={c.is_published ? "success" : "neutral"}>
-                      {c.is_published ? "Publicada" : "Borrador"}
-                    </StatusBadge>
-                  </td>
-                  <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                    <div style={{ display: "inline-flex", gap: "6px" }}>
-                      <button style={iconBtn} onClick={() => setModal(c)}><Pencil size={13} /></button>
-                      <button style={iconBtn} onClick={() => setToDelete(c)}><Trash2 size={13} /></button>
-                    </div>
-                  </td>
+        <div className="au-card au-table-wrap">
+          <div className="au-tscroll">
+            <table className="au-table">
+              <thead>
+                <tr>
+                  <th>Título</th>
+                  <th>Sello</th>
+                  <th>Cursos</th>
+                  <th>Estado</th>
+                  <th style={{ width: "96px", textAlign: "right" }}>Acciones</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {certs.map(c => (
+                  <tr key={c.id}>
+                    <td style={{ fontWeight: 700, color: "var(--admin-text)" }}>{c.title}</td>
+                    <td style={{ color: "var(--admin-text-secondary)", fontSize: "12.5px" }}>{c.seal_label || "—"}</td>
+                    <td style={{ color: "var(--admin-text-muted)", fontFamily: "var(--font-mono)" }}>
+                      {c.courses?.length || 0} curso{(c.courses?.length || 0) !== 1 ? "s" : ""}
+                    </td>
+                    <td>
+                      <StatusBadge tone={c.is_published ? "success" : "neutral"}>
+                        {c.is_published ? "Publicada" : "Borrador"}
+                      </StatusBadge>
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      <div style={{ display: "inline-flex", gap: "6px" }}>
+                        <IconButton icon={Pencil} label="Editar" onClick={() => setModal(c)} />
+                        <IconButton icon={Trash2} label="Eliminar" danger onClick={() => setToDelete(c)} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>

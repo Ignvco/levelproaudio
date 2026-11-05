@@ -6,7 +6,7 @@ import {
 } from "../../api/admin.api"
 import { getAdminProducts } from "../../api/admin.api"
 import { Coins, Tag, TrendingUp, Boxes, Ban, AlertTriangle } from "lucide-react"
-import { StatCard, AdminPageHeader } from "../../components/admin/ui"
+import { StatCard, AdminPageHeader, SecondaryButton, StatusBadge, SectionCard } from "../../components/admin/ui"
 
 const TABS = ["Resumen","Alertas","Rotación","Por categoría"]
 const fmt  = n => `$${Number(n||0).toLocaleString("es-CL")}`
@@ -15,8 +15,8 @@ const fmt  = n => `$${Number(n||0).toLocaleString("es-CL")}`
 // valor_inventario, valor_venta, ganancia_potencial
 // total_productos, sin_stock, stock_critico, stock_ok
 
-function KPI({ label, value, sub, Icon, color="var(--text)" }) {
-  return <StatCard variant="compact" Icon={Icon} label={label} value={value} sub={sub} />
+function KPI({ label, value, sub, Icon, variant = "light" }) {
+  return <StatCard variant={variant} Icon={Icon} label={label} value={value} sub={sub} />
 }
 
 export default function AdminInventory() {
@@ -61,29 +61,35 @@ export default function AdminInventory() {
   const categoryList = Object.values(byCategory)
 
   return (
-    <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
-
-      <div style={{ marginBottom:"28px" }}>
-        <AdminPageHeader eyebrow="Catálogo" title="Inventario"
-          description="Control de stock, alertas y rotación de productos" />
-      </div>
+    <div className="au-page">
+      <AdminPageHeader
+        eyebrow="LEVELPRO / CATÁLOGO"
+        title="Inventario"
+        description="Control de stock, valorización financiera, alertas y rotación de productos"
+        actions={
+          <>
+            <SecondaryButton to="/admin/products" size="sm">Productos</SecondaryButton>
+            <SecondaryButton to="/admin/products/import" size="sm">Importar .xlsx</SecondaryButton>
+          </>
+        }
+      />
 
       {/* Tabs */}
-      <div style={{ display:"flex", gap:"0", marginBottom:"28px",
-        borderBottom:"1px solid var(--border)" }}>
-        {TABS.map((t,i) => (
-          <button key={t} type="button" onClick={() => setTab(i)} style={{
-            padding:"9px 20px", fontSize:"13px", cursor:"pointer",
-            background:"none", border:"none",
-            borderBottom: tab===i ? "2px solid var(--accent)" : "2px solid transparent",
-            color:        tab===i ? "var(--accent)"             : "var(--text-3)",
-            fontWeight:   tab===i ? 500                         : 400,
-            marginBottom:"-1px", transition:"all var(--dur) var(--ease)" }}>
+      <div className="lp-seg-tabs">
+        {TABS.map((t, i) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(i)}
+            className={`lp-seg-tab${tab === i ? " is-active" : ""}`}
+          >
             {t}
-            {i===1 && alertsList.length > 0 && (
-              <span style={{ marginLeft:"6px", padding:"1px 6px",
-                borderRadius:"var(--r-full)", fontSize:"10px",
-                background:"#D97706", color:"#000", fontWeight:700 }}>
+            {i === 1 && alertsList.length > 0 && (
+              <span style={{
+                marginLeft: "6px", padding: "1px 6px",
+                borderRadius: "9999px", fontSize: "10px",
+                background: "#D97706", color: "#fff", fontWeight: 700,
+              }}>
                 {alertsList.length}
               </span>
             )}
@@ -94,95 +100,89 @@ export default function AdminInventory() {
       {/* ── RESUMEN ── */}
       {tab===0 && (
         isLoading ? (
-          <div style={{ display:"grid",
-            gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:"12px" }}>
+          <div className="lp-kpi-strip">
             {[...Array(6)].map((_,i) => (
-              <div key={i} className="skeleton" style={{ height:"110px" }} />
+              <div key={i} className="skeleton" style={{ height:"130px", borderRadius: "20px" }} />
             ))}
           </div>
         ) : (
           <>
-            <div style={{ display:"grid",
-              gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))",
-              gap:"14px", marginBottom:"28px" }}>
-              <KPI label="Valor en inventario"
+            <div className="lp-kpi-strip">
+              <KPI variant="ink" label="Valor en inventario"
                 value={fmt(summary?.valor_inventario)}
                 sub="Capital invertido en stock"
-                Icon={Coins} color="var(--accent-text)" />
-              <KPI label="Valor a precio de venta"
+                Icon={Coins} />
+              <KPI variant="light" label="Valor a precio de venta"
                 value={fmt(summary?.valor_venta)}
                 sub="Si se vende todo el stock"
-                Icon={Tag} color="#60a5fa" />
-              <KPI label="Ganancia potencial"
+                Icon={Tag} />
+              <KPI variant="primary" label="Ganancia potencial"
                 value={fmt(summary?.ganancia_potencial)}
                 sub="Venta − costo del stock"
-                Icon={TrendingUp} color="#0F9940" />
-              <KPI label="Total productos"
+                Icon={TrendingUp} />
+              <KPI variant="light" label="Total productos"
                 value={summary?.total_productos||0}
+                sub="SKUs controlados"
                 Icon={Boxes} />
-              <KPI label="Sin stock"
+              <KPI variant="light" label="Sin stock"
                 value={summary?.sin_stock||0}
                 sub={summary?.sin_stock===0 ? "✓ Sin problemas" : "Requiere reposición"}
-                Icon={Ban}
-                color={(summary?.sin_stock||0)>0 ? "var(--danger)" : "var(--text)"} />
-              <KPI label="Stock crítico"
+                Icon={Ban} />
+              <KPI variant="light" label="Stock crítico"
                 value={summary?.stock_critico||0}
                 sub="Bajo el mínimo configurado"
-                Icon={AlertTriangle}
-                color={(summary?.stock_critico||0)>0 ? "#D97706" : "var(--text)"} />
+                Icon={AlertTriangle} />
             </div>
 
             {/* Lista de productos */}
             {products.length > 0 && (
-              <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-                borderRadius:"var(--r-xl)", overflowX:"auto", WebkitOverflowScrolling:"touch" }}>
-                <div style={{ padding:"14px 20px", borderBottom:"1px solid var(--border)",
-                  background:"var(--surface-2)" }}>
-                  <p style={{ fontSize:"13px", fontWeight:500 }}>
-                    Detalle de stock — {products.length} productos
-                  </p>
+              <SectionCard
+                eyebrow="EXISTENCIAS POR SKU"
+                title={`Detalle de stock — ${products.length} productos`}
+                flush
+              >
+                <div className="au-tscroll">
+                  <table className="au-table">
+                    <thead>
+                      <tr>
+                        <th>Producto</th>
+                        <th style={{ textAlign: "right" }}>Stock</th>
+                        <th style={{ textAlign: "right" }}>Mínimo</th>
+                        <th style={{ textAlign: "right" }}>Costo unit.</th>
+                        <th style={{ textAlign: "right" }}>Valor stock</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {products.map((p) => (
+                        <tr key={p.id}>
+                          <td>
+                            <p style={{ fontSize: "13px", fontWeight: 700, color: "var(--admin-text)" }}>{p.name}</p>
+                            {p.sku && (
+                              <p style={{ fontSize: "11px", color: "var(--admin-text-muted)", fontFamily: "var(--font-mono)" }}>
+                                {p.sku}
+                              </p>
+                            )}
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            <StatusBadge tone={p.stock === 0 ? "danger" : p.stock <= (p.stock_min || 3) ? "warning" : "success"}>
+                              {p.stock} uds
+                            </StatusBadge>
+                          </td>
+                          <td style={{ textAlign: "right", color: "var(--admin-text-muted)", fontFamily: "var(--font-mono)" }}>
+                            {p.stock_min || 3}
+                          </td>
+                          <td style={{ textAlign: "right", color: "var(--admin-text-secondary)", fontFamily: "var(--font-mono)" }}>
+                            {p.cost_price ? fmt(p.cost_price) : "—"}
+                          </td>
+                          <td style={{ textAlign: "right", fontWeight: 700, fontFamily: "var(--font-mono)" }}>
+                            {p.cost_price ? fmt(p.cost_price * p.stock) : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div style={{ display:"grid",
-                  gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr", minWidth:"560px",
-                  padding:"10px 20px", borderBottom:"1px solid var(--border)",
-                  fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
-                  letterSpacing:"0.06em", fontWeight:500 }}>
-                  <span>Producto</span><span>Stock</span>
-                  <span>Mínimo</span><span>Costo unit.</span><span>Valor stock</span>
-                </div>
-                {products.map((p,i) => (
-                  <div key={p.id} style={{ display:"grid",
-                    gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr", minWidth:"560px",
-                    padding:"12px 20px", alignItems:"center",
-                    borderTop: i>0 ? "1px solid var(--border)" : "none",
-                    transition:"background var(--dur) var(--ease)" }}
-                    onMouseEnter={e => e.currentTarget.style.background="var(--surface-2)"}
-                    onMouseLeave={e => e.currentTarget.style.background="transparent"}>
-                    <div>
-                      <p style={{ fontSize:"13px", fontWeight:500 }}>{p.name}</p>
-                      {p.sku && (
-                        <p style={{ fontSize:"11px", color:"var(--text-3)",
-                          fontFamily:"monospace" }}>{p.sku}</p>
-                      )}
-                    </div>
-                    <span style={{ fontSize:"14px", fontWeight:600,
-                      color: p.stock===0 ? "var(--danger)"
-                        : p.stock<=(p.stock_min||3) ? "#D97706"
-                        : "var(--accent)" }}>
-                      {p.stock}
-                    </span>
-                    <span style={{ fontSize:"13px", color:"var(--text-3)" }}>
-                      {p.stock_min||3}
-                    </span>
-                    <span style={{ fontSize:"13px", color:"var(--text-2)" }}>
-                      {p.cost_price ? fmt(p.cost_price) : "—"}
-                    </span>
-                    <span style={{ fontSize:"13px", fontWeight:500 }}>
-                      {p.cost_price ? fmt(p.cost_price * p.stock) : "—"}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              </SectionCard>
             )}
           </>
         )
@@ -193,65 +193,58 @@ export default function AdminInventory() {
         !alerts ? (
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
             {[...Array(4)].map((_,i) => (
-              <div key={i} className="skeleton" style={{ height:"64px" }} />
+              <div key={i} className="skeleton" style={{ height:"64px", borderRadius: "16px" }} />
             ))}
           </div>
         ) : alertsList.length===0 ? (
-          <div style={{ padding:"60px", textAlign:"center",
-            background:"var(--surface)",
-            border:"1px solid rgba(26,255,110,0.2)",
-            borderRadius:"var(--r-2xl)" }}>
-            <p style={{ fontSize:"48px", marginBottom:"12px" }}>✅</p>
+          <div className="au-card au-panel" style={{ padding:"48px", textAlign:"center" }}>
+            <p style={{ fontSize:"42px", marginBottom:"10px" }}>✅</p>
             <h3 style={{ fontFamily:"var(--font-display)", fontWeight:800,
-              fontSize:"1.4rem", marginBottom:"8px", color:"var(--accent-text)" }}>
+              fontSize:"1.25rem", marginBottom:"6px", color:"var(--admin-primary-text)" }}>
               Todo en orden
             </h3>
-            <p style={{ fontSize:"14px", color:"var(--text-3)" }}>
+            <p style={{ fontSize:"13.5px", color:"var(--admin-text-secondary)" }}>
               Ningún producto está por debajo del stock mínimo.
             </p>
           </div>
         ) : (
           <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
             {alertsList.map((p,i) => (
-              <div key={i} style={{ display:"flex", alignItems:"center",
+              <div key={i} className="au-card" style={{
+                display:"flex", alignItems:"center",
                 justifyContent:"space-between", padding:"18px 22px",
-                background:"var(--surface)",
-                border:`1px solid ${p.stock===0 ? "rgba(248,113,113,0.25)" : "rgba(250,204,21,0.2)"}`,
-                borderLeft:`3px solid ${p.stock===0 ? "var(--danger)" : "#D97706"}`,
-                borderRadius:"var(--r-xl)", flexWrap:"wrap", gap:"12px" }}>
+                borderLeft:`4px solid ${p.stock===0 ? "var(--admin-danger)" : "var(--admin-warning)"}`,
+                flexWrap:"wrap", gap:"12px",
+              }}>
                 <div>
-                  <p style={{ fontSize:"14px", fontWeight:500, marginBottom:"3px" }}>
+                  <p style={{ fontSize:"14px", fontWeight:700, color:"var(--admin-text)", marginBottom:"3px" }}>
                     {p.name}
                   </p>
-                  <p style={{ fontSize:"12px", color:"var(--text-3)" }}>
-                    {p.sku && <span style={{ fontFamily:"monospace" }}>{p.sku} · </span>}
+                  <p style={{ fontSize:"12px", color:"var(--admin-text-muted)" }}>
+                    {p.sku && <span style={{ fontFamily:"var(--font-mono)" }}>{p.sku} · </span>}
                     {p.category||"Sin categoría"}
                   </p>
                 </div>
                 <div style={{ display:"flex", alignItems:"center", gap:"24px" }}>
                   <div style={{ textAlign:"right" }}>
-                    <p style={{ fontSize:"11px", color:"var(--text-3)",
+                    <p style={{ fontSize:"10px", color:"var(--admin-text-muted)",
                       textTransform:"uppercase", letterSpacing:"0.06em",
-                      marginBottom:"2px" }}>Stock actual</p>
-                    <p style={{ fontFamily:"var(--font-display)", fontSize:"2rem",
-                      color: p.stock===0 ? "var(--danger)" : "#D97706", lineHeight:1 }}>
+                      marginBottom:"2px", fontWeight: 700 }}>Stock actual</p>
+                    <p style={{ fontFamily:"var(--font-display)", fontSize:"1.6rem", fontWeight: 800,
+                      color: p.stock===0 ? "var(--admin-danger)" : "#D97706", lineHeight:1 }}>
                       {p.stock}
                     </p>
                   </div>
                   <div style={{ textAlign:"right" }}>
-                    <p style={{ fontSize:"11px", color:"var(--text-3)",
+                    <p style={{ fontSize:"10px", color:"var(--admin-text-muted)",
                       textTransform:"uppercase", letterSpacing:"0.06em",
-                      marginBottom:"2px" }}>Mínimo</p>
-                    <p style={{ fontFamily:"var(--font-display)", fontSize:"2rem",
-                      color:"var(--text-3)", lineHeight:1 }}>{p.stock_min}</p>
+                      marginBottom:"2px", fontWeight: 700 }}>Mínimo</p>
+                    <p style={{ fontFamily:"var(--font-display)", fontSize:"1.6rem", fontWeight: 800,
+                      color:"var(--admin-text-secondary)", lineHeight:1 }}>{p.stock_min}</p>
                   </div>
-                  <span style={{ padding:"4px 12px", borderRadius:"var(--r-full)",
-                    fontSize:"12px", fontWeight:600,
-                    color:      p.stock===0 ? "var(--danger)" : "#D97706",
-                    background: p.stock===0 ? "rgba(248,113,113,0.1)" : "rgba(250,204,21,0.1)",
-                    border:     `1px solid ${p.stock===0 ? "rgba(248,113,113,0.3)" : "rgba(250,204,21,0.3)"}` }}>
+                  <StatusBadge tone={p.stock === 0 ? "danger" : "warning"}>
                     {p.stock===0 ? "Sin stock" : "Bajo mínimo"}
-                  </span>
+                  </StatusBadge>
                 </div>
               </div>
             ))}
@@ -264,62 +257,61 @@ export default function AdminInventory() {
         !rotation ? (
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
             {[...Array(5)].map((_,i) => (
-              <div key={i} className="skeleton" style={{ height:"56px" }} />
+              <div key={i} className="skeleton" style={{ height:"56px", borderRadius: "14px" }} />
             ))}
           </div>
         ) : rotationList.length===0 ? (
-          <div style={{ padding:"60px", textAlign:"center",
-            background:"var(--surface)", border:"1px solid var(--border)",
-            borderRadius:"var(--r-2xl)", color:"var(--text-3)", fontSize:"14px" }}>
+          <div className="au-card au-panel" style={{ padding:"48px", textAlign:"center", color:"var(--admin-text-secondary)", fontSize:"14px" }}>
             Sin datos de rotación todavía.
           </div>
         ) : (
-          <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-            borderRadius:"var(--r-xl)", overflowX:"auto", WebkitOverflowScrolling:"touch" }}>
-            <div style={{ display:"grid",
-              gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr", minWidth:"560px",
-              padding:"10px 20px", borderBottom:"1px solid var(--border)",
-              fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
-              letterSpacing:"0.06em", fontWeight:500 }}>
-              <span>Producto</span><span>Vendidos</span>
-              <span>Stock</span><span>Ingreso</span><span>Rotación</span>
+          <SectionCard eyebrow="VELOCIDAD DE SALIDA" title="Rotación por SKU" flush>
+            <div className="au-tscroll">
+              <table className="au-table">
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th style={{ textAlign: "right" }}>Vendidos</th>
+                    <th style={{ textAlign: "right" }}>Stock</th>
+                    <th style={{ textAlign: "right" }}>Ingreso</th>
+                    <th>Rotación</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rotationList.map((p,i) => (
+                    <tr key={i}>
+                      <td>
+                        <p style={{ fontSize:"13px", fontWeight: 700, color: "var(--admin-text)" }}>{p.name}</p>
+                        {p.sku && (
+                          <p style={{ fontSize:"11px", color:"var(--admin-text-muted)",
+                            fontFamily:"var(--font-mono)" }}>{p.sku}</p>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "right", fontWeight: 700, fontFamily: "var(--font-mono)" }}>{p.units_sold}</td>
+                      <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{p.stock}</td>
+                      <td style={{ textAlign: "right", fontWeight: 700, color: "var(--admin-primary-text)", fontFamily: "var(--font-mono)" }}>
+                        {fmt(p.total_revenue||0)}
+                      </td>
+                      <td>
+                        <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
+                          <div style={{ flex:1, height:"6px", borderRadius:"9999px",
+                            background:"var(--admin-surface-muted)", overflow:"hidden", maxWidth:"80px" }}>
+                            <div style={{ height:"100%", borderRadius:"9999px",
+                              background:"var(--admin-primary)",
+                              width:`${Math.min(100,(p.rotation_index||0)*10)}%`,
+                              transition:"width 600ms ease" }} />
+                          </div>
+                          <span style={{ fontSize:"11.5px", fontWeight: 700, color:"var(--admin-text-secondary)", fontFamily: "var(--font-mono)" }}>
+                            {p.rotation_index?.toFixed(1)||"0"}
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            {rotationList.map((p,i) => (
-              <div key={i} style={{ display:"grid",
-                gridTemplateColumns:"2.5fr 1fr 1fr 1fr 1fr", minWidth:"560px",
-                padding:"13px 20px", alignItems:"center",
-                borderTop: i>0 ? "1px solid var(--border)" : "none",
-                transition:"background var(--dur) var(--ease)" }}
-                onMouseEnter={e => e.currentTarget.style.background="var(--surface-2)"}
-                onMouseLeave={e => e.currentTarget.style.background="transparent"}>
-                <div>
-                  <p style={{ fontSize:"13px", overflow:"hidden",
-                    textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</p>
-                  {p.sku && (
-                    <p style={{ fontSize:"11px", color:"var(--text-3)",
-                      fontFamily:"monospace" }}>{p.sku}</p>
-                  )}
-                </div>
-                <span style={{ fontSize:"13px", fontWeight:500 }}>{p.units_sold}</span>
-                <span style={{ fontSize:"13px" }}>{p.stock}</span>
-                <span style={{ fontSize:"13px", color:"var(--accent-text)" }}>
-                  {fmt(p.total_revenue||0)}
-                </span>
-                <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
-                  <div style={{ flex:1, height:"4px", borderRadius:"2px",
-                    background:"var(--surface-3)", overflow:"hidden", maxWidth:"60px" }}>
-                    <div style={{ height:"100%", borderRadius:"2px",
-                      background:"var(--accent)",
-                      width:`${Math.min(100,(p.rotation_index||0)*10)}%`,
-                      transition:"width 600ms var(--ease)" }} />
-                  </div>
-                  <span style={{ fontSize:"11px", color:"var(--text-3)" }}>
-                    {p.rotation_index?.toFixed(1)||"0"}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+          </SectionCard>
         )
       )}
 
@@ -327,27 +319,21 @@ export default function AdminInventory() {
       {tab===3 && (
         !productsData ? (
           <div style={{ display:"grid",
-            gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))", gap:"12px" }}>
+            gridTemplateColumns:"repeat(auto-fill, minmax(220px, 1fr))", gap:"14px" }}>
             {[...Array(4)].map((_,i) => (
-              <div key={i} className="skeleton" style={{ height:"120px" }} />
+              <div key={i} className="skeleton" style={{ height:"140px", borderRadius: "18px" }} />
             ))}
           </div>
         ) : categoryList.length===0 ? (
-          <div style={{ padding:"60px", textAlign:"center",
-            background:"var(--surface)", border:"1px solid var(--border)",
-            borderRadius:"var(--r-2xl)", color:"var(--text-3)", fontSize:"14px" }}>
+          <div className="au-card au-panel" style={{ padding:"48px", textAlign:"center", color:"var(--admin-text-secondary)", fontSize:"14px" }}>
             Sin productos registrados.
           </div>
         ) : (
           <div style={{ display:"grid",
-            gridTemplateColumns:"repeat(auto-fill, minmax(240px, 1fr))", gap:"14px" }}>
+            gridTemplateColumns:"repeat(auto-fill, minmax(250px, 1fr))", gap:"14px" }}>
             {categoryList.map((cat,i) => (
-              <div key={i} style={{ background:"var(--surface)",
-                border:"1px solid var(--border)",
-                borderRadius:"var(--r-xl)", padding:"20px",
-                transition:"all var(--dur-slow) var(--ease)" }}
-                className="card card-glow">
-                <p style={{ fontSize:"14px", fontWeight:500, marginBottom:"16px" }}>
+              <div key={i} className="au-card au-panel">
+                <p style={{ fontSize:"15px", fontWeight:800, color:"var(--admin-text)", marginBottom:"14px", letterSpacing: "-0.02em" }}>
                   {cat.name}
                 </p>
                 {[
@@ -359,8 +345,8 @@ export default function AdminInventory() {
                   <div key={label} style={{ display:"flex",
                     justifyContent:"space-between",
                     fontSize:"13px", marginBottom:"8px" }}>
-                    <span style={{ color:"var(--text-3)" }}>{label}</span>
-                    <span style={{ fontWeight:500 }}>{value}</span>
+                    <span style={{ color:"var(--admin-text-secondary)" }}>{label}</span>
+                    <span style={{ fontWeight:700, fontFamily: "var(--font-mono)", color:"var(--admin-text)" }}>{value}</span>
                   </div>
                 ))}
               </div>

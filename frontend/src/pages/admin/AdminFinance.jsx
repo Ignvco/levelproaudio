@@ -3,7 +3,7 @@ import { useState }                             from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api                                       from "../../api/client"          // ← fix crítico
 import { TrendingUp, ArrowUpFromLine, Wallet, Pencil, Trash2, Inbox }   from "lucide-react"
-import { StatCard, AdminPageHeader, DataTable, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle, ConfirmationModal }  from "../../components/admin/ui"
+import { StatCard, AdminPageHeader, SectionCard, DataTable, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle, ConfirmationModal }  from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
 import {
   getFinanceSummary, getFinanceCategories,
@@ -22,17 +22,9 @@ const TABS  = [
   { key:"analysis",    label:"Análisis"      },
 ]
 
-const inputSt = {
-  width:"100%", padding:"10px 14px",
-  background:"var(--surface-2)", border:"1px solid var(--border)",
-  borderRadius:"var(--r-md)", color:"var(--text)",
-  fontSize:"13px", outline:"none",
-  transition:"border-color var(--dur)",
-}
-
 // ── KPI Card ─────────────────────────────────────────────────
-function KpiCard({ label, value, sub, accent, Icon }) {
-  return <StatCard variant={accent ? "primary" : "dark"} Icon={Icon} label={label} value={value} sub={sub} />
+function KpiCard({ label, value, sub, variant = "light", Icon }) {
+  return <StatCard variant={variant} Icon={Icon} label={label} value={value} sub={sub} />
 }
 
 // ── Barra de distribución ─────────────────────────────────────
@@ -328,17 +320,16 @@ export default function AdminFinance() {
   const recentIncome      = summary?.recent_income || []
 
   if (isLoading) return (
-    <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(3, 1fr)",
-        gap:"12px", marginBottom:"24px" }}>
-        {[...Array(3)].map((_,i) => <div key={i} className="skeleton" style={{ height:"100px" }} />)}
+    <div className="au-page">
+      <div className="lp-kpi-strip">
+        {[...Array(3)].map((_,i) => <div key={i} className="skeleton" style={{ height:"130px", borderRadius: "20px" }} />)}
       </div>
-      <div className="skeleton" style={{ height:"200px" }} />
+      <div className="skeleton" style={{ height:"200px", borderRadius: "20px" }} />
     </div>
   )
 
   return (
-    <div className="au-page" style={{ padding:"clamp(24px, 4vw, 40px)", maxWidth:"1100px" }}>
+    <div className="au-page">
 
       {/* Modals */}
       {modal==="category" && (
@@ -373,8 +364,8 @@ export default function AdminFinance() {
         testId="delete-finance-category-modal"
       />
 
-      <AdminPageHeader eyebrow="Contabilidad" title="Finanzas"
-        description="Distribución automática de ingresos y retiros"
+      <AdminPageHeader eyebrow="LEVELPRO / NEGOCIO" title="Finanzas"
+        description="Distribución automática de ingresos, fondos disponibles, retiros y rentabilidad por SKU"
         actions={
           <>
             <SecondaryButton onClick={() => setModal("withdrawal")} data-testid="register-withdrawal-btn">
@@ -387,43 +378,33 @@ export default function AdminFinance() {
         } />
 
       {/* KPIs */}
-      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(200px, 1fr))",
-        gap:"12px", marginBottom:"24px" }}>
-        <KpiCard label="Ingresos totales"
+      <div className="lp-kpi-strip">
+        <KpiCard variant="ink" label="Ingresos totales"
           value={fmt(summary?.total_income)} sub="Desde todos los pagos aprobados"
-          accent Icon={TrendingUp} />
-        <KpiCard label="Total retirado"
+          Icon={TrendingUp} />
+        <KpiCard variant="light" label="Total retirado"
           value={fmt(summary?.total_withdrawn)} sub="Suma de todos los retiros" Icon={ArrowUpFromLine} />
-        <KpiCard label="Balance neto"
+        <KpiCard variant="primary" label="Balance neto"
           value={fmt(summary?.net_balance)} sub="Ingresos − retiros"
-          accent={summary?.net_balance > 0} Icon={Wallet} />
+          Icon={Wallet} />
       </div>
 
       {/* Barra distribución */}
       {summaryCategories.length > 0 && (
-        <div style={{ background:"#FCFCFC", border:"1px solid #FFFFFF",
-          borderRadius:"24px", padding:"24px", marginBottom:"24px",
-          boxShadow:"0 10px 30px rgba(20,30,24,.08)" }}>
-          <p style={{ fontSize:"11px", fontWeight:700, letterSpacing:".08em",
-            textTransform:"uppercase", color:"var(--text-3)", marginBottom:"18px" }}>
-            Distribución de fondos disponibles
-          </p>
+        <SectionCard eyebrow="TESORERÍA INTERNA" title="Distribución de fondos disponibles">
           <DistributionBar categories={summaryCategories} />
-        </div>
+        </SectionCard>
       )}
 
       {/* Tabs */}
-      <div style={{ display:"flex", gap:"0", marginBottom:"24px",
-        borderBottom:"1px solid var(--border)", overflowX:"auto",
-        WebkitOverflowScrolling:"touch" }} className="hide-scroll">
+      <div className="lp-seg-tabs">
         {TABS.map(({ key, label }) => (
-          <button key={key} type="button" onClick={() => setTab(key)} style={{
-            padding:"9px 18px", fontSize:"13px", cursor:"pointer",
-            background:"none", border:"none",
-            borderBottom: tab===key ? "2px solid var(--accent)" : "2px solid transparent",
-            color:        tab===key ? "var(--accent)"            : "var(--text-3)",
-            fontWeight:   tab===key ? 500                        : 400,
-            marginBottom:"-1px", whiteSpace:"nowrap" }}>
+          <button
+            key={key}
+            type="button"
+            onClick={() => setTab(key)}
+            className={`lp-seg-tab${tab === key ? " is-active" : ""}`}
+          >
             {label}
           </button>
         ))}
@@ -728,33 +709,28 @@ export default function AdminFinance() {
 // Sección de barras horizontales simple, reutilizable en la pestaña Análisis.
 function AnalysisBarSection({ title, data, fmt }) {
   const max = Math.max(...data.map(d => d.value || 0), 1)
-  if (data.length === 0) {
-    return (
-      <div>
-        <h3 style={{ fontSize:"14px", fontWeight:700, color:"var(--admin-text)", marginBottom:"12px" }}>{title}</h3>
-        <p style={{ fontSize:"13px", color:"var(--admin-text-muted)" }}>Sin datos todavía.</p>
-      </div>
-    )
-  }
   return (
-    <div>
-      <h3 style={{ fontSize:"14px", fontWeight:700, color:"var(--admin-text)", marginBottom:"14px" }}>{title}</h3>
-      <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
-        {data.map((d, i) => (
-          <div key={i} style={{ display:"flex", alignItems:"center", gap:"12px" }}>
-            <span style={{ fontSize:"12px", color:"var(--admin-text-muted)", width:"120px",
-              flexShrink:0, textAlign:"right", textTransform:"capitalize" }}>{d.label}</span>
-            <div style={{ flex:1, height:"22px", background:"var(--admin-surface-2)",
-              borderRadius:"6px", overflow:"hidden" }}>
-              <div style={{ height:"100%", width:`${(d.value/max)*100}%`,
-                background:"var(--admin-primary)", borderRadius:"6px", minWidth:"2px",
-                transition:"width 400ms ease" }} />
+    <SectionCard eyebrow="DESGLOSE ANALÍTICO" title={title}>
+      {data.length === 0 ? (
+        <p style={{ fontSize:"13px", color:"var(--admin-text-muted)" }}>Sin datos todavía.</p>
+      ) : (
+        <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
+          {data.map((d, i) => (
+            <div key={i} style={{ display:"flex", alignItems:"center", gap:"12px" }}>
+              <span style={{ fontSize:"12px", color:"var(--admin-text-secondary)", width:"120px",
+                flexShrink:0, textAlign:"right", textTransform:"capitalize", fontWeight: 600 }}>{d.label}</span>
+              <div style={{ flex:1, height:"22px", background:"var(--admin-surface-soft)",
+                borderRadius:"8px", overflow:"hidden" }}>
+                <div style={{ height:"100%", width:`${(d.value/max)*100}%`,
+                  background:"var(--admin-primary)", borderRadius:"8px", minWidth:"2px",
+                  transition:"width 400ms ease" }} />
+              </div>
+              <span style={{ fontSize:"12px", fontWeight:700, color:"var(--admin-text)", fontFamily: "var(--font-mono)",
+                width:"90px", flexShrink:0 }}>{fmt(d.value)}</span>
             </div>
-            <span style={{ fontSize:"12px", fontWeight:600, color:"var(--admin-text)",
-              width:"90px", flexShrink:0 }}>{fmt(d.value)}</span>
-          </div>
-        ))}
-      </div>
-    </div>
+          ))}
+        </div>
+      )}
+    </SectionCard>
   )
 }

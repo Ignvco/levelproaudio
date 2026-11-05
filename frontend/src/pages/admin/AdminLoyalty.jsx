@@ -6,7 +6,7 @@ import {
   updateLoyaltyConfig, adjustLoyaltyPoints,
 } from "../../api/admin.api"
 import { Users, Star, Sparkles, Gift, Medal, Award, Gem } from "lucide-react"
-import { StatCard, AdminPageHeader, FormModal, FormField, formInputStyle } from "../../components/admin/ui"
+import { StatCard, AdminPageHeader, SectionCard, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle } from "../../components/admin/ui"
 
 const TABS   = ["Resumen","Top clientes","Configuración"]
 const NIVELES = {
@@ -118,25 +118,25 @@ export default function AdminLoyalty() {
   const kpis     = summary?.kpis     || {}
 
   return (
-    <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page">
 
       {modal && <AdjustModal account={modal} onClose={() => setModal(null)} />}
 
-      <div style={{ marginBottom:"28px" }}>
-        <AdminPageHeader eyebrow="Fidelización" title="Fidelización"
-          description="Sistema de puntos y niveles para clientes" />
-      </div>
+      <AdminPageHeader
+        eyebrow="LEVELPRO / FIDELIZACIÓN"
+        title="Fidelización"
+        description="Sistema de puntos, niveles VIP y beneficios acumulables para clientes"
+      />
 
       {/* Tabs */}
-      <div style={{ display:"flex", gap:"0", marginBottom:"28px", borderBottom:"1px solid var(--border)" }}>
-        {TABS.map((t,i) => (
-          <button key={t} type="button" onClick={() => setTab(i)} style={{
-            padding:"9px 20px", fontSize:"13px", cursor:"pointer",
-            background:"none", border:"none",
-            borderBottom: tab===i ? "2px solid var(--accent)" : "2px solid transparent",
-            color:        tab===i ? "var(--accent)"             : "var(--text-3)",
-            fontWeight:   tab===i ? 500                         : 400,
-            marginBottom:"-1px" }}>
+      <div className="lp-seg-tabs">
+        {TABS.map((t, i) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setTab(i)}
+            className={`lp-seg-tab${tab === i ? " is-active" : ""}`}
+          >
             {t}
           </button>
         ))}
@@ -145,49 +145,42 @@ export default function AdminLoyalty() {
       {/* ── RESUMEN ── */}
       {tab===0 && (
         isLoading ? (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))", gap:"12px" }}>
-            {[...Array(4)].map((_,i) => <div key={i} className="skeleton" style={{ height:"100px" }} />)}
+          <div className="lp-grid-kpi">
+            {[...Array(4)].map((_,i) => <div key={i} className="skeleton" style={{ height:"130px", borderRadius: "20px" }} />)}
           </div>
         ) : (
           <>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(180px, 1fr))",
-              gap:"12px", marginBottom:"28px" }}>
-              {[
-                { label:"Clientes activos", value: kpis.total_accounts||0,                              Icon: Users },
-                { label:"Puntos emitidos",  value: (kpis.total_points_issued||0).toLocaleString("es-CL"),Icon: Star },
-                { label:"Puntos activos",   value: (kpis.total_points_available||0).toLocaleString("es-CL"),Icon: Sparkles, accent:true },
-                { label:"Puntos canjeados", value: (kpis.total_points_redeemed||0).toLocaleString("es-CL"),Icon: Gift },
-              ].map(({ label, value, Icon, accent }) => (
-                <StatCard key={label} variant={accent ? "primary" : "dark"} Icon={Icon} label={label} value={value} />
-              ))}
+            <div className="lp-grid-kpi">
+              <StatCard variant="ink" Icon={Users} label="Clientes activos" value={kpis.total_accounts || 0} sub="Con cuenta de puntos" />
+              <StatCard variant="light" Icon={Star} label="Puntos emitidos" value={(kpis.total_points_issued || 0).toLocaleString("es-CL")} sub="Histórico acumulado" />
+              <StatCard variant="primary" Icon={Sparkles} label="Puntos activos" value={(kpis.total_points_available || 0).toLocaleString("es-CL")} sub="Disponibles para canje" />
+              <StatCard variant="light" Icon={Gift} label="Puntos canjeados" value={(kpis.total_points_redeemed || 0).toLocaleString("es-CL")} sub="Utilizados en compras" />
             </div>
 
             {kpis.by_nivel && (
-              <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-                borderRadius:"var(--r-xl)", padding:"20px 24px" }}>
-                <p style={{ fontSize:"13px", fontWeight:500, marginBottom:"16px" }}>
-                  Distribución por nivel
-                </p>
-                <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)", gap:"12px" }}>
+              <SectionCard eyebrow="ESTRUCTURA VIP" title="Distribución por nivel">
+                <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(170px, 1fr))", gap:"12px" }}>
                   {Object.entries(NIVELES).map(([key, { label, Icon, color }]) => {
                     const count = kpis.by_nivel[key] || 0
                     const total = kpis.total_accounts || 1
                     return (
-                      <div key={key} style={{ textAlign:"center", padding:"14px",
-                        borderRadius:"var(--r-lg)", border:"1px solid var(--border)",
-                        background:"var(--surface-2)" }}>
-                        <span style={{ display:"block", marginBottom:"10px" }}><Icon size={28} color={color} strokeWidth={2} /></span>
-                        <p style={{ fontFamily:"var(--font-display)", fontSize:"1.6rem",
+                      <div key={key} style={{ textAlign:"center", padding:"18px 14px",
+                        borderRadius:"16px", border:"1px solid var(--admin-border)",
+                        background:"var(--admin-surface-soft)" }}>
+                        <span style={{ display:"inline-flex", marginBottom:"10px" }}>
+                          {Icon && <Icon size={28} color={color} strokeWidth={2} />}
+                        </span>
+                        <p style={{ fontFamily:"var(--font-display)", fontSize:"1.8rem", fontWeight: 800,
                           color, lineHeight:1, marginBottom:"4px" }}>{count}</p>
-                        <p style={{ fontSize:"12px", color:"var(--text-3)" }}>{label}</p>
-                        <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"4px" }}>
+                        <p style={{ fontSize:"12.5px", fontWeight: 700, color:"var(--admin-text)" }}>{label}</p>
+                        <p style={{ fontSize:"11px", color:"var(--admin-text-muted)", marginTop:"4px", fontFamily: "var(--font-mono)" }}>
                           {Math.round((count/total)*100)}%
                         </p>
                       </div>
                     )
                   })}
                 </div>
-              </div>
+              </SectionCard>
             )}
           </>
         )
@@ -197,64 +190,65 @@ export default function AdminLoyalty() {
       {tab===1 && (
         isLoading ? (
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
-            {[...Array(5)].map((_,i) => <div key={i} className="skeleton" style={{ height:"64px" }} />)}
+            {[...Array(5)].map((_,i) => <div key={i} className="skeleton" style={{ height:"64px", borderRadius: "14px" }} />)}
           </div>
         ) : accounts.length===0 ? (
-          <div style={{ padding:"60px", textAlign:"center", background:"var(--surface)",
-            border:"1px solid var(--border)", borderRadius:"var(--r-2xl)", color:"var(--text-3)" }}>
-            <p style={{ fontSize:"40px", marginBottom:"12px" }}>⭐</p>
-            <p style={{ fontSize:"14px" }}>Sin cuentas de fidelización todavía.</p>
+          <div className="au-card au-panel" style={{ padding:"56px", textAlign:"center", color:"var(--admin-text-secondary)" }}>
+            <p style={{ fontSize:"38px", marginBottom:"10px" }}>⭐</p>
+            <p style={{ fontSize:"14px", fontWeight: 600 }}>Sin cuentas de fidelización todavía.</p>
           </div>
         ) : (
-          <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-            borderRadius:"var(--r-xl)", overflowX:"auto", WebkitOverflowScrolling:"touch" }}>
-            <div style={{ display:"grid", gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px", minWidth:"620px",
-              padding:"10px 20px", borderBottom:"1px solid var(--border)",
-              fontSize:"11px", color:"var(--text-3)", textTransform:"uppercase",
-              letterSpacing:"0.06em", fontWeight:500 }}>
-              <span>Cliente</span><span>Nivel</span>
-              <span>Disponibles</span><span>Ganados</span><span>Canjeados</span><span />
+          <div className="au-card au-table-wrap">
+            <div className="au-tscroll">
+              <table className="au-table">
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Nivel</th>
+                    <th style={{ textAlign: "right" }}>Disponibles</th>
+                    <th style={{ textAlign: "right" }}>Ganados</th>
+                    <th style={{ textAlign: "right" }}>Canjeados</th>
+                    <th style={{ textAlign: "right" }}>Acción</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {accounts.map((acc) => {
+                    const nivel = NIVELES[acc.nivel] || { label:acc.nivel, Icon: Star, color:"#888" }
+                    const NivelIcon = nivel.Icon
+                    return (
+                      <tr key={acc.id}>
+                        <td>
+                          <p style={{ fontSize:"13px", fontWeight:700, color:"var(--admin-text)" }}>{acc.user_email}</p>
+                          <p style={{ fontSize:"11px", color:"var(--admin-text-muted)", fontFamily: "var(--font-mono)" }}>
+                            Valor: ${(acc.valor_disponible||0).toLocaleString("es-CL")}
+                          </p>
+                        </td>
+                        <td>
+                          <span style={{ display:"inline-flex", alignItems:"center", gap:"6px",
+                            fontSize:"12.5px", fontWeight:700, color:nivel.color }}>
+                            {NivelIcon && <NivelIcon size={15} strokeWidth={2.2} />} {nivel.label}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: "right", fontSize:"14px", fontWeight:800, color:"var(--admin-primary-text)", fontFamily: "var(--font-mono)" }}>
+                          {(acc.puntos_disponibles||0).toLocaleString("es-CL")}
+                        </td>
+                        <td style={{ textAlign: "right", fontSize:"13px", color:"var(--admin-text-secondary)", fontFamily: "var(--font-mono)" }}>
+                          {(acc.total_ganados||0).toLocaleString("es-CL")}
+                        </td>
+                        <td style={{ textAlign: "right", fontSize:"13px", color:"var(--admin-text-secondary)", fontFamily: "var(--font-mono)" }}>
+                          {(acc.total_canjeados||0).toLocaleString("es-CL")}
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          <SecondaryButton size="sm" onClick={() => setModal(acc)}>
+                            Ajustar
+                          </SecondaryButton>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
-
-            {accounts.map((acc,i) => {
-              const nivel = NIVELES[acc.nivel] || { label:acc.nivel, Icon: Star, color:"#888" }
-              return (
-                <div key={acc.id} style={{ display:"grid",
-                  gridTemplateColumns:"2fr 1fr 1fr 1fr 1fr 80px", minWidth:"620px",
-                  padding:"13px 20px", alignItems:"center",
-                  borderTop: i>0 ? "1px solid var(--border)" : "none",
-                  gap:"8px", transition:"background var(--dur) var(--ease)" }}
-                  onMouseEnter={e => e.currentTarget.style.background="var(--surface-2)"}
-                  onMouseLeave={e => e.currentTarget.style.background="transparent"}>
-                  <div>
-                    <p style={{ fontSize:"13px", fontWeight:500, overflow:"hidden",
-                      textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{acc.user_email}</p>
-                    <p style={{ fontSize:"11px", color:"var(--text-3)" }}>
-                      Valor: ${(acc.valor_disponible||0).toLocaleString("es-CL")}
-                    </p>
-                  </div>
-                  <span style={{ display:"flex", alignItems:"center", gap:"6px",
-                    fontSize:"13px", fontWeight:500, color:nivel.color }}>
-                    <nivel.Icon size={15} strokeWidth={2} /> {nivel.label}
-                  </span>
-                  <span style={{ fontSize:"14px", fontWeight:600, color:"var(--accent-text)" }}>
-                    {(acc.puntos_disponibles||0).toLocaleString("es-CL")}
-                  </span>
-                  <span style={{ fontSize:"13px", color:"var(--text-2)" }}>
-                    {(acc.total_ganados||0).toLocaleString("es-CL")}
-                  </span>
-                  <span style={{ fontSize:"13px", color:"var(--text-2)" }}>
-                    {(acc.total_canjeados||0).toLocaleString("es-CL")}
-                  </span>
-                  <button onClick={() => setModal(acc)} style={{
-                    padding:"6px 12px", borderRadius:"var(--r-md)", fontSize:"12px",
-                    cursor:"pointer", color:"#60a5fa",
-                    background:"rgba(96,165,250,0.1)", border:"1px solid rgba(96,165,250,0.2)" }}>
-                    Ajustar
-                  </button>
-                </div>
-              )
-            })}
           </div>
         )
       )}
@@ -262,22 +256,15 @@ export default function AdminLoyalty() {
       {/* ── CONFIGURACIÓN ── */}
       {tab===2 && (
         !config ? (
-          <div style={{ display:"flex", flexDirection:"column", gap:"12px", maxWidth:"520px" }}>
-            {[...Array(3)].map((_,i) => <div key={i} className="skeleton" style={{ height:"60px" }} />)}
+          <div style={{ display:"flex", flexDirection:"column", gap:"12px", maxWidth:"560px" }}>
+            {[...Array(3)].map((_,i) => <div key={i} className="skeleton" style={{ height:"60px", borderRadius: "14px" }} />)}
           </div>
         ) : (
-          <div style={{ maxWidth:"520px" }}>
-            <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-              borderRadius:"var(--r-2xl)", overflow:"hidden" }}>
-              <div style={{ padding:"16px 24px", borderBottom:"1px solid var(--border)",
-                background:"var(--surface-2)" }}>
-                <p style={{ fontSize:"14px", fontWeight:500 }}>Parámetros del programa</p>
-              </div>
-              <div style={{ padding:"24px", display:"flex", flexDirection:"column", gap:"16px" }}>
+          <div style={{ maxWidth:"560px" }}>
+            <SectionCard eyebrow="REGLAS DE CONVERSIÓN" title="Parámetros del programa">
+              <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
                 {cfgOk && (
-                  <div style={{ padding:"10px 14px", borderRadius:"var(--r-md)",
-                    background:"rgba(26,255,110,0.08)", border:"1px solid rgba(26,255,110,0.2)",
-                    color:"var(--accent-text)", fontSize:"13px" }}>
+                  <div className="lp-callout lp-callout--success">
                     ✓ Configuración guardada correctamente
                   </div>
                 )}
@@ -288,26 +275,26 @@ export default function AdminLoyalty() {
                   { key:"expiracion_dias",  label:"Días para vencimiento (0 = no vencen)" },
                 ].map(({ key, label, hint, step }) => (
                   <div key={key}>
-                    <label style={{ display:"block", fontSize:"12px", fontWeight:500,
-                      color:"var(--text-2)", marginBottom:"7px" }}>{label}</label>
+                    <label style={{ display:"block", fontSize:"12px", fontWeight:700,
+                      color:"var(--admin-text-secondary)", marginBottom:"7px" }}>{label}</label>
                     <input type="number" step={step || "1"} defaultValue={config[key]}
                       onChange={e => setCfgForm(p => ({
                         ...(p||config), [key]: parseFloat(e.target.value)
                       }))}
-                      style={inputSt}
-                      onFocus={e => e.target.style.borderColor="rgba(26,255,110,0.4)"}
-                      onBlur={e => e.target.style.borderColor="var(--border)"} />
-                    {hint && <p style={{ fontSize:"11px", color:"var(--text-3)", marginTop:"4px" }}>{hint}</p>}
+                      style={inputSt} />
+                    {hint && <p style={{ fontSize:"11px", color:"var(--admin-text-muted)", marginTop:"4px" }}>{hint}</p>}
                   </div>
                 ))}
-                <button onClick={saveConfig} disabled={savingCfg || !cfgForm}
-                  className="btn btn-accent"
-                  style={{ justifyContent:"center", marginTop:"4px",
-                    opacity: (savingCfg||!cfgForm) ? 0.6 : 1 }}>
+                <PrimaryButton
+                  onClick={saveConfig}
+                  disabled={savingCfg || !cfgForm}
+                  loading={savingCfg}
+                  style={{ width: "100%" }}
+                >
                   {savingCfg ? "Guardando..." : "Guardar configuración"}
-                </button>
+                </PrimaryButton>
               </div>
-            </div>
+            </SectionCard>
           </div>
         )
       )}

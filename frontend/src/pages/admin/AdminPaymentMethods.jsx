@@ -9,10 +9,10 @@ import {
 } from "../../api/admin.api"
 import {
   AdminPageHeader, StatusBadge, FormModal, FormField, formInputStyle,
-  ConfirmationModal, EmptyState,
+  ConfirmationModal, EmptyState, SectionCard, StatCard, PrimaryButton, IconButton,
 } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
-import { CreditCard, Landmark, Plus, Pencil, Trash2 } from "lucide-react"
+import { CreditCard, Landmark, Plus, Pencil, Trash2, CheckCircle2 } from "lucide-react"
 
 const METHOD_OPTIONS = [
   { value: "transfer",       label: "Transferencia bancaria" },
@@ -191,23 +191,15 @@ export default function AdminPaymentMethods() {
     onError: () => showToast("No se pudo eliminar.", "error"),
   })
 
-  const btnStyle = {
-    display: "inline-flex", alignItems: "center", gap: "6px",
-    padding: "7px 12px", borderRadius: "var(--r-md)", cursor: "pointer",
-    fontSize: "12px", fontWeight: 600, border: "1px solid var(--border)",
-    background: "var(--surface-2)", color: "var(--text)",
-  }
-  const iconBtn = {
-    display: "inline-flex", padding: "6px", borderRadius: "var(--r-md)",
-    cursor: "pointer", border: "1px solid var(--border)",
-    background: "transparent", color: "var(--text-2)",
-  }
+  const activeMethods = methods.filter(m => m.is_active).length
+  const activeAccounts = accounts.filter(a => a.is_active).length
 
   return (
-    <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page">
       <AdminPageHeader
+        eyebrow="LEVELPRO / CHECKOUT"
         title="Métodos de pago"
-        subtitle="Configurá qué métodos se ofrecen en el checkout y las cuentas bancarias para transferencia."
+        description="Configurá qué métodos se ofrecen en el checkout y las cuentas bancarias para transferencia."
       />
 
       {methodModal && <MethodModal item={methodModal === "new" ? null : methodModal} onClose={() => setMethodModal(null)} />}
@@ -224,46 +216,49 @@ export default function AdminPaymentMethods() {
         />
       )}
 
-      {/* Sección: métodos */}
-      <div style={{ marginBottom: "40px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-          <h2 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "16px",
-            fontWeight: 700, color: "var(--text)" }}>
-            <CreditCard size={18} /> Métodos activos
-          </h2>
-          <button style={btnStyle} onClick={() => setMethodModal("new")}>
-            <Plus size={14} /> Agregar método
-          </button>
-        </div>
+      <div className="lp-kpi-strip">
+        <StatCard variant="primary" label="Pasarelas activas" value={activeMethods} sub="Visibles en checkout" Icon={CheckCircle2} />
+        <StatCard variant="ink" label="Métodos configurados" value={methods.length} sub="Total registrados" Icon={CreditCard} />
+        <StatCard variant="light" label="Cuentas bancarias" value={activeAccounts} sub={`${accounts.length} totales`} Icon={Landmark} />
+      </div>
 
+      {/* Sección: métodos */}
+      <SectionCard
+        title="Métodos activos"
+        description="Pasarelas y medios de pago habilitados en el checkout"
+        action={
+          <PrimaryButton size="sm" onClick={() => setMethodModal("new")}>
+            <Plus size={14} /> Agregar método
+          </PrimaryButton>
+        }
+      >
         {methods.length === 0 ? (
-          <EmptyState title="Sin métodos" description="Agregá al menos uno para que el checkout funcione." />
+          <EmptyState Icon={CreditCard} title="Sin métodos" description="Agregá al menos uno para que el checkout funcione." />
         ) : (
-          <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+          <div className="au-tscroll" style={{ margin: "0 -24px -22px", width: "calc(100% + 48px)" }}>
+            <table className="au-table">
               <thead>
-                <tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left",
-                  color: "var(--text-3)", fontSize: "11px", textTransform: "uppercase" }}>
-                  <th style={{ padding: "12px 16px" }}>Método</th>
-                  <th style={{ padding: "12px 16px" }}>Estado</th>
-                  <th style={{ padding: "12px 16px" }}>Monedas</th>
-                  <th style={{ padding: "12px 16px" }}></th>
+                <tr>
+                  <th>Método</th>
+                  <th>Estado</th>
+                  <th>Monedas</th>
+                  <th style={{ width: 96 }} />
                 </tr>
               </thead>
               <tbody>
                 {methods.map(m => (
-                  <tr key={m.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                    <td style={{ padding: "12px 16px" }}>{m.label || m.method_display}</td>
-                    <td style={{ padding: "12px 16px" }}>
+                  <tr key={m.id}>
+                    <td style={{ fontWeight: 700, color: "var(--admin-text)" }}>{m.label || m.method_display}</td>
+                    <td>
                       <StatusBadge tone={m.is_active ? "success" : "neutral"}>
                         {m.is_active ? "Activo" : "Inactivo"}
                       </StatusBadge>
                     </td>
-                    <td style={{ padding: "12px 16px", color: "var(--text-3)" }}>{m.currencies || "Todas"}</td>
-                    <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                    <td>{m.currencies || "Todas"}</td>
+                    <td style={{ textAlign: "right" }}>
                       <div style={{ display: "inline-flex", gap: "6px" }}>
-                        <button style={iconBtn} onClick={() => setMethodModal(m)}><Pencil size={13} /></button>
-                        <button style={iconBtn} onClick={() => setToDelete({ kind: "method", id: m.id })}><Trash2 size={13} /></button>
+                        <IconButton ghost onClick={() => setMethodModal(m)} aria-label="Editar método"><Pencil size={14} /></IconButton>
+                        <IconButton ghost onClick={() => setToDelete({ kind: "method", id: m.id })} aria-label="Eliminar método"><Trash2 size={14} /></IconButton>
                       </div>
                     </td>
                   </tr>
@@ -272,52 +267,49 @@ export default function AdminPaymentMethods() {
             </table>
           </div>
         )}
-      </div>
+      </SectionCard>
 
       {/* Sección: cuentas bancarias */}
-      <div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-          <h2 style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "16px",
-            fontWeight: 700, color: "var(--text)" }}>
-            <Landmark size={18} /> Cuentas bancarias (transferencia)
-          </h2>
-          <button style={btnStyle} onClick={() => setAccountModal("new")}>
+      <SectionCard
+        title="Cuentas bancarias (transferencia)"
+        description="Datos bancarios mostrados cuando el cliente elige pago por transferencia"
+        action={
+          <PrimaryButton size="sm" onClick={() => setAccountModal("new")}>
             <Plus size={14} /> Agregar cuenta
-          </button>
-        </div>
-
+          </PrimaryButton>
+        }
+      >
         {accounts.length === 0 ? (
-          <EmptyState title="Sin cuentas" description="Agregá una para que aparezca en el checkout cuando el cliente elija transferencia." />
+          <EmptyState Icon={Landmark} title="Sin cuentas" description="Agregá una para que aparezca en el checkout cuando el cliente elija transferencia." />
         ) : (
-          <div style={{ border: "1px solid var(--border)", borderRadius: "var(--r-lg)", overflow: "hidden" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+          <div className="au-tscroll" style={{ margin: "0 -24px -22px", width: "calc(100% + 48px)" }}>
+            <table className="au-table">
               <thead>
-                <tr style={{ borderBottom: "1px solid var(--border)", textAlign: "left",
-                  color: "var(--text-3)", fontSize: "11px", textTransform: "uppercase" }}>
-                  <th style={{ padding: "12px 16px" }}>Etiqueta</th>
-                  <th style={{ padding: "12px 16px" }}>Moneda</th>
-                  <th style={{ padding: "12px 16px" }}>Banco</th>
-                  <th style={{ padding: "12px 16px" }}>Cuenta</th>
-                  <th style={{ padding: "12px 16px" }}>Estado</th>
-                  <th style={{ padding: "12px 16px" }}></th>
+                <tr>
+                  <th>Etiqueta</th>
+                  <th>Moneda</th>
+                  <th>Banco</th>
+                  <th>Cuenta</th>
+                  <th>Estado</th>
+                  <th style={{ width: 96 }} />
                 </tr>
               </thead>
               <tbody>
                 {accounts.map(a => (
-                  <tr key={a.id} style={{ borderBottom: "1px solid var(--border)" }}>
-                    <td style={{ padding: "12px 16px" }}>{a.label}</td>
-                    <td style={{ padding: "12px 16px" }}>{a.currency}</td>
-                    <td style={{ padding: "12px 16px" }}>{a.bank_name}</td>
-                    <td style={{ padding: "12px 16px", fontFamily: "monospace" }}>{a.account_number}</td>
-                    <td style={{ padding: "12px 16px" }}>
+                  <tr key={a.id}>
+                    <td style={{ fontWeight: 700, color: "var(--admin-text)" }}>{a.label}</td>
+                    <td>{a.currency}</td>
+                    <td>{a.bank_name}</td>
+                    <td style={{ fontFamily: "var(--font-mono)" }}>{a.account_number}</td>
+                    <td>
                       <StatusBadge tone={a.is_active ? "success" : "neutral"}>
                         {a.is_active ? "Activa" : "Inactiva"}
                       </StatusBadge>
                     </td>
-                    <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                    <td style={{ textAlign: "right" }}>
                       <div style={{ display: "inline-flex", gap: "6px" }}>
-                        <button style={iconBtn} onClick={() => setAccountModal(a)}><Pencil size={13} /></button>
-                        <button style={iconBtn} onClick={() => setToDelete({ kind: "account", id: a.id })}><Trash2 size={13} /></button>
+                        <IconButton ghost onClick={() => setAccountModal(a)} aria-label="Editar cuenta"><Pencil size={14} /></IconButton>
+                        <IconButton ghost onClick={() => setToDelete({ kind: "account", id: a.id })} aria-label="Eliminar cuenta"><Trash2 size={14} /></IconButton>
                       </div>
                     </td>
                   </tr>
@@ -326,7 +318,7 @@ export default function AdminPaymentMethods() {
             </table>
           </div>
         )}
-      </div>
+      </SectionCard>
     </div>
   )
 }

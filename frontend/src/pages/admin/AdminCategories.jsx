@@ -6,7 +6,8 @@ import { useState, useRef, useCallback, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../../api/client"
 import { showToast } from "../../components/ui/ToastNotification"
-import { AdminPageHeader, PrimaryButton, FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { AdminPageHeader, PrimaryButton, StatCard, StatusBadge, IconButton, FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { FolderTree, Layers, GitBranch, Pencil, Trash2 } from "lucide-react"
 
 // ── API helpers ───────────────────────────────────────────────
 const getCategories   = ()           => api.get("/admin/categories/").then(r => r.data)
@@ -175,28 +176,16 @@ function DraggableRow({ cat, isChild, onEdit, onDelete,
       </span>
 
       {/* Estado */}
-      <span style={{ padding:"2px 8px", borderRadius:"var(--r-full)",
-        fontSize:"11px", fontWeight:500, display:"inline-block",
-        color:      cat.is_active ? "var(--accent)" : "var(--text-3)",
-        background: cat.is_active ? "var(--accent-dim)" : "var(--surface-2)",
-        border:     `1px solid ${cat.is_active ? "var(--accent-glow)" : "var(--border)"}` }}>
-        {cat.is_active ? "Activa" : "Inactiva"}
-      </span>
+      <div>
+        <StatusBadge tone={cat.is_active ? "success" : "neutral"}>
+          {cat.is_active ? "Activa" : "Inactiva"}
+        </StatusBadge>
+      </div>
 
       {/* Acciones */}
-      <div style={{ display:"flex", gap:"6px" }}>
-        <button onClick={e => { e.stopPropagation(); onEdit(cat) }}
-          style={{ padding:"4px 8px", borderRadius:"var(--r-sm)", fontSize:"11px",
-            cursor:"pointer", color:"#60a5fa",
-            background:"rgba(96,165,250,0.1)", border:"1px solid rgba(96,165,250,0.2)" }}>
-          ✎
-        </button>
-        <button onClick={e => { e.stopPropagation(); onDelete(cat) }}
-          style={{ padding:"4px 8px", borderRadius:"var(--r-sm)", fontSize:"11px",
-            cursor:"pointer", color:"#EF4444",
-            background:"rgba(248,113,113,0.1)", border:"1px solid rgba(248,113,113,0.2)" }}>
-          ×
-        </button>
+      <div style={{ display:"flex", gap:"6px", justifyContent:"flex-end" }}>
+        <IconButton icon={Pencil} label="Editar" onClick={e => { e.stopPropagation(); onEdit(cat) }} />
+        <IconButton icon={Trash2} label="Eliminar" danger onClick={e => { e.stopPropagation(); onDelete(cat) }} />
       </div>
     </div>
   )
@@ -319,8 +308,10 @@ export default function AdminCategories() {
     setModal(null)
   }
 
+  const subCount = Math.max(0, allCats.length - roots.length)
+
   return (
-    <div style={{ padding:"clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page">
 
       {modal !== null && (
         <CategoryModal
@@ -345,84 +336,106 @@ export default function AdminCategories() {
       />
 
       {/* Header */}
-      <div style={{ marginBottom:"28px" }}>
-        <AdminPageHeader eyebrow="Catálogo" title="Categorías"
-          description={`${allCats.length} categorías · ${roots.length} principales · arrastrá ⠿ para reordenar`}
-          actions={<PrimaryButton onClick={() => setModal({})} testId="btn-new-category">+ Nueva categoría</PrimaryButton>} />
+      <AdminPageHeader
+        eyebrow="LEVELPRO / CATÁLOGO"
+        title="Categorías"
+        description={`${allCats.length} categorías · ${roots.length} principales · arrastrá ⠿ para reordenar`}
+        actions={<PrimaryButton onClick={() => setModal({})} testId="btn-new-category">+ Nueva categoría</PrimaryButton>}
+      />
+
+      {/* KPI Strip */}
+      <div className="lp-kpi-strip">
+        <StatCard
+          variant="ink"
+          Icon={FolderTree}
+          label="Total categorías"
+          value={allCats.length}
+          sub="Árbol completo del catálogo"
+        />
+        <StatCard
+          variant="primary"
+          Icon={Layers}
+          label="Categorías raíz"
+          value={roots.length}
+          sub="Navegación principal"
+        />
+        <StatCard
+          variant="light"
+          Icon={GitBranch}
+          label="Subcategorías"
+          value={subCount}
+          sub="Anidadas bajo raíz"
+        />
       </div>
 
       {isLoading ? (
         <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
           {[...Array(5)].map((_,i) =>
-            <div key={i} className="skeleton" style={{ height:"52px" }} />
+            <div key={i} className="skeleton" style={{ height:"52px", borderRadius: "14px" }} />
           )}
         </div>
       ) : roots.length === 0 ? (
-        <div style={{ padding:"60px", textAlign:"center",
-          background:"var(--surface)", border:"1px solid var(--border)",
-          borderRadius:"var(--r-2xl)", color:"var(--text-3)" }}>
-          <p style={{ fontSize:"36px", marginBottom:"12px" }}>🗂</p>
+        <div className="au-card au-panel" style={{ padding:"48px", textAlign:"center", color:"var(--admin-text-secondary)" }}>
+          <p style={{ fontSize:"36px", marginBottom:"10px" }}>🗂</p>
           <p style={{ fontSize:"14px" }}>No hay categorías todavía.</p>
         </div>
       ) : (
-        <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-          borderRadius:"var(--r-xl)", overflowX:"auto", WebkitOverflowScrolling:"touch" }}>
+        <div className="au-card au-table-wrap">
+          <div className="au-tscroll">
+            {/* Header tabla */}
+            <div style={{ display:"grid", minWidth:"560px",
+              gridTemplateColumns:"28px 2.5fr 1.5fr 1fr 80px",
+              padding:"12px 20px", borderBottom:"1px solid var(--admin-border)",
+              background:"var(--admin-surface-soft)",
+              fontSize:"11px", fontWeight:700, color:"var(--admin-text-muted)",
+              textTransform:"uppercase", letterSpacing:"0.06em" }}>
+              <span />
+              <span>Nombre</span>
+              <span>Tipo</span>
+              <span>Estado</span>
+              <span />
+            </div>
 
-          {/* Header tabla */}
-          <div style={{ display:"grid", minWidth:"560px",
-            gridTemplateColumns:"28px 2.5fr 1.5fr 1fr 80px",
-            padding:"10px 20px", borderBottom:"1px solid var(--border)",
-            fontSize:"11px", fontWeight:500, color:"var(--text-3)",
-            textTransform:"uppercase", letterSpacing:"0.08em" }}>
-            <span />
-            <span>Nombre</span>
-            <span>Tipo</span>
-            <span>Estado</span>
-            <span />
-          </div>
-
-          {/* Raíces draggables + sus hijos */}
-          {roots.map((cat, i) => {
-            const children = getChildren(cat.id)
-            return (
-              <div key={cat.id}>
-                <DraggableRow
-                  cat={cat}
-                  isChild={false}
-                  isDragging={draggingIdx === i}
-                  onEdit={() => setModal(cat)}
-                  onDelete={handleDelete}
-                  onDragStart={() => { setDraggingIdx(i); onDragStart(i)() }}
-                  onDragOver={onDragOver(i)}
-                  onDrop={() => { onDrop(); setDraggingIdx(null) }}
-                  onDragEnd={() => { onDragEnd(); setDraggingIdx(null) }}
-                />
-                {children.length > 0 && (
-                  <ChildrenList
-                    items={children}
-                    parentId={cat.id}
-                    onEdit={(child) => setModal(child)}
+            {/* Raíces draggables + sus hijos */}
+            {roots.map((cat, i) => {
+              const children = getChildren(cat.id)
+              return (
+                <div key={cat.id}>
+                  <DraggableRow
+                    cat={cat}
+                    isChild={false}
+                    isDragging={draggingIdx === i}
+                    onEdit={() => setModal(cat)}
                     onDelete={handleDelete}
-                    onChildReorder={handleChildReorder}
+                    onDragStart={() => { setDraggingIdx(i); onDragStart(i)() }}
+                    onDragOver={onDragOver(i)}
+                    onDrop={() => { onDrop(); setDraggingIdx(null) }}
+                    onDragEnd={() => { onDragEnd(); setDraggingIdx(null) }}
                   />
-                )}
-              </div>
-            )
-          })}
+                  {children.length > 0 && (
+                    <ChildrenList
+                      items={children}
+                      parentId={cat.id}
+                      onEdit={(child) => setModal(child)}
+                      onDelete={handleDelete}
+                      onChildReorder={handleChildReorder}
+                    />
+                  )}
+                </div>
+              )
+            })}
+          </div>
         </div>
       )}
 
       {/* Instrucción drag */}
-      <div style={{ marginTop:"16px", padding:"12px 16px",
-        borderRadius:"var(--r-lg)", background:"var(--surface-2)",
-        border:"1px solid var(--border)",
-        display:"flex", alignItems:"center", gap:"10px" }}>
-        <span style={{ fontSize:"18px" }}>⠿</span>
+      <div className="lp-callout">
+        <span style={{ fontSize:"18px", color:"var(--admin-primary-text)" }}>⠿</span>
         <div>
-          <p style={{ fontSize:"13px", fontWeight:500, marginBottom:"2px" }}>
+          <p style={{ fontSize:"13px", fontWeight:700, color:"var(--admin-text)", marginBottom:"2px" }}>
             Drag & drop para reordenar
           </p>
-          <p style={{ fontSize:"12px", color:"var(--text-3)" }}>
+          <p style={{ fontSize:"12px", color:"var(--admin-text-secondary)" }}>
             Arrastrá cualquier fila para cambiar el orden. Las raíces se reordenan entre sí
             y las subcategorías dentro de su padre. El orden se guarda automáticamente.
           </p>

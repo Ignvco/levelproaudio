@@ -70,6 +70,7 @@ export function FormModal({
 
 // Estilo de input consistente, para que los formularios dentro de FormModal
 // no tengan que redefinir esto en cada página.
+// eslint-disable-next-line react-refresh/only-export-components
 export const formInputStyle = {
   width: "100%", padding: "10px 14px",
   background: "var(--surface-2)", border: "1px solid var(--border)",

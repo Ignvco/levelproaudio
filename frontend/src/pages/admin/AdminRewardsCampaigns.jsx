@@ -11,32 +11,32 @@ import {
 import { showToast } from "../../components/ui/ToastNotification"
 import { getProducts } from "../../api/products.api"
 import { mediaUrl } from "../../utils/mediaUrl"
-import { FormModal, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { Gift, Sparkles, Ticket } from "lucide-react"
 
 const STATUS_STYLES = {
-  draft:    { bg:"rgba(255,255,255,0.05)", color:"var(--text-3)", label:"Borrador"    },
-  active:   { bg:"rgba(26,255,110,0.1)",   color:"var(--accent-text)", label:"Activa"      },
-  finished: { bg:"rgba(250,204,21,0.08)",  color:"#D97706",       label:"Finalizada"  },
+  draft:    { bg:"var(--admin-surface-muted)", color:"var(--admin-text-secondary)", label:"Borrador"    },
+  active:   { bg:"var(--admin-primary-soft)",  color:"var(--admin-primary-text)",   label:"Activa"      },
+  finished: { bg:"rgba(245,158,11,0.12)",      color:"#B45309",                     label:"Finalizada"  },
 }
 
 function CampaignRow({ c, onDuplicate, onDelete }) {
   return (
-    <div data-testid={`campaign-row-${c.id}`} style={{
-      padding:"18px 22px", background:"var(--surface)",
-      border:"1px solid var(--border)", borderRadius:"var(--r-lg)",
-      display:"flex", alignItems:"center", gap:"18px",
+    <div data-testid={`campaign-row-${c.id}`} className="au-card" style={{
+      padding:"18px 22px",
+      display:"flex", alignItems:"center", gap:"18px", flexWrap: "wrap",
     }}>
-      <div style={{ minWidth:0, flex:1 }}>
+      <div style={{ minWidth:0, flex:"1 1 240px" }}>
         <div style={{ display:"flex", gap:"10px", alignItems:"center",
-          marginBottom:"4px" }}>
-          <p style={{ fontSize:"15px", fontWeight:500, color:"var(--text)",
+          marginBottom:"4px", flexWrap: "wrap" }}>
+          <p style={{ fontSize:"15px", fontWeight:700, color:"var(--admin-text)",
             overflow:"hidden", textOverflow:"ellipsis",
             whiteSpace:"nowrap", maxWidth:"340px" }}>
             {c.name}
           </p>
           <span style={{
-            fontSize:"10px", padding:"3px 9px",
-            borderRadius:"var(--r-full)", fontWeight:700,
+            fontSize:"10.5px", padding:"3px 10px",
+            borderRadius:"9999px", fontWeight:700,
             letterSpacing:"0.06em", textTransform:"uppercase",
             background: STATUS_STYLES[c.status]?.bg,
             color:      STATUS_STYLES[c.status]?.color,
@@ -44,44 +44,32 @@ function CampaignRow({ c, onDuplicate, onDelete }) {
             {STATUS_STYLES[c.status]?.label}
           </span>
         </div>
-        <p style={{ fontSize:"12px", color:"var(--text-3)" }}>
+        <p style={{ fontSize:"12.5px", color:"var(--admin-text-secondary)" }}>
           🏆 {c.main_prize} · Sorteo {new Date(c.draw_date).toLocaleDateString("es-CL")}
         </p>
       </div>
       <div style={{ display:"flex", gap:"14px", alignItems:"center",
-        fontSize:"13px", color:"var(--text-2)" }}>
+        fontSize:"13px", fontWeight: 700, color:"var(--admin-text-secondary)", fontFamily: "var(--font-mono)" }}>
         <span title="Participaciones">🎫 {c.total_entries}</span>
         <span title="Participantes">👥 {c.total_participants}</span>
       </div>
-      <div style={{ display:"flex", gap:"8px" }}>
+      <div style={{ display:"flex", gap:"8px", flexWrap: "wrap" }}>
         <Link to={`/admin/rewards/campaigns/${c.id}`}
           data-testid={`btn-edit-${c.id}`}
-          style={{
-            padding:"7px 14px", fontSize:"12px",
-            borderRadius:"var(--r-full)",
-            border:"1px solid var(--border)", color:"var(--text-2)",
-            textDecoration:"none",
-          }}>
+          className="au-pill-btn au-pill-btn--edit"
+          style={{ padding:"7px 14px", fontSize:"12px", textDecoration:"none" }}>
           Gestionar
         </Link>
-        <button onClick={() => onDuplicate(c.id)}
+        <button type="button" onClick={() => onDuplicate(c.id)}
           data-testid={`btn-duplicate-${c.id}`}
-          style={{
-            padding:"7px 14px", fontSize:"12px", cursor:"pointer",
-            borderRadius:"var(--r-full)",
-            border:"1px solid var(--border)", background:"transparent",
-            color:"var(--text-3)",
-          }}>
+          className="au-pill-btn au-pill-btn--edit"
+          style={{ padding:"7px 14px", fontSize:"12px" }}>
           Duplicar
         </button>
-        <button onClick={() => onDelete(c.id)}
+        <button type="button" onClick={() => onDelete(c.id)}
           data-testid={`btn-delete-${c.id}`}
-          style={{
-            padding:"7px 14px", fontSize:"12px", cursor:"pointer",
-            borderRadius:"var(--r-full)",
-            border:"1px solid rgba(239,68,68,0.3)",
-            background:"transparent", color:"#ef4444",
-          }}>
+          className="au-pill-btn au-pill-btn--del"
+          style={{ padding:"7px 14px", fontSize:"12px" }}>
           Eliminar
         </button>
       </div>
@@ -316,10 +304,11 @@ export default function AdminRewardsCampaigns() {
   const [modalOpen, setModalOpen] = useState(false)
   const [toDelete, setToDelete]   = useState(null)
 
-  const { data: campaigns = [], isLoading } = useQuery({
+  const { data: rawCampaigns, isLoading } = useQuery({
     queryKey: ["admin-campaigns"],
     queryFn:  adminListCampaigns,
   })
+  const campaigns = Array.isArray(rawCampaigns) ? rawCampaigns : []
 
   const dup = useMutation({
     mutationFn: adminDuplicateCampaign,
@@ -342,39 +331,47 @@ export default function AdminRewardsCampaigns() {
     },
   })
 
+  const activeCount = campaigns.filter(c => c.status === "active").length
+  const totalEntries = campaigns.reduce((acc, c) => acc + (Number(c.total_entries) || 0), 0)
+
   return (
-    <div style={{ padding:"clamp(28px, 4vw, 40px)" }}>
-      <div style={{ display:"flex", justifyContent:"space-between",
-        alignItems:"start", marginBottom:"32px", flexWrap:"wrap", gap:"12px" }}>
-        <div>
-          <p style={{ fontSize:"12px", color:"var(--accent-text)",
-            letterSpacing:"0.1em", textTransform:"uppercase",
-            fontWeight:600, marginBottom:"6px" }}>
-            Rewards
-          </p>
-          <h1 style={{ fontSize:"28px", fontWeight:500 }}>Campañas</h1>
-        </div>
-        <button data-testid="btn-new-campaign"
-          onClick={() => setModalOpen(true)}
-          className="btn btn-accent"
-          style={{ padding:"10px 20px", fontSize:"13px" }}>
-          + Nueva campaña
-        </button>
+    <div className="au-page">
+      <AdminPageHeader
+        eyebrow="LEVELPRO / REWARDS"
+        title="Campañas"
+        description={`${campaigns.length} campañas configuradas · ${activeCount} activas`}
+        breadcrumbs={[
+          { label: "Rewards", to: "/admin/rewards" },
+          { label: "Campañas" },
+        ]}
+        actions={
+          <>
+            <SecondaryButton to="/admin/rewards" size="sm">← Dashboard</SecondaryButton>
+            <PrimaryButton
+              testId="btn-new-campaign"
+              onClick={() => setModalOpen(true)}
+            >
+              + Nueva campaña
+            </PrimaryButton>
+          </>
+        }
+      />
+
+      <div className="lp-kpi-strip">
+        <StatCard variant="ink" Icon={Gift} label="Campañas totales" value={campaigns.length} sub="Registradas en sistema" />
+        <StatCard variant="primary" Icon={Sparkles} label="Campañas activas" value={activeCount} sub="En curso actualmente" />
+        <StatCard variant="light" Icon={Ticket} label="Participaciones" value={totalEntries} sub="Tickets acumulados" />
       </div>
 
-      {isLoading && <p style={{ color:"var(--text-3)" }}>Cargando…</p>}
+      {isLoading && <p style={{ color:"var(--admin-text-muted)" }}>Cargando…</p>}
 
       {!isLoading && campaigns.length === 0 && (
-        <div style={{
-          padding:"48px 32px", background:"var(--surface)",
-          border:"1px solid var(--border)", borderRadius:"var(--r-2xl)",
-          textAlign:"center",
-        }}>
-          <p style={{ fontSize:"46px", marginBottom:"12px" }}>🎁</p>
-          <p style={{ fontSize:"15px", color:"var(--text-2)", marginBottom:"6px" }}>
+        <div className="au-card au-panel" style={{ padding:"48px 32px", textAlign:"center" }}>
+          <p style={{ fontSize:"42px", marginBottom:"10px" }}>🎁</p>
+          <p style={{ fontSize:"15px", fontWeight: 700, color:"var(--admin-text)", marginBottom:"6px" }}>
             No hay campañas creadas.
           </p>
-          <p style={{ fontSize:"13px", color:"var(--text-3)", marginBottom:"20px" }}>
+          <p style={{ fontSize:"13px", color:"var(--admin-text-secondary)", marginBottom:"18px" }}>
             Creá tu primera campaña para empezar a generar participaciones automáticamente.
           </p>
         </div>

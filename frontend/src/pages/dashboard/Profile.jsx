@@ -1,33 +1,26 @@
-// pages/dashboard/Profile.jsx
+// pages/dashboard/Profile.jsx — Perfil de usuario y seguridad
 import { useState } from "react"
 import { useMutation } from "@tanstack/react-query"
+import {
+  User,
+  Mail,
+  Phone,
+  MapPin,
+  Lock,
+  Shield,
+  Check,
+  Save,
+  AlertCircle,
+  KeyRound,
+} from "lucide-react"
 import { useAuthStore } from "../../store/authStore"
 import api from "../../api/client"
 import { showToast } from "../../components/ui/ToastNotification"
-
-const inputSt = {
-  width: "100%", padding: "12px 16px",
-  background: "var(--surface-2)", border: "1px solid var(--border)",
-  borderRadius: "var(--r-md)", color: "var(--text)",
-  fontSize: "14px", outline: "none",
-  transition: "border-color var(--dur)",
-}
-
-function Field({ label, value, onChange, type = "text", autoComplete }) {
-  return (
-    <div>
-      <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-        color: "var(--text-2)", marginBottom: "8px" }}>
-        {label}
-      </label>
-      <input value={value} type={type} autoComplete={autoComplete}
-        onChange={onChange}
-        style={inputSt}
-        onFocus={e => e.target.style.borderColor = "rgba(26,255,110,0.4)"}
-        onBlur={e => e.target.style.borderColor = "var(--border)"} />
-    </div>
-  )
-}
+import {
+  AdminPageHeader,
+  PrimaryButton,
+  SecondaryButton,
+} from "../../components/admin/ui"
 
 function ChangePasswordSection() {
   const [open, setOpen] = useState(false)
@@ -40,7 +33,7 @@ function ChangePasswordSection() {
       return data
     },
     onSuccess: () => {
-      showToast("Contraseña actualizada")
+      showToast("Contraseña actualizada exitosamente")
       setForm({ current_password: "", password: "", password2: "" })
       setOpen(false)
       setError("")
@@ -50,62 +43,149 @@ function ChangePasswordSection() {
     },
   })
 
-  const handleSubmit = () => {
-    if (form.password !== form.password2) { setError("Las contraseñas nuevas no coinciden."); return }
+  const handleSubmit = (e) => {
+    e?.preventDefault?.()
+    if (!form.current_password || !form.password) {
+      setError("Por favor completa los campos requeridos.")
+      return
+    }
+    if (form.password !== form.password2) {
+      setError("Las contraseñas nuevas no coinciden.")
+      return
+    }
     setError("")
     mutation.mutate()
   }
 
   return (
-    <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-      borderRadius: "var(--r-2xl)", padding: "24px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center",
-        marginBottom: open ? "20px" : 0 }}>
-        <div>
-          <p style={{ fontSize: "15px", fontWeight: 500, color: "var(--text)" }}>Contraseña</p>
-          <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "2px" }}>
-            Cambiá tu contraseña de acceso.
-          </p>
+    <div className="au-card" style={{ padding: "20px" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: open ? "16px" : 0,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <div
+            style={{
+              width: "36px",
+              height: "36px",
+              borderRadius: "var(--admin-radius-md)",
+              background: "var(--admin-surface-muted)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "var(--admin-primary-text)",
+            }}
+          >
+            <KeyRound size={18} />
+          </div>
+          <div>
+            <p style={{ fontSize: "14px", fontWeight: 700, color: "var(--admin-primary-text)", margin: 0 }}>
+              Seguridad
+            </p>
+            <p style={{ fontSize: "12px", color: "var(--admin-muted-text)", margin: "2px 0 0" }}>
+              Cambiar clave de acceso
+            </p>
+          </div>
         </div>
         {!open && (
-          <button onClick={() => setOpen(true)} className="btn btn-ghost"
-            style={{ padding: "9px 18px", fontSize: "13px" }}>
-            Cambiar contraseña
-          </button>
+          <SecondaryButton size="sm" onClick={() => setOpen(true)}>
+            Modificar
+          </SecondaryButton>
         )}
       </div>
 
       {open && (
-        <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           {error && (
-            <div style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
-              background: "rgba(255,77,77,0.08)", border: "1px solid rgba(255,77,77,0.2)",
-              color: "var(--danger)", fontSize: "13px" }}>
-              {error}
+            <div
+              style={{
+                padding: "10px 14px",
+                borderRadius: "var(--admin-radius-md)",
+                background: "rgba(239, 68, 68, 0.08)",
+                border: "1px solid rgba(239, 68, 68, 0.25)",
+                color: "#dc2626",
+                fontSize: "12px",
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+              }}
+            >
+              <AlertCircle size={14} style={{ flexShrink: 0 }} />
+              <span>{error}</span>
             </div>
           )}
-          <Field label="Contraseña actual" type="password" autoComplete="current-password"
-            value={form.current_password}
-            onChange={e => setForm(p => ({ ...p, current_password: e.target.value }))} />
-          <Field label="Contraseña nueva" type="password" autoComplete="new-password"
-            value={form.password}
-            onChange={e => setForm(p => ({ ...p, password: e.target.value }))} />
-          <Field label="Repetir contraseña nueva" type="password" autoComplete="new-password"
-            value={form.password2}
-            onChange={e => setForm(p => ({ ...p, password2: e.target.value }))} />
-          <div style={{ display: "flex", gap: "10px" }}>
-            <button onClick={() => { setOpen(false); setError("") }} className="btn btn-ghost"
-              style={{ padding: "10px 18px", fontSize: "13px", flex: 1 }}>
-              Cancelar
-            </button>
-            <button onClick={handleSubmit} disabled={mutation.isPending}
-              className="btn btn-accent"
-              style={{ padding: "10px 18px", fontSize: "13px", flex: 1,
-                opacity: mutation.isPending ? 0.7 : 1 }}>
-              {mutation.isPending ? "Guardando..." : "Guardar contraseña"}
-            </button>
+
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--admin-muted-text)", marginBottom: "6px" }}>
+              Contraseña actual
+            </label>
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={form.current_password}
+              onChange={(e) => setForm((p) => ({ ...p, current_password: e.target.value }))}
+              className="au-input"
+              placeholder="••••••••"
+              required
+            />
           </div>
-        </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--admin-muted-text)", marginBottom: "6px" }}>
+              Contraseña nueva
+            </label>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={form.password}
+              onChange={(e) => setForm((p) => ({ ...p, password: e.target.value }))}
+              className="au-input"
+              placeholder="Mínimo 8 caracteres"
+              required
+            />
+          </div>
+
+          <div>
+            <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--admin-muted-text)", marginBottom: "6px" }}>
+              Confirmar contraseña nueva
+            </label>
+            <input
+              type="password"
+              autoComplete="new-password"
+              value={form.password2}
+              onChange={(e) => setForm((p) => ({ ...p, password2: e.target.value }))}
+              className="au-input"
+              placeholder="Repite la nueva contraseña"
+              required
+            />
+          </div>
+
+          <div style={{ display: "flex", gap: "10px", marginTop: "4px" }}>
+            <SecondaryButton
+              type="button"
+              size="sm"
+              onClick={() => {
+                setOpen(false)
+                setError("")
+              }}
+              style={{ flex: 1, justifyContent: "center" }}
+            >
+              Cancelar
+            </SecondaryButton>
+            <PrimaryButton
+              type="submit"
+              size="sm"
+              loading={mutation.isPending}
+              style={{ flex: 1, justifyContent: "center" }}
+            >
+              {mutation.isPending ? "Guardando..." : "Actualizar"}
+            </PrimaryButton>
+          </div>
+        </form>
       )}
     </div>
   )
@@ -113,7 +193,7 @@ function ChangePasswordSection() {
 
 export default function Profile() {
   const { user, setUser } = useAuthStore()
-  const [form, setForm]   = useState({
+  const [form, setForm] = useState({
     first_name:       user?.first_name       || "",
     last_name:        user?.last_name        || "",
     phone:            user?.phone            || "",
@@ -132,105 +212,252 @@ export default function Profile() {
     onSuccess: (data) => {
       setUser?.(data)
       setSaved(true)
-      showToast("Perfil actualizado")
+      showToast("Perfil actualizado exitosamente")
       setTimeout(() => setSaved(false), 3000)
     },
     onError: (e) => {
       const data = e?.response?.data
       const msg = data && typeof data === "object"
         ? Object.values(data).flat().join(" ")
-        : "No se pudo guardar. Intentá de nuevo."
+        : "No se pudo guardar la información. Intenta nuevamente."
       showToast(msg, "error")
     },
   })
 
-  const set = (key) => (e) => setForm(p => ({ ...p, [key]: e.target.value }))
+  const set = (key) => (e) => setForm((p) => ({ ...p, [key]: e.target.value }))
+
+  const initials = [user?.first_name?.[0], user?.last_name?.[0]].filter(Boolean).join("").toUpperCase() || "U"
 
   return (
-    <div style={{ padding: "clamp(32px, 5vw, 56px)", maxWidth: "600px" }}>
-      <div style={{ marginBottom: "32px" }}>
-        <p style={{ fontSize: "12px", color: "var(--accent)", fontWeight: 600,
-          letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: "8px" }}>
-          Mi cuenta
-        </p>
-        <h1 className="display-bold" style={{ fontFamily: "var(--font-display)",
-          fontSize: "clamp(1.7rem, 3vw, 2.4rem)", fontWeight: 800,
-          letterSpacing: "-0.03em" }}>
-          Mi perfil
-        </h1>
-      </div>
+    <div className="au-page" data-testid="dashboard-profile-page">
+      <AdminPageHeader
+        title="Mi perfil"
+        description="Gestiona tu información personal, datos de despacho para compras y credenciales de seguridad."
+        breadcrumb={[
+          { label: "Mi cuenta", to: "/dashboard" },
+          { label: "Perfil" },
+        ]}
+      />
 
-      {/* Avatar */}
-      <div style={{ display: "flex", alignItems: "center", gap: "20px",
-        marginBottom: "24px", padding: "24px",
-        background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-2xl)" }}>
-        <div style={{
-          width: "72px", height: "72px", borderRadius: "50%",
-          background: "var(--accent-dim)", border: "2px solid var(--accent-glow)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: "28px", fontWeight: 600, color: "var(--accent)",
-          flexShrink: 0,
-        }}>
-          {user?.first_name?.[0]?.toUpperCase() || "U"}
+      {/* 2-Column Responsive Layout */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+          gap: "24px",
+          alignItems: "start",
+        }}
+      >
+        {/* Left Column: Identity Card & Security Card */}
+        <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+          {/* Identity Card */}
+          <div
+            className="au-card"
+            style={{
+              padding: "24px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center",
+              gap: "14px",
+            }}
+          >
+            <div
+              style={{
+                width: "76px",
+                height: "76px",
+                borderRadius: "50%",
+                background: "rgba(26, 255, 110, 0.12)",
+                border: "2px solid rgba(26, 255, 110, 0.4)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "26px",
+                fontWeight: 800,
+                color: "#16a34a",
+              }}
+            >
+              {initials}
+            </div>
+
+            <div>
+              <p style={{ fontSize: "17px", fontWeight: 700, color: "var(--admin-primary-text)", margin: "0 0 4px" }}>
+                {user?.first_name ? `${user.first_name} ${user.last_name || ""}`.trim() : "Usuario LevelPro"}
+              </p>
+              <p style={{ fontSize: "13px", color: "var(--admin-muted-text)", margin: 0 }}>
+                {user?.email || "Sin email registrado"}
+              </p>
+            </div>
+
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                fontSize: "11px",
+                fontWeight: 700,
+                color: "var(--admin-muted-text)",
+                background: "var(--admin-surface-muted)",
+                padding: "4px 12px",
+                borderRadius: "var(--admin-radius-full)",
+                textTransform: "uppercase",
+                letterSpacing: "0.06em",
+              }}
+            >
+              <Shield size={12} style={{ color: "#16a34a" }} />
+              {user?.is_staff || user?.is_superuser ? "Cuenta Staff / Admin" : "Cliente Verificado"}
+            </div>
+          </div>
+
+          {/* Change Password Card */}
+          <ChangePasswordSection />
         </div>
-        <div>
-          <p style={{ fontSize: "17px", fontWeight: 500, marginBottom: "4px" }}>
-            {user?.first_name} {user?.last_name}
-          </p>
-          <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
-            {user?.email}
-          </p>
+
+        {/* Right Column: Personal Data & Shipping Address Form */}
+        <div className="au-card" style={{ padding: "24px" }}>
+          <div style={{ marginBottom: "20px", paddingBottom: "14px", borderBottom: "1px solid var(--admin-card-border)" }}>
+            <h3 style={{ fontSize: "16px", fontWeight: 700, color: "var(--admin-primary-text)", margin: 0 }}>
+              Información de contacto y despacho
+            </h3>
+            <p style={{ fontSize: "12px", color: "var(--admin-muted-text)", margin: "4px 0 0" }}>
+              Estos datos se usarán por defecto al calcular costos y procesar envíos de tus pedidos.
+            </p>
+          </div>
+
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              mutation.mutate()
+            }}
+            style={{ display: "flex", flexDirection: "column", gap: "16px" }}
+          >
+            {/* First Name + Last Name */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "14px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--admin-muted-text)", marginBottom: "6px" }}>
+                  Nombre
+                </label>
+                <input
+                  type="text"
+                  value={form.first_name}
+                  onChange={set("first_name")}
+                  className="au-input"
+                  placeholder="Tu nombre"
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--admin-muted-text)", marginBottom: "6px" }}>
+                  Apellido
+                </label>
+                <input
+                  type="text"
+                  value={form.last_name}
+                  onChange={set("last_name")}
+                  className="au-input"
+                  placeholder="Tu apellido"
+                />
+              </div>
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--admin-muted-text)", marginBottom: "6px" }}>
+                Teléfono de contacto
+              </label>
+              <input
+                type="tel"
+                value={form.phone}
+                onChange={set("phone")}
+                className="au-input"
+                placeholder="+56 9 1234 5678"
+              />
+            </div>
+
+            {/* Address Street */}
+            <div>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--admin-muted-text)", marginBottom: "6px" }}>
+                Dirección (Calle, número, depto/oficina)
+              </label>
+              <input
+                type="text"
+                value={form.address_street}
+                onChange={set("address_street")}
+                className="au-input"
+                placeholder="Av. Providencia 1234, Depto 402"
+              />
+            </div>
+
+            {/* Comuna + Ciudad */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "14px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--admin-muted-text)", marginBottom: "6px" }}>
+                  Comuna
+                </label>
+                <input
+                  type="text"
+                  value={form.address_comuna}
+                  onChange={set("address_comuna")}
+                  className="au-input"
+                  placeholder="Providencia"
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--admin-muted-text)", marginBottom: "6px" }}>
+                  Ciudad
+                </label>
+                <input
+                  type="text"
+                  value={form.address_city}
+                  onChange={set("address_city")}
+                  className="au-input"
+                  placeholder="Santiago"
+                />
+              </div>
+            </div>
+
+            {/* Region */}
+            <div>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--admin-muted-text)", marginBottom: "6px" }}>
+                Región
+              </label>
+              <input
+                type="text"
+                value={form.address_province}
+                onChange={set("address_province")}
+                className="au-input"
+                placeholder="Región Metropolitana"
+              />
+            </div>
+
+            {/* Read-only Email */}
+            <div>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: 600, color: "var(--admin-muted-text)", marginBottom: "6px" }}>
+                Correo electrónico registrado
+              </label>
+              <input
+                type="email"
+                value={user?.email || ""}
+                disabled
+                className="au-input"
+                style={{ opacity: 0.65, cursor: "not-allowed", background: "var(--admin-surface-muted)" }}
+              />
+              <p style={{ fontSize: "11px", color: "var(--admin-muted-text)", margin: "4px 0 0" }}>
+                El correo electrónico identifica tu cuenta y compras; comunícate con soporte si requieres transferirlo.
+              </p>
+            </div>
+
+            {/* Action button */}
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "10px" }}>
+              <PrimaryButton
+                type="submit"
+                loading={mutation.isPending}
+                icon={saved ? <Check size={16} /> : <Save size={16} />}
+              >
+                {mutation.isPending ? "Guardando cambios..." : saved ? "¡Cambios guardados!" : "Guardar cambios"}
+              </PrimaryButton>
+            </div>
+          </form>
         </div>
-      </div>
-
-      {/* Cambio de contraseña */}
-      <div style={{ marginBottom: "24px" }}>
-        <ChangePasswordSection />
-      </div>
-
-      {/* Formulario de datos */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-
-        {/* Nombre + Apellido */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-          <Field label="Nombre" value={form.first_name} onChange={set("first_name")} />
-          <Field label="Apellido" value={form.last_name} onChange={set("last_name")} />
-        </div>
-
-        <Field label="Teléfono" value={form.phone} onChange={set("phone")} />
-        <Field label="Dirección" value={form.address_street} onChange={set("address_street")} />
-
-        {/* Comuna + Ciudad */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
-          <Field label="Comuna" value={form.address_comuna} onChange={set("address_comuna")} />
-          <Field label="Ciudad" value={form.address_city} onChange={set("address_city")} />
-        </div>
-
-        <Field label="Región" value={form.address_province} onChange={set("address_province")} />
-
-        {/* Email — solo lectura */}
-        <div>
-          <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-            color: "var(--text-2)", marginBottom: "8px" }}>
-            Email
-          </label>
-          <input value={user?.email || ""} disabled
-            style={{ ...inputSt, opacity: 0.5, cursor: "not-allowed" }} />
-          <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "5px" }}>
-            El email no se puede modificar.
-          </p>
-        </div>
-
-        <button
-          onClick={() => mutation.mutate()}
-          disabled={mutation.isPending}
-          className="btn btn-accent"
-          style={{ justifyContent: "center", fontSize: "15px",
-            padding: "14px", opacity: mutation.isPending ? 0.7 : 1 }}>
-          {mutation.isPending ? "Guardando..."
-            : saved ? "✓ Guardado" : "Guardar cambios"}
-        </button>
       </div>
     </div>
   )

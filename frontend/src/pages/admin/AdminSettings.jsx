@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminSiteSettings, updateSiteSettings } from "../../api/siteSettings.api"
 import { mediaUrl } from "../../utils/mediaUrl"
+import { AdminPageHeader, PrimaryButton } from "../../components/admin/ui"
 
 const TABS = [
   { id: "hero",     label: "Hero"        },
@@ -160,80 +161,46 @@ export default function AdminSettings() {
   function setFile(k, f) { setFiles(prev => ({ ...prev, [k]: f })) }
 
   if (!form) {
-    return <div style={{ padding: "40px", color: "var(--text-2)" }}>Cargando…</div>
+    return (
+      <div className="au-page" data-testid="admin-settings">
+        <div className="skeleton" style={{ height: "280px", borderRadius: "20px" }} />
+      </div>
+    )
   }
 
   return (
-    <div style={{ padding: "clamp(20px, 3vw, 40px)",
-      maxWidth: "980px", margin: "0 auto" }} data-testid="admin-settings">
-
-      <div style={{ display: "flex", justifyContent: "space-between",
-        alignItems: "flex-start", flexWrap: "wrap", gap: "16px",
-        marginBottom: "32px" }}>
-        <div>
-          <p style={{ fontSize: "11px", color: "var(--accent-text)",
-            textTransform: "uppercase", letterSpacing: "0.15em",
-            fontWeight: 700, marginBottom: "10px",
-            display: "inline-flex", alignItems: "center", gap: "8px" }}>
-            <span style={{ width: "6px", height: "6px", borderRadius: "50%",
-              background: "var(--accent)", boxShadow: "0 0 12px var(--accent)" }} />
-            Personalización
-          </p>
-          <h1 className="display-bold" style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "clamp(1.6rem, 2.4vw, 2.2rem)",
-            fontWeight: 700, letterSpacing: "-0.03em",
-            color: "var(--admin-page-text)", lineHeight: 1,
-          }}>
-            Configurá tu sitio
-          </h1>
-        </div>
-        <button
-          data-testid="save-settings"
-          onClick={() => save.mutate()}
-          disabled={save.isPending}
-          style={{
-            padding: "11px 22px", borderRadius: "var(--r-full)",
-            background: "var(--accent)", color: "#000",
-            fontSize: "13px", fontWeight: 700, border: "none",
-            cursor: save.isPending ? "wait" : "pointer",
-            fontFamily: "var(--font-sans)",
-            opacity: save.isPending ? 0.6 : 1,
-            boxShadow: "0 8px 24px rgba(26,255,110,0.25)",
-          }}>
-          {save.isPending ? "Guardando…" : save.isSuccess ? "✓ Guardado" : "Guardar cambios"}
-        </button>
-      </div>
+    <div className="au-page" data-testid="admin-settings">
+      <AdminPageHeader
+        eyebrow="LEVELPRO / NEGOCIO"
+        title="Configurá tu sitio"
+        description="Hero, pilares, identidad de marca, contacto, secciones visibles, SEO y multimoneda"
+        actions={
+          <PrimaryButton
+            testId="save-settings"
+            onClick={() => save.mutate()}
+            disabled={save.isPending}
+            loading={save.isPending}
+          >
+            {save.isPending ? "Guardando…" : save.isSuccess ? "✓ Guardado" : "Guardar cambios"}
+          </PrimaryButton>
+        }
+      />
 
       {/* Tabs */}
-      <div style={{ display: "flex", gap: "4px", overflowX: "auto",
-        marginBottom: "24px", padding: "4px",
-        background: "var(--surface)", border: "1px solid var(--border)",
-        borderRadius: "var(--r-full)" }}>
+      <div className="lp-seg-tabs">
         {TABS.map(t => (
           <button key={t.id}
+            type="button"
             data-testid={`tab-${t.id}`}
             onClick={() => setTab(t.id)}
-            style={{
-              padding: "8px 16px", borderRadius: "var(--r-full)",
-              background: tab === t.id ? "var(--accent)" : "transparent",
-              color: tab === t.id ? "#000" : "var(--text-2)",
-              fontSize: "12px", fontWeight: 600,
-              border: "none", cursor: "pointer",
-              fontFamily: "var(--font-sans)",
-              transition: "all 150ms",
-              whiteSpace: "nowrap",
-            }}>
+            className={`lp-seg-tab${tab === t.id ? " is-active" : ""}`}>
             {t.label}
           </button>
         ))}
       </div>
 
       {/* Content */}
-      <div style={{ background: "var(--surface)",
-        border: "1px solid var(--border)",
-        borderRadius: "var(--r-xl)",
-        padding: "clamp(20px, 3vw, 32px)" }}>
+      <div className="au-card au-panel" style={{ padding: "clamp(20px, 3vw, 28px)" }}>
 
         {tab === "hero" && (
           <>

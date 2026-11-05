@@ -1,12 +1,13 @@
 // pages/admin/AdminRewardsEntries.jsx — Tabla de participaciones con filtros
 import { useMemo, useState } from "react"
-import { useSearchParams, Link } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import {
   adminListEntries,
   adminListCampaigns,
   adminExportEntriesCsvUrl,
 } from "../../api/rewards.api"
+import { AdminPageHeader, SecondaryButton } from "../../components/admin/ui"
 
 export default function AdminRewardsEntries() {
   const [searchParams] = useSearchParams()
@@ -28,53 +29,47 @@ export default function AdminRewardsEntries() {
     return f
   }, [filters])
 
-  const { data: entries = [], isLoading } = useQuery({
+  const { data: rawEntries, isLoading } = useQuery({
     queryKey: ["admin-entries", activeFilters],
     queryFn:  () => adminListEntries(activeFilters),
   })
-  const { data: campaigns = [] } = useQuery({
+  const { data: rawCampaigns } = useQuery({
     queryKey: ["admin-campaigns"],
     queryFn:  adminListCampaigns,
   })
-
-  const inputSt = {
-    padding:"9px 14px",
-    background:"var(--surface)", border:"1px solid var(--border)",
-    borderRadius:"var(--r-md)", color:"var(--text)",
-    fontSize:"13px", outline:"none",
-  }
+  const entries = Array.isArray(rawEntries) ? rawEntries : []
+  const campaigns = Array.isArray(rawCampaigns) ? rawCampaigns : []
 
   return (
-    <div style={{ padding:"clamp(28px, 4vw, 40px)" }}>
-      <div style={{ display:"flex", justifyContent:"space-between",
-        alignItems:"start", marginBottom:"28px", flexWrap:"wrap", gap:"12px" }}>
-        <div>
-          <p style={{ fontSize:"12px", color:"var(--accent-text)",
-            letterSpacing:"0.1em", textTransform:"uppercase",
-            fontWeight:600, marginBottom:"6px" }}>
-            Rewards
-          </p>
-          <h1 style={{ fontSize:"28px", fontWeight:500 }}>Participaciones</h1>
-        </div>
-        <a href={adminExportEntriesCsvUrl(filters.campaign)}
-          data-testid="btn-export-csv"
-          style={{
-            padding:"9px 18px", fontSize:"13px",
-            background:"var(--surface)", border:"1px solid var(--border)",
-            color:"var(--text-2)", borderRadius:"var(--r-full)",
-            textDecoration:"none",
-          }}>
-          Exportar CSV ↓
-        </a>
-      </div>
+    <div className="au-page">
+      <AdminPageHeader
+        eyebrow="LEVELPRO / REWARDS"
+        title="Participaciones"
+        description={`${entries.length} tickets registrados según los filtros activos`}
+        breadcrumbs={[
+          { label: "Rewards", to: "/admin/rewards" },
+          { label: "Participaciones" },
+        ]}
+        actions={
+          <>
+            <SecondaryButton to="/admin/rewards" size="sm">← Dashboard</SecondaryButton>
+            <a href={adminExportEntriesCsvUrl(filters.campaign)}
+              data-testid="btn-export-csv"
+              className="au-btn au-btn--secondary au-btn--sm"
+              style={{ textDecoration:"none" }}>
+              Exportar CSV ↓
+            </a>
+          </>
+        }
+      />
 
       {/* Filtros */}
-      <div style={{ display:"flex", gap:"10px", marginBottom:"20px",
-        flexWrap:"wrap" }}>
+      <div className="au-card" style={{ padding: "14px 18px", display:"flex", gap:"10px",
+        flexWrap:"wrap", alignItems: "center" }}>
         <select value={filters.campaign}
           data-testid="filter-campaign"
           onChange={e => setFilters(f => ({...f, campaign:e.target.value}))}
-          style={inputSt}>
+          className="au-select">
           <option value="">Todas las campañas</option>
           {campaigns.map(c => (
             <option key={c.id} value={c.id}>{c.name}</option>
@@ -83,81 +78,66 @@ export default function AdminRewardsEntries() {
         <input placeholder="Buscar por email o código"
           value={filters.search}
           onChange={e => setFilters(f => ({...f, search:e.target.value}))}
-          style={{ ...inputSt, minWidth:"260px" }} />
+          className="au-input"
+          style={{ maxWidth:"280px" }} />
         <input type="date" value={filters.date_from}
           onChange={e => setFilters(f => ({...f, date_from:e.target.value}))}
-          style={inputSt} />
+          className="au-select" />
         <input type="date" value={filters.date_to}
           onChange={e => setFilters(f => ({...f, date_to:e.target.value}))}
-          style={inputSt} />
+          className="au-select" />
       </div>
 
       {/* Tabla */}
-      {isLoading && <p style={{ color:"var(--text-3)" }}>Cargando…</p>}
+      {isLoading && <p style={{ color:"var(--admin-text-muted)" }}>Cargando…</p>}
       {!isLoading && entries.length === 0 && (
-        <p style={{ padding:"40px", textAlign:"center",
-          background:"var(--surface)", borderRadius:"var(--r-lg)",
-          border:"1px solid var(--border)", color:"var(--text-3)" }}>
+        <div className="au-card au-panel" style={{ padding:"44px", textAlign:"center", color:"var(--admin-text-secondary)" }}>
           No hay participaciones con los filtros aplicados.
-        </p>
+        </div>
       )}
 
       {entries.length > 0 && (
-        <div style={{
-          background:"var(--surface)", border:"1px solid var(--border)",
-          borderRadius:"var(--r-lg)", overflowX:"auto", WebkitOverflowScrolling:"touch",
-        }}>
-          <div style={{
-            display:"grid",
-            gridTemplateColumns:"140px 1fr 1fr 130px 100px 130px", minWidth:"760px",
-            padding:"12px 18px",
-            fontSize:"11px", color:"var(--text-3)",
-            letterSpacing:"0.06em", textTransform:"uppercase",
-            fontWeight:600, borderBottom:"1px solid var(--border)",
-          }}>
-            <span>Código</span>
-            <span>Usuario</span>
-            <span>Campaña</span>
-            <span>Producto</span>
-            <span>Orden</span>
-            <span>Fecha</span>
+        <div className="au-card au-table-wrap">
+          <div className="au-tscroll">
+            <table className="au-table">
+              <thead>
+                <tr>
+                  <th>Código</th>
+                  <th>Usuario</th>
+                  <th>Campaña</th>
+                  <th>Producto</th>
+                  <th>Orden</th>
+                  <th>Fecha</th>
+                </tr>
+              </thead>
+              <tbody>
+                {entries.map(e => (
+                  <tr key={e.id}>
+                    <td style={{ fontFamily:"var(--font-mono)", fontWeight: 700, color:"var(--admin-primary-text)" }}>
+                      {e.unique_code}
+                    </td>
+                    <td style={{ fontWeight: 600, color: "var(--admin-text)" }}>
+                      {e.user_email}
+                    </td>
+                    <td style={{ color:"var(--admin-text-secondary)" }}>
+                      {e.campaign_name}
+                    </td>
+                    <td style={{ color:"var(--admin-text-muted)" }}>
+                      {e.product_name || "—"}
+                    </td>
+                    <td style={{ fontFamily:"var(--font-mono)", color:"var(--admin-text-muted)", fontSize:"12px" }}>
+                      #{e.order_short}
+                    </td>
+                    <td style={{ color:"var(--admin-text-muted)", fontSize:"12px", fontFamily: "var(--font-mono)" }}>
+                      {new Date(e.created_at).toLocaleDateString("es-CL")}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {entries.map(e => (
-            <div key={e.id} style={{
-              display:"grid",
-              gridTemplateColumns:"140px 1fr 1fr 130px 100px 130px", minWidth:"760px",
-              padding:"12px 18px",
-              fontSize:"13px",
-              borderBottom:"1px solid var(--border)",
-              alignItems:"center",
-            }}>
-              <span style={{ fontFamily:"monospace", color:"var(--accent-text)" }}>
-                {e.unique_code}
-              </span>
-              <span style={{ minWidth:0, overflow:"hidden",
-                textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                {e.user_email}
-              </span>
-              <span style={{ color:"var(--text-2)", minWidth:0,
-                overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                {e.campaign_name}
-              </span>
-              <span style={{ color:"var(--text-3)", minWidth:0,
-                overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                {e.product_name || "—"}
-              </span>
-              <span style={{ fontFamily:"monospace", color:"var(--text-3)",
-                fontSize:"12px" }}>
-                #{e.order_short}
-              </span>
-              <span style={{ color:"var(--text-3)", fontSize:"12px" }}>
-                {new Date(e.created_at).toLocaleDateString("es-CL")}
-              </span>
-            </div>
-          ))}
-          <div style={{ padding:"14px 18px", fontSize:"12px",
-            color:"var(--text-3)" }}>
-            {entries.length} participaciones mostradas
+          <div className="au-tfoot">
+            <span>{entries.length} participaciones mostradas</span>
           </div>
         </div>
       )}

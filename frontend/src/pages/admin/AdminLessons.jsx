@@ -1,14 +1,18 @@
 // pages/admin/AdminLessons.jsx
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { useSearchParams, Link } from "react-router-dom"
+import { useSearchParams } from "react-router-dom"
 import {
   getAdminLessons, deleteAdminLesson, getAdminModules,
   getLessonVideoUploadUrl,
 } from "../../api/admin.api"
 import api from "../../api/client"
-import { FormModal, FormField, formInputStyle as inputSt, ConfirmationModal } from "../../components/admin/ui"
+import {
+  AdminPageHeader, PrimaryButton, SecondaryButton, StatusBadge, IconButton,
+  FormModal, FormField, formInputStyle as inputSt, ConfirmationModal,
+} from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
+import { Pencil, Trash2 } from "lucide-react"
 
 // PUT directo a la URL firmada de GCS — Cloud Run tiene un límite duro
 // de 32MB por request que no se puede subir con ninguna config de
@@ -305,9 +309,10 @@ export default function AdminLessons() {
 
   const lessons = data?.results || data || []
   const modules = modulesData?.results || modulesData || []
+  const currentModule = modules.find(m => m.id.toString() === moduleFilter)
 
   return (
-    <div style={{ padding: "clamp(24px, 4vw, 40px)" }}>
+    <div className="au-page">
       {modal && (
         <LessonModal
           lesson={modal === "new" ? null : modal}
@@ -329,100 +334,87 @@ export default function AdminLessons() {
         testId="delete-lesson-modal"
       />
 
-      <div style={{ display: "flex", justifyContent: "space-between",
-        alignItems: "flex-start", marginBottom: "28px", gap: "16px" }}>
-        <div>
-          <h1 style={{ fontFamily: "var(--font-display)",
-            fontSize: "clamp(1.8rem, 3vw, 2.4rem)", fontWeight: 800,
-            letterSpacing: "-0.02em", marginBottom: "6px" }}>
-            Lecciones
-          </h1>
-          <p style={{ fontSize: "13px", color: "var(--text-3)" }}>
-            {lessons.length} lecciones
-          </p>
-        </div>
-        <button onClick={() => setModal("new")} className="btn btn-accent"
-          style={{ padding: "10px 20px", fontSize: "13px" }}>
-          + Nueva lección
-        </button>
-      </div>
+      <AdminPageHeader
+        eyebrow="LEVELPRO / ACADEMIA"
+        title="Lecciones"
+        description={`${lessons.length} lecciones registradas`}
+        breadcrumbs={[
+          { label: "Academia", to: "/admin/academy" },
+          { label: "Módulos", to: "/admin/academy/modules" },
+          { label: currentModule?.title || "Todas las lecciones" },
+        ]}
+        actions={
+          <>
+            <SecondaryButton to="/admin/academy/modules" size="sm">← Módulos</SecondaryButton>
+            <PrimaryButton onClick={() => setModal("new")}>+ Nueva lección</PrimaryButton>
+          </>
+        }
+      />
 
       {isLoading ? (
         <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="skeleton" style={{ height: "56px" }} />
+            <div key={i} className="skeleton" style={{ height: "56px", borderRadius: "14px" }} />
           ))}
         </div>
       ) : (
-        <div style={{ background: "var(--surface)", border: "1px solid var(--border)",
-          borderRadius: "var(--r-xl)", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
-          <div style={{ display: "grid",
-            gridTemplateColumns: "40px 2.5fr 2fr 80px 80px 80px", minWidth: "680px",
-            padding: "10px 20px", borderBottom: "1px solid var(--border)",
-            fontSize: "11px", fontWeight: 500, color: "var(--text-3)",
-            textTransform: "uppercase", letterSpacing: "0.08em" }}>
-            <span>#</span><span>Título</span><span>Módulo</span>
-            <span>Duración</span><span>Tipo</span><span />
+        <div className="au-card au-table-wrap">
+          <div className="au-tscroll">
+            <table className="au-table">
+              <thead>
+                <tr>
+                  <th style={{ width: "56px" }}>#</th>
+                  <th>Título</th>
+                  <th>Módulo</th>
+                  <th>Duración</th>
+                  <th>Tipo</th>
+                  <th style={{ width: "96px", textAlign: "right" }}>Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lessons.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} style={{ padding: "42px", textAlign: "center", color: "var(--admin-text-secondary)" }}>
+                      Sin lecciones. Crea la primera arriba.
+                    </td>
+                  </tr>
+                ) : lessons.map((lesson) => (
+                  <tr key={lesson.id}>
+                    <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text-muted)" }}>
+                      {lesson.order}
+                    </td>
+                    <td>
+                      <p style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--admin-text)" }}>
+                        {lesson.title}
+                      </p>
+                      {(lesson.video_url || lesson.video_source) && (
+                        <p style={{ fontSize: "11px", color: "var(--admin-primary-text)", fontWeight: 600 }}>
+                          ▶ Video adjunto
+                        </p>
+                      )}
+                    </td>
+                    <td style={{ color: "var(--admin-text-secondary)" }}>
+                      {lesson.module_title || modules.find(m => m.id === lesson.module)?.title || "—"}
+                    </td>
+                    <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text-muted)" }}>
+                      {lesson.duration_minutes > 0 ? `${lesson.duration_minutes} min` : "—"}
+                    </td>
+                    <td>
+                      <StatusBadge tone={lesson.is_free ? "success" : "neutral"}>
+                        {lesson.is_free ? "Free" : "Pro"}
+                      </StatusBadge>
+                    </td>
+                    <td style={{ textAlign: "right" }}>
+                      <div style={{ display: "inline-flex", gap: "6px" }}>
+                        <IconButton icon={Pencil} label="Editar" onClick={() => setModal(lesson)} />
+                        <IconButton icon={Trash2} label="Eliminar" danger onClick={() => setToDelete(lesson)} />
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          {lessons.length === 0 ? (
-            <div style={{ padding: "48px", textAlign: "center",
-              color: "var(--text-3)", fontSize: "14px" }}>
-              Sin lecciones. Crea la primera arriba.
-            </div>
-          ) : lessons.map((lesson, i) => (
-            <div key={lesson.id} style={{
-              display: "grid",
-              gridTemplateColumns: "40px 2.5fr 2fr 80px 80px 80px", minWidth: "680px",
-              padding: "12px 20px", alignItems: "center",
-              borderTop: i > 0 ? "1px solid var(--border)" : "none", gap: "8px",
-              transition: "background var(--dur) var(--ease)",
-            }}
-              onMouseEnter={e => e.currentTarget.style.background = "var(--surface-2)"}
-              onMouseLeave={e => e.currentTarget.style.background = "transparent"}
-            >
-              <span style={{ fontSize: "12px", color: "var(--text-3)",
-                fontWeight: 600 }}>{lesson.order}</span>
-              <div>
-                <p style={{ fontSize: "13px", overflow: "hidden",
-                  textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {lesson.title}
-                </p>
-                {lesson.video_url && (
-                  <p style={{ fontSize: "11px", color: "var(--text-3)" }}>
-                    ▶ Video adjunto
-                  </p>
-                )}
-              </div>
-              <span style={{ fontSize: "12px", color: "var(--text-3)",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {lesson.module_title || modules.find(m => m.id === lesson.module)?.title || "—"}
-              </span>
-              <span style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                {lesson.duration_minutes > 0 ? `${lesson.duration_minutes} min` : "—"}
-              </span>
-              <span style={{
-                padding: "2px 8px", borderRadius: "var(--r-full)", fontSize: "11px",
-                fontWeight: 500,
-                color:      lesson.is_free ? "var(--accent)" : "var(--text-3)",
-                background: lesson.is_free ? "var(--accent-dim)" : "var(--surface-2)",
-                border:     `1px solid ${lesson.is_free ? "var(--accent-glow)" : "var(--border)"}`,
-              }}>
-                {lesson.is_free ? "Free" : "Pro"}
-              </span>
-              <div style={{ display: "flex", gap: "6px" }}>
-                <button onClick={() => setModal(lesson)} style={{
-                  padding: "4px 8px", borderRadius: "var(--r-sm)", fontSize: "11px",
-                  cursor: "pointer", color: "#60a5fa",
-                  background: "rgba(96,165,250,0.1)", border: "1px solid rgba(96,165,250,0.2)",
-                }}>✎</button>
-                <button onClick={() => setToDelete(lesson)} style={{
-                  padding: "4px 8px", borderRadius: "var(--r-sm)", fontSize: "11px",
-                  cursor: "pointer", color: "#EF4444",
-                  background: "rgba(248,113,113,0.1)", border: "1px solid rgba(248,113,113,0.2)",
-                }}>×</button>
-              </div>
-            </div>
-          ))}
         </div>
       )}
     </div>

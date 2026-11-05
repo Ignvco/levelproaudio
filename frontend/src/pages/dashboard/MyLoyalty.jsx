@@ -1,22 +1,39 @@
-// pages/dashboard/MyLoyalty.jsx — Página completa de puntos
-import { Link } from "react-router-dom"
+// pages/dashboard/MyLoyalty.jsx — Puntos y Programa de Fidelización
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { Award } from "lucide-react"
+import { Link } from "react-router-dom"
+import {
+  Award,
+  Sparkles,
+  ShoppingBag,
+  TrendingUp,
+  Clock,
+  ArrowRight,
+  ShieldCheck,
+  CheckCircle2,
+  ChevronDown,
+  Gift,
+} from "lucide-react"
 import { getMyLoyalty, getLoyaltyTransactions } from "../../api/loyalty.api"
+import {
+  AdminPageHeader,
+  StatCard,
+  PrimaryButton,
+  SecondaryButton,
+} from "../../components/admin/ui"
 
 const NIVELES = {
-  bronze:   { color:"#cd7f32", label:"Bronce",   emoji:"🥉", next: 1000 },
-  silver:   { color:"#c0c0c0", label:"Plata",    emoji:"🥈", next: 5000 },
-  gold:     { color:"#facc15", label:"Oro",      emoji:"🥇", next: 15000 },
-  platinum: { color:"#a8c0d6", label:"Platino",  emoji:"💎", next: null  },
+  bronze:   { color: "#cd7f32", label: "Bronce",   emoji: "🥉", next: 1000 },
+  silver:   { color: "#94a3b8", label: "Plata",    emoji: "🥈", next: 5000 },
+  gold:     { color: "#facc15", label: "Oro",      emoji: "🥇", next: 15000 },
+  platinum: { color: "#38bdf8", label: "Platino",  emoji: "💎", next: null },
 }
 
 const TIPO_STYLE = {
-  earn:   { color:"var(--accent)", sign:"+", label:"Ganado"   },
-  redeem: { color:"#60a5fa",       sign:"",  label:"Canjeado" },
-  expire: { color:"var(--text-3)", sign:"",  label:"Expirado" },
-  adjust: { color:"#facc15",       sign:"",  label:"Ajuste"   },
+  earn:   { color: "#16a34a", sign: "+", label: "Ganado" },
+  redeem: { color: "#3b82f6", sign: "-", label: "Canjeado" },
+  expire: { color: "var(--admin-muted-text)", sign: "", label: "Expirado" },
+  adjust: { color: "#d97706", sign: "", label: "Ajuste" },
 }
 
 export default function MyLoyalty() {
@@ -25,240 +42,433 @@ export default function MyLoyalty() {
     queryFn:  getMyLoyalty,
   })
 
-  const [extraTx, setExtraTx]     = useState(null) // null = todavía mostrando el resumen de 10
-  const [nextPage, setNextPage]   = useState(null)
+  const [extraTx, setExtraTx] = useState(null)
+  const [nextPage, setNextPage] = useState(null)
   const [loadingMore, setLoadingMore] = useState(false)
+  const [faqOpen, setFaqOpen] = useState(false)
 
   const loadMore = async () => {
     setLoadingMore(true)
     try {
       const page = await getLoyaltyTransactions(nextPage)
-      setExtraTx(prev => prev ? [...prev, ...page.results] : page.results)
+      setExtraTx((prev) => (prev ? [...prev, ...page.results] : page.results))
       setNextPage(page.next)
     } finally {
       setLoadingMore(false)
     }
   }
 
-  if (isLoading || !data) return (
-    <div style={{ padding:"clamp(32px, 5vw, 56px)" }}>
-      <p style={{ color:"var(--text-3)" }}>Cargando…</p>
-    </div>
-  )
+  if (isLoading || !data) {
+    return (
+      <div className="au-page" data-testid="dashboard-loyalty-loading">
+        <AdminPageHeader
+          title="Mis puntos y fidelización"
+          description="Acumula puntos en cada compra y canjéalos por descuentos exclusivos en LevelPro."
+          breadcrumb={[
+            { label: "Mi cuenta", to: "/dashboard" },
+            { label: "Puntos" },
+          ]}
+        />
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div className="au-skeleton" style={{ height: "180px", borderRadius: "var(--admin-radius-lg)" }} />
+          <div className="au-skeleton" style={{ height: "90px", borderRadius: "var(--admin-radius-lg)" }} />
+        </div>
+      </div>
+    )
+  }
 
-  const nivel    = NIVELES[data.nivel] || NIVELES.bronze
-  const sigNivel = data.siguiente_nivel ? NIVELES[data.siguiente_nivel] : null
+  const nivelKey = String(data.nivel || "bronze").toLowerCase()
+  const nivel = NIVELES[nivelKey] || NIVELES.bronze
+  const sigNivel = data.siguiente_nivel ? NIVELES[String(data.siguiente_nivel).toLowerCase()] : null
+
+  const transactions = extraTx ?? (Array.isArray(data.transactions) ? data.transactions : [])
+
+  const formatCLP = (val) => {
+    const num = Number(val)
+    return isNaN(num) ? "$0" : `$${num.toLocaleString("es-CL")}`
+  }
 
   return (
-    <div style={{ padding:"clamp(32px, 5vw, 56px)", maxWidth:"860px" }}>
-      {/* Header */}
-      <div style={{ marginBottom:"32px" }}>
-        <p style={{ fontSize:"12px", color:"var(--accent)",
-          fontWeight:600, letterSpacing:"0.08em",
-          textTransform:"uppercase", marginBottom:"8px" }}>
-          Programa de Fidelización
-        </p>
-        <h1 className="display-bold" style={{ fontFamily:"var(--font-display)",
-          fontSize:"clamp(1.7rem, 3vw, 2.4rem)", fontWeight:800,
-          letterSpacing:"-0.03em" }}>
-          Mis puntos
-        </h1>
-      </div>
+    <div className="au-page" data-testid="dashboard-loyalty-page">
+      <AdminPageHeader
+        title="Mis puntos y fidelización"
+        description="Acumula puntos en cada compra y canjéalos directamente por saldo y descuentos en tu carrito."
+        breadcrumb={[
+          { label: "Mi cuenta", to: "/dashboard" },
+          { label: "Puntos" },
+        ]}
+        actions={
+          <PrimaryButton to="/shop" icon={<ShoppingBag size={16} />}>
+            Ir a la tienda
+          </PrimaryButton>
+        }
+      />
 
-      {/* Card principal */}
-      <div style={{
-        padding:"clamp(24px, 4vw, 36px)",
-        background: `linear-gradient(135deg, ${nivel.color}15 0%, transparent 60%), var(--surface)`,
-        border:`1px solid ${nivel.color}40`,
-        borderRadius:"var(--r-2xl)",
-        marginBottom:"32px",
-      }}>
-        <div style={{ display:"flex", alignItems:"center",
-          justifyContent:"space-between", flexWrap:"wrap", gap:"16px" }}>
-          <div style={{ display:"flex", gap:"18px", alignItems:"center" }}>
-            <span style={{ width:"64px", height:"64px", borderRadius:"50%",
-              background:`${nivel.color}18`, border:`1px solid ${nivel.color}55`,
-              color:nivel.color, display:"flex", alignItems:"center", justifyContent:"center",
-              flexShrink:0 }}><Award size={30} /></span>
+      {/* Main Hero Card — Dark theme accent */}
+      <div
+        className="au-card"
+        style={{
+          background: "linear-gradient(145deg, #0f1411 0%, #171d18 100%)",
+          borderColor: "rgba(26, 255, 110, 0.25)",
+          color: "#f8fafc",
+          padding: "clamp(20px, 3vw, 28px)",
+          marginBottom: "20px",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        {/* Glow corner */}
+        <div
+          style={{
+            position: "absolute",
+            top: "-50px",
+            right: "-50px",
+            width: "180px",
+            height: "180px",
+            borderRadius: "50%",
+            background: "radial-gradient(circle, rgba(26,255,110,0.18) 0%, transparent 70%)",
+            pointerEvents: "none",
+          }}
+        />
+
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "flex-start",
+            flexWrap: "wrap",
+            gap: "20px",
+            position: "relative",
+            zIndex: 1,
+          }}
+        >
+          {/* Left info: Level */}
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+            <div
+              style={{
+                width: "56px",
+                height: "56px",
+                borderRadius: "50%",
+                background: "rgba(255, 255, 255, 0.08)",
+                border: `2px solid ${nivel.color}`,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "24px",
+                flexShrink: 0,
+              }}
+            >
+              {nivel.emoji}
+            </div>
             <div>
-              <p style={{ fontSize:"11px", color:"var(--text-3)",
-                letterSpacing:"0.1em", textTransform:"uppercase",
-                marginBottom:"6px" }}>Nivel actual</p>
-              <p style={{ fontSize:"24px", fontWeight:800, color:nivel.color,
-                fontFamily:"var(--font-display)", letterSpacing:"-0.02em" }}>
-                {nivel.label}
+              <p
+                style={{
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  color: "#94a3b8",
+                  margin: "0 0 4px",
+                }}
+              >
+                Nivel del programa
+              </p>
+              <p
+                style={{
+                  fontSize: "22px",
+                  fontWeight: 800,
+                  color: nivel.color,
+                  letterSpacing: "-0.02em",
+                  margin: 0,
+                }}
+              >
+                Nivel {nivel.label}
               </p>
             </div>
           </div>
-          <div style={{ textAlign:"right" }}>
-            <p style={{ fontSize:"11px", color:"var(--text-3)",
-              letterSpacing:"0.1em", textTransform:"uppercase",
-              marginBottom:"6px" }}>Puntos disponibles</p>
-            <p style={{ fontFamily:"var(--font-display)", fontSize:"clamp(2rem, 5vw, 3.4rem)",
-              color:"var(--accent)", fontWeight:800, lineHeight:1, letterSpacing:"-0.03em",
-              fontVariantNumeric:"tabular-nums" }}>
-              {data.puntos_disponibles.toLocaleString("es-CL")}
+
+          {/* Right info: Points available */}
+          <div style={{ textAlign: "right" }}>
+            <p
+              style={{
+                fontSize: "11px",
+                fontWeight: 700,
+                letterSpacing: "0.1em",
+                textTransform: "uppercase",
+                color: "#94a3b8",
+                margin: "0 0 4px",
+              }}
+            >
+              Puntos disponibles
             </p>
-            <p style={{ fontSize:"13px", color:"var(--text-2)", marginTop:"6px" }}>
-              = ${data.valor_disponible.toLocaleString("es-CL")} de descuento
+            <p
+              style={{
+                fontSize: "clamp(2rem, 4vw, 3rem)",
+                fontWeight: 800,
+                color: "#1AFF6E",
+                lineHeight: 1,
+                letterSpacing: "-0.03em",
+                fontVariantNumeric: "tabular-nums",
+                margin: 0,
+              }}
+            >
+              {(data.puntos_disponibles || 0).toLocaleString("es-CL")}
+            </p>
+            <p style={{ fontSize: "13px", color: "#cbd5e1", margin: "6px 0 0", fontWeight: 500 }}>
+              = {formatCLP(data.valor_disponible || 0)} de saldo para canje
             </p>
           </div>
         </div>
 
+        {/* Progress bar to next level */}
         {sigNivel && (
-          <div style={{ marginTop:"28px", paddingTop:"24px",
-            borderTop:`1px solid ${nivel.color}30` }}>
-            <div style={{ display:"flex", justifyContent:"space-between",
-              fontSize:"12px", marginBottom:"10px" }}>
-              <span style={{ color:"var(--text-3)" }}>
-                Progreso a {sigNivel.label}
+          <div
+            style={{
+              marginTop: "24px",
+              paddingTop: "20px",
+              borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+              position: "relative",
+              zIndex: 1,
+            }}
+          >
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                fontSize: "12px",
+                marginBottom: "8px",
+              }}
+            >
+              <span style={{ color: "#94a3b8" }}>
+                Progreso hacia nivel <strong style={{ color: sigNivel.color }}>{sigNivel.label}</strong>
               </span>
-              <span style={{ color:sigNivel.color, fontWeight:600 }}>
-                {data.progreso_nivel}%
+              <span style={{ color: sigNivel.color, fontWeight: 700 }}>
+                {data.progreso_nivel || 0}%
               </span>
             </div>
-            <div style={{ height:"8px", borderRadius:"4px",
-              background:"var(--surface-2)", overflow:"hidden" }}>
-              <div style={{
-                width:`${data.progreso_nivel}%`, height:"100%",
-                background:`linear-gradient(90deg, ${nivel.color}, ${sigNivel.color})`,
-                transition:"width 0.6s ease",
-              }} />
+
+            <div
+              style={{
+                height: "8px",
+                borderRadius: "4px",
+                background: "rgba(255, 255, 255, 0.12)",
+                overflow: "hidden",
+              }}
+            >
+              <div
+                style={{
+                  width: `${Math.min(100, Math.max(0, data.progreso_nivel || 0))}%`,
+                  height: "100%",
+                  background: `linear-gradient(90deg, ${nivel.color}, ${sigNivel.color})`,
+                  transition: "width 0.4s ease",
+                }}
+              />
             </div>
-            <p style={{ fontSize:"12px", color:"var(--text-3)",
-              marginTop:"8px" }}>
+
+            <p style={{ fontSize: "12px", color: "#94a3b8", margin: "8px 0 0" }}>
               Te faltan{" "}
-              <strong style={{ color:sigNivel.color }}>
-                {(data.puntos_para_siguiente - data.puntos_totales).toLocaleString("es-CL")} pts
+              <strong style={{ color: sigNivel.color }}>
+                {Math.max(0, (data.puntos_para_siguiente || 0) - (data.puntos_totales || 0)).toLocaleString("es-CL")} pts
               </strong>{" "}
-              para alcanzar {sigNivel.label}.
+              para subir de rango y desbloquear mayores beneficios.
             </p>
           </div>
         )}
       </div>
 
-      {/* Aviso de próxima expiración */}
+      {/* Expiration warning banner */}
       {data.proxima_expiracion && (
-        <div style={{ marginTop:"16px", padding:"14px 18px",
-          background:"rgba(250,204,21,0.06)", border:"1px solid rgba(250,204,21,0.25)",
-          borderRadius:"var(--r-xl)", display:"flex", gap:"12px", alignItems:"center" }}>
-          <span style={{ fontSize:"18px", flexShrink:0 }}>⏳</span>
-          <p style={{ fontSize:"13px", color:"var(--text-2)" }}>
-            <strong style={{ color:"#facc15" }}>
-              {data.proxima_expiracion.puntos.toLocaleString("es-CL")} pts
+        <div
+          className="au-card"
+          style={{
+            marginBottom: "20px",
+            padding: "14px 18px",
+            background: "rgba(250, 204, 21, 0.08)",
+            borderColor: "rgba(250, 204, 21, 0.35)",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+          }}
+        >
+          <Clock size={18} style={{ color: "#d97706", flexShrink: 0 }} />
+          <p style={{ fontSize: "13px", color: "var(--admin-primary-text)", margin: 0 }}>
+            <strong style={{ color: "#b45309" }}>
+              {(data.proxima_expiracion.puntos || 0).toLocaleString("es-CL")} puntos
             </strong>{" "}
-            vencen el <strong style={{ color:"var(--text)" }}>{data.proxima_expiracion.fecha}</strong> si no los canjeás antes.
+            vencen el <strong>{data.proxima_expiracion.fecha}</strong> si no realizas compras o canjes previos.
           </p>
         </div>
       )}
 
-      {/* Info stats */}
-      <div style={{
-        display:"grid",
-        gridTemplateColumns:"repeat(auto-fit, minmax(160px, 1fr))",
-        gap:"10px", marginBottom:"32px",
-      }}>
-        {[
-          ["Puntos totales acumulados", data.puntos_totales,   "#fff"],
-          ["Puntos canjeados",          data.puntos_canjeados, "#60a5fa"],
-          ["Mínimo para canjear",       data.minimo_canje,     "var(--text-3)"],
-        ].map(([label, value, color]) => (
-          <div key={label} style={{
-            padding:"14px 18px", background:"var(--surface)",
-            border:"1px solid var(--border)", borderRadius:"var(--r-lg)",
-          }}>
-            <p style={{ fontSize:"11px", color:"var(--text-3)",
-              letterSpacing:"0.08em", textTransform:"uppercase",
-              marginBottom:"8px" }}>{label}</p>
-            <p style={{ fontSize:"20px", fontWeight:600, color,
-              fontVariantNumeric:"tabular-nums" }}>
-              {value.toLocaleString("es-CL")}
-            </p>
-          </div>
-        ))}
+      {/* KPI Stats Strip */}
+      <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
+        <StatCard
+          title="Puntos acumulados"
+          value={(data.puntos_totales || 0).toLocaleString("es-CL")}
+          icon={<Award size={20} />}
+          description="Histórico total sumado"
+        />
+        <StatCard
+          title="Puntos canjeados"
+          value={(data.puntos_canjeados || 0).toLocaleString("es-CL")}
+          icon={<CheckCircle2 size={20} />}
+          description="Utilizados en compras"
+          variant="default"
+        />
+        <StatCard
+          title="Mínimo para canjear"
+          value={`${(data.minimo_canje || 0).toLocaleString("es-CL")} pts`}
+          icon={<Sparkles size={20} />}
+          description="En el carrito de compras"
+        />
       </div>
 
-      {/* Historial */}
-      <div>
-        <h3 style={{ fontSize:"13px", fontWeight:600, color:"var(--text-2)",
-          letterSpacing:"0.08em", textTransform:"uppercase",
-          marginBottom:"14px" }}>
-          {extraTx === null ? "Historial reciente" : "Historial completo"}
-        </h3>
-
-        {(extraTx ?? data.transactions).length === 0 ? (
-          <div style={{ padding:"32px", background:"var(--surface)",
-            border:"1px solid var(--border)", borderRadius:"var(--r-lg)",
-            textAlign:"center", color:"var(--text-3)" }}>
-            <p style={{ marginBottom:"12px", fontSize:"14px" }}>
-              Aún no tenés movimientos.
+      {/* Transactions History Card */}
+      <div className="au-card" style={{ padding: "20px 24px", marginBottom: "24px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "16px",
+            paddingBottom: "12px",
+            borderBottom: "1px solid var(--admin-card-border)",
+          }}
+        >
+          <div>
+            <h3 style={{ fontSize: "16px", fontWeight: 700, margin: 0, color: "var(--admin-primary-text)" }}>
+              {extraTx === null ? "Movimientos recientes" : "Historial completo de puntos"}
+            </h3>
+            <p style={{ fontSize: "12px", color: "var(--admin-muted-text)", margin: "2px 0 0" }}>
+              Registro cronológico de puntos sumados, canjes y acreditaciones.
             </p>
-            <Link to="/shop" style={{ fontSize:"13px", color:"var(--accent)",
-              textDecoration:"none" }}>
-              Ir a la tienda para empezar a acumular →
-            </Link>
+          </div>
+          <span
+            style={{
+              fontSize: "12px",
+              fontWeight: 600,
+              color: "var(--admin-muted-text)",
+              background: "var(--admin-surface-muted)",
+              padding: "4px 10px",
+              borderRadius: "var(--admin-radius-full)",
+            }}
+          >
+            {transactions.length} registros
+          </span>
+        </div>
+
+        {transactions.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "36px 16px" }}>
+            <p style={{ fontSize: "14px", color: "var(--admin-muted-text)", marginBottom: "14px" }}>
+              Aún no registras movimientos de puntos.
+            </p>
+            <PrimaryButton to="/shop" size="sm" icon={<ShoppingBag size={14} />}>
+              Comenzar a sumar puntos en la tienda
+            </PrimaryButton>
           </div>
         ) : (
-          <div style={{ background:"var(--surface)", border:"1px solid var(--border)",
-            borderRadius:"var(--r-lg)", overflow:"hidden" }}>
-            {(extraTx ?? data.transactions).map((t, i, arr) => {
-              const s = TIPO_STYLE[t.tipo] || TIPO_STYLE.adjust
+          <div style={{ display: "flex", flexDirection: "column" }}>
+            {transactions.map((t, idx) => {
+              const style = TIPO_STYLE[t.tipo] || TIPO_STYLE.adjust
+              const isLast = idx === transactions.length - 1
+
               return (
-                <div key={i} style={{
-                  padding:"14px 18px",
-                  display:"flex", justifyContent:"space-between", alignItems:"center",
-                  borderBottom: i < arr.length - 1
-                    ? "1px solid var(--border)" : "none",
-                }}>
-                  <div style={{ minWidth:0, flex:1 }}>
-                    <p style={{ fontSize:"13px", color:"var(--text)" }}>
-                      {t.descripcion}
+                <div
+                  key={idx}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    gap: "12px",
+                    padding: "12px 0",
+                    borderBottom: isLast ? "none" : "1px solid var(--admin-card-border)",
+                  }}
+                >
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <p style={{ fontSize: "14px", fontWeight: 600, color: "var(--admin-primary-text)", margin: 0 }}>
+                      {t.descripcion || "Movimiento de puntos"}
                     </p>
-                    <p style={{ fontSize:"11px", color:"var(--text-3)",
-                      marginTop:"2px" }}>
-                      {s.label} · {t.fecha}
+                    <p style={{ fontSize: "12px", color: "var(--admin-muted-text)", margin: "2px 0 0" }}>
+                      {style.label} · {t.fecha}
                     </p>
                   </div>
-                  <p style={{ fontSize:"15px", fontWeight:600,
-                    color: s.color, fontVariantNumeric:"tabular-nums" }}>
-                    {s.sign}{t.puntos.toLocaleString("es-CL")} pts
-                  </p>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <p
+                      style={{
+                        fontSize: "15px",
+                        fontWeight: 700,
+                        color: style.color,
+                        margin: 0,
+                        fontVariantNumeric: "tabular-nums",
+                      }}
+                    >
+                      {style.sign}{(Number(t.puntos) || 0).toLocaleString("es-CL")} pts
+                    </p>
+                  </div>
                 </div>
               )
             })}
           </div>
         )}
 
-        {data.transactions.length > 0 && (extraTx === null || nextPage) && (
-          <button onClick={loadMore} disabled={loadingMore}
-            style={{ marginTop:"12px", width:"100%", padding:"11px",
-              borderRadius:"var(--r-lg)", background:"var(--surface-2)",
-              border:"1px solid var(--border)", color:"var(--text-2)",
-              fontSize:"13px", cursor:"pointer", opacity: loadingMore ? 0.6 : 1 }}>
-            {loadingMore ? "Cargando…" : extraTx === null ? "Ver historial completo" : "Cargar más"}
-          </button>
+        {/* Load More Button */}
+        {transactions.length > 0 && (extraTx === null || nextPage) && (
+          <div style={{ marginTop: "16px", paddingTop: "14px", borderTop: "1px solid var(--admin-card-border)", textAlign: "center" }}>
+            <SecondaryButton onClick={loadMore} disabled={loadingMore} style={{ width: "100%", justifyContent: "center" }}>
+              {loadingMore ? "Cargando movimientos…" : extraTx === null ? "Ver historial completo" : "Cargar más transacciones"}
+            </SecondaryButton>
+          </div>
         )}
       </div>
 
-      {/* Cómo funciona */}
-      <details style={{
-        marginTop:"32px", padding:"18px 22px",
-        background:"var(--surface)", border:"1px solid var(--border)",
-        borderRadius:"var(--r-lg)", cursor:"pointer",
-      }}>
-        <summary style={{ fontSize:"14px", fontWeight:500,
-          color:"var(--text-2)", cursor:"pointer" }}>
-          ¿Cómo funciona el programa?
-        </summary>
-        <ul style={{ marginTop:"14px", fontSize:"13px",
-          color:"var(--text-2)", lineHeight:1.8, paddingLeft:"20px" }}>
-          <li>Cada compra suma puntos automáticamente cuando el pago es confirmado.</li>
-          <li>Los puntos se pueden canjear en el carrito antes de pagar.</li>
-          <li>Mínimo de canje: {data.minimo_canje} puntos.</li>
-          <li>Ascendés de nivel según los puntos totales acumulados históricos.</li>
-          <li>Los niveles superiores desbloquean beneficios exclusivos.</li>
-        </ul>
-      </details>
+      {/* Accordion: How it works */}
+      <div
+        className="au-card"
+        style={{
+          padding: "20px 24px",
+          cursor: "pointer",
+        }}
+        onClick={() => setFaqOpen(!faqOpen)}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <ShieldCheck size={18} style={{ color: "#16a34a" }} />
+            <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--admin-primary-text)" }}>
+              ¿Cómo funciona el programa de fidelización LevelPro?
+            </span>
+          </div>
+          <ChevronDown
+            size={18}
+            style={{
+              color: "var(--admin-muted-text)",
+              transform: faqOpen ? "rotate(180deg)" : "rotate(0deg)",
+              transition: "transform 0.2s ease",
+            }}
+          />
+        </div>
+
+        {faqOpen && (
+          <div
+            style={{
+              marginTop: "16px",
+              paddingTop: "14px",
+              borderTop: "1px solid var(--admin-card-border)",
+              fontSize: "13px",
+              lineHeight: 1.7,
+              color: "var(--admin-muted-text)",
+            }}
+          >
+            <ul style={{ margin: 0, paddingLeft: "20px" }}>
+              <li><strong>Acumulación automática:</strong> Cada compra suma puntos cuando tu pago es validado y facturado.</li>
+              <li><strong>Canje directo:</strong> Aplica tus puntos acumulados como descuento en el checkout antes de pagar.</li>
+              <li><strong>Mínimo de canje:</strong> Requieres al menos {data.minimo_canje || 100} puntos para solicitar descuento.</li>
+              <li><strong>Niveles de fidelidad:</strong> Subes de nivel con base en tus compras históricas, desbloqueando promociones preferenciales y multiplicadores.</li>
+              <li><strong>Vigencia:</strong> Los puntos tienen una vigencia anual activa con cada nueva orden realizada.</li>
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
