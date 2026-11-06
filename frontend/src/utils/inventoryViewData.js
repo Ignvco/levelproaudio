@@ -34,7 +34,7 @@ export function groupInventoryPreview(products) {
     const name = p.category?.name || "Sin categoría"
     if (!groups.has(name)) groups.set(name, {
       name, products: 0, totalStock: 0, knownCost: 0, saleValue: 0,
-      missingCostCount: 0,
+      missingCostCount: 0, missingPriceCount: 0,
     })
     const g = groups.get(name)
     const stock = numeric(p.stock) ?? 0
@@ -45,7 +45,8 @@ export function groupInventoryPreview(products) {
     if (stock > 0) {
       if (cost === null) g.missingCostCount++
       else g.knownCost += stock * cost
-      if (price !== null) g.saleValue += stock * price
+      if (price === null) g.missingPriceCount++
+      else g.saleValue += stock * price
     }
   }
   return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name, "es"))
