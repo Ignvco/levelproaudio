@@ -1,0 +1,39 @@
+# V3.2 QA-only build. DOES NOT BUILD OR DEPLOY CLOUD RUN IMAGES.
+# Run from a local branch with: gcloud builds submit . --config cloudbuild.v3-2-qa.yaml
+# Existing default cloudbuild.yaml DOES deploy; never use it for preflight.
+steps:
+  - name: "python:3.12-slim"
+    id: "backend-qa"
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        set -euo pipefail
+        cd backend
+        pip install --quiet --no-cache-dir -r requirements/base.txt -r requirements/development.txt
+        export DJANGO_SECRET_KEY=ci-only-dummy-key-that-is-over-32-bytes-000001
+        export DB_NAME=x DB_USER=x DB_PASSWORD=x
+        export DJANGO_SETTINGS_MODULE=config.settings.test
+        python manage.py check
+        python manage.py makemigrations --check --dry-run
+        python -m pytest tests/ apps/loyalty/ apps/billing/ apps/products/ apps/analytics/ apps/orders/ apps/services/ apps/academy/ apps/rewards/ apps/payments/ apps/users/ apps/seo/ apps/site_settings/ core/ -q
+        apt-get update -qq
+        apt-get install -y --no-install-recommends postgresql libpq-dev
+        cd ..
+        bash scripts/test-order-inventory-postgres.sh
+
+  - name: "node:22"
+    id: "frontend-qa"
+    waitFor: ["-"]
+    entrypoint: "bash"
+    args:
+      - "-c"
+      - |
+        set -euo pipefail
+        cd frontend
+        npm ci
+        npm run lint
+        npm run test:unit
+        npm run build
+
+timeout: "1800s"
