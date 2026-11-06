@@ -2117,12 +2117,14 @@ def admin_finance_withdrawal_delete(request, withdrawal_id):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_by_product(request):
-    """GET /api/v1/admin/finance/by-product/"""
+    """GET /api/v1/admin/finance/by-product/?currency=CLP|USD|ARS"""
+    currency = reporting_currency(request)
     
 
     # Solo órdenes pagadas
     items = OrderItem.objects.filter(
-        order__status__in=["paid", "shipped", "completed"]
+        order__status__in=["paid", "shipped", "completed"],
+        order__currency=currency,
     ).select_related("product").values(
         "product__name", "product__sku", "product__cost_price"
     ).annotate(
@@ -2135,23 +2137,26 @@ def admin_finance_by_product(request):
 
     results = []
     for item in items:
-        cost_price    = item["product__cost_price"] or Decimal("0")
-        total_cost    = cost_price * item["units_sold"]
-        profit        = item["total_revenue"] - total_cost
-        margin        = round(float(profit) / float(item["total_revenue"]) * 100, 1) \
-                        if item["total_revenue"] else 0
+        # Product cost_price is maintained in the local catalog currency (CLP).
+        # Do NOT subtract CLP costs from USD or ARS sale amounts.
+        cost_price = item["product__cost_price"]
+        costs_known = currency == "CLP" and cost_price is not None
+        total_cost = cost_price * item["units_sold"] if costs_known else None
+        profit = item["total_revenue"] - total_cost if costs_known else None
+        margin = round(float(profit) / float(item["total_revenue"]) * 100, 1) \
+            if profit is not None and item["total_revenue"] else None
 
         results.append({
             "product_name":  item["product__name"],
             "sku":           item["product__sku"],
             "units_sold":    item["units_sold"],
             "total_revenue": float(item["total_revenue"]),
-            "total_cost":    float(total_cost),
-            "profit":        float(profit),
+            "total_cost":    float(total_cost) if total_cost is not None else None,
+            "profit":        float(profit) if profit is not None else None,
             "margin":        margin,
         })
 
-    return Response({"results": results})    
+    return Response({"currency": currency, "results": results, "cost_currency": "CLP"})    
 
 
 # ── INVENTARIO INTELIGENTE ────────────────────────────────────
@@ -2289,7 +2294,8 @@ def inventory_value_by_category(request):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def executive_dashboard(request):
-    """Dashboard ejecutivo — KPIs del negocio para mobile"""
+    """Dashboard ejecutivo — KPIs del negocio para mobile, sin mezcla monetaria."""
+    currency = reporting_currency(request)
 
     hoy        = timezone.now()
     hoy_inicio = hoy.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -2302,6 +2308,7 @@ def executive_dashboard(request):
     def get_ventas(desde, hasta=None):
         qs = Order.objects.filter(
             status__in=["paid", "shipped", "completed"],
+            currency=currency,
             created_at__gte=desde,
         )
         if hasta:
@@ -2326,6 +2333,7 @@ def executive_dashboard(request):
 
     # ── Órdenes del día ──────────────────────────────────────
     ordenes_hoy = Order.objects.filter(
+        currency=currency,
         created_at__gte=hoy_inicio
     ).select_related().order_by("-created_at")[:5]
 
@@ -2333,6 +2341,7 @@ def executive_dashboard(request):
         "id":     str(o.id),
         "status": o.status,
         "total":  float(o.total),
+        "currency": o.currency,
         "email":  o.email,
         "hora":   o.created_at.strftime("%H:%M"),
     } for o in ordenes_hoy]
@@ -2356,6 +2365,7 @@ def executive_dashboard(request):
         utilidad_mes = IncomeDistribution.objects.filter(
             category=utilidad_cat,
             income_record__order__created_at__gte=mes_inicio,
+            income_record__order__currency=currency,
         ).aggregate(t=Sum("amount"))["t"] or 0
     except Exception as e:
         import logging
@@ -2369,6 +2379,7 @@ def executive_dashboard(request):
         dia_fin    = dia_inicio + timedelta(days=1)
         v = Order.objects.filter(
             status__in=["paid", "shipped", "completed"],
+            currency=currency,
             created_at__gte=dia_inicio,
             created_at__lt=dia_fin,
         ).aggregate(total=Sum("total"), count=Count("id"))
@@ -2383,6 +2394,7 @@ def executive_dashboard(request):
     from apps.orders.models import OrderItem
     top_productos = OrderItem.objects.filter(
         order__status__in=["paid", "shipped", "completed"],
+        order__currency=currency,
         order__created_at__gte=mes_inicio,
     ).values("product_name").annotate(
         unidades=Sum("quantity"),
@@ -2390,6 +2402,8 @@ def executive_dashboard(request):
     ).order_by("-ingresos")[:3]
 
     return Response({
+        "currency": currency,
+        "cost_profit_certified": currency == "CLP",
         "ventas": {
             "hoy":            float(ventas_hoy["total"] or 0),
             "hoy_count":      ventas_hoy["count"] or 0,
@@ -2400,7 +2414,7 @@ def executive_dashboard(request):
             "var_dia":        variacion(ventas_hoy["total"], ventas_ayer["total"]),
             "var_mes":        variacion(ventas_mes["total"], ventas_mes_ant["total"]),
         },
-        "utilidad_mes":    float(utilidad_mes),
+        "utilidad_mes":    float(utilidad_mes) if currency == "CLP" else None,
         "inventario": {
             "criticos":  criticos,
             "sin_stock": sin_stock,
