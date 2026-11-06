@@ -265,7 +265,7 @@ export default function AdminCategories() {
       await Promise.all(
         ordered.map((cat, i) => reorderCategory(cat.id, i))
       )
-      queryClient.invalidateQueries(["admin-categories"])
+      queryClient.invalidateQueries({ queryKey: ["admin-categories"] })
     } catch (e) {
       console.error("Error guardando orden:", e)
     }
@@ -291,7 +291,7 @@ export default function AdminCategories() {
     mutationFn: (cat) => deleteCategory(cat.id),
     onSuccess:  () => {
       setLocalRoots(null)
-      queryClient.invalidateQueries(["admin-categories"])
+      queryClient.invalidateQueries({ queryKey: ["admin-categories"] })
       setToDelete(null)
     },
     onError: (e) => {
@@ -304,7 +304,7 @@ export default function AdminCategories() {
 
   const handleSave = () => {
     setLocalRoots(null)
-    queryClient.invalidateQueries(["admin-categories"])
+    queryClient.invalidateQueries({ queryKey: ["admin-categories"] })
     setModal(null)
   }
 
