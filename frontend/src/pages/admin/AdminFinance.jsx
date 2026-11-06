@@ -257,6 +257,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
 export default function AdminFinance() {
   const [tab, setTab]   = useState("overview")
   const [analysisCurrency, setAnalysisCurrency] = useState("CLP")
+  const [productCurrency, setProductCurrency] = useState("CLP")
   const analysisMoney = value => formatCurrency(value, analysisCurrency)
   const [modal, setModal] = useState(null)
   const [toDeleteWithdrawal, setToDeleteWithdrawal] = useState(null)
@@ -278,8 +279,8 @@ export default function AdminFinance() {
     enabled:  tab === "withdrawals" || tab === "overview",
   })
   const { data:incomeByProduct } = useQuery({
-    queryKey: ["admin-finance-by-product"],
-    queryFn:  () => api.get("/admin/finance/by-product/").then(r => r.data),
+    queryKey: ["admin-finance-by-product", productCurrency],
+    queryFn:  () => api.get("/admin/finance/by-product/", { params: { currency: productCurrency } }).then(r => r.data),
     enabled:  tab === "by_product",
   })
   const { data:analytics, isError: analyticsError, refetch: refetchAnalytics } = useQuery({
@@ -644,7 +645,20 @@ export default function AdminFinance() {
 
       {/* ── POR PRODUCTO ── */}
       {tab==="by_product" && (
-        <DataTable
+        <div>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 14 }}>
+            <p style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>
+              Importes por moneda. Costos y utilidad solo disponibles en CLP, donde el catálogo registra costos.
+            </p>
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12 }}>Moneda</span>
+              <select className="au-select" aria-label="Moneda de productos vendidos" value={productCurrency}
+                onChange={e => setProductCurrency(e.target.value)}>
+                <option value="CLP">CLP</option><option value="USD">USD</option><option value="ARS">ARS</option>
+              </select>
+            </label>
+          </div>
+          <DataTable
           columns={[
             { key:"product_name", header:"Producto", sortable:true, render:p => (
               <div>
@@ -656,14 +670,14 @@ export default function AdminFinance() {
             { key:"units_sold", header:"Vendidos", sortable:true, align:"right",
               render:p => <span style={{ color:"var(--admin-text)" }}>{p.units_sold} u.</span> },
             { key:"total_revenue", header:"Ingreso total", sortable:true, align:"right",
-              render:p => <span style={{ color:"var(--admin-primary-text)", fontWeight:600 }}>{fmt(p.total_revenue)}</span> },
+              render:p => <span style={{ color:"var(--admin-primary-text)", fontWeight:600 }}>{formatCurrency(p.total_revenue, productCurrency)}</span> },
             { key:"total_cost", header:"Costo total", sortable:true, align:"right",
-              render:p => <span style={{ color:"var(--admin-danger)" }}>{fmt(p.total_cost)}</span> },
+              render:p => <span style={{ color:"var(--admin-danger)" }}>{p.total_cost == null ? "Sin costo comparable" : fmt(p.total_cost)}</span> },
             { key:"profit", header:"Utilidad real", sortable:true, align:"right", render:p => (
               <div style={{ textAlign:"right" }}>
                 <p style={{ fontSize:"13px", fontWeight:700,
-                  color: p.profit >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>{fmt(p.profit)}</p>
-                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{p.margin}% margen</p>
+                  color: p.profit == null || p.profit >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>{p.profit == null ? "—" : fmt(p.profit)}</p>
+                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{p.margin == null ? "Costo en moneda no comparable" : `${p.margin}% margen`}</p>
               </div>
             )},
           ]}
@@ -672,7 +686,8 @@ export default function AdminFinance() {
           emptyIcon={Inbox} emptyTitle="Sin datos todavía"
           emptyDesc="Aparecen al aprobarse pagos con órdenes reales."
           testId="by-product-table" />
-      )}
+        </div>
+      )
 
       {/* ── ANÁLISIS (consolida Vista Ejecutiva + Analytics) ── */}
       {tab==="analysis" && (
