@@ -127,7 +127,7 @@ export default function AdminAcademy() {
   })
   const deleteMutation = useMutation({
     mutationFn: deleteAdminCourse,
-    onSuccess:  () => { queryClient.invalidateQueries(["admin-courses"]); setToDelete(null) },
+    onSuccess:  () => { queryClient.invalidateQueries({ queryKey: ["admin-courses"] }); setToDelete(null) },
     onError:    (e) => {
       showToast(e?.response?.data?.detail || "No se pudo eliminar el curso.", "error")
       setToDelete(null)
@@ -151,7 +151,7 @@ export default function AdminAcademy() {
         <CourseModal
           course={modal === "new" ? null : modal}
           onClose={() => setModal(null)}
-          onSave={() => queryClient.invalidateQueries(["admin-courses"])}
+          onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-courses"] })}
         />
       )}
 
