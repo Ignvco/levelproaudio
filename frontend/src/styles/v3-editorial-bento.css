@@ -996,3 +996,40 @@
     scroll-behavior: auto !important;
   }
 }
+
+
+/* V3.2 — Shared page controls: one visual language for all admin/user modules. */
+.v3-shell .au-page :is(input, select, textarea) {
+  font-family: var(--font-sans, sans-serif);
+  accent-color: var(--btn-green, #1a9d4e);
+}
+.v3-shell .au-page :is(input, select, textarea):focus-visible,
+.v3-shell .au-modal :is(input, select, textarea):focus-visible {
+  outline: 2px solid #0f9940;
+  outline-offset: 2px;
+}
+.v3-shell .au-page .au-table {
+  font-variant-numeric: tabular-nums;
+}
+.v3-shell .au-page .au-btn,
+.v3-shell .au-page .au-pill-btn {
+  font-weight: 650;
+  transition: background-color .17s ease, border-color .17s ease, box-shadow .17s ease, transform .17s ease;
+}
+.v3-shell .au-page .au-btn:disabled,
+.v3-shell .au-page .au-pill-btn:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+.v3-shell .au-modal {
+  max-height: min(90vh, 900px);
+  overflow-y: auto;
+}
+.v3-shell .au-modal__title {
+  letter-spacing: -.025em;
+}
+@media (max-width: 640px) {
+  .v3-shell .au-page { min-width: 0; }
+  .v3-shell .au-page .au-table-wrap { max-width: 100%; overflow-x: auto; }
+  .v3-shell .au-modal { max-height: 94dvh; }
+}
