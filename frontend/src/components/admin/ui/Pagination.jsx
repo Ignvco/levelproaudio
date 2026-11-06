@@ -11,18 +11,18 @@ export function Pagination({ page, pageCount, onChange, testId }) {
     else if (pages[pages.length - 1] !== "…") push("…")
   }
   return (
-    <div className="au-pagination" data-testid={testId || "pagination"}>
-      <button disabled={page <= 1} onClick={() => onChange(page - 1)} aria-label="Anterior">
+    <nav className="au-pagination" aria-label="Paginación" data-testid={testId || "pagination"}>
+      <button type="button" disabled={page <= 1} onClick={() => onChange(page - 1)} aria-label="Anterior">
         <ChevronLeft size={15} />
       </button>
       {pages.map((p, i) =>
         p === "…"
           ? <span key={`e${i}`} style={{ padding: "0 4px", color: "var(--admin-text-muted)" }}>…</span>
-          : <button key={p} className={p === page ? "is-active" : ""} onClick={() => onChange(p)}>{p}</button>
+          : <button type="button" key={p} className={p === page ? "is-active" : ""} aria-current={p === page ? "page" : undefined} aria-label={`Página ${p}`} onClick={() => onChange(p)}>{p}</button>
       )}
-      <button disabled={page >= pageCount} onClick={() => onChange(page + 1)} aria-label="Siguiente">
+      <button type="button" disabled={page >= pageCount} onClick={() => onChange(page + 1)} aria-label="Siguiente">
         <ChevronRight size={15} />
       </button>
-    </div>
+    </nav>
   )
 }

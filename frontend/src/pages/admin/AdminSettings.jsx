@@ -3,7 +3,8 @@ import { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminSiteSettings, updateSiteSettings } from "../../api/siteSettings.api"
 import { mediaUrl } from "../../utils/mediaUrl"
-import { AdminPageHeader, PrimaryButton } from "../../components/admin/ui"
+import { AdminPageHeader, PrimaryButton, SecondaryButton, ErrorState, FormField } from "../../components/admin/ui"
+import { showToast } from "../../components/ui/ToastNotification"
 
 const TABS = [
   { id: "hero",     label: "Hero"        },
@@ -26,23 +27,10 @@ const inputSt = {
   transition: "border-color 150ms",
 }
 
-const labelSt = {
-  display: "block", fontSize: "11px", color: "var(--text-3)",
-  textTransform: "uppercase", letterSpacing: "0.1em",
-  marginBottom: "8px", fontWeight: 600,
-}
-
 function Field({ label, children, helper }) {
-  return (
-    <div style={{ marginBottom: "20px" }}>
-      <label style={labelSt}>{label}</label>
-      {children}
-      {helper && (
-        <p style={{ fontSize: "11px", color: "var(--text-3)",
-          marginTop: "6px", lineHeight: 1.5 }}>{helper}</p>
-      )}
-    </div>
-  )
+  return <div style={{ marginBottom: "20px" }}>
+    <FormField label={label} description={helper}>{children}</FormField>
+  </div>
 }
 
 function Toggle({ label, checked, onChange }) {
@@ -123,7 +111,7 @@ export default function AdminSettings() {
   const [form, setForm]   = useState(null)
   const [files, setFiles] = useState({})
 
-  const { data } = useQuery({ queryKey: ["site-settings-admin"], queryFn: getAdminSiteSettings })
+  const { data, isError, refetch } = useQuery({ queryKey: ["site-settings-admin"], queryFn: getAdminSiteSettings })
   useEffect(() => {
     if (data && !form) setForm({ ...data })
   }, [data, form])
@@ -137,12 +125,10 @@ export default function AdminSettings() {
       setFiles({})
     },
     onError: (err) => {
-      const status = err?.response?.status
-      if (status === 413) {
-        alert("La imagen es demasiado grande. Reducila a menos de 25 MB e intentalo de nuevo.\n\nTip: si es una foto de Adobe Stock 4K, exportala como JPEG de 1920×1080 (queda debajo de 500 KB).")
-      } else {
-        alert("Error al guardar. Revisá la conexión e intentalo de nuevo.")
-      }
+      const msg = err?.response?.status === 413
+        ? "La imagen supera el tamaño permitido. Reduce su peso e inténtalo nuevamente."
+        : "No pudimos guardar los cambios. Revisa la conexión e inténtalo nuevamente."
+      showToast(msg, "error")
     },
   })
 
@@ -159,6 +145,15 @@ export default function AdminSettings() {
 
   function set(k, v) { setForm(prev => ({ ...prev, [k]: v })) }
   function setFile(k, f) { setFiles(prev => ({ ...prev, [k]: f })) }
+
+  if (isError && !form) {
+    return <div className="au-page" data-testid="admin-settings-error">
+      <AdminPageHeader title="Configuración del sitio" description="LevelPro Audio" />
+      <ErrorState title="No pudimos cargar la configuración"
+        description="Los ajustes actuales permanecen guardados en el servidor."
+        action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
+    </div>
+  }
 
   if (!form) {
     return (
@@ -185,6 +180,11 @@ export default function AdminSettings() {
           </PrimaryButton>
         }
       />
+
+      {isError && <div role="alert" className="lp-callout lp-callout--warning">
+        No se pudo actualizar la configuración. Los datos visibles pueden estar desactualizados.
+        <SecondaryButton onClick={() => refetch()} size="sm">Actualizar</SecondaryButton>
+      </div>}
 
       {/* Tabs */}
       <div className="lp-seg-tabs">

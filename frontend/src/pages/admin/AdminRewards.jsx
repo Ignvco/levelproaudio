@@ -4,7 +4,7 @@ import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Gift, Ticket, Users, DollarSign } from "lucide-react"
 import { adminGetRewardsDashboard } from "../../api/rewards.api"
-import { StatCard, AdminPageHeader, SectionCard, SecondaryButton, StatusBadge } from "../../components/admin/ui"
+import { StatCard, AdminPageHeader, SectionCard, SecondaryButton, StatusBadge, ErrorState } from "../../components/admin/ui"
 import { useSiteSettings } from "../../hooks/useSiteSettings"
 
 function KpiCard({ label, value, subtitle, variant = "light", testId, Icon }) {
@@ -28,7 +28,7 @@ function useCountdownDisplay(seconds) {
 
 export default function AdminRewards() {
   const { siteName } = useSiteSettings()
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-rewards-dashboard"],
     queryFn:  adminGetRewardsDashboard,
     refetchInterval: 15_000,
@@ -36,7 +36,16 @@ export default function AdminRewards() {
 
   const remainingLabel = useCountdownDisplay(data?.current_campaign?.seconds_remaining)
 
-  if (isLoading || !data || !data.totals) return (
+  if (isError || (!isLoading && (!data || !data.totals))) return (
+    <div className="au-page" data-testid="admin-rewards-error">
+      <AdminPageHeader title="Dashboard de campañas" description="LevelPro Rewards" />
+      <ErrorState title="No pudimos cargar las campañas"
+        description="No mostraremos cifras de campañas sin datos confirmados."
+        action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
+    </div>
+  )
+
+  if (isLoading) return (
     <div className="au-page">
       <div className="lp-grid-kpi">
         {[...Array(4)].map((_, i) => (

@@ -5,6 +5,7 @@ import { SearchInput, FilterSelect } from "./Inputs"
 import { EmptyState, ErrorState } from "./EmptyState"
 import { Pagination } from "./Pagination"
 import { SkeletonTable } from "./Skeletons"
+import { SecondaryButton } from "./Buttons"
 
 function RowMenu({ actions, row }) {
   const [open, setOpen] = useState(false)
@@ -18,7 +19,7 @@ function RowMenu({ actions, row }) {
   }, [])
   return (
     <div className="au-rowmenu" ref={ref}>
-      <button className="au-iconbtn au-iconbtn--ghost" onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
+      <button type="button" className="au-iconbtn au-iconbtn--ghost" onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
         aria-label="Acciones" aria-haspopup="menu" aria-expanded={open} data-testid="row-actions-trigger">
         <MoreHorizontal size={18} />
       </button>
@@ -37,7 +38,7 @@ function RowMenu({ actions, row }) {
 }
 
 export function DataTable({
-  columns = [], data = [], loading = false, error = false,
+  columns = [], data = [], loading = false, error = false, onRetry,
   getRowId = (r) => r.id,
   searchable = true, searchPlaceholder = "Buscar...", searchKeys,
   filters = [], toolbarExtra,
@@ -126,9 +127,9 @@ export function DataTable({
       )}
 
       {error ? (
-        <ErrorState />
+        <ErrorState action={onRetry ? <SecondaryButton onClick={onRetry}>Reintentar</SecondaryButton> : undefined} />
       ) : filtered.length === 0 ? (
-        <EmptyState Icon={emptyIcon} title={emptyTitle || "Sin resultados"} description={emptyDesc || "Ajustá la búsqueda o los filtros."} />
+        <EmptyState Icon={emptyIcon} title={emptyTitle || "Sin resultados"} description={emptyDesc || "Ajusta la búsqueda o los filtros."} />
       ) : (
         <>
           <div className="au-tscroll">
@@ -136,7 +137,7 @@ export function DataTable({
               <thead>
                 <tr>
                   {selectable && (
-                    <th style={{ width: 40 }}>
+                    <th scope="col" style={{ width: 40 }}>
                       <input type="checkbox" className="au-checkbox" checked={allOnPageSelected} onChange={toggleAll} aria-label="Seleccionar todo" />
                     </th>
                   )}
@@ -154,7 +155,7 @@ export function DataTable({
                       ) : <span>{c.header}</span>}
                     </th>
                   ))}
-                  {rowActions && <th style={{ width: 56 }} />}
+                  {rowActions && <th scope="col" aria-label="Acciones" style={{ width: 56 }} />}
                 </tr>
               </thead>
               <tbody>
@@ -166,7 +167,7 @@ export function DataTable({
                       tabIndex={onRowClick ? 0 : undefined} style={{ cursor: onRowClick ? "pointer" : "default" }} data-testid={`${testId}-row`}>
                       {selectable && (
                         <td onClick={(e) => e.stopPropagation()}>
-                          <input type="checkbox" className="au-checkbox" checked={selected.has(id)} onChange={() => toggleRow(id)} aria-label="Seleccionar fila" />
+                          <input type="checkbox" className="au-checkbox" checked={selected.has(id)} onChange={() => toggleRow(id)} aria-label={`Seleccionar fila ${id}`} />
                         </td>
                       )}
                       {columns.map((c) => (

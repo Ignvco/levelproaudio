@@ -1,5 +1,5 @@
 // pages/admin/AdminServices.jsx
-import { useState } from "react"
+import { useId, useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   getAdminServiceRequests,
@@ -43,6 +43,7 @@ function StatusBadge({ status, map }) {
 }
 
 function RequestCard({ req, reqMutation }) {
+  const responseId = useId()
   const [note, setNote] = useState(req.admin_notes || "")
   const dirty = note !== (req.admin_notes || "")
 
@@ -101,12 +102,12 @@ function RequestCard({ req, reqMutation }) {
 
       {/* Respuesta visible para el cliente */}
       <div>
-        <label style={{ display: "block", fontSize: "11px", fontWeight: 700,
+        <label htmlFor={responseId} style={{ display: "block", fontSize: "11px", fontWeight: 700,
           color: "var(--admin-text-muted)", letterSpacing: "0.06em", textTransform: "uppercase",
           marginBottom: "6px" }}>
           Respuesta (el cliente la ve en &quot;Mis servicios&quot;)
         </label>
-        <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
+        <textarea id={responseId} value={note} onChange={e => setNote(e.target.value)} rows={2}
           placeholder="Ej: Te contactamos por email con la cotización..."
           style={{ ...inputSt, resize: "vertical", fontSize: "13px" }} />
         {dirty && (

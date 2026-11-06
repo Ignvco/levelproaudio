@@ -11,6 +11,7 @@ import {
   HelpCircle,
 } from "lucide-react"
 import { getBookings, cancelBooking } from "../../api/services.api"
+import { queryDisplayState, listFromResponse } from "../../utils/queryDisplayState"
 import {
   AdminPageHeader,
   StatCard,
@@ -19,6 +20,7 @@ import {
   SecondaryButton,
   DangerButton,
   ConfirmationModal,
+  ErrorState,
 } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
 
@@ -31,13 +33,13 @@ const STATUS_MAP = {
 
 export default function MyBookings() {
   const queryClient = useQueryClient()
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["my-bookings"],
     queryFn:  getBookings,
   })
 
-  const raw = data?.results || data || []
-  const bookings = Array.isArray(raw) ? raw : []
+  const ready = queryDisplayState({ data, isPending: isLoading, isError }) === "ready"
+  const bookings = listFromResponse(data)
   const [toCancel, setToCancel] = useState(null)
 
   const cancelMutation = useMutation({
@@ -48,7 +50,7 @@ export default function MyBookings() {
       showToast("Reserva cancelada correctamente")
     },
     onError: (e) => {
-      showToast(e?.response?.data?.detail || "No se pudo cancelar la reserva. Intentá de nuevo.", "error")
+      showToast(e?.response?.data?.detail || "No se pudo cancelar la reserva. Intenta nuevamente.", "error")
       setToCancel(null)
     },
   })
@@ -90,8 +92,8 @@ export default function MyBookings() {
         }
       />
 
-      {/* KPI Strip */}
-      <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
+      {/* KPIs únicamente con datos confirmados. */}
+      {ready && <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
         <StatCard
           title="Total reservas"
           value={bookings.length}
@@ -112,7 +114,7 @@ export default function MyBookings() {
           description="Por confirmar horario"
           variant={pendingCount > 0 ? "amber" : "default"}
         />
-      </div>
+      </div>}
 
       {/* Bookings list */}
       {isLoading ? (
@@ -121,6 +123,10 @@ export default function MyBookings() {
             <div key={i} className="au-skeleton" style={{ height: "88px", borderRadius: "var(--admin-radius-lg)" }} />
           ))}
         </div>
+      ) : isError ? (
+        <ErrorState title="No pudimos cargar tus reservas"
+          description="Tus reservas no se han modificado. Intenta actualizar la información."
+          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
       ) : bookings.length === 0 ? (
         <div
           className="au-card"
