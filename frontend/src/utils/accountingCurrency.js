@@ -14,11 +14,13 @@ export function formatCurrency(value, currency = "CLP") {
 }
 
 export function formatOrderAmount(item) {
-  return formatCurrency(item?.total, item?.currency)
+  if (!ACCOUNTING_CURRENCIES.includes(item?.currency)) return "—"
+  return formatCurrency(item.total, item.currency)
 }
 
 export function formatGatewayAmount(payment) {
-  return formatCurrency(payment?.amount, payment?.currency)
+  if (!ACCOUNTING_CURRENCIES.includes(payment?.currency)) return "—"
+  return formatCurrency(payment.amount, payment.currency)
 }
 
 export function validMoney(value) {
