@@ -157,44 +157,38 @@ export default function Dashboard() {
             </Link>
           </div>
 
-          {/* Real-time Order Tracking Stepper */}
-          <div style={{
-            background: "rgba(255, 255, 255, 0.05)",
-            border: "1px solid rgba(255, 255, 255, 0.08)",
-            borderRadius: 16,
-            padding: 14,
-            margin: "12px 0"
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--v3-accent)", letterSpacing: "0.06em" }}>
-                PEDIDO EN CURSO
-              </span>
-              <span style={{ fontSize: 11.5, color: "var(--v3-text-dark-muted)" }}>
-                #{latestOrder?.short_id || "LP-9824"}
-              </span>
+          {/* Seguimiento: exclusivamente el último pedido real del cliente. */}
+          {latestOrder ? (
+            <div style={{ background: "rgba(255,255,255,.05)", border: "1px solid rgba(255,255,255,.08)", borderRadius: 16, padding: 14, margin: "12px 0" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 11, fontWeight: 700, color: "var(--v3-accent)", letterSpacing: ".06em" }}>ÚLTIMO PEDIDO</span>
+                <span style={{ fontSize: 11.5, color: "var(--v3-text-dark-muted)" }}>#{String(latestOrder.id).slice(0, 8).toUpperCase()}</span>
+              </div>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#fff", margin: "6px 0 10px" }}>{orderStatus.label} · {formatMoney(latestOrder.total, latestOrder.currency)}</p>
+              <div className="v3-stepper-bar" aria-label={`Estado de pedido: ${orderStatus.label}`}>
+                {Array.from({ length: 4 }, (_, i) => (
+                  <span key={i} className={`v3-step-seg${orderStatus.step >= i ? " active" : ""}`} />
+                ))}
+              </div>
+              <Link to={`/dashboard/orders/${latestOrder.id}`} style={{ display: "block", color: "var(--v3-accent)", fontSize: 12, marginTop: 12 }}>Ver detalle del pedido</Link>
             </div>
-
-            <p style={{ fontSize: 13, fontWeight: 600, color: "#FFFFFF", margin: "6px 0 10px" }}>
-              {orderStatus.label} · Despacho estimado mañana
-            </p>
-
-            <div className="v3-stepper-bar">
-              <span className="v3-step-seg active" />
-              <span className="v3-step-seg active" />
-              <span className="v3-step-seg active" />
-              <span className="v3-step-seg" />
+          ) : (
+            <div style={{ background: "rgba(255,255,255,.05)", borderRadius: 16, padding: 16, margin: "12px 0", color: "var(--v3-text-dark-muted)", fontSize: 13 }}>
+              Todavía no tienes pedidos. <Link to="/shop" style={{ color: "var(--v3-accent)" }}>Explorar tienda</Link>
             </div>
-          </div>
+          )}
 
-          {/* Mini benefits & progress */}
-          <div style={{ marginTop: "auto", paddingTop: 14, borderTop: "1px solid rgba(255, 255, 255, 0.08)" }}>
+          <div style={{ marginTop: "auto", paddingTop: 14, borderTop: "1px solid rgba(255,255,255,.08)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5, color: "var(--v3-text-dark-muted)", marginBottom: 6 }}>
-              <span>Compras acumuladas este mes</span>
-              <strong style={{ color: "#fff" }}>$ 148.500</strong>
+              <span>Progreso de fidelización</span>
+              <strong style={{ color: "#fff" }}>{loyaltyLoading ? "—" : `${levelProgress}%`}</strong>
             </div>
-            <div className="v3-prog-bar" style={{ background: "rgba(255, 255, 255, 0.1)", height: 6 }}>
-              <div className="v3-prog-fill" style={{ width: "74%" }} />
+            <div className="v3-prog-bar" style={{ background: "rgba(255,255,255,.1)", height: 6 }}>
+              <div className="v3-prog-fill" style={{ width: `${levelProgress}%` }} />
             </div>
+            {!loyaltyLoading && loyalty?.siguiente_nivel && (
+              <p style={{ fontSize: 11, marginTop: 7, color: "var(--v3-text-dark-muted)" }}>Próximo nivel: {loyalty.siguiente_nivel}</p>
+            )}
           </div>
         </div>
 
@@ -212,7 +206,7 @@ export default function Dashboard() {
             </div>
             <div>
               <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", margin: "0 0 2px", opacity: 0.8 }}>
-                SORTEO MENSUAL
+                LEVELPRO CLUB
               </p>
               <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: "var(--v3-obsidian)", lineHeight: 1.2 }}>
                 LevelPro Rewards
@@ -230,10 +224,10 @@ export default function Dashboard() {
             </div>
             <div>
               <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", margin: "0 0 2px", opacity: 0.8 }}>
-                LABORATORIO PRO
+                SERVICIOS
               </p>
               <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: "var(--v3-obsidian)", lineHeight: 1.2 }}>
-                Calibración de Sala
+                Servicios técnicos
               </h3>
             </div>
           </Link>
@@ -248,10 +242,10 @@ export default function Dashboard() {
             </div>
             <div>
               <p style={{ fontSize: 11, fontWeight: 800, letterSpacing: "0.08em", margin: "0 0 2px", opacity: 0.8 }}>
-                PROMO ACTIVA
+                LEVELPRO ACADEMY
               </p>
               <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: "var(--v3-obsidian)", lineHeight: 1.2 }}>
-                2x Puntos en Cursos
+                Mis cursos
               </h3>
             </div>
           </Link>
