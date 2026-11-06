@@ -10,12 +10,13 @@ import {
 import { getAdminDashboard, getAnalytics } from "../../api/admin.api"
 import { StatusBadge, ErrorState } from "../../components/admin/ui"
 import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip } from "recharts"
+import AccountingCurrencySelect from "../../components/admin/ui/AccountingCurrencySelect"
+import { formatCurrency } from "../../utils/accountingCurrency"
 import {
   adminRecentOrders, adminFulfillment, adminCategoryMix, adminSalesSeries,
   monthlyShare, count, formatMoney,
 } from "../dashboard/dashboardV3Data"
 
-const clp = (n) => formatMoney(n, "CLP")
 
 const ORDER_STATUS_MAP = {
   paid:      { label: "Pagado",     tone: "success" },
@@ -48,15 +49,17 @@ function formatShortDate(iso) {
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const [period, setPeriod] = useState("30D")
+  const [currency, setCurrency] = useState("CLP")
+  const clp = (n) => formatCurrency(n, currency)
 
   const { data, isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ["admin-dashboard"],
-    queryFn: getAdminDashboard,
+    queryKey: ["admin-dashboard", currency],
+    queryFn: () => getAdminDashboard(currency),
     refetchInterval: 60000,
   })
   const { data: analytics } = useQuery({
-    queryKey: ["admin-analytics"],
-    queryFn: getAnalytics,
+    queryKey: ["admin-analytics", currency],
+    queryFn: () => getAnalytics(currency),
     refetchInterval: 120000,
   })
 
@@ -108,11 +111,11 @@ export default function AdminDashboard() {
         </div>
 
         <div className="v3-controls-row">
-          <div className="v3-pill-btn">
+          <div className="v3-pill-btn" aria-label="Mes informado">
             <Calendar size={14} />
-            <span>{monthLabel} · información actual</span>
-            <ChevronDown size={13} style={{ opacity: 0.6 }} />
+            <span>{monthLabel}</span>
           </div>
+          <AccountingCurrencySelect id="admin-dashboard-currency" value={currency} onChange={setCurrency} />
 
           <button
             type="button"
@@ -535,7 +538,7 @@ export default function AdminDashboard() {
                   <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                     <StatusBadge tone={st.tone}>{st.label}</StatusBadge>
                     <span style={{ fontSize: 14, fontWeight: 800, color: "var(--v3-text-primary)", minWidth: 90, textAlign: "right" }}>
-                      {o.total == null ? "—" : o.currency ? formatMoney(o.total, o.currency) : new Intl.NumberFormat("es-CL").format(o.total)}
+                      {o.total == null ? "—" : o.currency ? formatCurrency(o.total, o.currency) : `${new Intl.NumberFormat("es-CL").format(o.total)} (moneda no indicada)`}
                     </span>
                     <ChevronRight size={15} style={{ color: "var(--v3-text-muted)" }} />
                   </div>
