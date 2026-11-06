@@ -10,6 +10,7 @@ import {
   StatCard,
   PrimaryButton,
 } from "../../components/admin/ui"
+import { formatMoney, completedOrderTotalsByCurrency } from "./dashboardV3Data"
 
 const STATUS_MAP = {
   pending:   { label: "Pendiente",  tone: "warning" },
@@ -32,9 +33,8 @@ export default function Orders() {
   const totalOrders = orders.length
   const inProgressCount = orders.filter(o => o.status === "paid" || o.status === "shipped").length
   const pendingCount = orders.filter(o => o.status === "pending").length
-  const totalSpent = orders
-    .filter(o => o.status !== "cancelled")
-    .reduce((acc, o) => acc + (Number(o.total) || 0), 0)
+  const { totals: totalsByCurrency, unknown: unclassifiedOrders } = completedOrderTotalsByCurrency(orders)
+  const spentGroups = Object.entries(totalsByCurrency).filter(([, value]) => value > 0)
 
   const columns = [
     {
@@ -81,7 +81,7 @@ export default function Orders() {
       align: "right",
       render: o => (
         <span style={{ fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--admin-primary-text)" }}>
-          ${Number(o.total).toLocaleString("es-CL")}
+          {formatMoney(o.total, o.currency)}
         </span>
       ),
     },
@@ -156,9 +156,13 @@ export default function Orders() {
         <StatCard
           variant="light"
           Icon={DollarSign}
-          label="Total compras"
-          value={`$${totalSpent.toLocaleString("es-CL")}`}
-          sub="Inversión acumulada"
+          label="Compras pagadas"
+          value={spentGroups.length ? (
+            <span style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 15 }}>
+              {spentGroups.map(([code, value]) => <span key={code}>{formatMoney(value, code)}</span>)}
+            </span>
+          ) : "Sin pagos"}
+          sub={unclassifiedOrders.length ? `${unclassifiedOrders.length} orden(es) sin moneda válida` : "Totales independientes"}
         />
       </div>
 
