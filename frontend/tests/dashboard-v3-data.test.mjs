@@ -54,3 +54,16 @@ test("respeta puntos y movimientos reales, incluso cero", () => {
   assert.equal(items[0].points, 0)
   assert.deepEqual(asRows({ results: [{ id: 1 }] }), [{ id: 1 }])
 })
+
+import { readFileSync } from "node:fs"
+
+test("los dashboards V3 no contienen números comerciales demostrativos", () => {
+  const admin = readFileSync(new URL("../src/pages/admin/AdminDashboard.jsx", import.meta.url), "utf8")
+  const user = readFileSync(new URL("../src/pages/Dashboard.jsx", import.meta.url), "utf8")
+  for (const sample of [/18420000/, /Robert Fox/, /LP-9824/, /Meta: \$ 6\.000\.000/, /14\.2% crecimiento/, /24\.8%/]) {
+    assert.doesNotMatch(admin, sample)
+    assert.doesNotMatch(user, sample)
+  }
+  assert.match(admin, /adminSalesSeries\(data, analytics, period\)/)
+  assert.match(user, /loyaltyHistory\(loyalty\)/)
+})
