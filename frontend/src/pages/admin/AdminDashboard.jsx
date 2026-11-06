@@ -15,7 +15,6 @@ import {
   monthlyShare, count, formatMoney,
 } from "../dashboard/dashboardV3Data"
 
-const clp = (n) => formatMoney(n, "CLP")
 
 const ORDER_STATUS_MAP = {
   paid:      { label: "Pagado",     tone: "success" },
@@ -48,15 +47,17 @@ function formatShortDate(iso) {
 export default function AdminDashboard() {
   const navigate = useNavigate()
   const [period, setPeriod] = useState("30D")
+  const [currency, setCurrency] = useState("CLP")
+  const money = value => formatMoney(value, currency)
 
   const { data, isPending, isError, refetch, isFetching } = useQuery({
-    queryKey: ["admin-dashboard"],
-    queryFn: getAdminDashboard,
+    queryKey: ["admin-dashboard", currency],
+    queryFn: () => getAdminDashboard(currency),
     refetchInterval: 60000,
   })
-  const { data: analytics } = useQuery({
-    queryKey: ["admin-analytics"],
-    queryFn: getAnalytics,
+  const { data: analytics, isPending: analyticsLoading, isError: analyticsError } = useQuery({
+    queryKey: ["admin-analytics", currency],
+    queryFn: () => getAnalytics(currency),
     refetchInterval: 120000,
   })
 
@@ -103,15 +104,20 @@ export default function AdminDashboard() {
             <span>Panel de Analítica</span>
           </h1>
           <p className="v3-title-sub">
-            Rendimiento comercial en tiempo real, efectividad operativa y transacciones.
+            Indicadores comerciales por moneda, operaciones y alertas.
           </p>
         </div>
 
         <div className="v3-controls-row">
+          <label className="v3-currency-control">
+            <span className="v3-currency-label">Moneda</span>
+            <select aria-label="Moneda de reportes" value={currency} onChange={e => setCurrency(e.target.value)}>
+              <option value="CLP">CLP</option><option value="USD">USD</option><option value="ARS">ARS</option>
+            </select>
+          </label>
           <div className="v3-pill-btn">
             <Calendar size={14} />
-            <span>{monthLabel} · información actual</span>
-            <ChevronDown size={13} style={{ opacity: 0.6 }} />
+            <span>{monthLabel} · corte actual</span>
           </div>
 
           <button
@@ -163,8 +169,8 @@ export default function AdminDashboard() {
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start",
             background: "rgba(255, 255, 255, 0.08)", padding: "4px 12px", borderRadius: 999, fontSize: 11.5,
             color: "#E2E8F0", fontWeight: 600, border: "1px solid rgba(255, 255, 255, 0.1)" }}>
-            <span>Ventas pagadas del mes</span>
-            <span style={{ color: "var(--v3-accent)", fontWeight: 800 }}>{clp(rev.this_month)}</span>
+            <span>Ventas pagadas del mes · {currency}</span>
+            <span style={{ color: "var(--v3-accent)", fontWeight: 800 }}>{money(rev.this_month)}</span>
             <ChevronDown size={12} style={{ opacity: 0.7 }} />
           </div>
 
@@ -196,8 +202,8 @@ export default function AdminDashboard() {
               />
             </svg>
             <div className="v3-donut-value">
-              <span className="v3-donut-amount">{clp(rev.this_month)}</span>
-              <span className="v3-donut-sub">{share}% del total registrado</span>
+              <span className="v3-donut-amount">{money(rev.this_month)}</span>
+              <span className="v3-donut-sub">{share}% del total {currency}</span>
             </div>
           </div>
 
@@ -209,13 +215,13 @@ export default function AdminDashboard() {
           </div>
 
           <p style={{ fontSize: 12, color: "var(--v3-text-dark-muted)", textAlign: "center", margin: "14px 0 0", lineHeight: 1.4 }}>
-            Participación del mes en los ingresos históricos registrados. Sin meta de ventas configurada.
+            Participación del mes sobre ingresos históricos en {currency}.
           </p>
 
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "auto", paddingTop: 14,
             borderTop: "1px solid rgba(255, 255, 255, 0.08)", fontSize: 12 }}>
             <span style={{ color: "var(--v3-text-dark-muted)" }}>Total órdenes: <strong style={{ color: "#fff" }}>{count(orders.this_month)}</strong></span>
-            <span style={{ color: "var(--v3-text-dark-muted)" }}>Ticket prom: <strong style={{ color: "var(--v3-accent)" }}>{(avgOrderValue == null ? "Sin datos" : clp(avgOrderValue))}</strong></span>
+            <span style={{ color: "var(--v3-text-dark-muted)" }}>Ticket prom: <strong style={{ color: "var(--v3-accent)" }}>{(avgOrderValue == null ? "Sin datos" : money(avgOrderValue))}</strong></span>
           </div>
         </div>
 
@@ -406,14 +412,14 @@ export default function AdminDashboard() {
 
           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
             <span style={{ fontSize: 32, fontWeight: 800, color: "var(--v3-text-primary)", letterSpacing: "-0.03em", whiteSpace: "nowrap" }}>
-              {clp(rev.total)}
+              {money(rev.total)}
             </span>
-            <span className="v3-trend-badge">Serie de operaciones pagadas · {period}</span>
+            <span className="v3-trend-badge">Operaciones pagadas · {period} · {currency}</span>
           </div>
 
           {/* Series reales recibidas de dashboard/analytics; sin curvas ilustrativas. */}
           <div style={{ height: 180, width: "100%", marginTop: 8 }} role="img" aria-label={salesSeries.length ? `Ventas registradas: ${period}` : "Sin ventas registradas para este período"}>
-            {salesSeries.length ? (
+            {analyticsLoading ? <p role="status">Consultando serie de ventas…</p> : analyticsError ? <p role="alert">No se pudo cargar la serie de ventas.</p> : salesSeries.length ? (
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={salesSeries} margin={{ top: 10, left: 0, right: 8, bottom: 0 }}>
                   <defs>
@@ -423,7 +429,7 @@ export default function AdminDashboard() {
                     </linearGradient>
                   </defs>
                   <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#7D858E" }} axisLine={false} tickLine={false} minTickGap={18} />
-                  <Tooltip formatter={value => [clp(value), "Ventas"]} contentStyle={{ background: "#101214", border: "none", color: "#fff", borderRadius: 14 }} />
+                  <Tooltip formatter={value => [money(value), "Ventas"]} contentStyle={{ background: "#101214", border: "none", color: "#fff", borderRadius: 14 }} />
                   <Area type="monotone" dataKey="total" stroke="#101214" strokeWidth={2.5} fill="url(#v3RealSalesArea)" activeDot={{ r: 5, fill: "#1AFF6E" }} />
                 </AreaChart>
               </ResponsiveContainer>
@@ -453,7 +459,7 @@ export default function AdminDashboard() {
             </Link>
           </div>
 
-          {categoryMix.length ? (
+          {analyticsLoading ? <p role="status">Consultando categorías…</p> : analyticsError ? <p role="alert">No se pudieron cargar las categorías.</p> : categoryMix.length ? (
             <>
               <div style={{ display: "flex", gap: 3, height: 12, borderRadius: 6, overflow: "hidden", margin: "14px 0 20px", background: "var(--v3-surface-soft)" }}>
                 {categoryMix.map((cat, i) => (
