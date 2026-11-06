@@ -117,7 +117,7 @@ export default function Dashboard() {
             ==================================================================== */}
         <div
           className="v3-card-obsidian"
-          style={{ gridColumn: "span 4", minHeight: 460 }}
+          style={{ gridColumn: "span 4", gridRow: "span 2", minHeight: 460 }}
           data-testid="dash-alert"
         >
           <div className="v3-card-header">
