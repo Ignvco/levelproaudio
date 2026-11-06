@@ -6,7 +6,7 @@ import { useState, useRef, useCallback, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../../api/client"
 import { showToast } from "../../components/ui/ToastNotification"
-import { AdminPageHeader, PrimaryButton, StatCard, StatusBadge, IconButton, FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { AdminPageHeader, PrimaryButton, StatCard, StatusBadge, IconButton, FormModal, FormField, formInputStyle, ConfirmationModal, ErrorState, SecondaryButton } from "../../components/admin/ui"
 import { FolderTree, Layers, GitBranch, Pencil, Trash2 } from "lucide-react"
 
 // ── API helpers ───────────────────────────────────────────────
@@ -239,7 +239,7 @@ export default function AdminCategories() {
   const [localRoots, setLocalRoots] = useState(null)
   const queryClient                 = useQueryClient()
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-categories"],
     queryFn:  getCategories,
     onSuccess: (d) => {
@@ -267,7 +267,9 @@ export default function AdminCategories() {
       )
       queryClient.invalidateQueries({ queryKey: ["admin-categories"] })
     } catch (e) {
-      console.error("Error guardando orden:", e)
+      showToast("No pudimos guardar el orden completo. Revisa la posición de las categorías y vuelve a intentarlo.", "error")
+      setLocalRoots(null)
+      queryClient.invalidateQueries({ queryKey: ["admin-categories"] })
     }
   }, [queryClient])
 
@@ -339,12 +341,12 @@ export default function AdminCategories() {
       <AdminPageHeader
         eyebrow="LEVELPRO / CATÁLOGO"
         title="Categorías"
-        description={`${allCats.length} categorías · ${roots.length} principales · arrastrá ⠿ para reordenar`}
+        description={isLoading || isError ? "Organización del catálogo" : `${allCats.length} categorías · ${roots.length} principales · arrastra ⠿ para reordenar`}
         actions={<PrimaryButton onClick={() => setModal({})} testId="btn-new-category">+ Nueva categoría</PrimaryButton>}
       />
 
-      {/* KPI Strip */}
-      <div className="lp-kpi-strip">
+      {/* Conteos solo tras consulta exitosa. */}
+      {!isLoading && !isError && <div className="lp-kpi-strip">
         <StatCard
           variant="ink"
           Icon={FolderTree}
@@ -366,9 +368,13 @@ export default function AdminCategories() {
           value={subCount}
           sub="Anidadas bajo raíz"
         />
-      </div>
+      </div>}
 
-      {isLoading ? (
+      {isError ? (
+        <ErrorState title="No pudimos cargar las categorías"
+          description="No alteramos el orden existente si falla la consulta."
+          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
+      ) : isLoading ? (
         <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
           {[...Array(5)].map((_,i) =>
             <div key={i} className="skeleton" style={{ height:"52px", borderRadius: "14px" }} />
