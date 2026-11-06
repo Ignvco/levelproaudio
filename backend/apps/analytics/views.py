@@ -1959,9 +1959,14 @@ def admin_finance_summary(request):
             category=cat, currency=currency
         ).aggregate(t=Sum("amount"))["t"] or 0
 
-        balance = float(total_in) - float(total_out)
+        unclassified = (
+            IncomeDistribution.objects.filter(category=cat, income_record__currency__isnull=True).exists()
+            or Withdrawal.objects.filter(category=cat, currency__isnull=True).exists()
+        )
+        balance = None if unclassified else float(total_in) - float(total_out)
 
         summary.append({
+            "reconciliation_required": unclassified,
             "id":         str(cat.id),
             "name":       cat.name,
             "cat_type":   cat.cat_type,
@@ -2051,12 +2056,21 @@ def admin_finance_withdrawals(request):
     except Exception:
         return Response({"error": "Monto inválido."}, status=400)
 
-    if amount <= 0:
-        return Response({"error": "El monto debe ser mayor a 0."}, status=400)
+    if not amount.is_finite() or amount <= 0:
+        return Response({"error": "El monto debe ser finito y mayor a 0."}, status=400)
 
-    # No permitir retirar más de lo que la categoría realmente tiene
-    # disponible (antes no había ningún chequeo — se podía dejar el
-    # saldo en negativo con un typo).
+    # Historical withdrawals lack a trustworthy currency. Stop rather than
+    # treating an unreconciled category as available for spending again.
+    if (
+        Withdrawal.objects.filter(category=cat, currency__isnull=True).exists()
+        or IncomeDistribution.objects.filter(category=cat, income_record__currency__isnull=True).exists()
+    ):
+        return Response(
+            {"error": "Esta categoría contiene movimientos históricos sin moneda conciliada. No se pueden registrar retiros hasta su revisión."},
+            status=409,
+        )
+
+    # Balance and withdrawal in identical denomination.
     total_in  = IncomeDistribution.objects.filter(category=cat, income_record__currency=currency).aggregate(t=Sum("amount"))["t"] or Decimal("0")
     total_out = Withdrawal.objects.filter(category=cat, currency=currency).aggregate(t=Sum("amount"))["t"] or Decimal("0")
     balance   = Decimal(str(total_in)) - Decimal(str(total_out))
