@@ -1,5 +1,5 @@
 // pages/dashboard/MyServices.jsx
-import { useState } from "react"
+import { useEffect, useId, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import {
@@ -32,6 +32,29 @@ const STATUS_MAP = {
 }
 
 function RequestDetailModal({ req, onClose }) {
+  const titleId = useId()
+  const dialogRef = useRef(null)
+  const closeRef = useRef(onClose)
+  useEffect(() => { closeRef.current = onClose }, [onClose])
+  useEffect(() => {
+    if (!req) return
+    const previous = document.activeElement
+    dialogRef.current?.focus()
+    const onKey = event => {
+      if (event.key === "Escape") { closeRef.current?.(); return }
+      if (event.key !== "Tab") return
+      const buttons = [...(dialogRef.current?.querySelectorAll('button:not([disabled]), a[href]') || [])]
+      if (!buttons.length) { event.preventDefault(); return }
+      const first = buttons[0], last = buttons[buttons.length - 1]
+      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
+        event.preventDefault(); last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault(); first.focus()
+      }
+    }
+    document.addEventListener("keydown", onKey)
+    return () => { document.removeEventListener("keydown", onKey); previous?.focus?.() }
+  }, [req])
   if (!req) return null
   const statusMeta = STATUS_MAP[req.status] || { label: req.status_display || req.status || "Desconocido", status: "gray" }
 
@@ -67,6 +90,8 @@ function RequestDetailModal({ req, onClose }) {
     >
       <div
         className="au-card"
+        ref={dialogRef} tabIndex={-1}
+        role="dialog" aria-modal="true" aria-labelledby={titleId}
         onClick={(e) => e.stopPropagation()}
         style={{
           width: "100%",
@@ -87,14 +112,14 @@ function RequestDetailModal({ req, onClose }) {
           }}
         >
           <div style={{ minWidth: 0 }}>
-            <p style={{ fontSize: "16px", fontWeight: 700, color: "var(--admin-primary-text)", margin: 0 }}>
+            <p id={titleId} style={{ fontSize: "16px", fontWeight: 700, color: "var(--admin-primary-text)", margin: 0 }}>
               {req.service_name || "Solicitud de servicio"}
             </p>
             <p style={{ fontSize: "12px", color: "var(--admin-muted-text)", margin: "2px 0 0" }}>
               Enviada el {formatDate(req.created_at)}
             </p>
           </div>
-          <button
+          <button type="button"
             onClick={onClose}
             className="au-iconbtn"
             title="Cerrar"
