@@ -925,3 +925,92 @@
     justify-content: flex-start;
   }
 }
+
+/* ======================================================================
+   V3.2 — Accessibility, editorial density and responsive Bento refinements
+   Pure presentation: leaves route, API and business behavior unchanged.
+   ====================================================================== */
+.v3-shell .v3-card-obsidian .v3-card-title-dark {
+  color: #F8FAFC !important;
+  font-weight: 680;
+  letter-spacing: -0.015em;
+}
+.v3-shell .v3-card-obsidian .v3-micro-label-dark {
+  color: #C0C6CF;
+}
+.v3-shell .v3-card-obsidian .v3-donut-sub,
+.v3-shell .v3-card-obsidian .v3-text-dark-muted {
+  color: #B8C0C9;
+}
+.v3-shell :where(a, button, select, input, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #159A49;
+  outline-offset: 3px;
+}
+.v3-shell .v3-card-obsidian :where(a, button):focus-visible {
+  outline-color: #1AFF6E;
+}
+.v3-shell .v3-bento-grid > *,
+.v3-shell .v3-card,
+.v3-shell .v3-card-obsidian {
+  min-width: 0;
+}
+.v3-shell .v3-card,
+.v3-shell .v3-card-obsidian {
+  isolation: isolate;
+}
+.v3-shell .v3-card-accent {
+  box-shadow: 0 8px 24px rgba(26, 255, 110, .14);
+}
+.v3-shell .v3-card-accent:hover {
+  box-shadow: 0 12px 26px rgba(26, 255, 110, .24);
+}
+.v3-shell .v3-neon-trio {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(2, minmax(0, 1fr));
+  align-self: stretch;
+}
+.v3-shell .v3-neon-trio > .v3-card-accent:first-child {
+  grid-column: 1 / -1;
+}
+.v3-shell .v3-neon-trio > .v3-card-accent {
+  min-width: 0;
+  min-height: 0;
+}
+.v3-shell .v3-subheader,
+.v3-shell .v3-controls-row {
+  min-width: 0;
+}
+.v3-shell .v3-pill-btn,
+.v3-shell .v3-btn-action {
+  line-height: 1.3;
+}
+@media (max-width: 860px) {
+  .v3-shell .v3-neon-trio {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto !important;
+    align-self: auto;
+  }
+  .v3-shell .v3-neon-trio > .v3-card-accent {
+    min-height: 112px;
+  }
+}
+@media (max-width: 460px) {
+  .v3-shell .v3-floating-header { padding: 0 9px; }
+  .v3-shell .v3-nav-island { min-width: 0; }
+  .v3-shell .v3-subheader { padding-inline: 12px; }
+  .v3-shell .v3-bento-grid { padding-inline: 12px; gap: 12px; }
+  .v3-shell .v3-card,
+  .v3-shell .v3-card-obsidian { padding: 18px 16px; }
+  .v3-shell .v3-title { font-size: clamp(1.45rem, 6vw, 1.8rem); }
+  .v3-shell .v3-controls-row > * { max-width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v3-shell *,
+  .v3-shell *::before,
+  .v3-shell *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .v3-shell .v3-card-accent:hover { transform: none; }
+}
