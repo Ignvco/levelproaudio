@@ -36,9 +36,9 @@ export default function Dashboard() {
     refetch: refetchOrders,
   } = useQuery({ queryKey: ["orders"], queryFn: getOrders })
 
-  const { data: enrollData, isPending: enrollLoading } = useQuery({ queryKey: ["enrollments"], queryFn: getEnrollments })
-  const { data: loyalty, isPending: loyaltyLoading }    = useQuery({ queryKey: ["my-loyalty"], queryFn: getMyLoyalty })
-  const { data: brandsData } = useQuery({ queryKey: ["brands"], queryFn: getBrands, staleTime: 1000 * 60 * 5 })
+  const { data: enrollData, isPending: enrollLoading, isError: enrollError } = useQuery({ queryKey: ["enrollments"], queryFn: getEnrollments })
+  const { data: loyalty, isPending: loyaltyLoading, isError: loyaltyError }    = useQuery({ queryKey: ["my-loyalty"], queryFn: getMyLoyalty })
+  const { data: brandsData, isError: brandsError } = useQuery({ queryKey: ["brands"], queryFn: getBrands, staleTime: 1000 * 60 * 5 })
 
   if (ordersError) {
     return (
@@ -265,7 +265,7 @@ export default function Dashboard() {
 
           {enrollLoading ? (
             <p role="status" style={{ color: "var(--v3-text-muted)", fontSize: 13 }}>Consultando inscripciones…</p>
-          ) : latestEnrollment ? (
+          ) : enrollError ? <p role="alert" style={{ color: "var(--v3-text-muted)", fontSize: 13 }}>No se pudieron cargar tus cursos.</p> : latestEnrollment ? (
             <>
               <div className="v3-course-box">
                 <div className="v3-course-thumb"><Headphones size={26} /></div>
@@ -316,7 +316,7 @@ export default function Dashboard() {
                   {t.points == null ? "—" : `${t.type === "earn" ? "+" : t.type === "redeem" ? "−" : ""}${Math.abs(t.points).toLocaleString("es-CL")} pts`}
                 </span>
               </div>
-            )) : <p role="status" style={{ color: "var(--v3-text-muted)", fontSize: 13 }}>{loyaltyLoading ? "Consultando movimientos…" : "Aún no registras movimientos de puntos."}</p>}
+            )) : <p role="status" style={{ color: "var(--v3-text-muted)", fontSize: 13 }}>{loyaltyLoading ? "Consultando movimientos…" : loyaltyError ? "No pudimos cargar los movimientos." : "Aún no registras movimientos de puntos."}</p>}
           </div>
         </div>
 
@@ -339,7 +339,7 @@ export default function Dashboard() {
           </p>
 
           <div className="v3-brands-grid">
-            {displayBrands.length === 0 && <p role="status" style={{ color: "var(--v3-text-muted)", fontSize: 13 }}>No hay marcas disponibles en el catálogo.</p>}
+            {displayBrands.length === 0 && <p role="status" style={{ color: "var(--v3-text-muted)", fontSize: 13 }}>{brandsError ? "No pudimos cargar las marcas." : "No hay marcas disponibles en el catálogo."}</p>}
             {displayBrands.slice(0, 6).map((b) => {
               const brandLogo = b.logo_url || b.logo ? mediaUrl(b.logo_url || b.logo) : null
               return (
