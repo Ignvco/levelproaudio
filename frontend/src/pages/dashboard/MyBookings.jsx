@@ -43,7 +43,7 @@ export default function MyBookings() {
   const cancelMutation = useMutation({
     mutationFn: cancelBooking,
     onSuccess: () => {
-      queryClient.invalidateQueries(["my-bookings"])
+      queryClient.invalidateQueries({ queryKey: ["my-bookings"] })
       setToCancel(null)
       showToast("Reserva cancelada correctamente")
     },

@@ -32,7 +32,7 @@ function ModuleModal({ module, courseId, courses = [], onClose, onSave }) {
       ? updateAdminModule(module.id, payload)
       : createAdminModule(payload)
     req.then(() => {
-      queryClient.invalidateQueries(["admin-modules"])
+      queryClient.invalidateQueries({ queryKey: ["admin-modules"] })
       onSave?.(); onClose()
     }).catch(e => {
       setError(e?.response?.data?.detail || e?.response?.data?.course?.[0] || "Error al guardar.")
@@ -88,7 +88,7 @@ export default function AdminModules() {
   })
   const deleteMutation = useMutation({
     mutationFn: deleteAdminModule,
-    onSuccess:  () => { queryClient.invalidateQueries(["admin-modules"]); setToDelete(null) },
+    onSuccess:  () => { queryClient.invalidateQueries({ queryKey: ["admin-modules"] }); setToDelete(null) },
     onError:    (e) => {
       showToast(e?.response?.data?.detail || "No se pudo eliminar el módulo.", "error")
       setToDelete(null)
@@ -109,7 +109,7 @@ export default function AdminModules() {
           courseId={courseFilter}
           courses={courses}
           onClose={() => setModal(null)}
-          onSave={() => queryClient.invalidateQueries(["admin-modules"])}
+          onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-modules"] })}
         />
       )}
 

@@ -5,6 +5,8 @@ import api                                       from "../../api/client"        
 import { TrendingUp, ArrowUpFromLine, Wallet, Pencil, Trash2, Inbox }   from "lucide-react"
 import { StatCard, AdminPageHeader, SectionCard, DataTable, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle, ConfirmationModal }  from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
+import AccountingCurrencySelect from "../../components/admin/ui/AccountingCurrencySelect"
+import { formatCurrency } from "../../utils/accountingCurrency"
 import {
   getFinanceSummary, getFinanceCategories,
   createFinanceCategory, updateFinanceCategory, deleteFinanceCategory,
@@ -12,7 +14,7 @@ import {
   getAnalytics,
 } from "../../api/admin.api"
 
-const fmt   = n => `$${Number(n || 0).toLocaleString("es-CL")}`
+const fmt = (n, currency = "CLP") => formatCurrency(n, currency)
 const TABS  = [
   { key:"overview",    label:"Resumen"       },
   { key:"income",      label:"Ingresos"      },
@@ -28,7 +30,7 @@ function KpiCard({ label, value, sub, variant = "light", Icon }) {
 }
 
 // ── Barra de distribución ─────────────────────────────────────
-function DistributionBar({ categories }) {
+function DistributionBar({ categories, currency = "CLP" }) {
   if (!categories?.length) return null
   return (
     <div>
@@ -39,7 +41,7 @@ function DistributionBar({ categories }) {
           <div key={c.id} style={{ flex:Math.max(c.balance, 0),
             background:c.color, transition:"flex 0.5s ease",
             minWidth: c.balance > 0 ? "4px" : "0" }}
-            title={`${c.name}: ${fmt(c.balance)}`} />
+            title={`${c.name}: ${c.reconciliation_required ? "Conciliación requerida" : fmt(c.balance, currency)}`} />
         ))}
       </div>
       <div style={{ display:"flex", flexWrap:"wrap", gap:"8px" }}>
@@ -52,7 +54,7 @@ function DistributionBar({ categories }) {
             <span style={{ fontSize:"12px", color:"var(--text-2)" }}>
               {c.icon} {c.name}
             </span>
-            <span style={{ fontSize:"12px", fontWeight:700, color:"var(--text)" }}>{fmt(c.balance)}</span>
+            <span style={{ fontSize:"12px", fontWeight:700, color:"var(--text)" }}>{c.reconciliation_required ? "Por conciliar" : fmt(c.balance, currency)}</span>
           </div>
         ))}
       </div>
@@ -165,9 +167,10 @@ function CategoryModal({ category, onClose, onSave }) {
 }
 
 // ── Modal retiro ──────────────────────────────────────────────
-function WithdrawalModal({ categories, onClose, onSave }) {
+function WithdrawalModal({ categories, onClose, onSave, currency = "CLP" }) {
   const [form, setForm] = useState({
     category_id: categories[0]?.id || "",
+    currency,
     amount:      "",
     destination: "",
     notes:       "",
@@ -182,6 +185,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
     if (!form.amount || !form.destination) {
       setError("Monto y cuenta destino son requeridos."); return
     }
+    if (selectedCat?.reconciliation_required) { setError("Esta categoría requiere conciliación antes de registrar retiros."); return }
     if (selectedCat && parseFloat(form.amount) > selectedCat.balance) {
       setError(`Saldo insuficiente en ${selectedCat.name}. Disponible: ${fmt(selectedCat.balance)}`)
       return
@@ -197,7 +201,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
   return (
     <FormModal
       open
-      title="Registrar retiro"
+      title={`Registrar retiro · ${currency}`}
       onClose={onClose}
       onSave={handleSave}
       saving={saving}
@@ -212,7 +216,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
           style={formInputStyle}>
           {categories.map(c => (
             <option key={c.id} value={c.id}>
-              {c.icon} {c.name} — disponible: {fmt(c.balance)}
+              {c.icon} {c.name} — {c.reconciliation_required ? "Por conciliar" : `disponible: ${fmt(c.balance, currency)}`}
             </option>
           ))}
         </select>
@@ -226,7 +230,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
           </p>
           <p style={{ fontFamily:"var(--font-display)", fontSize:"1.4rem",
             color: selectedCat.balance > 0 ? "var(--accent)" : "var(--danger)" }}>
-            {fmt(selectedCat.balance)}
+            {selectedCat.reconciliation_required ? "Por conciliar" : fmt(selectedCat.balance, currency)}
           </p>
         </div>
       )}
@@ -255,14 +259,16 @@ function WithdrawalModal({ categories, onClose, onSave }) {
 // ── AdminFinance ──────────────────────────────────────────────
 export default function AdminFinance() {
   const [tab, setTab]   = useState("overview")
+  const [currency, setCurrency] = useState("CLP")
+  const money = value => fmt(value, currency)
   const [modal, setModal] = useState(null)
   const [toDeleteWithdrawal, setToDeleteWithdrawal] = useState(null)
   const [toDeleteCategory, setToDeleteCategory]     = useState(null)
   const queryClient     = useQueryClient()
 
-  const { data:summary, isLoading } = useQuery({
-    queryKey: ["admin-finance-summary"],
-    queryFn:  getFinanceSummary,
+  const { data:summary, isLoading, isError: financeError } = useQuery({
+    queryKey: ["admin-finance-summary", currency],
+    queryFn:  () => getFinanceSummary(currency),
     refetchInterval: 60000,
   })
   const { data:categories = [] } = useQuery({
@@ -270,26 +276,26 @@ export default function AdminFinance() {
     queryFn:  getFinanceCategories,
   })
   const { data:withdrawals = [] } = useQuery({
-    queryKey: ["admin-finance-withdrawals"],
-    queryFn:  getWithdrawals,
+    queryKey: ["admin-finance-withdrawals", currency],
+    queryFn:  () => getWithdrawals(currency),
     enabled:  tab === "withdrawals" || tab === "overview",
   })
   const { data:incomeByProduct } = useQuery({
-    queryKey: ["admin-finance-by-product"],
-    queryFn:  () => api.get("/admin/finance/by-product/").then(r => r.data),
+    queryKey: ["admin-finance-by-product", currency],
+    queryFn:  () => api.get("/admin/finance/by-product/", { params: { currency } }).then(r => r.data),
     enabled:  tab === "by_product",
   })
   const { data:analytics } = useQuery({
-    queryKey: ["admin-analytics"],
-    queryFn:  getAnalytics,
+    queryKey: ["admin-analytics", currency],
+    queryFn:  () => getAnalytics(currency),
     enabled:  tab === "analysis",
   })
 
   const deleteWithdrawalMutation = useMutation({
     mutationFn: deleteWithdrawal,
     onSuccess: () => {
-      queryClient.invalidateQueries(["admin-finance-summary"])
-      queryClient.invalidateQueries(["admin-finance-withdrawals"])
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-withdrawals"] })
       setToDeleteWithdrawal(null)
     },
     onError: (e) => {
@@ -300,8 +306,8 @@ export default function AdminFinance() {
   const deleteCatMutation = useMutation({
     mutationFn: deleteFinanceCategory,
     onSuccess: (data) => {
-      queryClient.invalidateQueries(["admin-finance-categories"])
-      queryClient.invalidateQueries(["admin-finance-summary"])
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-categories"] })
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
       setToDeleteCategory(null)
       if (data?.detail) showToast(data.detail)
     },
@@ -311,13 +317,15 @@ export default function AdminFinance() {
   })
 
   const onSave = () => {
-    queryClient.invalidateQueries(["admin-finance-summary"])
-    queryClient.invalidateQueries(["admin-finance-categories"])
-    queryClient.invalidateQueries(["admin-finance-withdrawals"])
+    queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
+    queryClient.invalidateQueries({ queryKey: ["admin-finance-categories"] })
+    queryClient.invalidateQueries({ queryKey: ["admin-finance-withdrawals"] })
   }
 
   const summaryCategories = summary?.summary      || []
   const recentIncome      = summary?.recent_income || []
+
+  if (financeError) return <div className="au-page"><div className="au-card" role="alert" style={{ padding: 24 }}>No se pudieron cargar los saldos. Verifica la conexión antes de operar.</div></div>
 
   if (isLoading) return (
     <div className="au-page">
@@ -339,7 +347,7 @@ export default function AdminFinance() {
         <CategoryModal category={modal.item} onClose={() => setModal(null)} onSave={onSave} />
       )}
       {modal==="withdrawal" && (
-        <WithdrawalModal categories={summaryCategories}
+        <WithdrawalModal categories={summaryCategories} currency={currency}
           onClose={() => setModal(null)} onSave={onSave} />
       )}
 
@@ -365,40 +373,48 @@ export default function AdminFinance() {
       />
 
       <AdminPageHeader eyebrow="LEVELPRO / NEGOCIO" title="Finanzas"
-        description="Distribución automática de ingresos, fondos disponibles, retiros y rentabilidad por SKU"
+        description={`Ingresos, retiros y estadísticas separados en ${currency}, sin conversiones automáticas`}
         actions={
           <>
-            <SecondaryButton onClick={() => setModal("withdrawal")} data-testid="register-withdrawal-btn">
-              ↑ Registrar retiro
-            </SecondaryButton>
-            <PrimaryButton onClick={() => setModal("category")} data-testid="new-category-btn">
-              + Nueva categoría
-            </PrimaryButton>
+            <AccountingCurrencySelect id="finance-currency" value={currency} onChange={code => { setCurrency(code); setTab("overview") }} />
+            {currency === "CLP" && (
+              <>
+                <SecondaryButton onClick={() => setModal("withdrawal")} disabled={summaryCategories.every(c => c.reconciliation_required || !(Number(c.balance) > 0))} data-testid="register-withdrawal-btn">
+                  Registrar retiro
+                </SecondaryButton>
+                <PrimaryButton onClick={() => setModal("category")} data-testid="new-category-btn">Nueva categoría</PrimaryButton>
+              </>
+            )}
           </>
         } />
 
       {/* KPIs */}
       <div className="lp-kpi-strip">
         <KpiCard variant="ink" label="Ingresos totales"
-          value={fmt(summary?.total_income)} sub="Desde todos los pagos aprobados"
+          value={money(summary?.total_income)} sub={`Ingresos identificados en ${currency}`}
           Icon={TrendingUp} />
         <KpiCard variant="light" label="Total retirado"
-          value={fmt(summary?.total_withdrawn)} sub="Suma de todos los retiros" Icon={ArrowUpFromLine} />
+          value={money(summary?.total_withdrawn)} sub={`Retiros identificados en ${currency}`} Icon={ArrowUpFromLine} />
         <KpiCard variant="primary" label="Balance neto"
-          value={fmt(summary?.net_balance)} sub="Ingresos − retiros"
+          value={summary?.reconciliation_required ? "Por conciliar" : money(summary?.net_balance)}
+          sub={summary?.reconciliation_required ? "Sin balance certificado: historial pendiente" : "Saldo verificado por moneda"}
           Icon={Wallet} />
       </div>
 
-      {/* Barra distribución */}
-      {summaryCategories.length > 0 && (
-        <SectionCard eyebrow="TESORERÍA INTERNA" title="Distribución de fondos disponibles">
-          <DistributionBar categories={summaryCategories} />
+      {(summary?.unclassified_income_count > 0 || summary?.unclassified_withdrawals_count > 0) && (
+        <div className="lp-callout lp-callout--warning" role="alert">
+          Existen {summary.unclassified_income_count} ingresos y {summary.unclassified_withdrawals_count} retiros históricos sin moneda identificada. Los importes de ingresos y retiros son únicamente los movimientos clasificados, no un saldo integral. Las categorías afectadas siguen bloqueadas hasta conciliar el historial.
+        </div>
+      )}
+      {currency === "CLP" && summaryCategories.length > 0 && (
+        <SectionCard eyebrow="TESORERÍA INTERNA" title="Distribución de fondos clasificados">
+          <DistributionBar categories={summaryCategories} currency={currency} />
         </SectionCard>
       )}
 
       {/* Tabs */}
       <div className="lp-seg-tabs">
-        {TABS.map(({ key, label }) => (
+        {TABS.filter(t => currency === "CLP" || t.key !== "categories").map(({ key, label }) => (
           <button
             key={key}
             type="button"
@@ -417,7 +433,7 @@ export default function AdminFinance() {
           {/* Cards por categoría */}
           <div style={{ display:"grid",
             gridTemplateColumns:"repeat(auto-fill, minmax(250px, 1fr))", gap:"14px" }}>
-            {summaryCategories.map(cat => (
+            {currency === "CLP" && summaryCategories.map(cat => (
               <div key={cat.id} className="au-acard">
                 <div className="au-acard__head">
                   <span className="au-acard__tag" style={{ display:"inline-flex", alignItems:"center", gap:"6px" }}>
@@ -429,8 +445,8 @@ export default function AdminFinance() {
 
                 <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"2px" }}>
                   {[
-                    { label:"Ingresado",  value: fmt(cat.total_in),        color:"#0F9940" },
-                    { label:"Retirado",   value: `−${fmt(cat.total_out)}`, color:"#EF4444" },
+                    { label:"Ingresado",  value: money(cat.total_in),        color:"#0F9940" },
+                    { label:"Retirado",   value: `−${money(cat.total_out)}`, color:"#EF4444" },
                   ].map(({ label, value, color }) => (
                     <div key={label} style={{ display:"flex", justifyContent:"space-between",
                       fontSize:"12.5px" }}>
@@ -445,7 +461,7 @@ export default function AdminFinance() {
                   <span style={{ fontFamily:"var(--font-display)", fontSize:"1.5rem", fontWeight:800,
                     letterSpacing:"-.02em", lineHeight:1,
                     color: cat.balance >= 0 ? "#0F9940" : "#EF4444" }}>
-                    {fmt(cat.balance)}
+                    {cat.reconciliation_required ? "Por conciliar" : money(cat.balance)}
                   </span>
                 </div>
               </div>
@@ -476,7 +492,7 @@ export default function AdminFinance() {
                   </div>
                   <span style={{ fontSize:"14px", fontWeight:700,
                     color:"var(--admin-danger)", flexShrink:0 }}>
-                    −{fmt(w.amount)}
+                    −{money(w.amount)}
                   </span>
                 </div>
               ))}
@@ -498,7 +514,7 @@ export default function AdminFinance() {
               </div>
             )},
             { key:"amount", header:"Monto", sortable:true, align:"right", render:income => (
-              <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{fmt(income.amount)}</span>
+              <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{money(income.amount)}</span>
             )},
             { key:"created_at", header:"Fecha", sortable:true, render:income => (
               <span style={{ color:"var(--admin-text-muted)" }}>{income.created_at}</span>
@@ -510,7 +526,7 @@ export default function AdminFinance() {
                     borderRadius:"100px", fontWeight:500,
                     color:d.category_color, background:`${d.category_color}14`,
                     border:`1px solid ${d.category_color}30` }}>
-                    {d.category_icon} {d.category_name}: {fmt(d.amount)}
+                    {d.category_icon} {d.category_name}: {money(d.amount)}
                   </span>
                 ))}
               </div>
@@ -541,7 +557,7 @@ export default function AdminFinance() {
               </div>
             )},
             { key:"amount", header:"Monto", sortable:true, align:"right", render:w => (
-              <span style={{ fontWeight:700, color:"var(--admin-danger)" }}>−{fmt(w.amount)}</span>
+              <span style={{ fontWeight:700, color:"var(--admin-danger)" }}>−{money(w.amount)}</span>
             )},
             { key:"created_at", header:"Fecha", sortable:true, render:w => (
               <div>
@@ -553,7 +569,7 @@ export default function AdminFinance() {
           data={withdrawals} getRowId={w => w.id}
           searchable searchKeys={["destination","category_name"]} searchPlaceholder="Buscar retiro..."
           toolbarExtra={
-            <PrimaryButton onClick={() => setModal("withdrawal")} data-testid="register-withdrawal-btn-2">
+            <PrimaryButton disabled={currency !== "CLP" || summaryCategories.every(c => c.reconciliation_required || !(Number(c.balance) > 0))} onClick={() => setModal("withdrawal")} data-testid="register-withdrawal-btn-2">
               + Registrar retiro
             </PrimaryButton>
           }
@@ -561,7 +577,7 @@ export default function AdminFinance() {
             { label:"Eliminar", icon:Trash2, danger:true, onClick:() => setToDeleteWithdrawal(w) },
           ]}
           emptyIcon={Inbox} emptyTitle="Sin retiros registrados"
-          emptyDesc="Registrá un retiro con el botón de arriba."
+          emptyDesc="Los retiros se muestran por moneda. Para registrar uno se requiere saldo de categoría conciliado."
           testId="withdrawals-table" />
       )}
 
@@ -642,14 +658,14 @@ export default function AdminFinance() {
             { key:"units_sold", header:"Vendidos", sortable:true, align:"right",
               render:p => <span style={{ color:"var(--admin-text)" }}>{p.units_sold} u.</span> },
             { key:"total_revenue", header:"Ingreso total", sortable:true, align:"right",
-              render:p => <span style={{ color:"var(--admin-primary-text)", fontWeight:600 }}>{fmt(p.total_revenue)}</span> },
+              render:p => <span style={{ color:"var(--admin-primary-text)", fontWeight:600 }}>{money(p.total_revenue)}</span> },
             { key:"total_cost", header:"Costo total", sortable:true, align:"right",
-              render:p => <span style={{ color:"var(--admin-danger)" }}>{fmt(p.total_cost)}</span> },
+              render:p => <span style={{ color:"var(--admin-danger)" }}>{p.total_cost == null ? "Costo CLP no comparable" : money(p.total_cost)}</span> },
             { key:"profit", header:"Utilidad real", sortable:true, align:"right", render:p => (
               <div style={{ textAlign:"right" }}>
                 <p style={{ fontSize:"13px", fontWeight:700,
-                  color: p.profit >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>{fmt(p.profit)}</p>
-                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{p.margin}% margen</p>
+                  color: p.profit >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>{p.profit == null ? "—" : money(p.profit)}</p>
+                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{p.margin == null ? "Requiere tasa de costo" : `${p.margin}% margen`}</p>
               </div>
             )},
           ]}
@@ -670,9 +686,9 @@ export default function AdminFinance() {
               {/* KPIs estratégicos */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:"14px" }}>
                 <StatCard Icon={TrendingUp} label="Ingresos totales"
-                  value={fmt(analytics.kpis?.total_revenue)} />
+                  value={money(analytics.kpis?.total_revenue)} />
                 <StatCard Icon={Wallet} label="Ticket promedio"
-                  value={fmt(analytics.kpis?.avg_order_value)} />
+                  value={money(analytics.kpis?.avg_order_value)} />
                 <StatCard Icon={Inbox} label="Clientes únicos"
                   value={analytics.kpis?.total_customers ?? 0} />
                 <StatCard Icon={TrendingUp} label="Tasa de repetición"
@@ -682,17 +698,17 @@ export default function AdminFinance() {
               {/* Ventas por mes */}
               <AnalysisBarSection title="Ventas por mes"
                 data={(analytics.sales_by_month || []).map(m => ({ label:m.month, value:m.total }))}
-                fmt={fmt} />
+                fmt={money} />
 
               {/* Ingresos por categoría */}
               <AnalysisBarSection title="Ingresos por categoría"
                 data={(analytics.revenue_by_category || []).map(c => ({ label:c.category, value:c.total }))}
-                fmt={fmt} />
+                fmt={money} />
 
               {/* Ingresos por método de pago */}
               <AnalysisBarSection title="Ingresos por método de pago"
                 data={(analytics.revenue_by_provider || []).map(p => ({ label:p.provider, value:p.total }))}
-                fmt={fmt} />
+                fmt={money} />
 
               {/* Órdenes por estado */}
               <AnalysisBarSection title="Órdenes por estado"

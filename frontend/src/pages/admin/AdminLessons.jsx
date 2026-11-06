@@ -300,7 +300,7 @@ export default function AdminLessons() {
   })
   const deleteMutation = useMutation({
     mutationFn: deleteAdminLesson,
-    onSuccess:  () => { queryClient.invalidateQueries(["admin-lessons"]); setToDelete(null) },
+    onSuccess:  () => { queryClient.invalidateQueries({ queryKey: ["admin-lessons"] }); setToDelete(null) },
     onError:    (e) => {
       showToast(e?.response?.data?.detail || "No se pudo eliminar la lección.", "error")
       setToDelete(null)
@@ -319,7 +319,7 @@ export default function AdminLessons() {
           moduleId={moduleFilter}
           modules={modules}
           onClose={() => setModal(null)}
-          onSave={() => queryClient.invalidateQueries(["admin-lessons"])}
+          onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-lessons"] })}
         />
       )}
 

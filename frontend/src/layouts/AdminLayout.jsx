@@ -8,13 +8,14 @@ import { getAdminDashboard } from "../api/admin.api"
 import AdminSearch from "../components/admin/AdminSearch"
 import { useSiteSettings } from "../hooks/useSiteSettings"
 import logoImg from "../assets/logo.png"
+import { formatCurrency } from "../utils/accountingCurrency"
 import {
   Search, Bell, Menu, X, ChevronDown, CheckCircle2,
   Clock, AlertTriangle, MessageSquare, ExternalLink, LogOut,
   LayoutDashboard, ShoppingBag, Package, GraduationCap, Wrench, Gift, Wallet, Settings
 } from "lucide-react"
 
-const clpN = (n) => `$${Math.round(n || 0).toLocaleString("es-CL")}`
+const clpN = (n, currency) => formatCurrency(n, currency)
 
 // Mapa de navegación agrupado
 const navGroups = [
@@ -217,7 +218,7 @@ function NotificationsBell() {
                           <p style={{ fontSize: 13, fontWeight: 600, margin: 0, color: "var(--v3-text-primary)" }}>#{o.short_id}</p>
                           <p style={{ fontSize: 11, margin: 0, color: "var(--v3-text-muted)" }}>{o.user_name || "Cliente"}</p>
                         </div>
-                        <span style={{ fontSize: 12.5, fontWeight: 700 }}>{clpN(o.total)}</span>
+                        <span style={{ fontSize: 12.5, fontWeight: 700 }}>{clpN(o.total, o.currency)}</span>
                       </div>
                     ))}
                   </div>

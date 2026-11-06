@@ -32,6 +32,7 @@ def create_income_on_order_paid(sender, instance, **kwargs):
             status="approved"
         ).first(),  # puede ser None si fue simulado
         amount      = Decimal(str(instance.total)),
+        currency    = instance.currency,
         description = f"Venta — Orden #{str(instance.id)[:8].upper()}",
         source      = "payment",
     )
@@ -57,7 +58,11 @@ def create_income_on_payment_approved(sender, instance, **kwargs):
     record = IncomeRecord.objects.create(
         payment     = instance,
         order       = instance.order,
-        amount      = Decimal(str(instance.amount)),
+        # Ingreso COMERCIAL: always use the order's original currency.
+        # The gateway Payment remains the source for the actual settlement
+        # denomination (e.g. PayPal USD for an Order in CLP).
+        amount      = Decimal(str(instance.order.total)),
+        currency    = instance.order.currency,
         description = f"Pago aprobado — Orden #{str(instance.order.id)[:8].upper()}",
         source      = "payment",
     )

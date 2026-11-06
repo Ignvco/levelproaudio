@@ -145,13 +145,13 @@ export default function AdminServices() {
 
   const reqMutation = useMutation({
     mutationFn: ({ id, data }) => updateRequestStatus(id, data),
-    onSuccess:  () => queryClient.invalidateQueries(["admin-requests"]),
+    onSuccess:  () => queryClient.invalidateQueries({ queryKey: ["admin-requests"] }),
     onError:    (err) => showToast(err?.response?.data?.error || "No se pudo actualizar la solicitud.", "error"),
   })
 
   const bookingMutation = useMutation({
     mutationFn: ({ id, status }) => updateBookingStatus(id, status),
-    onSuccess:  () => queryClient.invalidateQueries(["admin-bookings"]),
+    onSuccess:  () => queryClient.invalidateQueries({ queryKey: ["admin-bookings"] }),
     onError:    (err) => showToast(err?.response?.data?.error || "No se pudo actualizar la reserva.", "error"),
   })
 

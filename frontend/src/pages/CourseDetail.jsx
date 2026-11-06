@@ -194,7 +194,7 @@ export default function CourseDetail() {
     mutationFn: () => enrollCourse(slug),
     onSuccess: () => {
       setShowSuccess(true)
-      queryClient.invalidateQueries(["course", slug])
+      queryClient.invalidateQueries({ queryKey: ["course", slug] })
     },
     onError: (e) => showToast(e?.response?.data?.error || "No se pudo completar la inscripción. Intentá de nuevo.", "error"),
   })
@@ -237,8 +237,8 @@ export default function CourseDetail() {
     setCompletedIds(next)
     try {
       await markLessonComplete(lesson.id, !done)
-      queryClient.invalidateQueries(["course", slug])
-      queryClient.invalidateQueries(["course-progress", slug])
+      queryClient.invalidateQueries({ queryKey: ["course", slug] })
+      queryClient.invalidateQueries({ queryKey: ["course-progress", slug] })
     } catch { setCompletedIds(completedIds) }
   }
 

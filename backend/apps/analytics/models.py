@@ -51,6 +51,8 @@ class IncomeRecord(TimeStampedModel):
         null=True, blank=True, related_name="income_records"
     )
     amount      = models.DecimalField(max_digits=12, decimal_places=2)
+    # None marks ambiguous historical records awaiting explicit reconciliation.
+    currency    = models.CharField(max_length=3, default="CLP", null=True, blank=True)
     description = models.CharField(max_length=255, blank=True)
     source      = models.CharField(
         max_length=50,
@@ -74,6 +76,11 @@ class IncomeRecord(TimeStampedModel):
         se puede editar desde el admin — si alguien creaba la categoría
         "Utilidad neta" antes que las demás, el cálculo salía mal).
         """
+        # Product cost_price is stored in CLP. A foreign-currency sale cannot
+        # be allocated against CLP cost without an explicit documented FX rate.
+        # Keep the gross sale record, but do not invent category profits.
+        if (self.currency or "").upper() != "CLP":
+            return
         categories = DistributionCategory.objects.filter(is_active=True).order_by("order")
         fixed_and_percent = [c for c in categories if c.cat_type in ("fixed", "percent")]
         remainder_cats    = [c for c in categories if c.cat_type == "remainder"]
@@ -133,6 +140,7 @@ class IncomeDistribution(TimeStampedModel):
 
 
 class Withdrawal(TimeStampedModel):
+    currency    = models.CharField(max_length=3, default="CLP", null=True, blank=True)
     category    = models.ForeignKey(
         DistributionCategory, on_delete=models.PROTECT,
         related_name="withdrawals"
@@ -159,6 +167,7 @@ class WithdrawalDeletionLog(TimeStampedModel):
     el borrado la elimine para siempre.
     """
     original_id        = models.UUIDField()
+    currency           = models.CharField(max_length=3, null=True, blank=True)
     category_name       = models.CharField(max_length=100)
     amount               = models.DecimalField(max_digits=12, decimal_places=2)
     destination          = models.CharField(max_length=255)

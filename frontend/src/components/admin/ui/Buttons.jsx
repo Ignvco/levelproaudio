@@ -7,9 +7,13 @@ function base(variant, size, className) {
 
 function Btn({ variant, size, className, to, href, children, testId, loading, disabled, ...rest }) {
   const cls = base(variant, size, className)
+  if ((to || href) && (disabled || loading)) {
+    return <span className={cls} aria-disabled="true" data-testid={testId} {...rest}>{children}</span>
+  }
   if (to) return <Link to={to} className={cls} data-testid={testId} {...rest}>{children}</Link>
   if (href) return <a href={href} className={cls} data-testid={testId} {...rest}>{children}</a>
-  return <button className={cls} data-testid={testId} disabled={disabled || Boolean(loading)} {...rest}>{children}</button>
+  return <button type="button" className={cls} data-testid={testId}
+    aria-busy={Boolean(loading)} disabled={disabled || Boolean(loading)} {...rest}>{children}</button>
 }
 
 export const PrimaryButton   = (p) => <Btn variant="primary" {...p} />
@@ -19,6 +23,7 @@ export const DangerButton     = (p) => <Btn variant="danger" {...p} />
 export function IconButton({ children, ghost, danger, className, testId, ...rest }) {
   return (
     <button
+      type="button"
       className={`au-iconbtn ${ghost ? "au-iconbtn--ghost" : ""} ${danger ? "au-iconbtn--danger" : ""} ${className || ""}`.trim()}
       data-testid={testId}
       {...rest}

@@ -5,6 +5,8 @@ import { getAdminPayments, updatePaymentStatus } from "../../api/admin.api"
 import { StatCard, DataTable, StatusBadge, AdminPageHeader, SecondaryButton } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
 import { Inbox, Bell } from "lucide-react"
+import AccountingCurrencySelect from "../../components/admin/ui/AccountingCurrencySelect"
+import { formatCurrency, formatGatewayAmount } from "../../utils/accountingCurrency"
 
 const STATUS = {
   pending:   { label:"Pendiente",   color:"#D97706" },
@@ -26,10 +28,10 @@ function StatusSelector({ paymentId, current }) {
   const mutation    = useMutation({
     mutationFn: (s) => updatePaymentStatus(paymentId, s),
     onSuccess:  () => {
-      queryClient.invalidateQueries(["admin-payments"])
-      queryClient.invalidateQueries(["admin-orders"])
-      queryClient.invalidateQueries(["admin-dashboard"])
-      queryClient.invalidateQueries(["admin-finance-summary"])
+      queryClient.invalidateQueries({ queryKey: ["admin-payments"] })
+      queryClient.invalidateQueries({ queryKey: ["admin-orders"] })
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] })
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
     },
     onError: (e) => {
       showToast(e?.response?.data?.detail || "No se pudo actualizar el estado del pago. Verificá antes de asumir que se marcó.", "error")
@@ -57,10 +59,11 @@ function StatusSelector({ paymentId, current }) {
 
 export default function AdminPayments() {
   const [statusFilter, setStatusFilter] = useState("")
+  const [currency, setCurrency] = useState("CLP")
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-payments", statusFilter],
-    queryFn:  () => getAdminPayments(statusFilter ? { status:statusFilter } : {}),
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ["admin-payments", statusFilter, currency],
+    queryFn:  () => getAdminPayments({ ...(statusFilter && { status: statusFilter }), currency }),
   })
   const payments = data?.results || []
 
@@ -76,7 +79,7 @@ export default function AdminPayments() {
     { key:"provider", header:"Método",
       render:p => <span style={{ color:"var(--admin-text-muted)" }}>{PROVIDERS[p.provider] || p.provider}</span> },
     { key:"amount", header:"Monto", sortable:true, align:"right",
-      render:p => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>${Number(p.amount).toLocaleString("es-CL")}</span> },
+      render:p => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{formatGatewayAmount(p)}</span> },
     { key:"status", header:"Estado",
       render:p => {
         const isPendingTransfer = p.status === "pending" &&
@@ -108,10 +111,8 @@ export default function AdminPayments() {
       <AdminPageHeader
         eyebrow="LEVELPRO / VENTAS"
         title="Pagos"
-        description={data?.total_approved > 0
-          ? `Total aprobado: $${Number(data.total_approved).toLocaleString("es-CL")}`
-          : "Conciliación de transacciones, pasarelas y transferencias"}
-        actions={<SecondaryButton to="/admin/payment-methods" size="sm">Métodos de pago</SecondaryButton>}
+        description={`Aprobado en ${currency}: ${formatCurrency(data?.total_approved ?? 0, currency)} · cobros en moneda de pasarela`}
+        actions={<><AccountingCurrencySelect id="admin-payments-currency" value={currency} onChange={setCurrency} /><SecondaryButton to="/admin/payment-methods" size="sm">Métodos de pago</SecondaryButton></>}
       />
 
       {pendingTransfers.length > 0 && (
@@ -157,7 +158,7 @@ export default function AdminPayments() {
       </div>
 
       <DataTable
-        columns={columns} data={payments} loading={isLoading}
+        columns={columns} data={payments} loading={isLoading} error={isError}
         getRowId={p => p.id}
         searchable searchKeys={["order_email", "order_id"]} searchPlaceholder="Buscar por email u orden..."
         filters={[{

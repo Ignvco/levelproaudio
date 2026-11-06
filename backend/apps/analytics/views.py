@@ -44,6 +44,7 @@ from apps.products.importers_extended import (
     import_courses_from_excel, import_courses_from_csv,
 )
 from apps.analytics.models import DistributionCategory, IncomeRecord, IncomeDistribution, Withdrawal
+from apps.analytics.currency import requested_currency, currency_error, summarize_by_currency, amount
 from apps.services.serializers import ServiceDetailSerializer
 
 # ═══════════════════════════════════════════════════════════
@@ -712,13 +713,17 @@ def admin_lesson_video_upload_url(request):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def dashboard_overview(request):
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
     now         = timezone.now()
     today       = now.date()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     last_30     = now - timedelta(days=30)
     last_7      = now - timedelta(days=7)
 
-    paid_orders = Order.objects.filter(status__in=["paid", "shipped", "completed"])
+    all_paid_orders = Order.objects.filter(status__in=["paid", "shipped", "completed"])
+    paid_orders = all_paid_orders.filter(currency=currency)
 
     total_revenue      = paid_orders.aggregate(t=Sum("total"))["t"] or 0
     revenue_this_month = paid_orders.filter(
@@ -757,7 +762,7 @@ def dashboard_overview(request):
 
     top_products = (
         OrderItem.objects
-        .filter(order__status__in=["paid", "shipped", "completed"])
+        .filter(order__status__in=["paid", "shipped", "completed"], order__currency=currency)
         .values("product_name")
         .annotate(total_sold=Sum("quantity"), revenue=Sum("price"))
         .order_by("-total_sold")[:5]
@@ -784,6 +789,8 @@ def dashboard_overview(request):
         pass
 
     return Response({
+        "currency": currency,
+        "revenue_by_currency": summarize_by_currency(all_paid_orders),
         "revenue": {
             "total":        float(total_revenue),
             "this_month":   float(revenue_this_month),
@@ -823,6 +830,7 @@ def dashboard_overview(request):
                 "id":      str(o.id),
                 "email":   o.email,
                 "total":   float(o.total),
+                "currency": o.currency,
                 "status":  o.status,
                 "created": o.created_at.strftime("%Y-%m-%d %H:%M"),
             }
@@ -837,6 +845,7 @@ def dashboard_overview(request):
                     "user_name":  f"{o.user.first_name} {o.user.last_name}".strip()
                                   if o.user else "Invitado",
                     "total":      float(o.total),
+                    "currency":   o.currency,
                     "created":    o.created_at.strftime("%d/%m %H:%M"),
                     "items_count": o.items.count(),
                 }
@@ -873,9 +882,10 @@ def admin_users(request):
     data = []
     for u in users[:100]:
         orders_count = Order.objects.filter(user=u).count()
-        total_spent  = Order.objects.filter(
+        paid_by_user = Order.objects.filter(
             user=u, status__in=["paid", "shipped", "completed"]
-        ).aggregate(t=Sum("total"))["t"] or 0
+        )
+        spend_by_currency = summarize_by_currency(paid_by_user)
         data.append({
             "id":           str(u.id),
             "email":        u.email,
@@ -884,7 +894,9 @@ def admin_users(request):
             "date_joined":  u.date_joined.strftime("%Y-%m-%d"),
             "is_active":    u.is_active,
             "orders_count": orders_count,
-            "total_spent":  float(total_spent),
+            "total_spent": spend_by_currency["CLP"],  # Legacy CLP-only field
+            "total_spent_currency": "CLP",
+            "spend_by_currency": spend_by_currency,
         })
 
     return Response({"results": data, "count": users.count()})
@@ -963,8 +975,11 @@ def admin_delete_enrollment(request, enrollment_id):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_payments(request):
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
     status_filter = request.query_params.get("status")
-    payments = Payment.objects.select_related("order").order_by("-created_at")
+    payments = Payment.objects.select_related("order").filter(currency=currency).order_by("-created_at")
 
     if status_filter:
         payments = payments.filter(status=status_filter)
@@ -985,7 +1000,8 @@ def admin_payments(request):
         status="approved"
     ).aggregate(t=Sum("amount"))["t"] or 0
 
-    return Response({"results": data, "total_approved": float(total_approved)})
+    return Response({"results": data, "currency": currency, "total_approved": float(total_approved),
+                     "approved_by_currency": summarize_by_currency(Payment.objects.filter(status="approved"), "amount")})
 
 @api_view(["PATCH"])
 @permission_classes([IsAdminOrStaff])
@@ -1449,12 +1465,16 @@ def admin_enrollments(request):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def analytics_full(request):
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
     now      = timezone.now()
     last_12m = now - timedelta(days=365)
 
-    paid_orders = Order.objects.filter(
+    all_paid_orders = Order.objects.filter(
         status__in=["paid", "shipped", "completed"]
     )
+    paid_orders = all_paid_orders.filter(currency=currency)
 
     sales_by_month = (
         paid_orders.filter(created_at__gte=last_12m)
@@ -1480,7 +1500,7 @@ def analytics_full(request):
     )
 
     revenue_by_provider = (
-        Payment.objects.filter(status="approved")
+        Payment.objects.filter(status="approved", currency=currency)
         .values("provider")
         .annotate(total=Sum("amount"), count=Count("id"))
         .order_by("-total")
@@ -1497,10 +1517,14 @@ def analytics_full(request):
         OrderItem.objects
         .filter(
             order__status__in=["paid", "shipped", "completed"],
+            order__currency=currency,
             product__isnull=False
         )
         .values("product__category__name")
-        .annotate(total=Sum("price"), count=Sum("quantity"))
+        .annotate(
+            total=Sum(ExpressionWrapper(F("price") * F("quantity"), output_field=DecimalField())),
+            count=Sum("quantity"),
+        )
         .order_by("-total")[:8]
     )
 
@@ -1523,6 +1547,8 @@ def analytics_full(request):
     )
 
     return Response({
+        "currency": currency,
+        "revenue_by_currency": summarize_by_currency(all_paid_orders),
         "kpis": {
             "total_revenue":    float(total_revenue),
             "avg_order_value":  float(avg_order_value),
@@ -1919,24 +1945,31 @@ def admin_finance_category_detail(request, cat_id):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_summary(request):
-    """GET /api/v1/admin/finance/summary/"""
-    
+    """GET /api/v1/admin/finance/summary/?currency=CLP|USD|ARS"""
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
 
     categories = DistributionCategory.objects.filter(is_active=True)
     summary = []
 
     for cat in categories:
         total_in  = IncomeDistribution.objects.filter(
-            category=cat
+            category=cat, income_record__currency=currency
         ).aggregate(t=Sum("amount"))["t"] or 0
 
         total_out = Withdrawal.objects.filter(
-            category=cat
+            category=cat, currency=currency
         ).aggregate(t=Sum("amount"))["t"] or 0
 
-        balance = float(total_in) - float(total_out)
+        unclassified = (
+            IncomeDistribution.objects.filter(category=cat, income_record__currency__isnull=True).exists()
+            or Withdrawal.objects.filter(category=cat, currency__isnull=True).exists()
+        )
+        balance = None if unclassified else float(total_in) - float(total_out)
 
         summary.append({
+            "reconciliation_required": unclassified,
             "id":         str(cat.id),
             "name":       cat.name,
             "cat_type":   cat.cat_type,
@@ -1949,20 +1982,21 @@ def admin_finance_summary(request):
         })
 
     # Totales generales
-    total_income = IncomeRecord.objects.aggregate(
+    total_income = IncomeRecord.objects.filter(currency=currency).aggregate(
         t=Sum("amount"))["t"] or 0
-    total_withdrawn = Withdrawal.objects.aggregate(
+    total_withdrawn = Withdrawal.objects.filter(currency=currency).aggregate(
         t=Sum("amount"))["t"] or 0
 
     # Últimos ingresos
     
-    recent = IncomeRecord.objects.select_related(
+    recent = IncomeRecord.objects.filter(currency=currency).select_related(
         "order", "payment"
     ).order_by("-created_at")[:20]
 
     recent_data = [{
         "id":          str(r.id),
         "amount":      float(r.amount),
+        "currency":    r.currency,
         "description": r.description,
         "source":      r.source,
         "created_at":  r.created_at.strftime("%d/%m/%Y %H:%M"),
@@ -1974,11 +2008,27 @@ def admin_finance_summary(request):
         } for d in r.distributions.all()],
     } for r in recent]
 
+    unclassified_income_count = IncomeRecord.objects.filter(currency__isnull=True).count()
+    unclassified_withdrawals_count = Withdrawal.objects.filter(currency__isnull=True).count()
+    reconciliation_required = bool(
+        unclassified_income_count or unclassified_withdrawals_count
+        or any(row["reconciliation_required"] for row in summary)
+    )
+
     return Response({
+        "currency": currency,
+        "reconciliation_required": reconciliation_required,
+        "unclassified_income_count": unclassified_income_count,
+        "unclassified_withdrawals_count": unclassified_withdrawals_count,
+        "income_by_currency": {code: float(amount(IncomeRecord.objects.filter(currency=code))) for code in ("CLP", "USD", "ARS")},
+        "withdrawals_by_currency": {code: float(amount(Withdrawal.objects.filter(currency=code))) for code in ("CLP", "USD", "ARS")},
         "summary":          summary,
         "total_income":     float(total_income),
         "total_withdrawn":  float(total_withdrawn),
-        "net_balance":      float(total_income) - float(total_withdrawn),
+        # Do not display an apparently definitive balance while unclassified
+        # historical entries could belong to the selected currency.
+        "net_balance":      None if reconciliation_required else float(total_income) - float(total_withdrawn),
+        "net_balance_identified_only": float(total_income) - float(total_withdrawn),
         "recent_income":    recent_data,
     })
 
@@ -1986,16 +2036,19 @@ def admin_finance_summary(request):
 @api_view(["GET", "POST"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_withdrawals(request):
-    """GET/POST /api/v1/admin/finance/withdrawals/"""
-    
+    """GET/POST /api/v1/admin/finance/withdrawals/ (currency-aware)."""
     if request.method == "GET":
-        ws = Withdrawal.objects.select_related("category", "created_by").order_by("-created_at")[:50]
+        currency = requested_currency(request)
+        if currency is None:
+            return currency_error()
+        ws = Withdrawal.objects.filter(currency=currency).select_related("category", "created_by").order_by("-created_at")[:50]
         return Response([{
             "id":            str(w.id),
             "category_name": w.category.name,
             "category_color":w.category.color,
             "category_icon": w.category.icon,
             "amount":        float(w.amount),
+            "currency":      w.currency,
             "destination":   w.destination,
             "notes":         w.notes,
             "reference":     w.reference,
@@ -2003,7 +2056,10 @@ def admin_finance_withdrawals(request):
             "created_at":    w.created_at.strftime("%d/%m/%Y %H:%M"),
         } for w in ws])
 
-    # POST — registrar retiro
+    # POST: amount and category balance are always in the SAME denomination.
+    currency = str(request.data.get("currency") or "CLP").strip().upper()
+    if currency not in ("CLP", "USD", "ARS"):
+        return currency_error()
     try:
         cat = DistributionCategory.objects.get(id=request.data.get("category_id"))
     except DistributionCategory.DoesNotExist:
@@ -2014,14 +2070,23 @@ def admin_finance_withdrawals(request):
     except Exception:
         return Response({"error": "Monto inválido."}, status=400)
 
-    if amount <= 0:
-        return Response({"error": "El monto debe ser mayor a 0."}, status=400)
+    if not amount.is_finite() or amount <= 0:
+        return Response({"error": "El monto debe ser finito y mayor a 0."}, status=400)
 
-    # No permitir retirar más de lo que la categoría realmente tiene
-    # disponible (antes no había ningún chequeo — se podía dejar el
-    # saldo en negativo con un typo).
-    total_in  = IncomeDistribution.objects.filter(category=cat).aggregate(t=Sum("amount"))["t"] or Decimal("0")
-    total_out = Withdrawal.objects.filter(category=cat).aggregate(t=Sum("amount"))["t"] or Decimal("0")
+    # Historical withdrawals lack a trustworthy currency. Stop rather than
+    # treating an unreconciled category as available for spending again.
+    if (
+        Withdrawal.objects.filter(category=cat, currency__isnull=True).exists()
+        or IncomeDistribution.objects.filter(category=cat, income_record__currency__isnull=True).exists()
+    ):
+        return Response(
+            {"error": "Esta categoría contiene movimientos históricos sin moneda conciliada. No se pueden registrar retiros hasta su revisión."},
+            status=409,
+        )
+
+    # Balance and withdrawal in identical denomination.
+    total_in  = IncomeDistribution.objects.filter(category=cat, income_record__currency=currency).aggregate(t=Sum("amount"))["t"] or Decimal("0")
+    total_out = Withdrawal.objects.filter(category=cat, currency=currency).aggregate(t=Sum("amount"))["t"] or Decimal("0")
     balance   = Decimal(str(total_in)) - Decimal(str(total_out))
     if amount > balance:
         return Response(
@@ -2032,6 +2097,7 @@ def admin_finance_withdrawals(request):
     w = Withdrawal.objects.create(
         category    = cat,
         amount      = amount,
+        currency    = currency,
         destination = request.data.get("destination", ""),
         notes       = request.data.get("notes", ""),
         reference   = request.data.get("reference", ""),
@@ -2054,6 +2120,7 @@ def admin_finance_withdrawal_delete(request, withdrawal_id):
     # Guarda el rastro ANTES de borrar — si no, se pierde para siempre.
     WithdrawalDeletionLog.objects.create(
         original_id          = w.id,
+        currency             = w.currency,
         category_name         = w.category.name,
         amount                 = w.amount,
         destination            = w.destination,
@@ -2067,12 +2134,15 @@ def admin_finance_withdrawal_delete(request, withdrawal_id):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_by_product(request):
-    """GET /api/v1/admin/finance/by-product/"""
-    
+    """GET /api/v1/admin/finance/by-product/?currency=CLP|USD|ARS"""
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
 
     # Solo órdenes pagadas
     items = OrderItem.objects.filter(
-        order__status__in=["paid", "shipped", "completed"]
+        order__status__in=["paid", "shipped", "completed"],
+        order__currency=currency,
     ).select_related("product").values(
         "product__name", "product__sku", "product__cost_price"
     ).annotate(
@@ -2085,23 +2155,26 @@ def admin_finance_by_product(request):
 
     results = []
     for item in items:
+        # Product.cost_price is in CLP. For USD/ARS orders, cost and
+        # margin are intentionally unavailable until an FX/cost ledger exists.
         cost_price    = item["product__cost_price"] or Decimal("0")
-        total_cost    = cost_price * item["units_sold"]
-        profit        = item["total_revenue"] - total_cost
-        margin        = round(float(profit) / float(item["total_revenue"]) * 100, 1) \
-                        if item["total_revenue"] else 0
+        total_cost    = cost_price * item["units_sold"] if currency == "CLP" else None
+        profit        = item["total_revenue"] - total_cost if total_cost is not None else None
+        margin        = (round(float(profit) / float(item["total_revenue"]) * 100, 1)
+                         if profit is not None and item["total_revenue"] else None)
 
         results.append({
             "product_name":  item["product__name"],
             "sku":           item["product__sku"],
             "units_sold":    item["units_sold"],
             "total_revenue": float(item["total_revenue"]),
-            "total_cost":    float(total_cost),
-            "profit":        float(profit),
+            "currency":      currency,
+            "total_cost":    float(total_cost) if total_cost is not None else None,
+            "profit":        float(profit) if profit is not None else None,
             "margin":        margin,
         })
 
-    return Response({"results": results})    
+    return Response({"results": results, "currency": currency})    
 
 
 # ── INVENTARIO INTELIGENTE ────────────────────────────────────
@@ -2176,7 +2249,10 @@ def inventory_alerts(request):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def inventory_rotation(request):
-    """Productos más y menos vendidos con rotación"""
+    """Producto/unidades e ingresos en moneda de compra, sin mezclar."""
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
     from apps.orders.models import OrderItem
     from apps.products.models import Product
     from django.db.models import Sum, Count, F
@@ -2188,6 +2264,7 @@ def inventory_rotation(request):
 
     ventas = OrderItem.objects.filter(
         order__created_at__gte=hace_30,
+        order__currency=currency,
         order__status__in=["paid", "shipped", "completed"]
     ).values(
         "product__id", "product__name", "product__stock",
@@ -2205,6 +2282,7 @@ def inventory_rotation(request):
             "stock_actual":     v["product__stock"],
             "unidades_vendidas":v["unidades_vendidas"] or 0,
             "ingresos":         float(v["ingresos"] or 0),
+            "currency":         currency,
         })
 
     return Response(data)
@@ -2239,7 +2317,10 @@ def inventory_value_by_category(request):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def executive_dashboard(request):
-    """Dashboard ejecutivo — KPIs del negocio para mobile"""
+    """Dashboard ejecutivo — indicadores de ventas en moneda seleccionada."""
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
 
     hoy        = timezone.now()
     hoy_inicio = hoy.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -2252,6 +2333,7 @@ def executive_dashboard(request):
     def get_ventas(desde, hasta=None):
         qs = Order.objects.filter(
             status__in=["paid", "shipped", "completed"],
+            currency=currency,
             created_at__gte=desde,
         )
         if hasta:
@@ -2283,6 +2365,7 @@ def executive_dashboard(request):
         "id":     str(o.id),
         "status": o.status,
         "total":  float(o.total),
+        "currency": o.currency,
         "email":  o.email,
         "hora":   o.created_at.strftime("%H:%M"),
     } for o in ordenes_hoy]
@@ -2306,6 +2389,7 @@ def executive_dashboard(request):
         utilidad_mes = IncomeDistribution.objects.filter(
             category=utilidad_cat,
             income_record__order__created_at__gte=mes_inicio,
+            income_record__currency=currency,
         ).aggregate(t=Sum("amount"))["t"] or 0
     except Exception as e:
         import logging
@@ -2319,6 +2403,7 @@ def executive_dashboard(request):
         dia_fin    = dia_inicio + timedelta(days=1)
         v = Order.objects.filter(
             status__in=["paid", "shipped", "completed"],
+            currency=currency,
             created_at__gte=dia_inicio,
             created_at__lt=dia_fin,
         ).aggregate(total=Sum("total"), count=Count("id"))
@@ -2333,6 +2418,7 @@ def executive_dashboard(request):
     from apps.orders.models import OrderItem
     top_productos = OrderItem.objects.filter(
         order__status__in=["paid", "shipped", "completed"],
+        order__currency=currency,
         order__created_at__gte=mes_inicio,
     ).values("product_name").annotate(
         unidades=Sum("quantity"),
@@ -2340,6 +2426,7 @@ def executive_dashboard(request):
     ).order_by("-ingresos")[:3]
 
     return Response({
+        "currency": currency,
         "ventas": {
             "hoy":            float(ventas_hoy["total"] or 0),
             "hoy_count":      ventas_hoy["count"] or 0,
@@ -2350,7 +2437,10 @@ def executive_dashboard(request):
             "var_dia":        variacion(ventas_hoy["total"], ventas_ayer["total"]),
             "var_mes":        variacion(ventas_mes["total"], ventas_mes_ant["total"]),
         },
-        "utilidad_mes":    float(utilidad_mes),
+        # Product costs are cataloged in CLP. Foreign-currency profit is
+        # unknown until explicit matching cost and FX provenance exists.
+        "utilidad_mes":    float(utilidad_mes) if currency == "CLP" else None,
+        "utilidad_estado": "estimacion_costos_catalogo_CLP" if currency == "CLP" else "sin_costos_comparables",
         "inventario": {
             "criticos":  criticos,
             "sin_stock": sin_stock,

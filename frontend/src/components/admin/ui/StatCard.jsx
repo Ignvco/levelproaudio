@@ -59,5 +59,7 @@ export function StatCard({
   )
 
   if (to) return <Link to={to} className={cls} data-testid={testId}>{inner}</Link>
-  return <div className={cls} onClick={onClick} data-testid={testId}>{inner}</div>
+  if (onClick) return <button type="button" className={cls} onClick={onClick} data-testid={testId}
+    style={{ width: "100%", textAlign: "left", cursor: "pointer", font: "inherit" }}>{inner}</button>
+  return <div className={cls} data-testid={testId}>{inner}</div>
 }
