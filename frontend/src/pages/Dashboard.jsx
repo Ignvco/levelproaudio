@@ -1,6 +1,5 @@
 // pages/Dashboard.jsx — LevelPro Audio Dashboard Experience V3
 // High-Fidelity Editorial Bento & Minimalist Fintech UI (Inspired by Lumin - Referencia D)
-import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { Link } from "react-router-dom"
 import {
@@ -29,7 +28,6 @@ const ORDER_STATUS_MAP = {
 
 export default function Dashboard() {
   const { user } = useAuthStore()
-  const [period, setPeriod] = useState("1M")
 
   const {
     data: ordersData,
@@ -77,7 +75,7 @@ export default function Dashboard() {
 
   const userName = user?.first_name || user?.email?.split("@")[0] || "Cliente LevelPro"
   const displayBrands = asRows(brandsData).filter(b => b?.name && b.is_active !== false)
-  const pointMovements = loyaltyHistory(loyalty, period)
+  const pointMovements = loyaltyHistory(loyalty)
   const monthLabel = new Intl.DateTimeFormat("es-CL", { month: "long", year: "numeric" }).format(new Date())
 
   return (
@@ -265,109 +263,61 @@ export default function Dashboard() {
             </Link>
           </div>
 
-          <div className="v3-course-box">
-            <div className="v3-course-thumb">
-              <Headphones size={26} />
-            </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <p style={{ fontSize: 13, fontWeight: 700, margin: 0, color: "var(--v3-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {courseTitle}
-              </p>
-              <p style={{ fontSize: 11.5, color: "var(--v3-text-muted)", margin: "3px 0 0" }}>
-                Módulo 3: Compresión Paralela
-              </p>
-            </div>
-          </div>
+          {enrollLoading ? (
+            <p role="status" style={{ color: "var(--v3-text-muted)", fontSize: 13 }}>Consultando inscripciones…</p>
+          ) : latestEnrollment ? (
+            <>
+              <div className="v3-course-box">
+                <div className="v3-course-thumb"><Headphones size={26} /></div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <p style={{ fontSize: 13, fontWeight: 700, margin: 0, color: "var(--v3-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{courseTitle || "Curso inscrito"}</p>
+                  <p style={{ fontSize: 11.5, color: "var(--v3-text-muted)", margin: "3px 0 0" }}>Inscripción registrada en LevelPro Academy</p>
+                </div>
+              </div>
+              <div style={{ margin: "18px 0 10px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
+                  <span style={{ color: "var(--v3-text-muted)" }}>Progreso del curso</span>
+                  <strong style={{ color: "var(--btn-green)" }}>{courseProgress}%</strong>
+                </div>
+                <div className="v3-prog-bar"><div className="v3-prog-fill-brand" style={{ width: `${courseProgress}%` }} /></div>
+              </div>
+            </>
+          ) : <p role="status" style={{ color: "var(--v3-text-muted)", fontSize: 13 }}>No tienes cursos inscritos todavía.</p>}
 
-          <div style={{ margin: "18px 0 10px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
-              <span style={{ color: "var(--v3-text-muted)" }}>Progreso global</span>
-              <strong style={{ color: "var(--btn-green)" }}>{courseProgress}%</strong>
-            </div>
-            <div className="v3-prog-bar">
-              <div className="v3-prog-fill-brand" style={{ width: `${courseProgress}%` }} />
-            </div>
-          </div>
-
-          <Link
-            to="/dashboard/courses"
-            className="v3-pill-btn"
-            style={{ width: "100%", justifyContent: "center", marginTop: "auto" }}
-          >
+          <Link to="/dashboard/courses" className="v3-pill-btn" style={{ width: "100%", justifyContent: "center", marginTop: "auto" }}>
             <Play size={14} fill="currentColor" />
-            <span>Reanudar clase</span>
+            <span>{latestEnrollment ? "Ver mis clases" : "Explorar Academia"}</span>
           </Link>
         </div>
 
-        {/* ====================================================================
-            CARD 6: WHITE BENTO CARD — TU ACTIVIDAD LEVELPRO (Spline Curve)
-            ==================================================================== */}
+        {/* CARD 6: Datos reales de puntos y movimientos, conservando la tarjeta Bento. */}
         <div className="v3-card" style={{ gridColumn: "span 4" }}>
           <div className="v3-card-header">
             <div>
-              <p className="v3-micro-label">ACTIVIDAD EN LA PLATAFORMA</p>
-              <h2 className="v3-card-title" style={{ marginTop: 2 }}>Puntos & Desempeño</h2>
+              <p className="v3-micro-label">ACTIVIDAD EN LEVELPRO CLUB</p>
+              <h2 className="v3-card-title" style={{ marginTop: 2 }}>Puntos & Movimientos</h2>
             </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              {["1S", "1M", "1A"].map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setPeriod(t)}
-                  style={{
-                    padding: "3px 10px",
-                    borderRadius: 999,
-                    border: "none",
-                    fontSize: 11.5,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    background: period === t ? "var(--v3-obsidian)" : "transparent",
-                    color: period === t ? "#FFFFFF" : "var(--v3-text-muted)",
-                  }}
-                >
-                  {t}
-                </button>
-              ))}
-            </div>
+            <Link to="/dashboard/loyalty" className="v3-circle-btn" title="Ver puntos"><ArrowUpRight size={16} /></Link>
           </div>
-
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10, margin: "4px 0 8px" }}>
-            <span style={{ fontSize: 28, fontWeight: 800, color: "var(--v3-text-primary)", letterSpacing: "-0.03em" }}>
-              +380 pts
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, margin: "4px 0 14px" }}>
+            <span style={{ fontSize: 28, fontWeight: 800, color: "var(--v3-text-primary)" }}>
+              {loyaltyLoading || points == null ? "—" : count(points).toLocaleString("es-CL")} pts
             </span>
-            <span className="v3-trend-badge v3-trend-up">
-              ↑ 18.5%
-            </span>
+            <span style={{ fontSize: 12, color: "var(--v3-text-muted)" }}>Saldo disponible</span>
           </div>
-
-          {/* Spline Curve Wave */}
-          <div style={{ height: 110, width: "100%", marginTop: 6 }}>
-            <svg width="100%" height="110" viewBox="0 0 320 110" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="userSplineGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#1AFF6E" stopOpacity="0.25" />
-                  <stop offset="100%" stopColor="#1AFF6E" stopOpacity="0.0" />
-                </linearGradient>
-              </defs>
-              <path
-                d="M0,85 C50,70 80,95 130,55 C180,20 220,70 270,35 C290,20 310,25 320,15 L320,110 L0,110 Z"
-                fill="url(#userSplineGrad)"
-              />
-              <path
-                d="M0,85 C50,70 80,95 130,55 C180,20 220,70 270,35 C290,20 310,25 320,15"
-                fill="none"
-                stroke="#1A9D4E"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-              />
-              <circle cx="270" cy="35" r="4.5" fill="#1AFF6E" stroke="#0C0D0E" strokeWidth="2" />
-            </svg>
+          <div className="v3-micro-list">
+            {pointMovements.length ? pointMovements.map(t => (
+              <div className="v3-micro-item" key={t.key}>
+                <div style={{ minWidth: 0 }}>
+                  <p style={{ fontSize: 12.5, fontWeight: 700, margin: 0, color: "var(--v3-text-primary)" }}>{t.label}</p>
+                  <p style={{ fontSize: 11, color: "var(--v3-text-muted)", margin: "3px 0 0" }}>{t.date}</p>
+                </div>
+                <span style={{ fontSize: 12.5, fontWeight: 750, color: t.type === "earn" ? "var(--btn-green)" : "var(--v3-text-primary)" }}>
+                  {t.points == null ? "—" : `${t.type === "earn" ? "+" : t.type === "redeem" ? "−" : ""}${Math.abs(t.points).toLocaleString("es-CL")} pts`}
+                </span>
+              </div>
+            )) : <p role="status" style={{ color: "var(--v3-text-muted)", fontSize: 13 }}>{loyaltyLoading ? "Consultando movimientos…" : "Aún no registras movimientos de puntos."}</p>}
           </div>
-
-          <p style={{ fontSize: 11.5, color: "var(--v3-text-muted)", margin: "8px 0 0", textAlign: "right" }}>
-            Has acumulado un 18% más de actividad este mes.
-          </p>
         </div>
 
         {/* ====================================================================
@@ -385,10 +335,11 @@ export default function Dashboard() {
           </div>
 
           <p style={{ fontSize: 12, color: "var(--v3-text-muted)", margin: "0 0 14px" }}>
-            Distribución oficial autorizada, garantía directa y servicio técnico en Chile y Argentina.
+            Marcas disponibles para explorar en el catálogo LevelPro Audio.
           </p>
 
           <div className="v3-brands-grid">
+            {displayBrands.length === 0 && <p role="status" style={{ color: "var(--v3-text-muted)", fontSize: 13 }}>No hay marcas disponibles en el catálogo.</p>}
             {displayBrands.slice(0, 6).map((b) => {
               const brandLogo = b.logo_url || b.logo ? mediaUrl(b.logo_url || b.logo) : null
               return (
@@ -416,7 +367,7 @@ export default function Dashboard() {
                       {b.name}
                     </div>
                     <div style={{ fontSize: 10, color: "#1A9D4E", fontWeight: 700, letterSpacing: "0.04em" }}>
-                      PARTNER OFICIAL
+                      VER EQUIPOS
                     </div>
                   </div>
                   <ChevronRight size={14} style={{ color: "var(--v3-text-muted)", opacity: 0.6 }} />
