@@ -10,6 +10,7 @@ import {
   StatCard,
   PrimaryButton,
   SecondaryButton,
+  ErrorState,
 } from "../../components/admin/ui"
 
 async function handleDownloadCertificate(e, enrollmentId, courseSlug) {
@@ -32,7 +33,7 @@ async function handleDownloadCertificate(e, enrollmentId, courseSlug) {
 
 export default function MyCourses() {
   const navigate = useNavigate()
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["enrollments"],
     queryFn: getEnrollments,
   })
@@ -52,7 +53,7 @@ export default function MyCourses() {
       <AdminPageHeader
         eyebrow="LEVELPRO / ACADEMIA"
         title="Mis cursos"
-        description={`${totalEnrollments} curso${totalEnrollments !== 1 ? "s" : ""} registrado${totalEnrollments !== 1 ? "s" : ""} en tu aula virtual`}
+        description={isLoading || isError ? "Tu biblioteca de aprendizaje" : `${totalEnrollments} curso${totalEnrollments !== 1 ? "s" : ""} registrado${totalEnrollments !== 1 ? "s" : ""} en tu aula virtual`}
         breadcrumbs={[
           { label: "Inicio", to: "/dashboard" },
           { label: "Mis cursos" },
@@ -64,8 +65,8 @@ export default function MyCourses() {
         }
       />
 
-      {/* KPI Strip */}
-      <div className="lp-grid-kpi">
+      {/* KPIs sobre información confirmada por la API. */}
+      {!isLoading && !isError && <div className="lp-grid-kpi">
         <StatCard
           variant="ink"
           Icon={GraduationCap}
@@ -87,7 +88,13 @@ export default function MyCourses() {
           value={completedCount}
           sub={`${completedCount} certificado${completedCount !== 1 ? "s" : ""} disponible${completedCount !== 1 ? "s" : ""}`}
         />
-      </div>
+      </div>}
+
+      {!isLoading && isError && (
+        <ErrorState title="No pudimos cargar tus cursos"
+          description="Tus inscripciones siguen guardadas. Intenta consultar nuevamente."
+          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
+      )}
 
       {isLoading && (
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -97,7 +104,7 @@ export default function MyCourses() {
         </div>
       )}
 
-      {!isLoading && enrollments.length === 0 && (
+      {!isLoading && !isError && enrollments.length === 0 && (
         <div className="au-card" style={{ padding: "64px 24px", textAlign: "center" }}>
           <div
             style={{
@@ -127,7 +134,7 @@ export default function MyCourses() {
         </div>
       )}
 
-      {!isLoading && enrollments.length > 0 && (
+      {!isLoading && !isError && enrollments.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           {enrollments.map(enrollment => {
             const course = enrollment.course || {}
@@ -141,7 +148,8 @@ export default function MyCourses() {
                 role="button"
                 tabIndex={0}
                 onClick={() => navigate(`/academy/${course.slug || ""}`)}
-                onKeyDown={e => { if (e.key === "Enter") navigate(`/academy/${course.slug || ""}`) }}
+                onKeyDown={e => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); navigate(`/academy/${course.slug || ""}`) } }}
+                aria-label={`Abrir curso ${course.title || "inscrito"}`}
                 className="au-card"
                 style={{
                   padding: "18px 22px",
