@@ -16,7 +16,7 @@ function EnrollModal({ courses, users, onClose, onSave }) {
   const mutation = useMutation({
     mutationFn: createAdminEnrollment,
     onSuccess: () => {
-      queryClient.invalidateQueries(["admin-enrollments"])
+      queryClient.invalidateQueries({ queryKey: ["admin-enrollments"] })
       onSave?.(); onClose()
     },
     onError: (e) => setError(e?.response?.data?.detail || "Error al inscribir."),
@@ -86,7 +86,7 @@ export default function AdminEnrollments() {
         <EnrollModal
           courses={courses} users={users}
           onClose={() => setModal(false)}
-          onSave={() => queryClient.invalidateQueries(["admin-enrollments"])}
+          onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-enrollments"] })}
         />
       )}
 
