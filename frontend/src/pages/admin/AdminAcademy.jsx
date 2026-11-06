@@ -6,6 +6,7 @@ import {
   updateAdminCourse, deleteAdminCourse,
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
+import { formatCurrency } from "../../utils/accountingCurrency"
 import { showToast } from "../../components/ui/ToastNotification"
 import { Link } from "react-router-dom"
 import { Pencil, Trash2, GraduationCap, BookOpen, Users } from "lucide-react"
@@ -259,7 +260,7 @@ export default function AdminAcademy() {
                 <p className="au-acard__sub">{course.total_lessons || 0} lecciones · {course.enrollment_count || 0} inscritos</p>
                 <div className="au-acard__foot">
                   <span className="au-acard__price">
-                    {course.is_free ? "Gratis" : `$${Number(course.price).toLocaleString("es-CL")}`}
+                    {course.is_free ? "Gratis" : formatCurrency(course.price, "CLP")}
                   </span>
                   <div className="au-acard__actions">
                     <Link to={`/admin/academy/modules?course=${course.id}`}
