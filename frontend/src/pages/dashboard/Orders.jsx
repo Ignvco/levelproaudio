@@ -22,7 +22,7 @@ const STATUS_MAP = {
 
 export default function Orders() {
   const navigate = useNavigate()
-  const { data, isLoading } = useQuery({ queryKey: ["orders"], queryFn: getOrders })
+  const { data, isLoading, isError } = useQuery({ queryKey: ["orders"], queryFn: getOrders })
 
   const rawOrders = data?.results ?? data
   const orders = (Array.isArray(rawOrders) ? rawOrders : []).map(o => ({
@@ -125,7 +125,7 @@ export default function Orders() {
       <AdminPageHeader
         eyebrow="LEVELPRO / MI CUENTA"
         title="Mis pedidos"
-        description={`${totalOrders} pedido${totalOrders !== 1 ? "s" : ""} registrado${totalOrders !== 1 ? "s" : ""} en tu cuenta`}
+        description={isLoading || isError ? "Consulta tus compras y su seguimiento" : `${totalOrders} pedido${totalOrders !== 1 ? "s" : ""} registrado${totalOrders !== 1 ? "s" : ""} en tu cuenta`}
         breadcrumbs={[
           { label: "Inicio", to: "/dashboard" },
           { label: "Mis pedidos" },
@@ -137,8 +137,8 @@ export default function Orders() {
         }
       />
 
-      {/* KPI Strip */}
-      <div className="lp-grid-kpi">
+      {/* No presentar cero como total comercial durante errores de consulta. */}
+      {!isLoading && !isError && <div className="lp-grid-kpi">
         <StatCard
           variant="ink"
           Icon={Package}
@@ -167,12 +167,13 @@ export default function Orders() {
           value={<span style={{ fontSize: 16, lineHeight: 1.4 }}>{spentLabels.length ? spentLabels.join(" · ") : "—"}</span>}
           sub="Compras pagadas, separadas por moneda"
         />
-      </div>
+      </div>}
 
       <DataTable
         columns={columns}
         data={orders}
         loading={isLoading}
+        error={isError}
         getRowId={o => o.id}
         searchable
         searchKeys={["short_id"]}
