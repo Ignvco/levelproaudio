@@ -86,3 +86,20 @@ export function firstOrderItem(order) {
   const list = asRows(order?.items)
   return list[0]?.product_name || "Compra LevelPro Audio"
 }
+
+/** Native-currency totals. Never turn CLP+USD+ARS into one number. */
+export function completedOrderTotalsByCurrency(orders) {
+  const totals = { CLP: 0, USD: 0, ARS: 0 }
+  const unknown = []
+  for (const order of asRows(orders)) {
+    if (!["paid", "shipped", "completed"].includes(order?.status)) continue
+    const code = String(order?.currency || "").toUpperCase()
+    const amount = finiteNumber(order?.total)
+    if (!Object.prototype.hasOwnProperty.call(totals, code) || amount === null) {
+      unknown.push({ id: order?.id, currency: code || null, amount })
+      continue
+    }
+    totals[code] += amount
+  }
+  return { totals, unknown }
+}
