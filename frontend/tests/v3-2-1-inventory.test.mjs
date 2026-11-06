@@ -48,4 +48,15 @@ test("category preview tracks unidentified costs separately from known cost", ()
   assert.equal(mics.missingCostCount, 1)
   assert.equal(mics.saleValue, 65000)
   assert.equal(groups.find(g => g.name === "Cables").missingCostCount, 0)
+  assert.equal(mics.missingPriceCount, 0)
+  assert.equal(groups.find(g => g.name === "Cables").missingPriceCount, 0)
+})
+
+test("missing sale price is distinct from a genuine zero", () => {
+  const [g] = groupInventoryPreview([
+    { category: { name: "Video" }, stock: 1, cost_price: 10, price: null },
+    { category: { name: "Video" }, stock: 1, cost_price: 10, price: 0 },
+  ])
+  assert.equal(g.missingPriceCount, 1)
+  assert.equal(g.saleValue, 0)
 })
