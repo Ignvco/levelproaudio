@@ -10,7 +10,7 @@ import { showToast } from "../../components/ui/ToastNotification"
 import { Link } from "react-router-dom"
 import { Pencil, Trash2, GraduationCap, BookOpen, Users } from "lucide-react"
 import BulkImportPanel from "../../components/admin/BulkImportPanel"
-import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, FormField, formInputStyle, ConfirmationModal, ErrorState } from "../../components/admin/ui"
 
 function CourseModal({ course, onClose, onSave }) {
   const [form, setForm]       = useState({
@@ -122,7 +122,7 @@ export default function AdminAcademy() {
   const [toDelete, setToDelete] = useState(null)
   const queryClient       = useQueryClient()
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-courses"], queryFn: getAdminCourses,
   })
   const deleteMutation = useMutation({
@@ -170,7 +170,7 @@ export default function AdminAcademy() {
       <AdminPageHeader
         eyebrow="LEVELPRO / ACADEMIA"
         title="Academia"
-        description={`${courses.length} cursos registrados · ${publishedCount} publicados`}
+        description={isLoading || isError ? "Administración de cursos y contenidos" : `${courses.length} cursos cargados · ${publishedCount} publicados en la vista`}
         actions={
           <>
             <SecondaryButton to="/admin/academy/modules" size="sm">Módulos</SecondaryButton>
@@ -182,30 +182,30 @@ export default function AdminAcademy() {
         }
       />
 
-      {/* KPI Strip */}
-      <div className="lp-kpi-strip">
+      {/* KPI calculados solo con información confirmada. */}
+      {!isLoading && !isError && <div className="lp-kpi-strip">
         <StatCard
           variant="ink"
           Icon={GraduationCap}
           label="Cursos publicados"
           value={publishedCount}
-          sub={`${courses.length} cursos totales`}
+          sub={`${courses.length} cursos en esta vista`}
         />
         <StatCard
           variant="primary"
           Icon={BookOpen}
-          label="Total lecciones"
+          label="Lecciones (vista)"
           value={totalLessons}
           sub="Contenido formativo activo"
         />
         <StatCard
           variant="light"
           Icon={Users}
-          label="Inscritos totales"
+          label="Inscritos (vista)"
           value={totalEnrollments}
           sub="Matrículas acumuladas"
         />
-      </div>
+      </div>}
 
       {/* Bulk import */}
       <BulkImportPanel
@@ -217,7 +217,11 @@ export default function AdminAcademy() {
         testId="bulk-import-courses"
       />
 
-      {isLoading ? (
+      {isError ? (
+        <ErrorState title="No pudimos cargar la Academia"
+          description="No mostraremos un catálogo vacío cuando falle la consulta."
+          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
+      ) : isLoading ? (
         <div style={{ display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "14px" }}>
           {[...Array(4)].map((_, i) => (
@@ -262,9 +266,9 @@ export default function AdminAcademy() {
                       className="au-pill-btn au-pill-btn--edit" style={{ flex: "none", padding: "8px 13px", textDecoration: "none" }}>
                       Módulos →
                     </Link>
-                    <button onClick={() => setModal(course)} title="Editar"
+                    <button type="button" aria-label={`Editar curso ${course.title}`} onClick={() => setModal(course)} title="Editar"
                       className="au-pill-btn au-pill-btn--edit" style={{ flex: "none", padding: "8px 10px" }}><Pencil size={13} /></button>
-                    <button title="Eliminar"
+                    <button type="button" aria-label={`Eliminar curso ${course.title}`} title="Eliminar"
                       onClick={() => setToDelete(course)}
                       className="au-pill-btn au-pill-btn--del" style={{ flex: "none", padding: "8px 10px" }}><Trash2 size={13} /></button>
                   </div>
