@@ -22,7 +22,7 @@ steps:
         cd ..
         bash scripts/test-order-inventory-postgres.sh
 
-  - name: "node:22"
+  - name: "node:24.19.0"
     id: "frontend-qa"
     waitFor: ["-"]
     entrypoint: "bash"
@@ -31,9 +31,11 @@ steps:
       - |
         set -euo pipefail
         cd frontend
+        npm install --global npm@11.9.0 --no-audit --no-fund
         npm ci
         npm run lint
         npm run test:unit
         npm run build
+        npm run check:bundle
 
 timeout: "1800s"
