@@ -5,7 +5,7 @@
 // (12 páginas con el mismo bloque de "position: fixed" copiado y pegado).
 // Ahora el layout vive en un solo lugar; el contenido del formulario sigue
 // siendo específico de cada página (children).
-import { useEffect } from "react"
+import { useEffect, useId, useRef } from "react"
 import { PrimaryButton, SecondaryButton } from "./Buttons"
 
 export function FormModal({
@@ -13,11 +13,15 @@ export function FormModal({
   saving = false, saveLabel = "Guardar", cancelLabel = "Cancelar",
   error, maxWidth = "440px", scrollableBody = false, testId,
 }) {
+  const titleId = useId()
+  const dialogRef = useRef(null)
   useEffect(() => {
     if (!open) return
+    const previous = document.activeElement
+    dialogRef.current?.focus()
     const h = (e) => e.key === "Escape" && onClose?.()
     window.addEventListener("keydown", h)
-    return () => window.removeEventListener("keydown", h)
+    return () => { window.removeEventListener("keydown", h); previous?.focus?.() }
   }, [open, onClose])
 
   if (!open) return null
@@ -32,20 +36,23 @@ export function FormModal({
         }}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
+        ref={dialogRef}
+        tabIndex={-1}
+        aria-labelledby={titleId}
         aria-modal="true"
       >
         <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)",
           display: "flex", justifyContent: "space-between", alignItems: "center",
           flexShrink: 0 }}>
-          <p style={{ fontSize: "15px", fontWeight: 500 }}>{title}</p>
-          <button onClick={onClose} aria-label="Cerrar" style={{ background: "none",
+          <p id={titleId} style={{ fontSize: "15px", fontWeight: 700, color: "var(--admin-text)" }}>{title}</p>
+          <button type="button" onClick={onClose} aria-label="Cerrar" style={{ background: "none",
             border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: "22px" }}>×</button>
         </div>
 
         <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px",
           ...(scrollableBody ? { flex: 1, overflowY: "auto" } : {}) }}>
           {error && (
-            <div style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
+            <div role="alert" style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
               background: "rgba(255,77,77,0.08)", border: "1px solid rgba(255,77,77,0.2)",
               color: "var(--danger)", fontSize: "13px" }}>
               {error}
