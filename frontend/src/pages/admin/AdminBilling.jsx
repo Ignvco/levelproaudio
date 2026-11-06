@@ -14,6 +14,7 @@ import {
 } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
 import { formatCurrency } from "../../utils/accountingCurrency"
+import { initialTaxDocumentAmount } from "../../utils/billingViewData"
 import { ExternalLink, FileText, Inbox, CheckCircle2, Clock3 } from "lucide-react"
 
 const SII_URL = "https://www4.sii.cl/consdcvinternetui/"
@@ -34,7 +35,7 @@ function RecordModal({ row, onClose }) {
     numero_externo: doc?.numero_externo || "",
     fecha_emision:  doc?.fecha_emision  || "",
     estado:         doc?.estado         || "pendiente",
-    monto:          doc?.monto ?? (row.currency === "CLP" ? row.total : ""),
+    monto:          initialTaxDocumentAmount(doc, row),
     observaciones:  doc?.observaciones  || "",
   })
 
