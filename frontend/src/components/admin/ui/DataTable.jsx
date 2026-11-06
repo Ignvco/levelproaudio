@@ -136,14 +136,17 @@ export function DataTable({
                   )}
                   {columns.map((c) => (
                     <th key={c.key || c.header} className={c.sortable ? "is-sortable" : ""}
-                      style={{ width: c.width, textAlign: c.align }}
-                      onClick={() => c.sortable && c.key && toggleSort(c.key)}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                        {c.header}
-                        {c.sortable && (sort.key === c.key
-                          ? (sort.dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />)
-                          : <ArrowUpDown size={12} style={{ opacity: .4 }} />)}
-                      </span>
+                      scope="col" aria-sort={c.sortable ? sort.key === c.key ? sort.dir === "asc" ? "ascending" : "descending" : "none" : undefined}
+                      style={{ width: c.width, textAlign: c.align }}>
+                      {c.sortable && c.key ? (
+                        <button type="button" className="au-table-sort-btn" onClick={() => toggleSort(c.key)}
+                          style={{ display: "inline-flex", alignItems: "center", gap: 5, border: 0, background: "transparent", font: "inherit", color: "inherit", cursor: "pointer", padding: "3px 0" }}>
+                          {c.header}
+                          {sort.key === c.key
+                            ? sort.dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />
+                            : <ArrowUpDown size={12} style={{ opacity: .4 }} />}
+                        </button>
+                      ) : <span>{c.header}</span>}
                     </th>
                   ))}
                   {rowActions && <th style={{ width: 56 }} />}
@@ -153,7 +156,13 @@ export function DataTable({
                 {pageRows.map((row) => {
                   const id = getRowId(row)
                   return (
-                    <tr key={id} onClick={() => onRowClick?.(row)} style={{ cursor: onRowClick ? "pointer" : "default" }} data-testid={`${testId}-row`}>
+                    <tr key={id} onClick={() => onRowClick?.(row)}
+                      tabIndex={onRowClick ? 0 : undefined}
+                      onKeyDown={e => {
+                        if (!onRowClick || (e.target !== e.currentTarget)) return
+                        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRowClick(row) }
+                      }}
+                      style={{ cursor: onRowClick ? "pointer" : "default" }} data-testid={`${testId}-row`}>
                       {selectable && (
                         <td onClick={(e) => e.stopPropagation()}>
                           <input type="checkbox" className="au-checkbox" checked={selected.has(id)} onChange={() => toggleRow(id)} aria-label="Seleccionar fila" />
