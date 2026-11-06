@@ -44,6 +44,7 @@ from apps.products.importers_extended import (
     import_courses_from_excel, import_courses_from_csv,
 )
 from apps.analytics.models import DistributionCategory, IncomeRecord, IncomeDistribution, Withdrawal
+from apps.analytics.currency import requested_currency, currency_error, summarize_by_currency, amount
 from apps.services.serializers import ServiceDetailSerializer
 
 # ═══════════════════════════════════════════════════════════
@@ -712,13 +713,17 @@ def admin_lesson_video_upload_url(request):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def dashboard_overview(request):
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
     now         = timezone.now()
     today       = now.date()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
     last_30     = now - timedelta(days=30)
     last_7      = now - timedelta(days=7)
 
-    paid_orders = Order.objects.filter(status__in=["paid", "shipped", "completed"])
+    all_paid_orders = Order.objects.filter(status__in=["paid", "shipped", "completed"])
+    paid_orders = all_paid_orders.filter(currency=currency)
 
     total_revenue      = paid_orders.aggregate(t=Sum("total"))["t"] or 0
     revenue_this_month = paid_orders.filter(
@@ -757,7 +762,7 @@ def dashboard_overview(request):
 
     top_products = (
         OrderItem.objects
-        .filter(order__status__in=["paid", "shipped", "completed"])
+        .filter(order__status__in=["paid", "shipped", "completed"], order__currency=currency)
         .values("product_name")
         .annotate(total_sold=Sum("quantity"), revenue=Sum("price"))
         .order_by("-total_sold")[:5]
@@ -784,6 +789,8 @@ def dashboard_overview(request):
         pass
 
     return Response({
+        "currency": currency,
+        "revenue_by_currency": summarize_by_currency(all_paid_orders),
         "revenue": {
             "total":        float(total_revenue),
             "this_month":   float(revenue_this_month),
@@ -823,6 +830,7 @@ def dashboard_overview(request):
                 "id":      str(o.id),
                 "email":   o.email,
                 "total":   float(o.total),
+                "currency": o.currency,
                 "status":  o.status,
                 "created": o.created_at.strftime("%Y-%m-%d %H:%M"),
             }
@@ -837,6 +845,7 @@ def dashboard_overview(request):
                     "user_name":  f"{o.user.first_name} {o.user.last_name}".strip()
                                   if o.user else "Invitado",
                     "total":      float(o.total),
+                    "currency":   o.currency,
                     "created":    o.created_at.strftime("%d/%m %H:%M"),
                     "items_count": o.items.count(),
                 }
@@ -1449,12 +1458,16 @@ def admin_enrollments(request):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def analytics_full(request):
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
     now      = timezone.now()
     last_12m = now - timedelta(days=365)
 
-    paid_orders = Order.objects.filter(
+    all_paid_orders = Order.objects.filter(
         status__in=["paid", "shipped", "completed"]
     )
+    paid_orders = all_paid_orders.filter(currency=currency)
 
     sales_by_month = (
         paid_orders.filter(created_at__gte=last_12m)
@@ -1480,7 +1493,7 @@ def analytics_full(request):
     )
 
     revenue_by_provider = (
-        Payment.objects.filter(status="approved")
+        Payment.objects.filter(status="approved", currency=currency)
         .values("provider")
         .annotate(total=Sum("amount"), count=Count("id"))
         .order_by("-total")
@@ -1497,10 +1510,14 @@ def analytics_full(request):
         OrderItem.objects
         .filter(
             order__status__in=["paid", "shipped", "completed"],
+            order__currency=currency,
             product__isnull=False
         )
         .values("product__category__name")
-        .annotate(total=Sum("price"), count=Sum("quantity"))
+        .annotate(
+            total=Sum(ExpressionWrapper(F("price") * F("quantity"), output_field=DecimalField())),
+            count=Sum("quantity"),
+        )
         .order_by("-total")[:8]
     )
 
@@ -1523,6 +1540,8 @@ def analytics_full(request):
     )
 
     return Response({
+        "currency": currency,
+        "revenue_by_currency": summarize_by_currency(all_paid_orders),
         "kpis": {
             "total_revenue":    float(total_revenue),
             "avg_order_value":  float(avg_order_value),
