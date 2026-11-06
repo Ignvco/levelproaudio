@@ -1,12 +1,12 @@
 // components/admin/ui/AdminTabs.jsx
 export function AdminTabs({ tabs = [], value, onChange, testId }) {
   return (
-    <div className="au-tabs" data-testid={testId || "admin-tabs"}>
+    <div className="au-tabs" role="tablist" aria-label="Secciones" data-testid={testId || "admin-tabs"}>
       {tabs.map((t) => {
         const key = t.key ?? t
         const label = t.label ?? t
         return (
-          <button key={key} type="button"
+          <button key={key} type="button" role="tab" aria-selected={value === key}
             className={`au-tab ${value === key ? "is-active" : ""}`}
             onClick={() => onChange?.(key)}
             data-testid={`tab-${key}`}>
