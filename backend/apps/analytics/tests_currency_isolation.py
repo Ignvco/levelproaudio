@@ -44,6 +44,8 @@ class CurrencyIsolationTest(TestCase):
             self.assertEqual(dash["revenue_by_currency"][currency], expected)
             finance = self.get_report("/api/v1/admin/finance/summary/", currency)
             self.assertEqual(finance["total_income"], expected)
+            self.assertFalse(finance["reconciliation_required"])
+            self.assertEqual(finance["net_balance"], expected)
         self.assertEqual(IncomeRecord.objects.count(), 3)
 
     def test_gateway_usd_is_not_misclassified_as_clp_commercial_income(self):
@@ -95,6 +97,9 @@ class CurrencyIsolationTest(TestCase):
         balance = next(row for row in overview["summary"] if row["id"] == str(cat.id))
         self.assertTrue(balance["reconciliation_required"])
         self.assertIsNone(balance["balance"])
+        self.assertTrue(overview["reconciliation_required"])
+        self.assertIsNone(overview["net_balance"])
+        self.assertEqual(overview["net_balance_identified_only"], 100000)
 
     def test_reject_unsupported_currency(self):
         for route in (
