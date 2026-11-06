@@ -5,8 +5,8 @@ import api from "./client"
 const BASE = "/admin"
 
 // ── Dashboard & Analytics ────────────────────────────────────
-export const getAdminDashboard  = () => api.get(`${BASE}/dashboard/`).then(r => r.data)
-export const getAnalytics       = () => api.get(`${BASE}/analytics/`).then(r => r.data)
+export const getAdminDashboard  = (currency = "CLP") => api.get(`${BASE}/dashboard/`, { params: { currency } }).then(r => r.data)
+export const getAnalytics       = (currency = "CLP") => api.get(`${BASE}/analytics/`, { params: { currency } }).then(r => r.data)
 
 // ── Orders ───────────────────────────────────────────────────
 export const getAdminOrders     = (params) => api.get(`${BASE}/orders/`, { params }).then(r => r.data)
@@ -66,7 +66,7 @@ export const deleteAdminBrand = (id) =>
 export const getAdminUsers  = (params) => api.get(`${BASE}/users/`, { params }).then(r => r.data)
 
 // ── Payments ─────────────────────────────────────────────────
-export const getAdminPayments = (params) => api.get(`${BASE}/payments/`, { params }).then(r => r.data)
+export const getAdminPayments = (params = {}) => api.get(`${BASE}/payments/`, { params: { currency: "CLP", ...params } }).then(r => r.data)
 
 // ── Academy — cursos ─────────────────────────────────────────
 export const getAdminAcademy    = () => api.get(`${BASE}/academy/`).then(r => r.data)
