@@ -14,10 +14,11 @@ import {
 } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
 import { ExternalLink, FileText, Inbox, CheckCircle2, Clock3 } from "lucide-react"
+import { formatMoney } from "../dashboard/dashboardV3Data"
 
 const SII_URL = "https://www4.sii.cl/consdcvinternetui/"
 
-const money = (v) => v == null ? "—" : `$${Number(v).toLocaleString("es-CL")}`
+const money = (v, currency = "CLP") => formatMoney(v, currency)
 
 const ESTADO_TONE = {
   pendiente: "warning",
@@ -33,7 +34,7 @@ function RecordModal({ row, onClose }) {
     numero_externo: doc?.numero_externo || "",
     fecha_emision:  doc?.fecha_emision  || "",
     estado:         doc?.estado         || "pendiente",
-    monto:          doc?.monto ?? row.total,
+    monto:          doc?.monto ?? (row.currency === "CLP" ? row.total : ""),
     observaciones:  doc?.observaciones  || "",
   })
 
@@ -56,9 +57,15 @@ function RecordModal({ row, onClose }) {
           borderRadius: "var(--r-md)", fontSize: "13px", color: "var(--text-2)",
         }}>
           <strong style={{ color: "var(--text)" }}>{row.cliente}</strong><br/>
-          {row.email} · {money(row.total)}
+          {row.email} · {money(row.total, row.currency)}
         </div>
 
+        {row.currency !== "CLP" && (
+          <p role="note" style={{ color: "var(--admin-text-muted)", fontSize: 12 }}>
+            Pedido en {row.currency || "moneda desconocida"}: el monto tributario se debe ingresar desde el documento real emitido en SII.
+            No se convierte automáticamente desde el importe de la orden.
+          </p>
+        )}
         <a href={SII_URL} target="_blank" rel="noreferrer"
           style={{
             display: "inline-flex", alignItems: "center", gap: "8px",
@@ -168,7 +175,7 @@ export default function AdminBilling() {
                   <tr key={r.order_id}>
                     <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text)" }}>#{r.order_short}</td>
                     <td style={{ color: "var(--admin-text)", fontWeight: 500 }}>{r.cliente}</td>
-                    <td style={{ fontWeight: 700, color: "var(--admin-primary-text)" }}>{money(r.total)}</td>
+                    <td style={{ fontWeight: 700, color: "var(--admin-primary-text)" }}>{money(r.total, r.currency)}</td>
                     <td>
                       <StatusBadge tone="success">Pagado</StatusBadge>
                     </td>
