@@ -24,6 +24,7 @@ const ORDER_STATUS_MAP = {
   pending:   { label: "Pendiente",  tone: "warning" },
   cancelled: { label: "Cancelado",  tone: "danger"  },
   refunded:  { label: "Reembolsado",tone: "neutral" },
+  unknown:   { label: "Sin estado", tone: "neutral" },
 }
 
 function getInitials(nameOrEmail) {
@@ -37,7 +38,8 @@ function getInitials(nameOrEmail) {
 function formatShortDate(iso) {
   if (!iso) return "—"
   try {
-    return new Date(iso).toLocaleDateString("es-CL", { day: "2-digit", month: "short" })
+    const parsed = new Date(iso)
+    return Number.isNaN(parsed.getTime()) ? String(iso).slice(0, 16) : parsed.toLocaleDateString("es-CL", { day: "2-digit", month: "short" })
   } catch {
     return "—"
   }
@@ -444,7 +446,7 @@ export default function AdminDashboard() {
           <div className="v3-card-header">
             <div>
               <p className="v3-micro-label">MIX DE VENTAS</p>
-              <h2 className="v3-card-title" style={{ marginTop: 2 }}>Por Categoría</h2>
+              <h2 className="v3-card-title" style={{ marginTop: 2 }}>Unidades por Categoría</h2>
             </div>
             <Link to="/admin/products" className="v3-circle-btn">
               <ArrowUpRight size={16} />
@@ -455,7 +457,7 @@ export default function AdminDashboard() {
             <>
               <div style={{ display: "flex", gap: 3, height: 12, borderRadius: 6, overflow: "hidden", margin: "14px 0 20px", background: "var(--v3-surface-soft)" }}>
                 {categoryMix.map((cat, i) => (
-                  <span key={cat.name} style={{ flex: cat.percentage }} title={`${cat.name} ${cat.percentage.toFixed(1)}%`}
+                  <span key={cat.name} style={{ width: `${cat.percentage}%`, flexShrink: 0 }} title={`${cat.name} ${cat.percentage.toFixed(1)}%`}
                     aria-label={`${cat.name}: ${cat.percentage.toFixed(1)}%`}
                     data-testid={`v3-category-segment-${i}`}
                   >
