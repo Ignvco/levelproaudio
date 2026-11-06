@@ -374,7 +374,7 @@ export default function AdminInventory() {
                   { label:"Productos",   value: cat.products },
                   { label:"Stock total", value: cat.totalStock     },
                   { label:"Valor costo", value: cat.missingCostCount > 0 ? `≥ ${fmt(cat.knownCost)} · parcial` : fmt(cat.knownCost) },
-                  { label:"Valor venta", value: fmt(cat.saleValue) },
+                  { label:"Valor venta", value: cat.missingPriceCount > 0 ? `≥ ${fmt(cat.saleValue)} · parcial` : fmt(cat.saleValue) },
                 ].map(({ label, value }) => (
                   <div key={label} style={{ display:"flex",
                     justifyContent:"space-between",
