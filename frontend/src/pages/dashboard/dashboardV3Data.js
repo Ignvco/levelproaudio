@@ -42,11 +42,11 @@ export function adminFulfillment(analytics, totalOrders) {
 
 export function adminCategoryMix(analytics) {
   const categories = asRows(analytics?.revenue_by_category)
-    .map(r => ({ name: r.category || "Sin categoría", total: count(r.total) }))
-    .filter(r => r.total > 0)
-  const total = categories.reduce((sum, c) => sum + c.total, 0)
+    .map(r => ({ name: r.category || "Sin categoría", units: count(r.count) }))
+    .filter(r => r.units > 0)
+  const total = categories.reduce((sum, c) => sum + c.units, 0)
   return total > 0 ? categories.slice(0, 3).map(c => ({
-    ...c, percentage: c.total / total * 100,
+    ...c, percentage: c.units / total * 100,
   })) : []
 }
 
