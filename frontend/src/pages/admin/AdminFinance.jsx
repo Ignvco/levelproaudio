@@ -11,6 +11,7 @@ import {
   getWithdrawals, createWithdrawal, deleteWithdrawal,
   getAnalytics,
 } from "../../api/admin.api"
+import { formatMoney as formatCurrency } from "../dashboard/dashboardV3Data"
 
 const fmt   = n => `$${Number(n || 0).toLocaleString("es-CL")}`
 const TABS  = [
@@ -255,6 +256,8 @@ function WithdrawalModal({ categories, onClose, onSave }) {
 // ── AdminFinance ──────────────────────────────────────────────
 export default function AdminFinance() {
   const [tab, setTab]   = useState("overview")
+  const [analysisCurrency, setAnalysisCurrency] = useState("CLP")
+  const analysisMoney = value => formatCurrency(value, analysisCurrency)
   const [modal, setModal] = useState(null)
   const [toDeleteWithdrawal, setToDeleteWithdrawal] = useState(null)
   const [toDeleteCategory, setToDeleteCategory]     = useState(null)
@@ -279,9 +282,9 @@ export default function AdminFinance() {
     queryFn:  () => api.get("/admin/finance/by-product/").then(r => r.data),
     enabled:  tab === "by_product",
   })
-  const { data:analytics } = useQuery({
-    queryKey: ["admin-analytics"],
-    queryFn:  getAnalytics,
+  const { data:analytics, isError: analyticsError, refetch: refetchAnalytics } = useQuery({
+    queryKey: ["admin-analytics", analysisCurrency],
+    queryFn:  () => getAnalytics(analysisCurrency),
     enabled:  tab === "analysis",
   })
 
@@ -316,6 +319,8 @@ export default function AdminFinance() {
     queryClient.invalidateQueries(["admin-finance-withdrawals"])
   }
 
+  const ledgerVerified = summary?.currency_integrity?.status === "clp_only_verifiable"
+  const ledgerRisk = summary?.currency_integrity?.status === "needs_classification"
   const summaryCategories = summary?.summary      || []
   const recentIncome      = summary?.recent_income || []
 
@@ -377,20 +382,29 @@ export default function AdminFinance() {
           </>
         } />
 
+      {ledgerRisk && (
+        <div role="alert" className="lp-callout lp-callout--warning" style={{ marginBottom: 16 }}>
+          <p style={{ fontWeight: 700 }}>Conciliación multimoneda pendiente</p>
+          <p style={{ marginTop: 4, fontSize: 12 }}>
+            El registro de tesorería contiene movimientos históricos sin moneda clasificada o ingresos de otras monedas.
+            Sus saldos no están certificados. Revisa la clasificación antes de tomar decisiones de retiro.
+          </p>
+        </div>
+      )}
       {/* KPIs */}
       <div className="lp-kpi-strip">
         <KpiCard variant="ink" label="Ingresos totales"
-          value={fmt(summary?.total_income)} sub="Desde todos los pagos aprobados"
+          value={ledgerRisk ? "Por conciliar" : fmt(summary?.total_income)} sub={ledgerRisk ? "Monedas sin clasificar" : "Ingresos del registro"}
           Icon={TrendingUp} />
         <KpiCard variant="light" label="Total retirado"
-          value={fmt(summary?.total_withdrawn)} sub="Suma de todos los retiros" Icon={ArrowUpFromLine} />
+          value={ledgerRisk ? "Por conciliar" : fmt(summary?.total_withdrawn)} sub={ledgerRisk ? "Retiros históricos sin moneda" : "Retiros registrados"} Icon={ArrowUpFromLine} />
         <KpiCard variant="primary" label="Balance neto"
-          value={fmt(summary?.net_balance)} sub="Ingresos − retiros"
+          value={ledgerRisk ? "Por conciliar" : fmt(summary?.net_balance)} sub={ledgerRisk ? "No certificado" : "Ingresos − retiros"}
           Icon={Wallet} />
       </div>
 
       {/* Barra distribución */}
-      {summaryCategories.length > 0 && (
+      {ledgerVerified && summaryCategories.length > 0 && (
         <SectionCard eyebrow="TESORERÍA INTERNA" title="Distribución de fondos disponibles">
           <DistributionBar categories={summaryCategories} />
         </SectionCard>
@@ -663,16 +677,33 @@ export default function AdminFinance() {
       {/* ── ANÁLISIS (consolida Vista Ejecutiva + Analytics) ── */}
       {tab==="analysis" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"24px" }}>
-          {!analytics ? (
-            <p style={{ color:"var(--admin-text-muted)", padding:"40px 0" }}>Cargando análisis…</p>
+          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <div>
+              <strong style={{ fontSize: 14 }}>Analítica por moneda</strong>
+              <p style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>Importes nativos sin conversión entre CLP, USD y ARS.</p>
+            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12 }}>Moneda</span>
+              <select className="au-select" aria-label="Moneda de analítica" value={analysisCurrency}
+                onChange={e => setAnalysisCurrency(e.target.value)}>
+                <option value="CLP">CLP</option><option value="USD">USD</option><option value="ARS">ARS</option>
+              </select>
+            </label>
+          </div>
+          {analyticsError ? (
+            <div role="alert" style={{ padding: "25px 0" }}>
+              No fue posible cargar los resultados. <button type="button" onClick={() => refetchAnalytics()}>Reintentar</button>
+            </div>
+          ) : !analytics ? (
+            <p role="status" style={{ color:"var(--admin-text-muted)", padding:"40px 0" }}>Cargando análisis…</p>
           ) : (
             <>
               {/* KPIs estratégicos */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:"14px" }}>
                 <StatCard Icon={TrendingUp} label="Ingresos totales"
-                  value={fmt(analytics.kpis?.total_revenue)} />
+                  value={analysisMoney(analytics.kpis?.total_revenue)} />
                 <StatCard Icon={Wallet} label="Ticket promedio"
-                  value={fmt(analytics.kpis?.avg_order_value)} />
+                  value={analysisMoney(analytics.kpis?.avg_order_value)} />
                 <StatCard Icon={Inbox} label="Clientes únicos"
                   value={analytics.kpis?.total_customers ?? 0} />
                 <StatCard Icon={TrendingUp} label="Tasa de repetición"
@@ -682,17 +713,17 @@ export default function AdminFinance() {
               {/* Ventas por mes */}
               <AnalysisBarSection title="Ventas por mes"
                 data={(analytics.sales_by_month || []).map(m => ({ label:m.month, value:m.total }))}
-                fmt={fmt} />
+                fmt={analysisMoney} />
 
               {/* Ingresos por categoría */}
               <AnalysisBarSection title="Ingresos por categoría"
                 data={(analytics.revenue_by_category || []).map(c => ({ label:c.category, value:c.total }))}
-                fmt={fmt} />
+                fmt={analysisMoney} />
 
               {/* Ingresos por método de pago */}
               <AnalysisBarSection title="Ingresos por método de pago"
                 data={(analytics.revenue_by_provider || []).map(p => ({ label:p.provider, value:p.total }))}
-                fmt={fmt} />
+                fmt={analysisMoney} />
 
               {/* Órdenes por estado */}
               <AnalysisBarSection title="Órdenes por estado"
