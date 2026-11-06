@@ -2106,12 +2106,15 @@ def admin_finance_withdrawal_delete(request, withdrawal_id):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_by_product(request):
-    """GET /api/v1/admin/finance/by-product/"""
-    
+    """GET /api/v1/admin/finance/by-product/?currency=CLP|USD|ARS"""
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
 
     # Solo órdenes pagadas
     items = OrderItem.objects.filter(
-        order__status__in=["paid", "shipped", "completed"]
+        order__status__in=["paid", "shipped", "completed"],
+        order__currency=currency,
     ).select_related("product").values(
         "product__name", "product__sku", "product__cost_price"
     ).annotate(
@@ -2124,23 +2127,26 @@ def admin_finance_by_product(request):
 
     results = []
     for item in items:
+        # Product.cost_price is in CLP. For USD/ARS orders, cost and
+        # margin are intentionally unavailable until an FX/cost ledger exists.
         cost_price    = item["product__cost_price"] or Decimal("0")
-        total_cost    = cost_price * item["units_sold"]
-        profit        = item["total_revenue"] - total_cost
-        margin        = round(float(profit) / float(item["total_revenue"]) * 100, 1) \
-                        if item["total_revenue"] else 0
+        total_cost    = cost_price * item["units_sold"] if currency == "CLP" else None
+        profit        = item["total_revenue"] - total_cost if total_cost is not None else None
+        margin        = (round(float(profit) / float(item["total_revenue"]) * 100, 1)
+                         if profit is not None and item["total_revenue"] else None)
 
         results.append({
             "product_name":  item["product__name"],
             "sku":           item["product__sku"],
             "units_sold":    item["units_sold"],
             "total_revenue": float(item["total_revenue"]),
-            "total_cost":    float(total_cost),
-            "profit":        float(profit),
+            "currency":      currency,
+            "total_cost":    float(total_cost) if total_cost is not None else None,
+            "profit":        float(profit) if profit is not None else None,
             "margin":        margin,
         })
 
-    return Response({"results": results})    
+    return Response({"results": results, "currency": currency})    
 
 
 # ── INVENTARIO INTELIGENTE ────────────────────────────────────
