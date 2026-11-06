@@ -11,19 +11,21 @@ function RowMenu({ actions, row }) {
   const ref = useRef(null)
   useEffect(() => {
     const h = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false)
+    const escape = (e) => { if (e.key === "Escape") setOpen(false) }
     document.addEventListener("mousedown", h)
-    return () => document.removeEventListener("mousedown", h)
+    document.addEventListener("keydown", escape)
+    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", escape) }
   }, [])
   return (
     <div className="au-rowmenu" ref={ref}>
       <button className="au-iconbtn au-iconbtn--ghost" onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
-        aria-label="Acciones" data-testid="row-actions-trigger">
+        aria-label="Acciones" aria-haspopup="menu" aria-expanded={open} data-testid="row-actions-trigger">
         <MoreHorizontal size={18} />
       </button>
       {open && (
-        <div className="au-rowmenu__list">
+        <div className="au-rowmenu__list" role="menu">
           {actions.map((a, i) => (
-            <button key={i} className={`au-rowmenu__item ${a.danger ? "au-rowmenu__item--danger" : ""}`}
+            <button type="button" role="menuitem" key={i} className={`au-rowmenu__item ${a.danger ? "au-rowmenu__item--danger" : ""}`}
               onClick={(e) => { e.stopPropagation(); setOpen(false); a.onClick?.(row) }}>
               {a.icon && <a.icon size={14} />}{a.label}
             </button>
@@ -51,7 +53,7 @@ export function DataTable({
   const [pageSize, setPageSize] = useState(initialPageSize)
   const [selected, setSelected] = useState(() => new Set())
 
-  const keys = searchKeys || columns.filter((c) => c.key).map((c) => c.key)
+  const keys = useMemo(() => searchKeys || columns.filter((c) => c.key).map((c) => c.key), [searchKeys, columns])
 
   const filtered = useMemo(() => {
     let rows = data
@@ -64,8 +66,12 @@ export function DataTable({
         const av = a[sort.key], bv = b[sort.key]
         if (av == null) return 1
         if (bv == null) return -1
-        const cmp = typeof av === "number" && typeof bv === "number"
-          ? av - bv : String(av).localeCompare(String(bv), "es")
+        // Numeric strings (DecimalField API values) must sort numerically.
+        const numeric = v => typeof v === "number" ? v
+          : (typeof v === "string" && /^-?\d+(?:\.\d+)?$/.test(v) ? Number(v) : null)
+        const an = numeric(av), bn = numeric(bv)
+        const cmp = an != null && bn != null
+          ? an - bn : String(av).localeCompare(String(bv), "es", { sensitivity: "base" })
         return sort.dir === "asc" ? cmp : -cmp
       })
     }
@@ -136,14 +142,16 @@ export function DataTable({
                   )}
                   {columns.map((c) => (
                     <th key={c.key || c.header} className={c.sortable ? "is-sortable" : ""}
-                      style={{ width: c.width, textAlign: c.align }}
-                      onClick={() => c.sortable && c.key && toggleSort(c.key)}>
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                        {c.header}
-                        {c.sortable && (sort.key === c.key
-                          ? (sort.dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />)
-                          : <ArrowUpDown size={12} style={{ opacity: .4 }} />)}
-                      </span>
+                      scope="col"
+                      aria-sort={c.sortable && sort.key === c.key ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}
+                      style={{ width: c.width, textAlign: c.align }}>
+                      {c.sortable && c.key ? (
+                        <button type="button" className="au-table-sort" onClick={() => toggleSort(c.key)}>
+                          {c.header}
+                          {sort.key === c.key ? (sort.dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />)
+                            : <ArrowUpDown size={12} style={{ opacity: .4 }} />}
+                        </button>
+                      ) : <span>{c.header}</span>}
                     </th>
                   ))}
                   {rowActions && <th style={{ width: 56 }} />}
@@ -153,7 +161,9 @@ export function DataTable({
                 {pageRows.map((row) => {
                   const id = getRowId(row)
                   return (
-                    <tr key={id} onClick={() => onRowClick?.(row)} style={{ cursor: onRowClick ? "pointer" : "default" }} data-testid={`${testId}-row`}>
+                    <tr key={id} onClick={() => onRowClick?.(row)}
+                      onKeyDown={e => { if (onRowClick && (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); onRowClick(row) } }}
+                      tabIndex={onRowClick ? 0 : undefined} style={{ cursor: onRowClick ? "pointer" : "default" }} data-testid={`${testId}-row`}>
                       {selectable && (
                         <td onClick={(e) => e.stopPropagation()}>
                           <input type="checkbox" className="au-checkbox" checked={selected.has(id)} onChange={() => toggleRow(id)} aria-label="Seleccionar fila" />
