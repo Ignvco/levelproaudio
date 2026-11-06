@@ -266,7 +266,7 @@ export default function AdminFinance() {
   const [toDeleteCategory, setToDeleteCategory]     = useState(null)
   const queryClient     = useQueryClient()
 
-  const { data:summary, isLoading } = useQuery({
+  const { data:summary, isLoading, isError: financeError } = useQuery({
     queryKey: ["admin-finance-summary", currency],
     queryFn:  () => getFinanceSummary(currency),
     refetchInterval: 60000,
@@ -324,6 +324,8 @@ export default function AdminFinance() {
 
   const summaryCategories = summary?.summary      || []
   const recentIncome      = summary?.recent_income || []
+
+  if (financeError) return <div className="au-page"><div className="au-card" role="alert" style={{ padding: 24 }}>No se pudieron cargar los saldos. Verifica la conexión antes de operar.</div></div>
 
   if (isLoading) return (
     <div className="au-page">
@@ -442,7 +444,7 @@ export default function AdminFinance() {
 
                 <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"2px" }}>
                   {[
-                    { label:"Ingresado",  value: fmt(cat.total_in),        color:"#0F9940" },
+                    { label:"Ingresado",  value: money(cat.total_in),        color:"#0F9940" },
                     { label:"Retirado",   value: `−${money(cat.total_out)}`, color:"#EF4444" },
                   ].map(({ label, value, color }) => (
                     <div key={label} style={{ display:"flex", justifyContent:"space-between",
@@ -566,7 +568,7 @@ export default function AdminFinance() {
           data={withdrawals} getRowId={w => w.id}
           searchable searchKeys={["destination","category_name"]} searchPlaceholder="Buscar retiro..."
           toolbarExtra={
-            <PrimaryButton onClick={() => setModal("withdrawal")} data-testid="register-withdrawal-btn-2">
+            <PrimaryButton disabled={currency !== "CLP" || summaryCategories.every(c => c.reconciliation_required || !(Number(c.balance) > 0))} onClick={() => setModal("withdrawal")} data-testid="register-withdrawal-btn-2">
               + Registrar retiro
             </PrimaryButton>
           }
@@ -574,7 +576,7 @@ export default function AdminFinance() {
             { label:"Eliminar", icon:Trash2, danger:true, onClick:() => setToDeleteWithdrawal(w) },
           ]}
           emptyIcon={Inbox} emptyTitle="Sin retiros registrados"
-          emptyDesc="Registrá un retiro con el botón de arriba."
+          emptyDesc="Los retiros se muestran por moneda. Para registrar uno se requiere saldo de categoría conciliado."
           testId="withdrawals-table" />
       )}
 
@@ -655,14 +657,14 @@ export default function AdminFinance() {
             { key:"units_sold", header:"Vendidos", sortable:true, align:"right",
               render:p => <span style={{ color:"var(--admin-text)" }}>{p.units_sold} u.</span> },
             { key:"total_revenue", header:"Ingreso total", sortable:true, align:"right",
-              render:p => <span style={{ color:"var(--admin-primary-text)", fontWeight:600 }}>{fmt(p.total_revenue)}</span> },
+              render:p => <span style={{ color:"var(--admin-primary-text)", fontWeight:600 }}>{money(p.total_revenue)}</span> },
             { key:"total_cost", header:"Costo total", sortable:true, align:"right",
-              render:p => <span style={{ color:"var(--admin-danger)" }}>{fmt(p.total_cost)}</span> },
+              render:p => <span style={{ color:"var(--admin-danger)" }}>{p.total_cost == null ? "Costo CLP no comparable" : money(p.total_cost)}</span> },
             { key:"profit", header:"Utilidad real", sortable:true, align:"right", render:p => (
               <div style={{ textAlign:"right" }}>
                 <p style={{ fontSize:"13px", fontWeight:700,
-                  color: p.profit >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>{fmt(p.profit)}</p>
-                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{p.margin}% margen</p>
+                  color: p.profit >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>{p.profit == null ? "—" : money(p.profit)}</p>
+                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{p.margin == null ? "Requiere tasa de costo" : `${p.margin}% margen`}</p>
               </div>
             )},
           ]}
@@ -695,17 +697,17 @@ export default function AdminFinance() {
               {/* Ventas por mes */}
               <AnalysisBarSection title="Ventas por mes"
                 data={(analytics.sales_by_month || []).map(m => ({ label:m.month, value:m.total }))}
-                fmt={fmt} />
+                fmt={money} />
 
               {/* Ingresos por categoría */}
               <AnalysisBarSection title="Ingresos por categoría"
                 data={(analytics.revenue_by_category || []).map(c => ({ label:c.category, value:c.total }))}
-                fmt={fmt} />
+                fmt={money} />
 
               {/* Ingresos por método de pago */}
               <AnalysisBarSection title="Ingresos por método de pago"
                 data={(analytics.revenue_by_provider || []).map(p => ({ label:p.provider, value:p.total }))}
-                fmt={fmt} />
+                fmt={money} />
 
               {/* Órdenes por estado */}
               <AnalysisBarSection title="Órdenes por estado"
