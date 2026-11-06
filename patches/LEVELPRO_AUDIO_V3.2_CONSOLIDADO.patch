@@ -833,6 +833,50 @@ diff --git a/backend/apps/billing/views.py b/backend/apps/billing/views.py
              "pago_estado":  o.status,
              "documento":    _serialize(doc) if doc else None,
          })
+diff --git a/cloudbuild.v3-2-qa.yaml b/cloudbuild.v3-2-qa.yaml
+new file mode 100644
+--- /dev/null
++++ b/cloudbuild.v3-2-qa.yaml
+@@ -0,0 +1,39 @@
++# V3.2 QA-only build. DOES NOT BUILD OR DEPLOY CLOUD RUN IMAGES.
++# Run from a local branch with: gcloud builds submit . --config cloudbuild.v3-2-qa.yaml
++# Existing default cloudbuild.yaml DOES deploy; never use it for preflight.
++steps:
++  - name: "python:3.12-slim"
++    id: "backend-qa"
++    entrypoint: "bash"
++    args:
++      - "-c"
++      - |
++        set -euo pipefail
++        cd backend
++        pip install --quiet --no-cache-dir -r requirements/base.txt -r requirements/development.txt
++        export DJANGO_SECRET_KEY=ci-only-dummy-key-that-is-over-32-bytes-000001
++        export DB_NAME=x DB_USER=x DB_PASSWORD=x
++        export DJANGO_SETTINGS_MODULE=config.settings.test
++        python manage.py check
++        python manage.py makemigrations --check --dry-run
++        python -m pytest tests/ apps/loyalty/ apps/billing/ apps/products/ apps/analytics/ apps/orders/ apps/services/ apps/academy/ apps/rewards/ apps/payments/ apps/users/ apps/seo/ apps/site_settings/ core/ -q
++        apt-get update -qq
++        apt-get install -y --no-install-recommends postgresql libpq-dev
++        cd ..
++        bash scripts/test-order-inventory-postgres.sh
++
++  - name: "node:22"
++    id: "frontend-qa"
++    waitFor: ["-"]
++    entrypoint: "bash"
++    args:
++      - "-c"
++      - |
++        set -euo pipefail
++        cd frontend
++        npm ci
++        npm run lint
++        npm run test:unit
++        npm run build
++
++timeout: "1800s"
 diff --git a/docs/dashboard-v3/06-v3-2-refinamiento-integral.md b/docs/dashboard-v3/06-v3-2-refinamiento-integral.md
 new file mode 100644
 --- /dev/null
@@ -990,7 +1034,7 @@ diff --git a/docs/dashboard-v3/07-v3-2-consolidacion.md b/docs/dashboard-v3/07-v
 new file mode 100644
 --- /dev/null
 +++ b/docs/dashboard-v3/07-v3-2-consolidacion.md
-@@ -0,0 +1,68 @@
+@@ -0,0 +1,82 @@
 +# LevelPro Audio V3.2 — Consolidación segura de ramas
 +
 +**Estado:** candidata a QA, no desplegada, no certificada para producción.  
@@ -1027,6 +1071,20 @@ new file mode 100644
 +3. Verificar que las versiones Django y el esquema anterior correspondan exactamente a la dependencia `analytics.0003`.
 +4. Confirmar el flujo de migraciones en Cloud Run, ya que `backend/Dockerfile.prod` ejecuta `manage.py migrate` al iniciar. Un despliegue prematuro activará automáticamente `0004`.
 +5. Comprobar categorías que bloquearían nuevos retiros y diseñar su conciliación real; nunca marcar automáticamente registros históricos desconocidos como CLP.
++
++### Cloud Build de validación sin despliegue
++
++Se incorpora `cloudbuild.v3-2-qa.yaml` para probar desde el Mac SIN instalar
++Python y sin publicar una nueva revisión. En una rama local aislada con V3.2:
++
++```bash
++gcloud builds submit . --config cloudbuild.v3-2-qa.yaml
++```
++
++Este comando sube el código de trabajo a Cloud Build y ejecuta Django,
++PostgreSQL, ESLint, pruebas unitarias frontend y el build React, pero **NO**
++despliega en Cloud Run ni inicia la migración histórica en Cloud SQL de
++producción. El build habitual `cloudbuild.yaml` sí despliega.
 +
 +### QA obligatoria
 +En backend, usando el entorno Docker/CI ya configurado:
