@@ -6,7 +6,7 @@ export function AdminTabs({ tabs = [], value, onChange, testId }) {
         const key = t.key ?? t
         const label = t.label ?? t
         return (
-          <button key={key} type="button"
+          <button key={key} type="button" aria-pressed={value === key}
             className={`au-tab ${value === key ? "is-active" : ""}`}
             onClick={() => onChange?.(key)}
             data-testid={`tab-${key}`}>
