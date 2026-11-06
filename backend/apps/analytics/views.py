@@ -971,8 +971,11 @@ def admin_delete_enrollment(request, enrollment_id):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_payments(request):
+    currency = reporting_currency(request)
     status_filter = request.query_params.get("status")
-    payments = Payment.objects.select_related("order").order_by("-created_at")
+    approved_all = Payment.objects.filter(status="approved")
+    totals_by_currency, unknown_currency_totals = grouped_currency_totals(approved_all, "amount")
+    payments = Payment.objects.select_related("order").filter(currency=currency).order_by("-created_at")
 
     if status_filter:
         payments = payments.filter(status=status_filter)
@@ -993,7 +996,13 @@ def admin_payments(request):
         status="approved"
     ).aggregate(t=Sum("amount"))["t"] or 0
 
-    return Response({"results": data, "total_approved": float(total_approved)})
+    return Response({
+        "currency": currency,
+        "results": data,
+        "total_approved": float(total_approved),
+        "approved_by_currency": totals_by_currency,
+        "unknown_currency_totals": unknown_currency_totals,
+    })
 
 @api_view(["PATCH"])
 @permission_classes([IsAdminOrStaff])
