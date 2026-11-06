@@ -1943,8 +1943,33 @@ def admin_finance_category_detail(request, cat_id):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_summary(request):
-    """GET /api/v1/admin/finance/summary/"""
-    
+    """GET /api/v1/admin/finance/summary/.
+
+    Legacy ledger has no native currency column for income distributions or
+    withdrawals. Report the classification risk explicitly; never claim a
+    mixed-currency balance is audited.
+    """
+    foreign_income_count = IncomeRecord.objects.filter(
+        Q(order__currency__in=["USD", "ARS"])
+        | Q(order__isnull=True, payment__currency__in=["USD", "ARS"])
+    ).count()
+    unidentified_income_count = IncomeRecord.objects.filter(
+        order__isnull=True, payment__isnull=True
+    ).count()
+    unidentified_withdrawal_count = Withdrawal.objects.count()
+    finance_integrity = {
+        "status": "needs_classification" if (
+            foreign_income_count or unidentified_income_count or unidentified_withdrawal_count
+        ) else "clp_only_verifiable",
+        "foreign_currency_income_records": foreign_income_count,
+        "unidentified_income_records": unidentified_income_count,
+        "withdrawals_without_currency": unidentified_withdrawal_count,
+        "warning": (
+            "Los saldos históricos no están certificados por moneda. "
+            "Clasifica ingresos y retiros antes de utilizarlos para decisiones financieras."
+        ) if (foreign_income_count or unidentified_income_count or unidentified_withdrawal_count) else None,
+    }
+
 
     categories = DistributionCategory.objects.filter(is_active=True)
     summary = []
@@ -1999,6 +2024,7 @@ def admin_finance_summary(request):
     } for r in recent]
 
     return Response({
+        "currency_integrity": finance_integrity,
         "summary":          summary,
         "total_income":     float(total_income),
         "total_withdrawn":  float(total_withdrawn),
