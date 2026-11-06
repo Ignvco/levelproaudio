@@ -23,6 +23,7 @@ export const DangerButton     = (p) => <Btn variant="danger" {...p} />
 export function IconButton({ children, ghost, danger, className, testId, ...rest }) {
   return (
     <button
+      type="button"
       className={`au-iconbtn ${ghost ? "au-iconbtn--ghost" : ""} ${danger ? "au-iconbtn--danger" : ""} ${className || ""}`.trim()}
       data-testid={testId}
       {...rest}
