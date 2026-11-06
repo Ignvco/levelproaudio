@@ -27,6 +27,7 @@ def _serialize(d):
         "numero_externo": d.numero_externo,
         "fecha_emision":  d.fecha_emision.isoformat() if d.fecha_emision else None,
         "monto":          float(d.monto) if d.monto is not None else None,
+        "currency":       d.order.currency,
         "estado":         d.estado,
         "estado_label":   d.get_estado_display(),
         "observaciones":  d.observaciones,
@@ -67,6 +68,7 @@ def tax_dashboard(request):
                              if o.user else "") or o.email,
             "email":        o.email,
             "total":        float(o.total),
+            "currency":     o.currency,
             "pago_estado":  o.status,
             "documento":    _serialize(doc) if doc else None,
         })
