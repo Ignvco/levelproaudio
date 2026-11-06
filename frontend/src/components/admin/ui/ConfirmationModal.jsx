@@ -9,12 +9,14 @@ export function ConfirmationModal({
 }) {
   const titleId = useId()
   const dialogRef = useRef(null)
+  const actionRef = useRef(onCancel)
+  useEffect(() => { actionRef.current = onCancel }, [onCancel])
   useEffect(() => {
     if (!open) return
     const previous = document.activeElement
     dialogRef.current?.focus()
     const h = e => {
-      if (e.key === "Escape") onCancel?.()
+      if (e.key === "Escape") actionRef.current?.()
       if (e.key !== "Tab") return
       const buttons = [...(dialogRef.current?.querySelectorAll("button:not([disabled])") || [])]
       if (!buttons.length) { e.preventDefault(); return }
@@ -26,7 +28,7 @@ export function ConfirmationModal({
     }
     window.addEventListener("keydown", h)
     return () => { window.removeEventListener("keydown", h); previous?.focus?.() }
-  }, [open, onCancel])
+  }, [open])
 
   if (!open) return null
   const Confirm = danger ? DangerButton : PrimaryButton
