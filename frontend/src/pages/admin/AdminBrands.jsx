@@ -5,7 +5,7 @@ import { getAdminBrands, createAdminBrand, updateAdminBrand, deleteAdminBrand } 
 import { Tag, ArrowUpRight, CheckCircle2, Globe } from "lucide-react"
 import { mediaUrl } from "../../utils/mediaUrl"
 import BulkImportPanel from "../../components/admin/BulkImportPanel"
-import { AdminPageHeader, PrimaryButton, StatCard, FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { AdminPageHeader, PrimaryButton, StatCard, FormModal, FormField, formInputStyle, ConfirmationModal, ErrorState, SecondaryButton, EmptyState } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
 
 function BrandModal({ brand, onClose, onSave }) {
@@ -117,7 +117,7 @@ export default function AdminBrands() {
   const [toDelete, setToDelete]   = useState(null)
   const queryClient               = useQueryClient()
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-brands"], queryFn: getAdminBrands,
   })
   const deleteMutation = useMutation({
@@ -128,7 +128,7 @@ export default function AdminBrands() {
       setToDelete(null)
     },
   })
-  const brands = data?.results || data || []
+  const brands = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []
   const activeCount = brands.filter(b => b.is_active !== false).length
   const withWebCount = brands.filter(b => !!b.website).length
 
@@ -156,7 +156,7 @@ export default function AdminBrands() {
       <AdminPageHeader
         eyebrow="LEVELPRO / CATÁLOGO"
         title="Marcas"
-        description={`${brands.length} marcas registradas en el catálogo oficial`}
+        description={isLoading || isError ? "Gestiona los fabricantes del catálogo" : `${brands.length} marcas cargadas en el catálogo`}
         actions={
           <PrimaryButton onClick={() => setModal("new")}>
             + Nueva marca
@@ -164,7 +164,7 @@ export default function AdminBrands() {
         }
       />
 
-      <div className="lp-kpi-strip">
+      {!isLoading && !isError && <div className="lp-kpi-strip">
         <StatCard
           variant="ink"
           Icon={Tag}
@@ -186,7 +186,7 @@ export default function AdminBrands() {
           value={withWebCount}
           sub="Enlace oficial configurado"
         />
-      </div>
+      </div>}
 
       <BulkImportPanel
         endpoint="/admin/brands/import/"
@@ -197,13 +197,19 @@ export default function AdminBrands() {
         testId="bulk-import-brands"
       />
 
-      {isLoading ? (
+      {isError ? (
+        <ErrorState title="No pudimos cargar las marcas"
+          description="Las marcas existentes permanecen guardadas. Intenta actualizar."
+          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
+      ) : isLoading ? (
         <div style={{ display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "14px" }}>
           {[...Array(6)].map((_, i) => (
             <div key={i} className="skeleton" style={{ height: "140px", borderRadius: "18px" }} />
           ))}
         </div>
+      ) : brands.length === 0 ? (
+        <EmptyState title="Aún no hay marcas" description="Agrega la primera marca para comenzar." />
       ) : (
         <div style={{ display: "grid",
           gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: "14px" }}>
@@ -215,7 +221,7 @@ export default function AdminBrands() {
                     ? <img src={mediaUrl(brand.logo_url)} alt={brand.name} />
                     : <Tag size={22} strokeWidth={2} />}
                 </div>
-                <button className="au-pcard__del" data-testid={`btn-delete-brand-${brand.id}`}
+                <button type="button" aria-label={`Eliminar marca ${brand.name}`} className="au-pcard__del" data-testid={`btn-delete-brand-${brand.id}`}
                   title="Eliminar" onClick={() => setToDelete(brand)}>
                   ×
                 </button>
@@ -224,7 +230,7 @@ export default function AdminBrands() {
               <p className="au-pcard__sub">{brand.website || "Marca del catálogo"}</p>
               <div className="au-pcard__buyrow">
                 <span className="au-pcard__pill">{brand.is_active === false ? "Inactiva" : "Activa"}</span>
-                <button className="au-pcard__buy" onClick={() => setModal(brand)} data-testid={`btn-edit-brand-${brand.id}`}>
+                <button type="button" aria-label={`Editar marca ${brand.name}`} className="au-pcard__buy" onClick={() => setModal(brand)} data-testid={`btn-edit-brand-${brand.id}`}>
                   Editar <span className="au-pcard__circle"><ArrowUpRight size={15} strokeWidth={2.5} /></span>
                 </button>
               </div>
