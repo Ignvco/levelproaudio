@@ -396,13 +396,14 @@ export default function AdminFinance() {
         <KpiCard variant="light" label="Total retirado"
           value={money(summary?.total_withdrawn)} sub={`Retiros identificados en ${currency}`} Icon={ArrowUpFromLine} />
         <KpiCard variant="primary" label="Balance neto"
-          value={money(summary?.net_balance)} sub="Saldo de movimientos clasificados"
+          value={summary?.reconciliation_required ? "Por conciliar" : money(summary?.net_balance)}
+          sub={summary?.reconciliation_required ? "Sin balance certificado: historial pendiente" : "Saldo verificado por moneda"}
           Icon={Wallet} />
       </div>
 
       {(summary?.unclassified_income_count > 0 || summary?.unclassified_withdrawals_count > 0) && (
         <div className="lp-callout lp-callout--warning" role="alert">
-          Existen {summary.unclassified_income_count} ingresos y {summary.unclassified_withdrawals_count} retiros históricos sin moneda identificada. No están incluidos en los saldos mostrados. Las categorías afectadas quedan bloqueadas hasta su conciliación.
+          Existen {summary.unclassified_income_count} ingresos y {summary.unclassified_withdrawals_count} retiros históricos sin moneda identificada. Los importes de ingresos y retiros son únicamente los movimientos clasificados, no un saldo integral. Las categorías afectadas siguen bloqueadas hasta conciliar el historial.
         </div>
       )}
       {currency === "CLP" && summaryCategories.length > 0 && (
