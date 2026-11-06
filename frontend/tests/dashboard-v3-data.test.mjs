@@ -32,7 +32,7 @@ test("despachos y mix de categorías solo dependen de las API", () => {
     orders_by_status: [{ status: "shipped", count: 2 }, { status: "completed", count: 1 }, { status: "pending", count: 7 }],
   }, 10), { managed: 3, total: 10, percentage: 30 })
   const categories = adminCategoryMix({
-    revenue_by_category: [{ category: "Monitores", total: 30 }, { category: "Micrófonos", total: 70 }],
+    revenue_by_category: [{ category: "Monitores", count: 30 }, { category: "Micrófonos", count: 70 }],
   })
   assert.equal(Math.round(categories[0].percentage), 30)
   assert.equal(Math.round(categories[1].percentage), 70)
