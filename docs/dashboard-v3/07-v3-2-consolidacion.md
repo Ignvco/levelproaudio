@@ -35,6 +35,20 @@ Se encontraron dos implementaciones paralelas:
 4. Confirmar el flujo de migraciones en Cloud Run, ya que `backend/Dockerfile.prod` ejecuta `manage.py migrate` al iniciar. Un despliegue prematuro activará automáticamente `0004`.
 5. Comprobar categorías que bloquearían nuevos retiros y diseñar su conciliación real; nunca marcar automáticamente registros históricos desconocidos como CLP.
 
+### Cloud Build de validación sin despliegue
+
+Se incorpora `cloudbuild.v3-2-qa.yaml` para probar desde el Mac SIN instalar
+Python y sin publicar una nueva revisión. En una rama local aislada con V3.2:
+
+```bash
+gcloud builds submit . --config cloudbuild.v3-2-qa.yaml
+```
+
+Este comando sube el código de trabajo a Cloud Build y ejecuta Django,
+PostgreSQL, ESLint, pruebas unitarias frontend y el build React, pero **NO**
+despliega en Cloud Run ni inicia la migración histórica en Cloud SQL de
+producción. El build habitual `cloudbuild.yaml` sí despliega.
+
 ### QA obligatoria
 En backend, usando el entorno Docker/CI ya configurado:
 ```bash
