@@ -15,11 +15,13 @@ import {
   Gift,
 } from "lucide-react"
 import { getMyLoyalty, getLoyaltyTransactions } from "../../api/loyalty.api"
+import { showToast } from "../../components/ui/ToastNotification"
 import {
   AdminPageHeader,
   StatCard,
   PrimaryButton,
   SecondaryButton,
+  ErrorState,
 } from "../../components/admin/ui"
 
 const NIVELES = {
@@ -37,7 +39,7 @@ const TIPO_STYLE = {
 }
 
 export default function MyLoyalty() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["my-loyalty-full"],
     queryFn:  getMyLoyalty,
   })
@@ -53,12 +55,27 @@ export default function MyLoyalty() {
       const page = await getLoyaltyTransactions(nextPage)
       setExtraTx((prev) => (prev ? [...prev, ...page.results] : page.results))
       setNextPage(page.next)
+    } catch {
+      showToast("No pudimos cargar más movimientos. Vuelve a intentarlo.", "error")
     } finally {
       setLoadingMore(false)
     }
   }
 
-  if (isLoading || !data) {
+  if (isError || (!isLoading && !data)) {
+    return (
+      <div className="au-page" data-testid="dashboard-loyalty-error">
+        <AdminPageHeader title="Mis puntos y fidelización"
+          description="Consulta los beneficios y movimientos de tu cuenta"
+          breadcrumbs={[{ label: "Mi cuenta", to: "/dashboard" }, { label: "Puntos" }]} />
+        <ErrorState title="No pudimos consultar tus puntos"
+          description="No mostraremos saldos estimados. Tus datos se mantienen guardados."
+          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
+      </div>
+    )
+  }
+
+  if (isLoading) {
     return (
       <div className="au-page" data-testid="dashboard-loyalty-loading">
         <AdminPageHeader
@@ -423,15 +440,13 @@ export default function MyLoyalty() {
       </div>
 
       {/* Accordion: How it works */}
-      <div
-        className="au-card"
-        style={{
-          padding: "20px 24px",
-          cursor: "pointer",
-        }}
-        onClick={() => setFaqOpen(!faqOpen)}
-      >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <section className="au-card" style={{ padding: "20px 24px" }}>
+        <button type="button"
+          className="au-accordion-trigger"
+          aria-expanded={faqOpen}
+          aria-controls="loyalty-program-details"
+          onClick={() => setFaqOpen(open => !open)}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <ShieldCheck size={18} style={{ color: "#16a34a" }} />
             <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--admin-primary-text)" }}>
@@ -446,10 +461,11 @@ export default function MyLoyalty() {
               transition: "transform 0.2s ease",
             }}
           />
-        </div>
+          </div>
+        </button>
 
         {faqOpen && (
-          <div
+          <div id="loyalty-program-details"
             style={{
               marginTop: "16px",
               paddingTop: "14px",
@@ -462,13 +478,13 @@ export default function MyLoyalty() {
             <ul style={{ margin: 0, paddingLeft: "20px" }}>
               <li><strong>Acumulación automática:</strong> Cada compra suma puntos cuando tu pago es validado y facturado.</li>
               <li><strong>Canje directo:</strong> Aplica tus puntos acumulados como descuento en el checkout antes de pagar.</li>
-              <li><strong>Mínimo de canje:</strong> Requieres al menos {data.minimo_canje || 100} puntos para solicitar descuento.</li>
-              <li><strong>Niveles de fidelidad:</strong> Subes de nivel con base en tus compras históricas, desbloqueando promociones preferenciales y multiplicadores.</li>
-              <li><strong>Vigencia:</strong> Los puntos tienen una vigencia anual activa con cada nueva orden realizada.</li>
+              <li><strong>Mínimo de canje:</strong> Requieres al menos {data.minimo_canje ?? "el mínimo vigente"} puntos para solicitar descuento.</li>
+              <li><strong>Niveles de fidelidad:</strong> El nivel refleja las reglas de fidelización vigentes en tu cuenta.</li>
+              <li><strong>Vigencia:</strong> La disponibilidad y la vigencia de los puntos se rigen por las condiciones vigentes del programa.</li>
             </ul>
           </div>
         )}
-      </div>
+      </section>
     </div>
   )
 }
