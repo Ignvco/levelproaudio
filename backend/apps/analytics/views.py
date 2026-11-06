@@ -972,8 +972,11 @@ def admin_delete_enrollment(request, enrollment_id):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_payments(request):
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
     status_filter = request.query_params.get("status")
-    payments = Payment.objects.select_related("order").order_by("-created_at")
+    payments = Payment.objects.select_related("order").filter(currency=currency).order_by("-created_at")
 
     if status_filter:
         payments = payments.filter(status=status_filter)
@@ -994,7 +997,8 @@ def admin_payments(request):
         status="approved"
     ).aggregate(t=Sum("amount"))["t"] or 0
 
-    return Response({"results": data, "total_approved": float(total_approved)})
+    return Response({"results": data, "currency": currency, "total_approved": float(total_approved),
+                     "approved_by_currency": summarize_by_currency(Payment.objects.filter(status="approved"), "amount")})
 
 @api_view(["PATCH"])
 @permission_classes([IsAdminOrStaff])
@@ -1938,19 +1942,21 @@ def admin_finance_category_detail(request, cat_id):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_summary(request):
-    """GET /api/v1/admin/finance/summary/"""
-    
+    """GET /api/v1/admin/finance/summary/?currency=CLP|USD|ARS"""
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
 
     categories = DistributionCategory.objects.filter(is_active=True)
     summary = []
 
     for cat in categories:
         total_in  = IncomeDistribution.objects.filter(
-            category=cat
+            category=cat, income_record__currency=currency
         ).aggregate(t=Sum("amount"))["t"] or 0
 
         total_out = Withdrawal.objects.filter(
-            category=cat
+            category=cat, currency=currency
         ).aggregate(t=Sum("amount"))["t"] or 0
 
         balance = float(total_in) - float(total_out)
@@ -1968,20 +1974,21 @@ def admin_finance_summary(request):
         })
 
     # Totales generales
-    total_income = IncomeRecord.objects.aggregate(
+    total_income = IncomeRecord.objects.filter(currency=currency).aggregate(
         t=Sum("amount"))["t"] or 0
-    total_withdrawn = Withdrawal.objects.aggregate(
+    total_withdrawn = Withdrawal.objects.filter(currency=currency).aggregate(
         t=Sum("amount"))["t"] or 0
 
     # Últimos ingresos
     
-    recent = IncomeRecord.objects.select_related(
+    recent = IncomeRecord.objects.filter(currency=currency).select_related(
         "order", "payment"
     ).order_by("-created_at")[:20]
 
     recent_data = [{
         "id":          str(r.id),
         "amount":      float(r.amount),
+        "currency":    r.currency,
         "description": r.description,
         "source":      r.source,
         "created_at":  r.created_at.strftime("%d/%m/%Y %H:%M"),
@@ -1994,6 +2001,11 @@ def admin_finance_summary(request):
     } for r in recent]
 
     return Response({
+        "currency": currency,
+        "unclassified_income_count": IncomeRecord.objects.filter(currency__isnull=True).count(),
+        "unclassified_withdrawals_count": Withdrawal.objects.filter(currency__isnull=True).count(),
+        "income_by_currency": {code: float(amount(IncomeRecord.objects.filter(currency=code))) for code in ("CLP", "USD", "ARS")},
+        "withdrawals_by_currency": {code: float(amount(Withdrawal.objects.filter(currency=code))) for code in ("CLP", "USD", "ARS")},
         "summary":          summary,
         "total_income":     float(total_income),
         "total_withdrawn":  float(total_withdrawn),
@@ -2005,16 +2017,19 @@ def admin_finance_summary(request):
 @api_view(["GET", "POST"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_withdrawals(request):
-    """GET/POST /api/v1/admin/finance/withdrawals/"""
-    
+    """GET/POST /api/v1/admin/finance/withdrawals/ (currency-aware)."""
     if request.method == "GET":
-        ws = Withdrawal.objects.select_related("category", "created_by").order_by("-created_at")[:50]
+        currency = requested_currency(request)
+        if currency is None:
+            return currency_error()
+        ws = Withdrawal.objects.filter(currency=currency).select_related("category", "created_by").order_by("-created_at")[:50]
         return Response([{
             "id":            str(w.id),
             "category_name": w.category.name,
             "category_color":w.category.color,
             "category_icon": w.category.icon,
             "amount":        float(w.amount),
+            "currency":      w.currency,
             "destination":   w.destination,
             "notes":         w.notes,
             "reference":     w.reference,
@@ -2022,7 +2037,10 @@ def admin_finance_withdrawals(request):
             "created_at":    w.created_at.strftime("%d/%m/%Y %H:%M"),
         } for w in ws])
 
-    # POST — registrar retiro
+    # POST: amount and category balance are always in the SAME denomination.
+    currency = str(request.data.get("currency") or "CLP").strip().upper()
+    if currency not in ("CLP", "USD", "ARS"):
+        return currency_error()
     try:
         cat = DistributionCategory.objects.get(id=request.data.get("category_id"))
     except DistributionCategory.DoesNotExist:
@@ -2039,8 +2057,8 @@ def admin_finance_withdrawals(request):
     # No permitir retirar más de lo que la categoría realmente tiene
     # disponible (antes no había ningún chequeo — se podía dejar el
     # saldo en negativo con un typo).
-    total_in  = IncomeDistribution.objects.filter(category=cat).aggregate(t=Sum("amount"))["t"] or Decimal("0")
-    total_out = Withdrawal.objects.filter(category=cat).aggregate(t=Sum("amount"))["t"] or Decimal("0")
+    total_in  = IncomeDistribution.objects.filter(category=cat, income_record__currency=currency).aggregate(t=Sum("amount"))["t"] or Decimal("0")
+    total_out = Withdrawal.objects.filter(category=cat, currency=currency).aggregate(t=Sum("amount"))["t"] or Decimal("0")
     balance   = Decimal(str(total_in)) - Decimal(str(total_out))
     if amount > balance:
         return Response(
@@ -2051,6 +2069,7 @@ def admin_finance_withdrawals(request):
     w = Withdrawal.objects.create(
         category    = cat,
         amount      = amount,
+        currency    = currency,
         destination = request.data.get("destination", ""),
         notes       = request.data.get("notes", ""),
         reference   = request.data.get("reference", ""),
@@ -2073,6 +2092,7 @@ def admin_finance_withdrawal_delete(request, withdrawal_id):
     # Guarda el rastro ANTES de borrar — si no, se pierde para siempre.
     WithdrawalDeletionLog.objects.create(
         original_id          = w.id,
+        currency             = w.currency,
         category_name         = w.category.name,
         amount                 = w.amount,
         destination            = w.destination,
