@@ -446,13 +446,13 @@ export default function MyLoyalty() {
           aria-expanded={faqOpen}
           aria-controls="loyalty-program-details"
           onClick={() => setFaqOpen(open => !open)}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
             <ShieldCheck size={18} style={{ color: "#16a34a" }} />
             <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--admin-primary-text)" }}>
               ¿Cómo funciona el programa de fidelización LevelPro?
             </span>
-          </div>
+            </span>
           <ChevronDown
             size={18}
             style={{
@@ -461,7 +461,7 @@ export default function MyLoyalty() {
               transition: "transform 0.2s ease",
             }}
           />
-          </div>
+          </span>
         </button>
 
         {faqOpen && (
@@ -478,7 +478,7 @@ export default function MyLoyalty() {
             <ul style={{ margin: 0, paddingLeft: "20px" }}>
               <li><strong>Acumulación automática:</strong> Cada compra suma puntos cuando tu pago es validado y facturado.</li>
               <li><strong>Canje directo:</strong> Aplica tus puntos acumulados como descuento en el checkout antes de pagar.</li>
-              <li><strong>Mínimo de canje:</strong> Requieres al menos {data.minimo_canje ?? "el mínimo vigente"} puntos para solicitar descuento.</li>
+              <li><strong>Mínimo de canje:</strong> {data.minimo_canje == null ? "Consulta el mínimo vigente antes de canjear." : `Se requieren ${data.minimo_canje} puntos.`}</li>
               <li><strong>Niveles de fidelidad:</strong> El nivel refleja las reglas de fidelización vigentes en tu cuenta.</li>
               <li><strong>Vigencia:</strong> La disponibilidad y la vigencia de los puntos se rigen por las condiciones vigentes del programa.</li>
             </ul>
