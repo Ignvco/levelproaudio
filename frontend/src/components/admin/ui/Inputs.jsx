@@ -6,7 +6,7 @@ export function SearchInput({ value, onChange, placeholder = "Buscar...", testId
     <div className="au-search">
       <Search size={15} strokeWidth={2} />
       <input value={value} onChange={(e) => onChange?.(e.target.value)}
-        placeholder={placeholder} data-testid={testId || "search-input"} />
+        placeholder={placeholder} aria-label={placeholder} data-testid={testId || "search-input"} />
     </div>
   )
 }
