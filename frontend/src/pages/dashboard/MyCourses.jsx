@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { GraduationCap, Film, Download, BookOpen, CheckCircle2, ArrowRight } from "lucide-react"
 import { getEnrollments, downloadCertificate } from "../../api/academy.api"
+import { queryDisplayState, listFromResponse } from "../../utils/queryDisplayState"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../components/ui/ToastNotification"
 import {
@@ -38,8 +39,8 @@ export default function MyCourses() {
     queryFn: getEnrollments,
   })
 
-  const rawEnrollments = data?.results ?? data
-  const enrollments = Array.isArray(rawEnrollments) ? rawEnrollments : []
+  const ready = queryDisplayState({ data, isPending: isLoading, isError }) === "ready"
+  const enrollments = listFromResponse(data)
 
   const totalEnrollments = enrollments.length
   const completedCount = enrollments.filter(e => (Number(e.progress_percentage) || 0) >= 100).length
@@ -66,7 +67,7 @@ export default function MyCourses() {
       />
 
       {/* KPIs sobre información confirmada por la API. */}
-      {!isLoading && !isError && <div className="lp-grid-kpi">
+      {ready && <div className="lp-grid-kpi">
         <StatCard
           variant="ink"
           Icon={GraduationCap}
@@ -104,7 +105,7 @@ export default function MyCourses() {
         </div>
       )}
 
-      {!isLoading && !isError && enrollments.length === 0 && (
+      {ready && enrollments.length === 0 && (
         <div className="au-card" style={{ padding: "64px 24px", textAlign: "center" }}>
           <div
             style={{
@@ -134,7 +135,7 @@ export default function MyCourses() {
         </div>
       )}
 
-      {!isLoading && !isError && enrollments.length > 0 && (
+      {ready && enrollments.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           {enrollments.map(enrollment => {
             const course = enrollment.course || {}
