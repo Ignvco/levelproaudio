@@ -242,16 +242,9 @@ export default function AdminCategories() {
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-categories"],
     queryFn:  getCategories,
-    onSuccess: (d) => {
-      if (!localRoots) {
-        const cats  = d?.results || d || []
-        const roots = cats.filter(c => !c.parent).sort((a,b) => (a.order||0)-(b.order||0))
-        setLocalRoots(roots)
-      }
-    },
   })
 
-  const allCats = data?.results || data || []
+  const allCats = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []
   const roots   = localRoots
     || allCats.filter(c => !c.parent).sort((a,b) => (a.order||0)-(b.order||0))
   const getChildren = (parentId) =>
@@ -265,7 +258,8 @@ export default function AdminCategories() {
       await Promise.all(
         ordered.map((cat, i) => reorderCategory(cat.id, i))
       )
-      queryClient.invalidateQueries({ queryKey: ["admin-categories"] })
+      await queryClient.invalidateQueries({ queryKey: ["admin-categories"] })
+      setLocalRoots(null)
     } catch (e) {
       showToast("No pudimos guardar el orden completo. Revisa la posición de las categorías y vuelve a intentarlo.", "error")
       setLocalRoots(null)
