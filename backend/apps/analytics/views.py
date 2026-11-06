@@ -2200,6 +2200,12 @@ def inventory_summary(request):
         if p.stock > 0
     )
 
+    # A missing cost is not zero investment. In that case we cannot certify
+    # potential profit from the catalogue snapshot.
+    cost_missing_count = sum(
+        1 for p in products if p.stock > 0 and p.cost_price is None
+    )
+
     total_productos  = products.count()
     sin_stock        = products.filter(stock=0).count()
     stock_critico    = products.filter(stock__gt=0, stock__lte=F("stock_min")).count()
@@ -2208,7 +2214,12 @@ def inventory_summary(request):
     return Response({
         "valor_inventario":  float(valor_inventario),
         "valor_venta":       float(valor_venta),
-        "ganancia_potencial": float(valor_venta - valor_inventario),
+        "ganancia_potencial": (
+            float(valor_venta - valor_inventario)
+            if cost_missing_count == 0 else None
+        ),
+        "cost_missing_count": cost_missing_count,
+        "profit_calculable": cost_missing_count == 0,
         "total_productos":   total_productos,
         "sin_stock":         sin_stock,
         "stock_critico":     stock_critico,
