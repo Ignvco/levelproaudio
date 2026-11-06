@@ -5,6 +5,7 @@ import { SearchInput, FilterSelect } from "./Inputs"
 import { EmptyState, ErrorState } from "./EmptyState"
 import { Pagination } from "./Pagination"
 import { SkeletonTable } from "./Skeletons"
+import { SecondaryButton } from "./Buttons"
 
 function RowMenu({ actions, row }) {
   const [open, setOpen] = useState(false)
@@ -37,7 +38,7 @@ function RowMenu({ actions, row }) {
 }
 
 export function DataTable({
-  columns = [], data = [], loading = false, error = false,
+  columns = [], data = [], loading = false, error = false, onRetry,
   getRowId = (r) => r.id,
   searchable = true, searchPlaceholder = "Buscar...", searchKeys,
   filters = [], toolbarExtra,
@@ -126,7 +127,7 @@ export function DataTable({
       )}
 
       {error ? (
-        <ErrorState />
+        <ErrorState action={onRetry ? <SecondaryButton onClick={onRetry}>Reintentar</SecondaryButton> : undefined} />
       ) : filtered.length === 0 ? (
         <EmptyState Icon={emptyIcon} title={emptyTitle || "Sin resultados"} description={emptyDesc || "Ajusta la búsqueda o los filtros."} />
       ) : (
