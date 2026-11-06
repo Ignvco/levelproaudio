@@ -8,7 +8,7 @@ import {
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../components/ui/ToastNotification"
-import { DataTable, StatusBadge, AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, ConfirmationModal, ErrorState } from "../../components/admin/ui"
+import { DataTable, StatusBadge, AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, ConfirmationModal } from "../../components/admin/ui"
 import { useSiteSettings } from "../../hooks/useSiteSettings"
 import { formatCurrency } from "../../utils/accountingCurrency"
 import { Pencil, Trash2, Package, CheckCircle2, Star, AlertTriangle } from "lucide-react"
