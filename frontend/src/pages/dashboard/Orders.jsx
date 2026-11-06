@@ -23,7 +23,7 @@ const STATUS_MAP = {
 
 export default function Orders() {
   const navigate = useNavigate()
-  const { data, isLoading, isError } = useQuery({ queryKey: ["orders"], queryFn: getOrders })
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["orders"], queryFn: getOrders })
 
   const ready = queryDisplayState({ data, isPending: isLoading, isError }) === "ready"
   const orders = listFromResponse(data).map(o => ({
@@ -175,6 +175,7 @@ export default function Orders() {
         data={orders}
         loading={isLoading}
         error={isError}
+        onRetry={() => refetch()}
         getRowId={o => o.id}
         searchable
         searchKeys={["short_id"]}
