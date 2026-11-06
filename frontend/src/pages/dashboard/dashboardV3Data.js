@@ -13,7 +13,10 @@ export const count = value => finiteNumber(value) ?? 0
 export function formatMoney(value, currency = "CLP") {
   const number = finiteNumber(value)
   if (number === null) return "—"
-  const code = ["CLP", "USD", "ARS"].includes(currency) ? currency : "CLP"
+  const code = String(currency || "").toUpperCase()
+  if (!["CLP", "USD", "ARS"].includes(code)) {
+    return `${new Intl.NumberFormat("es-CL").format(number)} · ${code || "moneda sin definir"}`
+  }
   return new Intl.NumberFormat("es-CL", { style: "currency", currency: code, maximumFractionDigits: code === "CLP" ? 0 : 2 }).format(number)
 }
 
