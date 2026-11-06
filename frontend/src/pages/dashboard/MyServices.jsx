@@ -20,6 +20,7 @@ import {
   StatusBadge,
   PrimaryButton,
   SecondaryButton,
+  ErrorState,
 } from "../../components/admin/ui"
 
 const STATUS_MAP = {
@@ -207,7 +208,7 @@ function RequestDetailModal({ req, onClose }) {
 }
 
 export default function MyServices() {
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["service-requests"],
     queryFn:  getServiceRequests,
   })
@@ -245,8 +246,8 @@ export default function MyServices() {
         }
       />
 
-      {/* KPI Strip */}
-      <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
+      {/* Mostrar indicadores solo tras consulta válida. */}
+      {!isLoading && !isError && <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
         <StatCard
           title="Total solicitudes"
           value={requests.length}
@@ -267,7 +268,7 @@ export default function MyServices() {
           description="Procesadas con éxito"
           variant={completedCount > 0 ? "emerald" : "default"}
         />
-      </div>
+      </div>}
 
       {/* Content list */}
       {isLoading ? (
@@ -276,6 +277,10 @@ export default function MyServices() {
             <div key={i} className="au-skeleton" style={{ height: "88px", borderRadius: "var(--admin-radius-lg)" }} />
           ))}
         </div>
+      ) : isError ? (
+        <ErrorState title="No pudimos cargar tus solicitudes"
+          description="Tus solicitudes de servicio no se han modificado."
+          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
       ) : requests.length === 0 ? (
         <div
           className="au-card"
