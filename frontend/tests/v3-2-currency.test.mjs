@@ -34,6 +34,8 @@ test("formatea por moneda nativa sin convertir montos", () => {
   assert.match(formatMoney(19.99, "USD"), /19,99/)
   assert.match(formatMoney(5000, "ARS"), /5.000/)
   assert.equal(formatMoney(null, "CLP"), "—")
+  assert.match(formatMoney(50, "EUR"), /EUR/)
+  assert.match(formatMoney(50, null), /moneda sin definir/)
 })
 
 test("órdenes admin sin moneda no se reportan erróneamente como CLP", () => {
