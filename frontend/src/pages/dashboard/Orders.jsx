@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { ShoppingBag, Package, Clock, CheckCircle2, DollarSign } from "lucide-react"
 import { getOrders } from "../../api/orders.api"
+import { formatCurrency } from "../../utils/accountingCurrency"
 import {
   AdminPageHeader,
   DataTable,
@@ -32,9 +33,15 @@ export default function Orders() {
   const totalOrders = orders.length
   const inProgressCount = orders.filter(o => o.status === "paid" || o.status === "shipped").length
   const pendingCount = orders.filter(o => o.status === "pending").length
-  const totalSpent = orders
-    .filter(o => o.status !== "cancelled")
-    .reduce((acc, o) => acc + (Number(o.total) || 0), 0)
+  const totalsByCurrency = orders
+    .filter(o => ["paid", "shipped", "completed"].includes(o.status))
+    .reduce((totals, order) => {
+      const currency = ["CLP", "USD", "ARS"].includes(order.currency) ? order.currency : null
+      if (currency) totals[currency] += Number(order.total) || 0
+      return totals
+    }, { CLP: 0, USD: 0, ARS: 0 })
+  const spentLabels = Object.entries(totalsByCurrency).filter(([, value]) => value !== 0)
+    .map(([currency, total]) => formatCurrency(total, currency))
 
   const columns = [
     {
@@ -81,7 +88,7 @@ export default function Orders() {
       align: "right",
       render: o => (
         <span style={{ fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--admin-primary-text)" }}>
-          ${Number(o.total).toLocaleString("es-CL")}
+          {formatCurrency(o.total, o.currency)}
         </span>
       ),
     },
@@ -157,8 +164,8 @@ export default function Orders() {
           variant="light"
           Icon={DollarSign}
           label="Total compras"
-          value={`$${totalSpent.toLocaleString("es-CL")}`}
-          sub="Inversión acumulada"
+          value={<span style={{ fontSize: 16, lineHeight: 1.4 }}>{spentLabels.length ? spentLabels.join(" · ") : "—"}</span>}
+          sub="Compras pagadas, separadas por moneda"
         />
       </div>
 
