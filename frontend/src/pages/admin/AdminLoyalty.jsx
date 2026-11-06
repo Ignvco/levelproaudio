@@ -34,7 +34,7 @@ function AdjustModal({ account, onClose }) {
       reason:  form.reason,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries(["admin-loyalty-summary"])
+      queryClient.invalidateQueries({ queryKey: ["admin-loyalty-summary"] })
       onClose()
     },
     onError: (e) => setError(e?.response?.data?.detail || "Error al ajustar."),
@@ -109,7 +109,7 @@ export default function AdminLoyalty() {
     setSavingCfg(true)
     try {
       await updateLoyaltyConfig(cfgForm)
-      queryClient.invalidateQueries(["admin-loyalty-config"])
+      queryClient.invalidateQueries({ queryKey: ["admin-loyalty-config"] })
       setCfgOk(true); setTimeout(() => setCfgOk(false), 3000)
     } finally { setSavingCfg(false) }
   }
