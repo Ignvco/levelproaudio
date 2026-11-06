@@ -177,10 +177,10 @@ export default function AdminInventory() {
                             {p.stock_min ?? 3}
                           </td>
                           <td style={{ textAlign: "right", color: "var(--admin-text-secondary)", fontFamily: "var(--font-mono)" }}>
-                            {p.cost_price ? fmt(p.cost_price) : "—"}
+                            {p.cost_price != null ? fmt(p.cost_price) : "—"}
                           </td>
                           <td style={{ textAlign: "right", fontWeight: 700, fontFamily: "var(--font-mono)" }}>
-                            {p.cost_price ? fmt(p.cost_price * p.stock) : "—"}
+                            {p.cost_price != null ? fmt(p.cost_price * p.stock) : "—"}
                           </td>
                         </tr>
                       ))}
