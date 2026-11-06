@@ -27,10 +27,10 @@ function StatusSelector({ paymentId, current }) {
   const mutation    = useMutation({
     mutationFn: (s) => updatePaymentStatus(paymentId, s),
     onSuccess:  () => {
-      queryClient.invalidateQueries(["admin-payments"])
-      queryClient.invalidateQueries(["admin-orders"])
-      queryClient.invalidateQueries(["admin-dashboard"])
-      queryClient.invalidateQueries(["admin-finance-summary"])
+      queryClient.invalidateQueries({ queryKey: ["admin-payments"] })
+      queryClient.invalidateQueries({ queryKey: ["admin-orders"] })
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] })
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
     },
     onError: (e) => {
       showToast(e?.response?.data?.detail || "No se pudo actualizar el estado del pago. Verificá antes de asumir que se marcó.", "error")
@@ -110,12 +110,23 @@ export default function AdminPayments() {
       <AdminPageHeader
         eyebrow="LEVELPRO / VENTAS"
         title="Pagos"
-        description={data?.total_approved > 0
-          ? `Total aprobado: $${Number(data.total_approved).toLocaleString("es-CL")}`
-          : "Conciliación de transacciones, pasarelas y transferencias"}
-        actions={<SecondaryButton to="/admin/payment-methods" size="sm">Métodos de pago</SecondaryButton>}
+        description={`Aprobados en ${currency}: ${formatMoney(data?.total_approved ?? 0, currency)} · sin conversión cambiaria`}
+        actions={<div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>Moneda</span>
+            <select className="au-select" aria-label="Filtrar pagos por moneda"
+              value={currency} onChange={e => setCurrency(e.target.value)}>
+              <option value="CLP">CLP</option><option value="USD">USD</option><option value="ARS">ARS</option>
+            </select>
+          </label>
+          <SecondaryButton to="/admin/payment-methods" size="sm">Métodos de pago</SecondaryButton>
+        </div>}
       />
 
+      {isError && <div role="alert" className="lp-callout lp-callout--warning">
+        No pudimos consultar los pagos de {currency}.
+        <button type="button" onClick={() => refetch()} style={{ marginLeft: 10 }}>Reintentar</button>
+      </div>}
       {pendingTransfers.length > 0 && (
         <div
           onClick={() => setStatusFilter("pending")}
