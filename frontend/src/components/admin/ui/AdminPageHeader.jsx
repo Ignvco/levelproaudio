@@ -4,7 +4,7 @@ import { ChevronRight } from "lucide-react"
 
 export function AdminPageHeader({ eyebrow, title, description, subtitle, actions, breadcrumbs, breadcrumb, testId }) {
   const desc = description || subtitle
-  const crumbs = breadcrumbs ?? breadcrumb
+  const crumbs = Array.isArray(breadcrumbs) ? breadcrumbs : Array.isArray(breadcrumb) ? breadcrumb : []
   return (
     <div className="au-header" data-testid={testId || "admin-page-header"}>
       <div>
