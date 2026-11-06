@@ -1,0 +1,641 @@
+diff --git a/backend/apps/analytics/currency_reporting.py b/backend/apps/analytics/currency_reporting.py
+new file mode 100644
+--- /dev/null
++++ b/backend/apps/analytics/currency_reporting.py
+@@ -0,0 +1,34 @@
++"""Currency-scoped reporting primitives.
++
++Never aggregate native order/payment amounts across CLP, USD and ARS.
++Amounts are reported in the currency in which the transaction was recorded.
++Currency conversion is deliberately outside the scope of these helpers.
++"""
++from django.db.models import Sum
++from rest_framework.exceptions import ValidationError
++
++SUPPORTED_CURRENCIES = ("CLP", "USD", "ARS")
++
++
++def reporting_currency(request):
++    requested = (request.query_params.get("currency", "CLP") or "").strip().upper()
++    if requested not in SUPPORTED_CURRENCIES:
++        raise ValidationError({"currency": "Moneda no válida. Usa CLP, USD o ARS."})
++    return requested
++
++
++def grouped_currency_totals(queryset, amount_field="total"):
++    rows = (
++        queryset.values("currency")
++        .annotate(total=Sum(amount_field))
++        .order_by("currency")
++    )
++    result = {currency: 0.0 for currency in SUPPORTED_CURRENCIES}
++    unknown = []
++    for row in rows:
++        code = (row.get("currency") or "").upper()
++        if code in result:
++            result[code] += float(row["total"] or 0)
++        else:
++            unknown.append({"currency": code or None, "total": float(row["total"] or 0)})
++    return result, unknown
+diff --git a/backend/apps/analytics/tests_currency_reporting.py b/backend/apps/analytics/tests_currency_reporting.py
+new file mode 100644
+--- /dev/null
++++ b/backend/apps/analytics/tests_currency_reporting.py
+@@ -0,0 +1,114 @@
++"""Regression: financial dashboard, analytics and payment aggregates cannot mix currencies."""
++from decimal import Decimal
++
++from django.contrib.auth import get_user_model
++from django.test import TestCase
++from rest_framework.test import APIClient
++from apps.orders.models import Order, OrderStatus
++from apps.payments.models import Payment, PaymentProvider, PaymentStatus
++from apps.products.models import Product, Category
++from apps.orders.models import OrderItem
++from apps.analytics.models import IncomeRecord
++
++
++class CurrencyScopedReportingTest(TestCase):
++    def setUp(self):
++        user_model = get_user_model()
++        self.admin = user_model.objects.create_superuser(
++            email="currency-admin@example.test", username="currency-admin", password="x"
++        )
++        self.client = APIClient()
++        self.client.force_authenticate(user=self.admin)
++        self.orders = {}
++        for code, amount in [("CLP", "1000"), ("USD", "25"), ("ARS", "3000")]:
++            order = Order.objects.create(
++                status=OrderStatus.PAID, total=Decimal(amount), currency=code,
++                email=f"{code.lower()}@example.test", shipping_address="Test",
++            )
++            self.orders[code] = order
++            Payment.objects.create(
++                order=order, provider=PaymentProvider.TRANSFER,
++                status=PaymentStatus.APPROVED, amount=Decimal(amount), currency=code,
++            )
++
++    def test_dashboard_currency_is_not_implicitly_converted_or_summed(self):
++        for code, expected in [("CLP", 1000), ("USD", 25), ("ARS", 3000)]:
++            response = self.client.get("/api/v1/admin/dashboard/", {"currency": code})
++            self.assertEqual(response.status_code, 200, response.data)
++            self.assertEqual(response.data["currency"], code)
++            self.assertEqual(response.data["revenue"]["total"], expected)
++            self.assertEqual(response.data["revenue_by_currency"], {"CLP": 1000, "USD": 25, "ARS": 3000})
++            self.assertTrue(all(row["total"] == expected for row in response.data["sales_chart"]))
++
++    def test_analytics_scoped_kpis_series_providers_and_categories(self):
++        for code, expected in [("CLP", 1000), ("USD", 25), ("ARS", 3000)]:
++            response = self.client.get("/api/v1/admin/analytics/", {"currency": code})
++            self.assertEqual(response.status_code, 200, response.data)
++            self.assertEqual(response.data["currency"], code)
++            self.assertEqual(response.data["kpis"]["total_revenue"], expected)
++            self.assertEqual(response.data["kpis"]["avg_order_value"], expected)
++            self.assertEqual(sum(row["total"] for row in response.data["sales_by_month"]), expected)
++            self.assertEqual(sum(row["total"] for row in response.data["revenue_by_provider"]), expected)
++
++    def test_admin_payments_total_approved_is_currency_scoped(self):
++        for code, expected in [("CLP", 1000), ("USD", 25), ("ARS", 3000)]:
++            response = self.client.get("/api/v1/admin/payments/", {"currency": code})
++            self.assertEqual(response.status_code, 200, response.data)
++            self.assertEqual(response.data["total_approved"], expected)
++            self.assertEqual(response.data["currency"], code)
++            self.assertTrue(all(row["currency"] == code for row in response.data["results"]))
++
++    def test_invalid_currency_is_rejected(self):
++        for endpoint in ("dashboard/", "analytics/", "payments/"):
++            response = self.client.get(f"/api/v1/admin/{endpoint}", {"currency": "EUR"})
++            self.assertEqual(response.status_code, 400)
++            self.assertFalse("total" in response.data)
++
++    def test_legacy_default_is_explicitly_clp_only(self):
++        for endpoint in ("dashboard/", "analytics/", "payments/"):
++            response = self.client.get(f"/api/v1/admin/{endpoint}")
++            self.assertEqual(response.status_code, 200)
++            self.assertEqual(response.data["currency"], "CLP")
++
++    def test_executive_dashboard_respects_requested_currency(self):
++        for code, expected in [("CLP", 1000), ("USD", 25), ("ARS", 3000)]:
++            response = self.client.get("/api/v1/admin/executive/", {"currency": code})
++            self.assertEqual(response.status_code, 200, response.data)
++            self.assertEqual(response.data["currency"], code)
++            self.assertEqual(response.data["ventas"]["mes"], expected)
++            self.assertEqual(sum(row["total"] for row in response.data["ventas_7dias"]), expected)
++            if code != "CLP":
++                self.assertIsNone(response.data["utilidad_mes"])
++
++    def test_by_product_keeps_native_revenue_and_never_subtracts_clp_cost_from_usd(self):
++        category = Category.objects.create(name="Currency test", slug="currency-test")
++        product = Product.objects.create(
++            name="Speaker", slug="speaker-currency-test", category=category,
++            price=Decimal("1000"), cost_price=Decimal("200"), stock=10, is_active=True,
++        )
++        for code, order in self.orders.items():
++            OrderItem.objects.create(
++                order=order, product=product, product_name="Speaker",
++                price=order.total, quantity=1,
++            )
++        for code, expected in [("CLP", 1000), ("USD", 25), ("ARS", 3000)]:
++            response = self.client.get("/api/v1/admin/finance/by-product/", {"currency": code})
++            self.assertEqual(response.status_code, 200, response.data)
++            self.assertEqual(response.data["currency"], code)
++            row = response.data["results"][0]
++            self.assertEqual(row["total_revenue"], expected)
++            if code == "CLP":
++                self.assertEqual(row["profit"], 800)
++            else:
++                self.assertIsNone(row["profit"])
++                self.assertIsNone(row["total_cost"])
++                self.assertIsNone(row["margin"])
++
++    def test_finance_summary_discloses_legacy_unclassified_currency_ledger(self):
++        IncomeRecord.objects.create(
++            order=self.orders["USD"], amount=Decimal("25"), source="payment",
++        )
++        response = self.client.get("/api/v1/admin/finance/summary/")
++        self.assertEqual(response.status_code, 200, response.data)
++        self.assertEqual(response.data["currency_integrity"]["status"], "needs_classification")
++        self.assertGreater(response.data["currency_integrity"]["foreign_currency_income_records"], 0)
+diff --git a/backend/apps/analytics/views.py b/backend/apps/analytics/views.py
+--- a/backend/apps/analytics/views.py
++++ b/backend/apps/analytics/views.py
+@@ -44,6 +44,7 @@
+     import_courses_from_excel, import_courses_from_csv,
+ )
+ from apps.analytics.models import DistributionCategory, IncomeRecord, IncomeDistribution, Withdrawal
++from apps.analytics.currency_reporting import reporting_currency, grouped_currency_totals
+ from apps.services.serializers import ServiceDetailSerializer
+ 
+ # ═══════════════════════════════════════════════════════════
+@@ -712,13 +713,16 @@
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def dashboard_overview(request):
++    currency = reporting_currency(request)
+     now         = timezone.now()
+     today       = now.date()
+     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+     last_30     = now - timedelta(days=30)
+     last_7      = now - timedelta(days=7)
+ 
+-    paid_orders = Order.objects.filter(status__in=["paid", "shipped", "completed"])
++    all_paid_orders = Order.objects.filter(status__in=["paid", "shipped", "completed"])
++    totals_by_currency, unknown_currency_totals = grouped_currency_totals(all_paid_orders)
++    paid_orders = all_paid_orders.filter(currency=currency)
+ 
+     total_revenue      = paid_orders.aggregate(t=Sum("total"))["t"] or 0
+     revenue_this_month = paid_orders.filter(
+@@ -757,7 +761,7 @@
+ 
+     top_products = (
+         OrderItem.objects
+-        .filter(order__status__in=["paid", "shipped", "completed"])
++        .filter(order__status__in=["paid", "shipped", "completed"], order__currency=currency)
+         .values("product_name")
+         .annotate(total_sold=Sum("quantity"), revenue=Sum("price"))
+         .order_by("-total_sold")[:5]
+@@ -784,6 +788,9 @@
+         pass
+ 
+     return Response({
++        "currency": currency,
++        "revenue_by_currency": totals_by_currency,
++        "unknown_currency_totals": unknown_currency_totals,
+         "revenue": {
+             "total":        float(total_revenue),
+             "this_month":   float(revenue_this_month),
+@@ -823,6 +830,7 @@
+                 "id":      str(o.id),
+                 "email":   o.email,
+                 "total":   float(o.total),
++                "currency": o.currency,
+                 "status":  o.status,
+                 "created": o.created_at.strftime("%Y-%m-%d %H:%M"),
+             }
+@@ -963,8 +971,11 @@
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def admin_payments(request):
++    currency = reporting_currency(request)
+     status_filter = request.query_params.get("status")
+-    payments = Payment.objects.select_related("order").order_by("-created_at")
++    approved_all = Payment.objects.filter(status="approved")
++    totals_by_currency, unknown_currency_totals = grouped_currency_totals(approved_all, "amount")
++    payments = Payment.objects.select_related("order").filter(currency=currency).order_by("-created_at")
+ 
+     if status_filter:
+         payments = payments.filter(status=status_filter)
+@@ -985,7 +996,13 @@
+         status="approved"
+     ).aggregate(t=Sum("amount"))["t"] or 0
+ 
+-    return Response({"results": data, "total_approved": float(total_approved)})
++    return Response({
++        "currency": currency,
++        "results": data,
++        "total_approved": float(total_approved),
++        "approved_by_currency": totals_by_currency,
++        "unknown_currency_totals": unknown_currency_totals,
++    })
+ 
+ @api_view(["PATCH"])
+ @permission_classes([IsAdminOrStaff])
+@@ -1449,12 +1466,15 @@
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def analytics_full(request):
++    currency = reporting_currency(request)
+     now      = timezone.now()
+     last_12m = now - timedelta(days=365)
+ 
+-    paid_orders = Order.objects.filter(
++    all_paid_orders = Order.objects.filter(
+         status__in=["paid", "shipped", "completed"]
+     )
++    totals_by_currency, unknown_currency_totals = grouped_currency_totals(all_paid_orders)
++    paid_orders = all_paid_orders.filter(currency=currency)
+ 
+     sales_by_month = (
+         paid_orders.filter(created_at__gte=last_12m)
+@@ -1480,7 +1500,7 @@
+     )
+ 
+     revenue_by_provider = (
+-        Payment.objects.filter(status="approved")
++        Payment.objects.filter(status="approved", currency=currency)
+         .values("provider")
+         .annotate(total=Sum("amount"), count=Count("id"))
+         .order_by("-total")
+@@ -1497,6 +1517,7 @@
+         OrderItem.objects
+         .filter(
+             order__status__in=["paid", "shipped", "completed"],
++            order__currency=currency,
+             product__isnull=False
+         )
+         .values("product__category__name")
+@@ -1514,15 +1535,18 @@
+ 
+     total_revenue    = paid_orders.aggregate(t=Sum("total"))["t"] or 0
+     avg_order_value  = paid_orders.aggregate(a=Avg("total"))["a"] or 0
+-    total_customers  = Order.objects.values("user").distinct().count()
++    total_customers  = paid_orders.values("user").distinct().count()
+     repeat_customers = (
+-        Order.objects.values("user")
++        paid_orders.values("user")
+         .annotate(c=Count("id"))
+         .filter(c__gt=1)
+         .count()
+     )
+ 
+     return Response({
++        "currency": currency,
++        "revenue_by_currency": totals_by_currency,
++        "unknown_currency_totals": unknown_currency_totals,
+         "kpis": {
+             "total_revenue":    float(total_revenue),
+             "avg_order_value":  float(avg_order_value),
+@@ -1919,9 +1943,34 @@
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def admin_finance_summary(request):
+-    """GET /api/v1/admin/finance/summary/"""
+-    
++    """GET /api/v1/admin/finance/summary/.
+ 
++    Legacy ledger has no native currency column for income distributions or
++    withdrawals. Report the classification risk explicitly; never claim a
++    mixed-currency balance is audited.
++    """
++    foreign_income_count = IncomeRecord.objects.filter(
++        Q(order__currency__in=["USD", "ARS"])
++        | Q(order__isnull=True, payment__currency__in=["USD", "ARS"])
++    ).count()
++    unidentified_income_count = IncomeRecord.objects.filter(
++        order__isnull=True, payment__isnull=True
++    ).count()
++    unidentified_withdrawal_count = Withdrawal.objects.count()
++    finance_integrity = {
++        "status": "needs_classification" if (
++            foreign_income_count or unidentified_income_count or unidentified_withdrawal_count
++        ) else "clp_only_verifiable",
++        "foreign_currency_income_records": foreign_income_count,
++        "unidentified_income_records": unidentified_income_count,
++        "withdrawals_without_currency": unidentified_withdrawal_count,
++        "warning": (
++            "Los saldos históricos no están certificados por moneda. "
++            "Clasifica ingresos y retiros antes de utilizarlos para decisiones financieras."
++        ) if (foreign_income_count or unidentified_income_count or unidentified_withdrawal_count) else None,
++    }
++
++
+     categories = DistributionCategory.objects.filter(is_active=True)
+     summary = []
+ 
+@@ -1975,6 +2024,7 @@
+     } for r in recent]
+ 
+     return Response({
++        "currency_integrity": finance_integrity,
+         "summary":          summary,
+         "total_income":     float(total_income),
+         "total_withdrawn":  float(total_withdrawn),
+@@ -2067,12 +2117,14 @@
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def admin_finance_by_product(request):
+-    """GET /api/v1/admin/finance/by-product/"""
++    """GET /api/v1/admin/finance/by-product/?currency=CLP|USD|ARS"""
++    currency = reporting_currency(request)
+     
+ 
+     # Solo órdenes pagadas
+     items = OrderItem.objects.filter(
+-        order__status__in=["paid", "shipped", "completed"]
++        order__status__in=["paid", "shipped", "completed"],
++        order__currency=currency,
+     ).select_related("product").values(
+         "product__name", "product__sku", "product__cost_price"
+     ).annotate(
+@@ -2085,23 +2137,26 @@
+ 
+     results = []
+     for item in items:
+-        cost_price    = item["product__cost_price"] or Decimal("0")
+-        total_cost    = cost_price * item["units_sold"]
+-        profit        = item["total_revenue"] - total_cost
+-        margin        = round(float(profit) / float(item["total_revenue"]) * 100, 1) \
+-                        if item["total_revenue"] else 0
++        # Product cost_price is maintained in the local catalog currency (CLP).
++        # Do NOT subtract CLP costs from USD or ARS sale amounts.
++        cost_price = item["product__cost_price"]
++        costs_known = currency == "CLP" and cost_price is not None
++        total_cost = cost_price * item["units_sold"] if costs_known else None
++        profit = item["total_revenue"] - total_cost if costs_known else None
++        margin = round(float(profit) / float(item["total_revenue"]) * 100, 1) \
++            if profit is not None and item["total_revenue"] else None
+ 
+         results.append({
+             "product_name":  item["product__name"],
+             "sku":           item["product__sku"],
+             "units_sold":    item["units_sold"],
+             "total_revenue": float(item["total_revenue"]),
+-            "total_cost":    float(total_cost),
+-            "profit":        float(profit),
++            "total_cost":    float(total_cost) if total_cost is not None else None,
++            "profit":        float(profit) if profit is not None else None,
+             "margin":        margin,
+         })
+ 
+-    return Response({"results": results})    
++    return Response({"currency": currency, "results": results, "cost_currency": "CLP"})    
+ 
+ 
+ # ── INVENTARIO INTELIGENTE ────────────────────────────────────
+@@ -2239,7 +2294,8 @@
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def executive_dashboard(request):
+-    """Dashboard ejecutivo — KPIs del negocio para mobile"""
++    """Dashboard ejecutivo — KPIs del negocio para mobile, sin mezcla monetaria."""
++    currency = reporting_currency(request)
+ 
+     hoy        = timezone.now()
+     hoy_inicio = hoy.replace(hour=0, minute=0, second=0, microsecond=0)
+@@ -2252,6 +2308,7 @@
+     def get_ventas(desde, hasta=None):
+         qs = Order.objects.filter(
+             status__in=["paid", "shipped", "completed"],
++            currency=currency,
+             created_at__gte=desde,
+         )
+         if hasta:
+@@ -2276,6 +2333,7 @@
+ 
+     # ── Órdenes del día ──────────────────────────────────────
+     ordenes_hoy = Order.objects.filter(
++        currency=currency,
+         created_at__gte=hoy_inicio
+     ).select_related().order_by("-created_at")[:5]
+ 
+@@ -2283,6 +2341,7 @@
+         "id":     str(o.id),
+         "status": o.status,
+         "total":  float(o.total),
++        "currency": o.currency,
+         "email":  o.email,
+         "hora":   o.created_at.strftime("%H:%M"),
+     } for o in ordenes_hoy]
+@@ -2306,6 +2365,7 @@
+         utilidad_mes = IncomeDistribution.objects.filter(
+             category=utilidad_cat,
+             income_record__order__created_at__gte=mes_inicio,
++            income_record__order__currency=currency,
+         ).aggregate(t=Sum("amount"))["t"] or 0
+     except Exception as e:
+         import logging
+@@ -2319,6 +2379,7 @@
+         dia_fin    = dia_inicio + timedelta(days=1)
+         v = Order.objects.filter(
+             status__in=["paid", "shipped", "completed"],
++            currency=currency,
+             created_at__gte=dia_inicio,
+             created_at__lt=dia_fin,
+         ).aggregate(total=Sum("total"), count=Count("id"))
+@@ -2333,6 +2394,7 @@
+     from apps.orders.models import OrderItem
+     top_productos = OrderItem.objects.filter(
+         order__status__in=["paid", "shipped", "completed"],
++        order__currency=currency,
+         order__created_at__gte=mes_inicio,
+     ).values("product_name").annotate(
+         unidades=Sum("quantity"),
+@@ -2340,6 +2402,8 @@
+     ).order_by("-ingresos")[:3]
+ 
+     return Response({
++        "currency": currency,
++        "cost_profit_certified": currency == "CLP",
+         "ventas": {
+             "hoy":            float(ventas_hoy["total"] or 0),
+             "hoy_count":      ventas_hoy["count"] or 0,
+@@ -2350,7 +2414,7 @@
+             "var_dia":        variacion(ventas_hoy["total"], ventas_ayer["total"]),
+             "var_mes":        variacion(ventas_mes["total"], ventas_mes_ant["total"]),
+         },
+-        "utilidad_mes":    float(utilidad_mes),
++        "utilidad_mes":    float(utilidad_mes) if currency == "CLP" else None,
+         "inventario": {
+             "criticos":  criticos,
+             "sin_stock": sin_stock,
+diff --git a/backend/apps/billing/views.py b/backend/apps/billing/views.py
+--- a/backend/apps/billing/views.py
++++ b/backend/apps/billing/views.py
+@@ -67,6 +67,7 @@
+                              if o.user else "") or o.email,
+             "email":        o.email,
+             "total":        float(o.total),
++            "currency":     o.currency,
+             "pago_estado":  o.status,
+             "documento":    _serialize(doc) if doc else None,
+         })
+diff --git a/docs/v3-2/01-auditoria-ejecucion.md b/docs/v3-2/01-auditoria-ejecucion.md
+new file mode 100644
+--- /dev/null
++++ b/docs/v3-2/01-auditoria-ejecucion.md
+@@ -0,0 +1,102 @@
++# LEVELPRO AUDIO V3.2 — Auditoría integral / registro de ejecución
++
++Base auditada: `ef614c9357675d7fb6a18658eb2e8694e072a38f` (V3.1 validada).
++Rama de trabajo: `feat/v3-2-refinamiento-integral`.
++
++## Inventario del frontend
++
++Se inspeccionaron los 27 módulos/páginas de `frontend/src/pages/admin`,
++las 9 subpáginas de `frontend/src/pages/dashboard`, las 18 páginas de nivel
++superior, los layouts y 14 primitivas compartidas `components/admin/ui`.
++Se leyeron fuentes de API, backend de analytics, órdenes, pagos y facturación.
++
++La inspección ha sido **del código** y de las capturas de producción aportadas
++por el propietario para Admin Home/Cliente Home. No se dispone de un navegador
++autenticado con todas las rutas ni de capturas responsive de cada página.
++Por ello NO se certifica una auditoría visual 1:1 de cada módulo.
++
++### Conclusiones UX/UI
++
++- El lenguaje Bento V3 está concentrado en los dos Home; numerosas vistas
++  interiores mantienen sistema `admin-ui.css` y JSX con estilos inline.
++- AdminDashboard, AdminFinance, AdminProducts y Dashboard concentran muchos
++  estilos inline: una migración masiva e indiscriminada rompería el diseño.
++- Las tarjetas KPI accionables estaban implementadas como `div onClick`,
++  sin soporte de teclado; tablas usaban `th onClick`, y varios diálogos
++  carecían de nombre accesible y gestión de foco.
++- En el Home del usuario, las tarjetas verdes se expandían a la altura del
++  hero negro, dejando amplias zonas vacías. Se reajusta la composición para
++  dos filas Bento con un protagonista vertical.
++- Se normalizan foco visible, contraste de títulos oscuros, reduced motion
++  y controles de módulos dentro del shell, sin tocar el storefront público.
++
++## Finanzas y multimoneda: diagnóstico
++
++**P0 — resuelto en consultas comerciales de esta entrega:**
++- `dashboard_overview`: sumaba `Order.total` de todas las monedas.
++- `analytics_full`: KPI, series y ticket promedio agregaban órdenes
++  CLP/USD/ARS; ingresos por proveedor tampoco separaban monedas.
++- `admin_payments`: sumaba `Payment.amount` de todas las monedas.
++- `executive_dashboard`: KPIs diarios/mensuales y series mezclaban importes.
++- `admin_finance_by_product`: mezclaba ventas; además restaba costo de
++  catálogo CLP contra ventas USD/ARS.
++- UI de pedidos del cliente, gestión de órdenes Admin y registro tributario
++  presentaban importes extranjeros como `$` CLP.
++- `getAnalytics` utilizado en Finanzas no identificaba moneda.
++
++**Corrección implementada:**
++- Endpoints con `?currency=CLP|USD|ARS`, valor por defecto explícito CLP,
++  rechazo HTTP 400 de monedas no soportadas.
++- Totales de las 3 divisas reportados separadamente, sin conversiones.
++- Moneda en listado de documentos tributarios y selección de monedas en UI.
++- Costos, margen y utilidad de productos USD/ARS devueltos `null` hasta
++  disponer de costos comparables, sin tasa de cambio improvisada.
++- La lista de compras y sus KPIs no suman monedas distintas ni pedidos no
++  pagados.
++
++**P0 — detectado, NO resuelto aún: libro mayor histórico.**
++- `IncomeRecord`, `IncomeDistribution` y `Withdrawal` guardan montos
++  sin moneda explícita; `admin_finance_summary`, retiros, distribuciones
++  y balance histórico pueden ser matemáticamente ambiguos.
++- La API identifica ingresos extranjeros y movimientos sin clasificación;
++  el panel avisa que los saldos históricos no están certificados.
++- Debe diseñarse una migración de esquema con columna moneda, vinculación
++  verificable a órdenes/pagos, tratamiento de retiros históricos sin origen,
++  reconciliación de costos y auditoría de registros previos.
++- No se marcó un retiro como CLP por defecto, no se inventó un tipo de
++  cambio y NO se cambió el flujo monetario de retiros sin conciliación.
++- El catálogo almacena `cost_price` en moneda local; su coste histórico
++  no debe asumirse como coste definitivo de órdenes de exportación.
++- Rewards e integración fiscal requieren revisión de integridad monetaria
++  antes de certificar todo el negocio.
++
++## Patch 14 — estado
++
++**No existe implementación ni patch aprobado del 14**. Su alcance
++previamente planteado: idempotencia de intentos de pago, recuperación
++de pedidos pendientes, conciliación de pasarelas y protección de stock.
++No se abrió ni modificó lógica relativa al Patch 14 en V3.2.
++Se conserva absolutamente pausado.
++
++## Validación
++
++- Tests Django añadidos para CLP/USD/ARS en Dashboard, Analytics, Pagos,
++  Executive, reporte de producto, moneda inválida y riesgo financiero.
++- Tests JS añadidos para separación de totales, importe original y
++  moneda ausente.
++- Debe ejecutarse `python manage.py check`, `python -m pytest`,
++  `npm run lint`, `npm run test:unit`, `npm run build` en CI.
++- Debe revisarse visualmente en escritorio/tablet/móvil cada área antes
++  de fusionar, además de compras y pagos sandbox.
++- **No son pruebas ya ejecutadas**: las nuevas comprobaciones de Cloud Build
++  y QA autenticada requieren integrar el patch en el entorno del propietario.
++
++## Prioridad del siguiente lote dentro de V3.2
++
++1. Conciliación histórica y migración monetaria de tesorería, sin
++   reinterpretar retiros antiguos por defecto.
++2. Revisar recompensas, documentos fiscales y series monetarias restantes.
++3. Comprobar exhaustivamente estados de error/carga y responsive en todas
++   las páginas interiores, con capturas reales y pruebas E2E.
++4. QA funcional de roles, pagos y todos los módulos tras cambios comunes.
++5. Solo después, informe final de V3.2 y consideración del Patch 14.
+diff --git a/frontend/package.json b/frontend/package.json
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -16,7 +16,7 @@
+     "test:payment:browser": "node --test tests/payment-return.browser.mjs",
+     "lint": "eslint .",
+     "preview": "vite preview",
+-    "test:unit": "node --test tests/payment-return.test.mjs tests/jsonld.test.mjs tests/seo.test.mjs tests/dashboard-payment-methods.test.mjs tests/dashboard-v3-data.test.mjs",
++    "test:unit": "node --test tests/payment-return.test.mjs tests/jsonld.test.mjs tests/seo.test.mjs tests/dashboard-payment-methods.test.mjs tests/dashboard-v3-data.test.mjs tests/v3-2-currency.test.mjs",
+     "test:browser": "node --test tests/payment-return.browser.mjs tests/transfer-instructions.browser.mjs tests/jsonld.browser.mjs tests/seo.browser.mjs tests/routes.browser.mjs",
+     "test:nginx": "node --test tests/seo-nginx.test.mjs",
+     "check:bundle": "node scripts/check-bundle.mjs"
+diff --git a/frontend/src/api/admin.api.js b/frontend/src/api/admin.api.js
+--- a/frontend/src/api/admin.api.js
++++ b/frontend/src/api/admin.api.js
+@@ -5,8 +5,8 @@
+ const BASE = "/admin"
+ 
+ // ── Dashboard & Analytics ────────────────────────────────────
+-export const getAdminDashboard  = () => api.get(`${BASE}/dashboard/`).then(r => r.data)
+-export const getAnalytics       = () => api.get(`${BASE}/analytics/`).then(r => r.data)
++export const getAdminDashboard  = (currency = "CLP") => api.get(`${BASE}/dashboard/`, { params: { currency } }).then(r => r.data)
++export const getAnalytics       = (currency = "CLP") => api.get(`${BASE}/analytics/`, { params: { currency } }).then(r => r.data)
+ 
+ // ── Orders ───────────────────────────────────────────────────
+ export const getAdminOrders     = (params) => api.get(`${BASE}/orders/`, { params }).then(r => r.data)
+@@ -66,7 +66,7 @@
+ export const getAdminUsers  = (params) => api.get(`${BASE}/users/`, { params }).then(r => r.data)
+ 
+ // ── Payments ─────────────────────────────────────────────────
+-export const getAdminPayments = (params) => api.get(`${BASE}/payments/`, { params }).then(r => r.data)
++export const getAdminPayments = (params = {}) => api.get(`${BASE}/payments/`, { params: { currency: "CLP", ...params } }).then(r => r.data)
+ 
+ // ── Academy — cursos ─────────────────────────────────────────
+ export const getAdminAcademy    = () => api.get(`${BASE}/academy/`).then(r => r.data)
+diff --git a/frontend/src/components/admin/ui/AdminTabs.jsx b/frontend/src/components/admin/ui/AdminTabs.jsx
+--- a/frontend/src/components/admin/ui/AdminTabs.jsx
++++ b/frontend/src/components/admin/ui/AdminTabs.jsx
+@@ -1,12 +1,12 @@
+ // components/admin/ui/AdminTabs.jsx
+ export function AdminTabs({ tabs = [], value, onChange, testId }) {
+   return (
+-    <div className="au-tabs" data-testid={testId || "admin-tabs"}>
++    <div className="au-tabs" role="tablist" aria-label="Secciones" data-testid={testId || "admin-tabs"}>
+       {tabs.map((t) => {
+         const key = t.key ?? t
+         const label = t.label ?? t
+         return (
+-          <button key={key} type="button"
++          <button key={key} type="button" role="tab" aria-selected={value === key}
+             className={`au-tab ${value === key ? "is-active" : ""}`}
+             onClick={() => onChange?.(key)}
+             data-testid={`tab-${key}`}>
