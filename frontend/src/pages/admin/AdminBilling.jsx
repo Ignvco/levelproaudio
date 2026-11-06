@@ -13,11 +13,12 @@ import {
   SecondaryButton, StatCard, EmptyState, SkeletonTable,
 } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
+import { formatCurrency } from "../../utils/accountingCurrency"
 import { ExternalLink, FileText, Inbox, CheckCircle2, Clock3 } from "lucide-react"
 
 const SII_URL = "https://www4.sii.cl/consdcvinternetui/"
 
-const money = (v) => v == null ? "—" : `$${Number(v).toLocaleString("es-CL")}`
+const money = (value, currency) => formatCurrency(value, currency)
 
 const ESTADO_TONE = {
   pendiente: "warning",
@@ -56,7 +57,7 @@ function RecordModal({ row, onClose }) {
           borderRadius: "var(--r-md)", fontSize: "13px", color: "var(--text-2)",
         }}>
           <strong style={{ color: "var(--text)" }}>{row.cliente}</strong><br/>
-          {row.email} · {money(row.total)}
+          {row.email} · {money(row.total, row.currency)}
         </div>
 
         <a href={SII_URL} target="_blank" rel="noreferrer"
@@ -168,7 +169,7 @@ export default function AdminBilling() {
                   <tr key={r.order_id}>
                     <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text)" }}>#{r.order_short}</td>
                     <td style={{ color: "var(--admin-text)", fontWeight: 500 }}>{r.cliente}</td>
-                    <td style={{ fontWeight: 700, color: "var(--admin-primary-text)" }}>{money(r.total)}</td>
+                    <td style={{ fontWeight: 700, color: "var(--admin-primary-text)" }}>{money(r.total, r.currency)}</td>
                     <td>
                       <StatusBadge tone="success">Pagado</StatusBadge>
                     </td>
