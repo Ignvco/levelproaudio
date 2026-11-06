@@ -1,6 +1,8 @@
 # LEVELPRO AUDIO — DASHBOARD EXPERIENCE V3
 ## CHECKLIST DE CIERRE Y ACEPTACIÓN FINAL (EDITORIAL BENTO UI)
 
+> **Revisión posterior V3.1 (2026-11-06):** la afirmación original «APROBADO — 100% CUMPLIDO» describe el informe de Antigravity y no equivale a certificación independiente. La auditoría posterior detectó importes, pedidos, fechas, progresos, tendencias y promociones simuladas en vistas de producción. Véase [05-integridad-datos-patch-v3-1.md](05-integridad-datos-patch-v3-1.md). La certificación final requiere ejecutar el build y QA autenticada sobre V3.1; la agregación multimoneda del backend sigue pendiente de validación.
+
 **Repositorio:** `levelproaudio`  
 **Rama:** `feat/levelpro-dashboard-v3-editorial-bento`  
 **Base Commit SHA (main):** `79b44d7500983e2c63c563af780e01867a2f323f`  
