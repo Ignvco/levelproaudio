@@ -122,7 +122,7 @@ export default function AdminBrands() {
   })
   const deleteMutation = useMutation({
     mutationFn: deleteAdminBrand,
-    onSuccess:  () => { queryClient.invalidateQueries(["admin-brands"]); setToDelete(null) },
+    onSuccess:  () => { queryClient.invalidateQueries({ queryKey: ["admin-brands"] }); setToDelete(null) },
     onError:    (e) => {
       showToast(e?.response?.data?.detail || "No se pudo eliminar la marca. Puede tener productos asociados.", "error")
       setToDelete(null)
@@ -138,7 +138,7 @@ export default function AdminBrands() {
         <BrandModal
           brand={modal === "new" ? null : modal}
           onClose={() => setModal(null)}
-          onSave={() => queryClient.invalidateQueries(["admin-brands"])}
+          onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-brands"] })}
         />
       )}
 
