@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useEffect } from "react"
 import { Heart, Package, Zap, Tag } from "lucide-react"
 import { getFavorites } from "../../api/favorites.api"
+import { queryDisplayState, listFromResponse } from "../../utils/queryDisplayState"
 import ProductCard from "../../components/product/ProductCard"
 import { useFavoritesStore } from "../../store/favoritesStore"
 import {
@@ -26,8 +27,8 @@ export default function MyFavorites() {
   // Al cambiar favoritos (quitar desde la card), refrescar la lista
   useEffect(() => { refetch() }, [favIds.length, refetch])
 
-  const rawProducts = data?.results ?? data
-  const allProducts = Array.isArray(rawProducts) ? rawProducts : []
+  const ready = queryDisplayState({ data, isPending: isLoading, isError }) === "ready"
+  const allProducts = listFromResponse(data)
   const products = allProducts.filter(p => favIds.includes(p.id))
 
   const inStockCount = products.filter(p => (Number(p.stock) || 0) > 0).length
@@ -55,7 +56,7 @@ export default function MyFavorites() {
       />
 
       {/* Totales solo cuando la consulta se completó. */}
-      {!isLoading && !isError && <div className="lp-grid-kpi">
+      {ready && <div className="lp-grid-kpi">
         <StatCard
           variant="ink"
           Icon={Heart}
@@ -93,7 +94,7 @@ export default function MyFavorites() {
         </div>
       )}
 
-      {!isLoading && !isError && products.length === 0 && (
+      {ready && products.length === 0 && (
         <div className="au-card" style={{ padding: "64px 24px", textAlign: "center" }}>
           <div
             style={{
@@ -123,7 +124,7 @@ export default function MyFavorites() {
         </div>
       )}
 
-      {!isLoading && !isError && products.length > 0 && (
+      {ready && products.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "20px" }}>
           {products.map(p => {
             const priceDropped = p.price_when_added && Number(p.price) < Number(p.price_when_added)
