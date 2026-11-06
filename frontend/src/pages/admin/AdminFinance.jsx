@@ -3,7 +3,7 @@ import { useState }                             from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api                                       from "../../api/client"          // ← fix crítico
 import { TrendingUp, ArrowUpFromLine, Wallet, Pencil, Trash2, Inbox }   from "lucide-react"
-import { StatCard, AdminPageHeader, SectionCard, DataTable, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle, ConfirmationModal }  from "../../components/admin/ui"
+import { StatCard, AdminPageHeader, SectionCard, DataTable, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle, ConfirmationModal, ErrorState }  from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
 import AccountingCurrencySelect from "../../components/admin/ui/AccountingCurrencySelect"
 import { formatCurrency } from "../../utils/accountingCurrency"
@@ -266,26 +266,26 @@ export default function AdminFinance() {
   const [toDeleteCategory, setToDeleteCategory]     = useState(null)
   const queryClient     = useQueryClient()
 
-  const { data:summary, isLoading, isError: financeError } = useQuery({
+  const { data:summary, isLoading, isError: financeError, refetch: retrySummary } = useQuery({
     queryKey: ["admin-finance-summary", currency],
     queryFn:  () => getFinanceSummary(currency),
     refetchInterval: 60000,
   })
-  const { data:categories = [] } = useQuery({
+  const { data:categories = [], isError: categoriesError, refetch: retryCategories } = useQuery({
     queryKey: ["admin-finance-categories"],
     queryFn:  getFinanceCategories,
   })
-  const { data:withdrawals = [] } = useQuery({
+  const { data:withdrawals = [], isError: withdrawalsError, isLoading: withdrawalsLoading, refetch: retryWithdrawals } = useQuery({
     queryKey: ["admin-finance-withdrawals", currency],
     queryFn:  () => getWithdrawals(currency),
     enabled:  tab === "withdrawals" || tab === "overview",
   })
-  const { data:incomeByProduct } = useQuery({
+  const { data:incomeByProduct, isError: productError, isLoading: productsLoading, refetch: retryProducts } = useQuery({
     queryKey: ["admin-finance-by-product", currency],
     queryFn:  () => api.get("/admin/finance/by-product/", { params: { currency } }).then(r => r.data),
     enabled:  tab === "by_product",
   })
-  const { data:analytics } = useQuery({
+  const { data:analytics, isError: analysisError, refetch: retryAnalysis } = useQuery({
     queryKey: ["admin-analytics", currency],
     queryFn:  () => getAnalytics(currency),
     enabled:  tab === "analysis",
@@ -312,7 +312,7 @@ export default function AdminFinance() {
       if (data?.detail) showToast(data.detail)
     },
     onError: (e) => {
-      showToast(e?.response?.data?.error || "No se pudo eliminar la categoría.")
+      showToast(e?.response?.data?.error || "No se pudo eliminar la categoría.", "error")
     },
   })
 
@@ -325,7 +325,12 @@ export default function AdminFinance() {
   const summaryCategories = summary?.summary      || []
   const recentIncome      = summary?.recent_income || []
 
-  if (financeError) return <div className="au-page"><div className="au-card" role="alert" style={{ padding: 24 }}>No se pudieron cargar los saldos. Verifica la conexión antes de operar.</div></div>
+  if (financeError) return <div className="au-page">
+    <AdminPageHeader title="Finanzas" description="LevelPro Audio · tesorería y reportes" />
+    <ErrorState title="No pudimos cargar los saldos financieros"
+      description="Las operaciones quedan fuera de esta vista hasta recuperar datos verificados."
+      action={<SecondaryButton onClick={() => retrySummary()}>Reintentar</SecondaryButton>} />
+  </div>
 
   if (isLoading) return (
     <div className="au-page">
@@ -418,13 +423,20 @@ export default function AdminFinance() {
           <button
             key={key}
             type="button"
-            onClick={() => setTab(key)}
+            onClick={() => setTab(key)} aria-pressed={tab === key}
             className={`lp-seg-tab${tab === key ? " is-active" : ""}`}
           >
             {label}
           </button>
         ))}
       </div>
+
+      {tab === "overview" && withdrawalsError && (
+        <div className="lp-callout lp-callout--warning" role="alert">
+          No pudimos cargar los retiros recientes. El resumen de saldos procede de otra consulta.
+          <SecondaryButton size="sm" onClick={() => retryWithdrawals()}>Reintentar retiros</SecondaryButton>
+        </div>
+      )}
 
       {/* ── RESUMEN ── */}
       {tab==="overview" && (
@@ -566,7 +578,7 @@ export default function AdminFinance() {
               </div>
             )},
           ]}
-          data={withdrawals} getRowId={w => w.id}
+          data={withdrawals} loading={withdrawalsLoading} error={withdrawalsError} onRetry={() => retryWithdrawals()} getRowId={w => w.id}
           searchable searchKeys={["destination","category_name"]} searchPlaceholder="Buscar retiro..."
           toolbarExtra={
             <PrimaryButton disabled={currency !== "CLP" || summaryCategories.every(c => c.reconciliation_required || !(Number(c.balance) > 0))} onClick={() => setModal("withdrawal")} data-testid="register-withdrawal-btn-2">
@@ -583,7 +595,11 @@ export default function AdminFinance() {
 
       {/* ── CONFIGURACIÓN (categorías) ── */}
       {tab==="categories" && (
-        <div>
+        categoriesError ? (
+          <ErrorState title="No pudimos cargar la configuración de categorías"
+            description="No mostraremos porcentajes vacíos como si fueran correctos."
+            action={<SecondaryButton onClick={() => retryCategories()}>Reintentar</SecondaryButton>} />
+        ) : <div>
           {/* Aviso solo si las categorías de tipo PORCENTAJE, solas, superan
               el 100% — ahí sí hay un problema real (se estaría prometiendo
               más del 100% de cada venta antes de llegar al costo fijo).
@@ -669,7 +685,7 @@ export default function AdminFinance() {
               </div>
             )},
           ]}
-          data={incomeByProduct?.results || []} getRowId={r => r.product_id ?? r.sku ?? r.product_name}
+          data={incomeByProduct?.results || []} loading={productsLoading} error={productError} onRetry={() => retryProducts()} getRowId={r => r.product_id ?? r.sku ?? r.product_name}
           searchable searchKeys={["product_name","sku"]} searchPlaceholder="Buscar producto..."
           emptyIcon={Inbox} emptyTitle="Sin datos todavía"
           emptyDesc="Aparecen al aprobarse pagos con órdenes reales."
@@ -679,7 +695,11 @@ export default function AdminFinance() {
       {/* ── ANÁLISIS (consolida Vista Ejecutiva + Analytics) ── */}
       {tab==="analysis" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"24px" }}>
-          {!analytics ? (
+          {analysisError ? (
+            <ErrorState title="No pudimos consultar los análisis"
+              description="No mostraremos gráficos incompletos como si fueran resultados reales."
+              action={<SecondaryButton onClick={() => retryAnalysis()}>Reintentar</SecondaryButton>} />
+          ) : !analytics ? (
             <p style={{ color:"var(--admin-text-muted)", padding:"40px 0" }}>Cargando análisis…</p>
           ) : (
             <>

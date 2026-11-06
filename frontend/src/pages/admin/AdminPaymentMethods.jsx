@@ -9,7 +9,7 @@ import {
 } from "../../api/admin.api"
 import {
   AdminPageHeader, StatusBadge, FormModal, FormField, formInputStyle,
-  ConfirmationModal, EmptyState, SectionCard, StatCard, PrimaryButton, IconButton,
+  ConfirmationModal, EmptyState, SectionCard, StatCard, PrimaryButton, SecondaryButton, IconButton, ErrorState, SkeletonTable,
 } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
 import { CreditCard, Landmark, Plus, Pencil, Trash2, CheckCircle2 } from "lucide-react"
@@ -191,10 +191,10 @@ export default function AdminPaymentMethods() {
   const [accountModal, setAccountModal] = useState(null)
   const [toDelete, setToDelete]         = useState(null)
 
-  const { data: methods = [] } = useQuery({
+  const { data: methods = [], isLoading: loadingMethods, isError: methodsError, refetch: retryMethods } = useQuery({
     queryKey: ["admin-payment-methods"], queryFn: listPaymentMethods,
   })
-  const { data: accounts = [] } = useQuery({
+  const { data: accounts = [], isLoading: loadingAccounts, isError: accountsError, refetch: retryAccounts } = useQuery({
     queryKey: ["admin-bank-accounts"], queryFn: listBankAccounts,
   })
 
@@ -237,23 +237,27 @@ export default function AdminPaymentMethods() {
         />
       )}
 
-      <div className="lp-kpi-strip">
+      {!loadingMethods && !loadingAccounts && !methodsError && !accountsError && <div className="lp-kpi-strip">
         <StatCard variant="primary" label="Métodos habilitados" value={activeMethods} sub="Sujetos a disponibilidad" Icon={CheckCircle2} />
         <StatCard variant="ink" label="Métodos configurados" value={methods.length} sub="Total registrados" Icon={CreditCard} />
         <StatCard variant="light" label="Cuentas bancarias" value={activeAccounts} sub={`${accounts.length} totales`} Icon={Landmark} />
-      </div>
+      </div>}
 
       {/* Sección: métodos */}
       <SectionCard
         title="Métodos activos"
         description="Medios configurados. Su disponibilidad depende de la moneda y de las cuentas o alias activos."
         action={
-          <PrimaryButton size="sm" onClick={() => setMethodModal("new")}>
+          <PrimaryButton size="sm" disabled={loadingMethods || methodsError} onClick={() => setMethodModal("new")}>
             <Plus size={14} /> Agregar método
           </PrimaryButton>
         }
       >
-        {methods.length === 0 ? (
+        {methodsError ? (
+          <ErrorState title="No pudimos consultar los métodos"
+            description="No asumiremos que el checkout carece de métodos configurados."
+            action={<SecondaryButton onClick={() => retryMethods()}>Reintentar</SecondaryButton>} />
+        ) : loadingMethods ? <SkeletonTable rows={3} /> : methods.length === 0 ? (
           <EmptyState Icon={CreditCard} title="Sin métodos" description="Agregá al menos uno para que el checkout funcione." />
         ) : (
           <div className="au-tscroll" style={{ margin: "0 -24px -22px", width: "calc(100% + 48px)" }}>
@@ -295,12 +299,16 @@ export default function AdminPaymentMethods() {
         title="Cuentas bancarias (transferencia)"
         description="Datos bancarios mostrados cuando el cliente elige pago por transferencia"
         action={
-          <PrimaryButton size="sm" onClick={() => setAccountModal("new")}>
+          <PrimaryButton size="sm" disabled={loadingAccounts || accountsError} onClick={() => setAccountModal("new")}>
             <Plus size={14} /> Agregar cuenta
           </PrimaryButton>
         }
       >
-        {accounts.length === 0 ? (
+        {accountsError ? (
+          <ErrorState title="No pudimos consultar las cuentas bancarias"
+            description="No asumiremos que no existen cuentas activas."
+            action={<SecondaryButton onClick={() => retryAccounts()}>Reintentar</SecondaryButton>} />
+        ) : loadingAccounts ? <SkeletonTable rows={3} /> : accounts.length === 0 ? (
           <EmptyState Icon={Landmark} title="Sin cuentas" description="Agregá una para que aparezca en el checkout cuando el cliente elija transferencia." />
         ) : (
           <div className="au-tscroll" style={{ margin: "0 -24px -22px", width: "calc(100% + 48px)" }}>

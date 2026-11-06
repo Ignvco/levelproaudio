@@ -6,10 +6,12 @@ import {
 } from "../../api/admin.api"
 import { getAdminProducts } from "../../api/admin.api"
 import { Coins, Tag, TrendingUp, Boxes, Ban, AlertTriangle } from "lucide-react"
-import { StatCard, AdminPageHeader, SecondaryButton, StatusBadge, SectionCard } from "../../components/admin/ui"
+import { StatCard, AdminPageHeader, SecondaryButton, StatusBadge, SectionCard, ErrorState } from "../../components/admin/ui"
+import { formatCurrency } from "../../utils/accountingCurrency"
+import { asInventoryRows, normalizeInventoryRotation, inventoryPreview, groupInventoryPreview } from "../../utils/inventoryViewData"
 
 const TABS = ["Resumen","Alertas","Rotación","Por categoría"]
-const fmt  = n => `$${Number(n||0).toLocaleString("es-CL")}`
+const fmt  = n => formatCurrency(n, "CLP")
 
 // ── campos reales backend inventory_summary ──
 // valor_inventario, valor_venta, ganancia_potencial
@@ -21,44 +23,36 @@ function KPI({ label, value, sub, Icon, variant = "light" }) {
 
 export default function AdminInventory() {
   const [tab, setTab] = useState(0)
+  const [rotationCurrency, setRotationCurrency] = useState("CLP")
 
-  const { data:summary, isLoading } = useQuery({
+  const { data:summary, isLoading, isError:summaryError, refetch:refetchSummary } = useQuery({
     queryKey:["admin-inventory-summary"],
     queryFn: getInventorySummary,
     refetchInterval: 60000,
   })
-  const { data:alerts } = useQuery({
+  const { data:alerts, isError:alertsError, refetch:refetchAlerts } = useQuery({
     queryKey:["admin-inventory-alerts"],
     queryFn: getInventoryAlerts,
     enabled: tab === 1,
   })
-  const { data:rotation } = useQuery({
-    queryKey:["admin-inventory-rotation"],
-    queryFn: getInventoryRotation,
+  const { data:rotation, isError:rotationError, refetch:refetchRotation } = useQuery({
+    queryKey:["admin-inventory-rotation", rotationCurrency],
+    queryFn: () => getInventoryRotation(rotationCurrency),
     enabled: tab === 2,
   })
   // Productos reales para Resumen y Por Categoría
-  const { data:productsData } = useQuery({
+  const { data:productsData, isError:productsError, refetch:refetchProducts } = useQuery({
     queryKey:["admin-products-inventory"],
     queryFn: () => getAdminProducts({ page_size: 200 }),
     enabled: tab === 0 || tab === 3,
   })
 
-  const alertsList   = alerts?.results    || alerts    || []
-  const rotationList = rotation?.results  || rotation  || []
-  const products     = productsData?.results || productsData || []
-
-  // Agrupar productos por categoría para el tab 3
-  const byCategory = products.reduce((acc, p) => {
-    const catName = p.category?.name || "Sin categoría"
-    if (!acc[catName]) acc[catName] = { name:catName, products:[], total_stock:0, total_cost:0, total_sale:0 }
-    acc[catName].products.push(p)
-    acc[catName].total_stock += p.stock || 0
-    acc[catName].total_cost  += (p.cost_price || 0) * (p.stock || 0)
-    acc[catName].total_sale  += (p.price || 0) * (p.stock || 0)
-    return acc
-  }, {})
-  const categoryList = Object.values(byCategory)
+  const alertsList = asInventoryRows(alerts)
+  const rotationList = normalizeInventoryRotation(rotation)
+  const { products, count: productCount, incomplete } = inventoryPreview(productsData)
+  const categoryList = groupInventoryPreview(products)
+  const maxUnitsSold = Math.max(1, ...rotationList.map(p => p.units ?? 0))
+  const partialLabel = productCount != null ? `${products.length} de ${productCount}` : `${products.length}`
 
   return (
     <div className="au-page">
@@ -80,7 +74,7 @@ export default function AdminInventory() {
           <button
             key={t}
             type="button"
-            onClick={() => setTab(i)}
+            onClick={() => setTab(i)} aria-pressed={tab === i}
             className={`lp-seg-tab${tab === i ? " is-active" : ""}`}
           >
             {t}
@@ -99,7 +93,11 @@ export default function AdminInventory() {
 
       {/* ── RESUMEN ── */}
       {tab===0 && (
-        isLoading ? (
+        summaryError ? (
+          <ErrorState title="No pudimos consultar el inventario"
+            description="No mostraremos valores de stock ni ganancias estimadas sin datos confirmados."
+            action={<SecondaryButton onClick={() => refetchSummary()}>Reintentar</SecondaryButton>} />
+        ) : isLoading ? (
           <div className="lp-kpi-strip">
             {[...Array(6)].map((_,i) => (
               <div key={i} className="skeleton" style={{ height:"130px", borderRadius: "20px" }} />
@@ -110,15 +108,15 @@ export default function AdminInventory() {
             <div className="lp-kpi-strip">
               <KPI variant="ink" label="Valor en inventario"
                 value={fmt(summary?.valor_inventario)}
-                sub="Capital invertido en stock"
+                sub={summary?.cost_missing_count > 0 ? `${summary.cost_missing_count} productos con costo pendiente · CLP` : "Costo conocido del stock · CLP"}
                 Icon={Coins} />
               <KPI variant="light" label="Valor a precio de venta"
                 value={fmt(summary?.valor_venta)}
-                sub="Si se vende todo el stock"
+                sub="Valorización catálogo CLP"
                 Icon={Tag} />
               <KPI variant="primary" label="Ganancia potencial"
-                value={fmt(summary?.ganancia_potencial)}
-                sub="Venta − costo del stock"
+                value={summary?.profit_calculable === false ? "Por completar" : fmt(summary?.ganancia_potencial)}
+                sub={summary?.profit_calculable === false ? "Faltan costos para calcular una ganancia coherente" : "Estimación venta − costo · CLP"}
                 Icon={TrendingUp} />
               <KPI variant="light" label="Total productos"
                 value={summary?.total_productos||0}
@@ -134,11 +132,18 @@ export default function AdminInventory() {
                 Icon={AlertTriangle} />
             </div>
 
-            {/* Lista de productos */}
-            {products.length > 0 && (
+            {/* La lista es una vista de hasta 200 productos y NO un inventario completo. */}
+            {productsError && <ErrorState title="No pudimos cargar el detalle por SKU"
+              action={<SecondaryButton onClick={() => refetchProducts()}>Reintentar</SecondaryButton>} />}
+            {!productsError && incomplete && (
+              <div className="lp-callout lp-callout--warning" role="status">
+                Vista parcial: {partialLabel} productos. Los KPIs generales provienen del resumen de inventario, no de esta muestra.
+              </div>
+            )}
+            {!productsError && products.length > 0 && (
               <SectionCard
                 eyebrow="EXISTENCIAS POR SKU"
-                title={`Detalle de stock — ${products.length} productos`}
+                title={`Detalle de stock — ${products.length} productos${incomplete ? " (vista parcial)" : ""}`}
                 flush
               >
                 <div className="au-tscroll">
@@ -164,18 +169,18 @@ export default function AdminInventory() {
                             )}
                           </td>
                           <td style={{ textAlign: "right" }}>
-                            <StatusBadge tone={p.stock === 0 ? "danger" : p.stock <= (p.stock_min || 3) ? "warning" : "success"}>
+                            <StatusBadge tone={p.stock === 0 ? "danger" : p.stock <= (p.stock_min ?? 3) ? "warning" : "success"}>
                               {p.stock} uds
                             </StatusBadge>
                           </td>
                           <td style={{ textAlign: "right", color: "var(--admin-text-muted)", fontFamily: "var(--font-mono)" }}>
-                            {p.stock_min || 3}
+                            {p.stock_min ?? 3}
                           </td>
                           <td style={{ textAlign: "right", color: "var(--admin-text-secondary)", fontFamily: "var(--font-mono)" }}>
-                            {p.cost_price ? fmt(p.cost_price) : "—"}
+                            {p.cost_price != null ? fmt(p.cost_price) : "—"}
                           </td>
                           <td style={{ textAlign: "right", fontWeight: 700, fontFamily: "var(--font-mono)" }}>
-                            {p.cost_price ? fmt(p.cost_price * p.stock) : "—"}
+                            {p.cost_price != null ? fmt(p.cost_price * p.stock) : "—"}
                           </td>
                         </tr>
                       ))}
@@ -190,7 +195,11 @@ export default function AdminInventory() {
 
       {/* ── ALERTAS ── */}
       {tab===1 && (
-        !alerts ? (
+        alertsError ? (
+          <ErrorState title="No pudimos consultar las alertas de stock"
+            description="La ausencia de información no significa que el stock esté saludable."
+            action={<SecondaryButton onClick={() => refetchAlerts()}>Reintentar</SecondaryButton>} />
+        ) : !alerts ? (
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
             {[...Array(4)].map((_,i) => (
               <div key={i} className="skeleton" style={{ height:"64px", borderRadius: "16px" }} />
@@ -254,7 +263,24 @@ export default function AdminInventory() {
 
       {/* ── ROTACIÓN ── */}
       {tab===2 && (
-        !rotation ? (
+        <div className="au-page">
+          <div className="au-card au-panel" style={{ display:"flex", flexWrap:"wrap", alignItems:"center", justifyContent:"space-between", gap:12 }}>
+            <p style={{ fontSize:13, color:"var(--admin-text-secondary)" }}>
+              Ventas de los últimos 30 días · Importes de pedidos en la moneda seleccionada
+            </p>
+            <label style={{ display:"inline-flex", alignItems:"center", gap:8, fontSize:12, fontWeight:650 }}>
+              Moneda
+              <select className="au-select" aria-label="Moneda de rotación" value={rotationCurrency}
+                onChange={e => setRotationCurrency(e.target.value)}>
+                <option value="CLP">CLP</option><option value="USD">USD</option><option value="ARS">ARS</option>
+              </select>
+            </label>
+          </div>
+          {rotationError ? (
+            <ErrorState title="No pudimos calcular la rotación"
+              description="Los importes y unidades no están disponibles en este momento."
+              action={<SecondaryButton onClick={() => refetchRotation()}>Reintentar</SecondaryButton>} />
+          ) : !rotation ? (
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
             {[...Array(5)].map((_,i) => (
               <div key={i} className="skeleton" style={{ height:"56px", borderRadius: "14px" }} />
@@ -262,10 +288,10 @@ export default function AdminInventory() {
           </div>
         ) : rotationList.length===0 ? (
           <div className="au-card au-panel" style={{ padding:"48px", textAlign:"center", color:"var(--admin-text-secondary)", fontSize:"14px" }}>
-            Sin datos de rotación todavía.
+            No hay ventas confirmadas en los últimos 30 días para esta moneda.
           </div>
         ) : (
-          <SectionCard eyebrow="VELOCIDAD DE SALIDA" title="Rotación por SKU" flush>
+          <SectionCard eyebrow="VELOCIDAD DE SALIDA" title={`Ventas por producto · ${rotationCurrency}`} flush>
             <div className="au-tscroll">
               <table className="au-table">
                 <thead>
@@ -274,7 +300,7 @@ export default function AdminInventory() {
                     <th style={{ textAlign: "right" }}>Vendidos</th>
                     <th style={{ textAlign: "right" }}>Stock</th>
                     <th style={{ textAlign: "right" }}>Ingreso</th>
-                    <th>Rotación</th>
+                    <th>Ventas relativas 30d</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -287,10 +313,10 @@ export default function AdminInventory() {
                             fontFamily:"var(--font-mono)" }}>{p.sku}</p>
                         )}
                       </td>
-                      <td style={{ textAlign: "right", fontWeight: 700, fontFamily: "var(--font-mono)" }}>{p.units_sold}</td>
-                      <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{p.stock}</td>
+                      <td style={{ textAlign: "right", fontWeight: 700, fontFamily: "var(--font-mono)" }}>{p.units == null ? "—" : p.units}</td>
+                      <td style={{ textAlign: "right", fontFamily: "var(--font-mono)" }}>{p.stock == null ? "—" : p.stock}</td>
                       <td style={{ textAlign: "right", fontWeight: 700, color: "var(--admin-primary-text)", fontFamily: "var(--font-mono)" }}>
-                        {fmt(p.total_revenue||0)}
+                        {formatCurrency(p.revenue, p.currency)}
                       </td>
                       <td>
                         <div style={{ display:"flex", alignItems:"center", gap:"8px" }}>
@@ -298,11 +324,11 @@ export default function AdminInventory() {
                             background:"var(--admin-surface-muted)", overflow:"hidden", maxWidth:"80px" }}>
                             <div style={{ height:"100%", borderRadius:"9999px",
                               background:"var(--admin-primary)",
-                              width:`${Math.min(100,(p.rotation_index||0)*10)}%`,
+                              width:`${p.units == null ? 0 : Math.min(100, Math.max(0, p.units / maxUnitsSold * 100))}%`,
                               transition:"width 600ms ease" }} />
                           </div>
                           <span style={{ fontSize:"11.5px", fontWeight: 700, color:"var(--admin-text-secondary)", fontFamily: "var(--font-mono)" }}>
-                            {p.rotation_index?.toFixed(1)||"0"}
+                            {p.units == null ? "—" : p.units.toLocaleString("es-CL")} uds
                           </span>
                         </div>
                       </td>
@@ -312,12 +338,16 @@ export default function AdminInventory() {
               </table>
             </div>
           </SectionCard>
-        )
+          )}
+        </div>
       )}
 
       {/* ── POR CATEGORÍA (agrupado en frontend) ── */}
       {tab===3 && (
-        !productsData ? (
+        productsError ? (
+          <ErrorState title="No pudimos cargar los productos por categoría"
+            action={<SecondaryButton onClick={() => refetchProducts()}>Reintentar</SecondaryButton>} />
+        ) : !productsData ? (
           <div style={{ display:"grid",
             gridTemplateColumns:"repeat(auto-fill, minmax(220px, 1fr))", gap:"14px" }}>
             {[...Array(4)].map((_,i) => (
@@ -329,18 +359,22 @@ export default function AdminInventory() {
             Sin productos registrados.
           </div>
         ) : (
-          <div style={{ display:"grid",
-            gridTemplateColumns:"repeat(auto-fill, minmax(250px, 1fr))", gap:"14px" }}>
+          <div>
+            {incomplete && <div className="lp-callout lp-callout--warning" role="status" style={{ marginBottom:14 }}>
+              Vista parcial ({partialLabel} productos). No uses estos subtotales como valorización completa por categoría.
+            </div>}
+            <div style={{ display:"grid",
+              gridTemplateColumns:"repeat(auto-fill, minmax(250px, 1fr))", gap:"14px" }}>
             {categoryList.map((cat,i) => (
               <div key={i} className="au-card au-panel">
                 <p style={{ fontSize:"15px", fontWeight:800, color:"var(--admin-text)", marginBottom:"14px", letterSpacing: "-0.02em" }}>
                   {cat.name}
                 </p>
                 {[
-                  { label:"Productos",   value: cat.products.length },
-                  { label:"Stock total", value: cat.total_stock     },
-                  { label:"Valor costo", value: fmt(cat.total_cost) },
-                  { label:"Valor venta", value: fmt(cat.total_sale) },
+                  { label:"Productos",   value: cat.products },
+                  { label:"Stock total", value: cat.totalStock     },
+                  { label:"Valor costo", value: cat.missingCostCount > 0 ? `≥ ${fmt(cat.knownCost)} · parcial` : fmt(cat.knownCost) },
+                  { label:"Valor venta", value: cat.missingPriceCount > 0 ? `≥ ${fmt(cat.saleValue)} · parcial` : fmt(cat.saleValue) },
                 ].map(({ label, value }) => (
                   <div key={label} style={{ display:"flex",
                     justifyContent:"space-between",
@@ -351,6 +385,7 @@ export default function AdminInventory() {
                 ))}
               </div>
             ))}
+            </div>
           </div>
         )
       )}

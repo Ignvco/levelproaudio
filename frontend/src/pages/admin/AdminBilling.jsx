@@ -10,10 +10,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getTaxDashboard, upsertTaxDocument } from "../../api/admin.api"
 import {
   AdminPageHeader, StatusBadge, FormModal, FormField, formInputStyle,
-  SecondaryButton, StatCard, EmptyState, SkeletonTable,
+  SecondaryButton, StatCard, EmptyState, SkeletonTable, ErrorState,
 } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
 import { formatCurrency } from "../../utils/accountingCurrency"
+import { initialTaxDocumentAmount } from "../../utils/billingViewData"
 import { ExternalLink, FileText, Inbox, CheckCircle2, Clock3 } from "lucide-react"
 
 const SII_URL = "https://www4.sii.cl/consdcvinternetui/"
@@ -34,7 +35,7 @@ function RecordModal({ row, onClose }) {
     numero_externo: doc?.numero_externo || "",
     fecha_emision:  doc?.fecha_emision  || "",
     estado:         doc?.estado         || "pendiente",
-    monto:          doc?.monto ?? row.total,
+    monto:          initialTaxDocumentAmount(doc, row),
     observaciones:  doc?.observaciones  || "",
   })
 
@@ -59,6 +60,16 @@ function RecordModal({ row, onClose }) {
           <strong style={{ color: "var(--text)" }}>{row.cliente}</strong><br/>
           {row.email} · {money(row.total, row.currency)}
         </div>
+
+
+        {row.currency !== "CLP" && (
+          <p role="note" style={{ fontSize: 12, lineHeight: 1.55, color: "var(--admin-text-secondary)" }}>
+            Esta orden está expresada en {row.currency || "moneda no identificada"}.
+            El monto del documento debe ingresarse desde el comprobante real del SII:
+            no se convierte ni se copia automáticamente el importe de la orden.
+            {doc?.monto != null ? " Verifica también que el monto registrado anteriormente coincida con el documento emitido." : ""}
+          </p>
+        )}
 
         <a href={SII_URL} target="_blank" rel="noreferrer"
           style={{
@@ -99,7 +110,7 @@ function RecordModal({ row, onClose }) {
           </select>
         </FormField>
 
-        <FormField label="Monto">
+        <FormField label="Monto real del documento tributario">
           <input type="number" min="0" style={formInputStyle} value={form.monto ?? ""}
             onChange={e => setForm(p => ({ ...p, monto: e.target.value }))} />
         </FormField>
@@ -115,7 +126,7 @@ function RecordModal({ row, onClose }) {
 
 export default function AdminBilling() {
   const [editing, setEditing] = useState(null)
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["tax-dashboard"], queryFn: getTaxDashboard,
   })
   const rows = data?.results || []
@@ -127,7 +138,7 @@ export default function AdminBilling() {
       <AdminPageHeader
         eyebrow="LEVELPRO / TRIBUTARIO"
         title="Documentación Tributaria"
-        description="Registro y seguimiento de boletas/facturas emitidas en el SII. LevelPro no emite documentos — solo lleva la trazabilidad."
+        description="Seguimiento de documentos emitidos en SII. LevelPro solo registra la gestión."
         actions={
           <SecondaryButton href={SII_URL} target="_blank" rel="noreferrer">
             Portal SII <ExternalLink size={14} />
@@ -137,13 +148,17 @@ export default function AdminBilling() {
 
       {editing && <RecordModal row={editing} onClose={() => setEditing(null)} />}
 
-      <div className="lp-kpi-strip">
-        <StatCard variant="ink" label="Órdenes pagadas" value={rows.length} sub="Base tributable" Icon={FileText} />
+      {!isLoading && !isError && <div className="lp-kpi-strip">
+        <StatCard variant="ink" label="Órdenes en vista" value={rows.length} sub="Hasta 200 órdenes pagadas recientes" Icon={FileText} />
         <StatCard variant="primary" label="Emitidos en SII" value={emittedCount} sub="Con folio registrado" Icon={CheckCircle2} />
         <StatCard variant="light" label="Pendientes de emitir" value={pendingCount} sub={pendingCount > 0 ? "Por registrar en SII" : "Al día"} Icon={Clock3} />
-      </div>
+      </div>}
 
-      {isLoading ? (
+      {isError ? (
+        <ErrorState title="No pudimos cargar el registro tributario"
+          description="No asumiremos que faltan documentos si la consulta falló."
+          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
+      ) : isLoading ? (
         <SkeletonTable rows={5} />
       ) : rows.length === 0 ? (
         <div className="au-card">

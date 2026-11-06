@@ -165,8 +165,8 @@ export const getInventorySummary    = () =>
 export const getInventoryAlerts     = () =>
   api.get(`${BASE}/inventory/alerts/`).then(r => r.data)
 
-export const getInventoryRotation   = () =>
-  api.get(`${BASE}/inventory/rotation/`).then(r => r.data)
+export const getInventoryRotation   = (currency = "CLP") =>
+  api.get(`${BASE}/inventory/rotation/`, { params: { currency } }).then(r => r.data)
 
 export const getInventoryByCategory = () =>
   api.get(`${BASE}/inventory/by-category/`).then(r => r.data)

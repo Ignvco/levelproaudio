@@ -10,6 +10,7 @@ import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../components/ui/ToastNotification"
 import { DataTable, StatusBadge, AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, ConfirmationModal } from "../../components/admin/ui"
 import { useSiteSettings } from "../../hooks/useSiteSettings"
+import { formatCurrency } from "../../utils/accountingCurrency"
 import { Pencil, Trash2, Package, CheckCircle2, Star, AlertTriangle } from "lucide-react"
 
 const inputSt = {
@@ -835,7 +836,7 @@ export default function AdminProducts() {
   const [toDelete, setToDelete]     = useState(null)
   const queryClient                 = useQueryClient()
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-products", search, catFilter, statusFilter],
     queryFn:  () => getAdminProducts({
       ...(search    && { search }),
@@ -844,11 +845,11 @@ export default function AdminProducts() {
       ...(statusFilter === "inactive" && { is_active: "false" }),
     }),
   })
-  const { data: categoriesData } = useQuery({
+  const { data: categoriesData, isError: categoriesError, refetch: retryCategories } = useQuery({
     queryKey: ["admin-categories"],
     queryFn:  () => getAdminCategories(),
   })
-  const { data: brandsData } = useQuery({
+  const { data: brandsData, isError: brandsError, refetch: retryBrands } = useQuery({
     queryKey: ["admin-brands"],
     queryFn:  () => getAdminBrands(),
   })
@@ -862,9 +863,9 @@ export default function AdminProducts() {
     },
   })
 
-  const products   = data?.results   || data   || []
-  const categories = categoriesData?.results || categoriesData || []
-  const brands     = brandsData?.results     || brandsData     || []
+  const products   = Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []
+  const categories = Array.isArray(categoriesData) ? categoriesData : Array.isArray(categoriesData?.results) ? categoriesData.results : []
+  const brands     = Array.isArray(brandsData) ? brandsData : Array.isArray(brandsData?.results) ? brandsData.results : []
 
   const columns = [
     { key:"name", header:"Producto", sortable:true, render:p => {
@@ -891,9 +892,9 @@ export default function AdminProducts() {
     }},
     { key:"price", header:"Precio", sortable:true, align:"right", render:p => (
       <div style={{ textAlign:"right" }}>
-        <p style={{ fontSize:"13px", fontWeight:600 }}>${Number(p.price).toLocaleString("es-CL")}</p>
+        <p style={{ fontSize:"13px", fontWeight:600 }}>{formatCurrency(p.price, "CLP")}</p>
         {p.compare_price && <p style={{ fontSize:"11px", color:"var(--admin-text-muted)",
-          textDecoration:"line-through" }}>${Number(p.compare_price).toLocaleString("es-CL")}</p>}
+          textDecoration:"line-through" }}>{formatCurrency(p.compare_price, "CLP")}</p>}
       </div>
     )},
     { key:"stock", header:"Stock", sortable:true, align:"right", render:p => (
@@ -948,7 +949,7 @@ export default function AdminProducts() {
       <AdminPageHeader
         eyebrow="LEVELPRO / CATÁLOGO"
         title="Productos"
-        description={`${totalCount} productos en catálogo · ${categories.length} categorías · ${brands.length} marcas`}
+        description={isLoading || isError ? "Administración del catálogo" : `${totalCount} productos en el filtro actual · ${categories.length} categorías · ${brands.length} marcas`}
         actions={
           <>
             <SecondaryButton to="/admin/products/import" size="sm">
@@ -964,46 +965,54 @@ export default function AdminProducts() {
         }
       />
 
-      {/* KPI Strip */}
-      <div className="lp-grid-kpi">
+      {/* La página actual no constituye un consolidado del catálogo entero. */}
+      {!isLoading && !isError && <div className="lp-grid-kpi">
         <StatCard
           variant="ink"
           Icon={Package}
-          label="Catálogo visible"
+          label="Productos en filtro"
           value={totalCount}
           sub={`${categories.length} categorías · ${brands.length} marcas`}
         />
         <StatCard
           variant="primary"
           Icon={CheckCircle2}
-          label="Productos activos"
+          label="Activos (página)"
           value={activeCount}
-          sub="Publicados en tienda"
+          sub="En página cargada"
         />
         <StatCard
           variant="light"
           Icon={Star}
-          label="Destacados"
+          label="Destacados (página)"
           value={featuredCount}
-          sub="Visibles en portada"
+          sub="En página cargada"
         />
         <StatCard
           variant="light"
           Icon={AlertTriangle}
-          label="Stock bajo / agotado"
+          label="Stock bajo (página)"
           value={lowStockCount}
-          sub={lowStockCount > 0 ? "Revisar en Inventario" : "Stock saludable"}
+          sub={lowStockCount > 0 ? "Revisar página cargada" : "Sin alertas en esta página"}
         />
-      </div>
+      </div>}
+
+      {(categoriesError || brandsError) && (
+        <div className="lp-callout lp-callout--warning" role="alert">
+          No pudimos cargar {categoriesError && brandsError ? "categorías ni marcas" : categoriesError ? "categorías" : "marcas"}.
+          Reintenta antes de editar relaciones del catálogo.
+          <SecondaryButton size="sm" onClick={() => { if (categoriesError) retryCategories(); if (brandsError) retryBrands() }}>Reintentar</SecondaryButton>
+        </div>
+      )}
 
       {/* Barra de búsqueda, categoría y estado */}
       <div className="au-card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
         <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", flex: "1 1 340px" }}>
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar producto por nombre o SKU..." data-testid="products-search"
+            placeholder="Buscar producto por nombre o SKU..." aria-label="Buscar producto por nombre o SKU" data-testid="products-search"
             className="au-input"
             style={{ flex: "1 1 260px", maxWidth: "340px" }} />
-          <select value={catFilter} onChange={e => setCatFilter(e.target.value)}
+          <select value={catFilter} onChange={e => setCatFilter(e.target.value)} aria-label="Filtrar por categoría"
             className="au-select"
             style={{ maxWidth: "220px" }}>
             <option value="">Todas las categorías</option>
@@ -1019,7 +1028,7 @@ export default function AdminProducts() {
             ["inactive", "Inactivos"],
             ["all",      "Todos"    ],
           ].map(([val, label]) => (
-            <button key={val} type="button" onClick={() => setStatusFilter(val)}
+            <button key={val} type="button" aria-pressed={statusFilter === val} onClick={() => setStatusFilter(val)}
               data-testid={`filter-status-${val}`}
               className={`lp-seg-tab${statusFilter === val ? " is-active" : ""}`}>
               {label}
@@ -1029,7 +1038,7 @@ export default function AdminProducts() {
       </div>
 
       <DataTable
-        columns={columns} data={products} loading={isLoading}
+        columns={columns} data={products} loading={isLoading} error={isError} onRetry={() => refetch()}
         getRowId={p => p.id}
         searchable={false}
         onRowClick={p => setModal(p)}
