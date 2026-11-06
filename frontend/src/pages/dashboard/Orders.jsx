@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import { useNavigate } from "react-router-dom"
 import { ShoppingBag, Package, Clock, CheckCircle2, DollarSign } from "lucide-react"
 import { getOrders } from "../../api/orders.api"
+import { queryDisplayState, listFromResponse } from "../../utils/queryDisplayState"
 import { formatCurrency } from "../../utils/accountingCurrency"
 import {
   AdminPageHeader,
@@ -24,8 +25,8 @@ export default function Orders() {
   const navigate = useNavigate()
   const { data, isLoading, isError } = useQuery({ queryKey: ["orders"], queryFn: getOrders })
 
-  const rawOrders = data?.results ?? data
-  const orders = (Array.isArray(rawOrders) ? rawOrders : []).map(o => ({
+  const ready = queryDisplayState({ data, isPending: isLoading, isError }) === "ready"
+  const orders = listFromResponse(data).map(o => ({
     ...o,
     short_id: (o.id || "").slice(0, 8).toUpperCase(),
   }))
@@ -138,7 +139,7 @@ export default function Orders() {
       />
 
       {/* No presentar cero como total comercial durante errores de consulta. */}
-      {!isLoading && !isError && <div className="lp-grid-kpi">
+      {ready && <div className="lp-grid-kpi">
         <StatCard
           variant="ink"
           Icon={Package}
