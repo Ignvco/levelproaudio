@@ -21,7 +21,7 @@ test("lee órdenes reales y mantiene ceros y estados", () => {
     recent_orders: [{ id: "abc123", email: "user@example.test", status: "pending", total: 0, created: "2026-11-06" }],
   }), [{
     id: "abc123", shortId: "ABC123", clientName: "user", status: "pending", total: 0,
-    currency: "CLP", created: "2026-11-06",
+    currency: null, created: "2026-11-06",
   }])
   assert.equal(adminRecentOrders({ actions: { pending_orders: [{ id: "p1", total: 0 }] } })[0].status, "pending")
 })
