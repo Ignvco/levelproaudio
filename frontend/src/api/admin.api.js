@@ -4,9 +4,12 @@ import api from "./client"
 
 const BASE = "/admin"
 
+// React Query also passes a context object to a queryFn reference.
+const reportingCurrency = value => typeof value === "string" && ["CLP", "USD", "ARS"].includes(value) ? value : "CLP"
+
 // ── Dashboard & Analytics ────────────────────────────────────
-export const getAdminDashboard  = (currency = "CLP") => api.get(`${BASE}/dashboard/`, { params: { currency } }).then(r => r.data)
-export const getAnalytics       = (currency = "CLP") => api.get(`${BASE}/analytics/`, { params: { currency } }).then(r => r.data)
+export const getAdminDashboard  = (currency = "CLP") => api.get(`${BASE}/dashboard/`, { params: { currency: reportingCurrency(currency) } }).then(r => r.data)
+export const getAnalytics       = (currency = "CLP") => api.get(`${BASE}/analytics/`, { params: { currency: reportingCurrency(currency) } }).then(r => r.data)
 
 // ── Orders ───────────────────────────────────────────────────
 export const getAdminOrders     = (params) => api.get(`${BASE}/orders/`, { params }).then(r => r.data)
@@ -128,7 +131,7 @@ export const downloadTemplate  = () =>
 
 // ── FINANZAS ─────────────────────────────────────────────────
 export const getFinanceSummary     = (currency = "CLP") =>
-  api.get(`${BASE}/finance/summary/`, { params: { currency } }).then(r => r.data)
+  api.get(`${BASE}/finance/summary/`, { params: { currency: reportingCurrency(currency) } }).then(r => r.data)
 
 export const getFinanceCategories  = () =>
   api.get(`${BASE}/finance/categories/`).then(r => r.data)
@@ -143,7 +146,7 @@ export const deleteFinanceCategory = (id) =>
   api.delete(`${BASE}/finance/categories/${id}/`).then(r => r.data)
 
 export const getWithdrawals        = (currency = "CLP") =>
-  api.get(`${BASE}/finance/withdrawals/`, { params: { currency } }).then(r => r.data)
+  api.get(`${BASE}/finance/withdrawals/`, { params: { currency: reportingCurrency(currency) } }).then(r => r.data)
 
 export const createWithdrawal      = (data) =>
   api.post(`${BASE}/finance/withdrawals/`, data).then(r => r.data)
