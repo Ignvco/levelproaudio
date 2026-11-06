@@ -2238,7 +2238,10 @@ def inventory_alerts(request):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def inventory_rotation(request):
-    """Productos más y menos vendidos con rotación"""
+    """Producto/unidades e ingresos en moneda de compra, sin mezclar."""
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
     from apps.orders.models import OrderItem
     from apps.products.models import Product
     from django.db.models import Sum, Count, F
@@ -2250,6 +2253,7 @@ def inventory_rotation(request):
 
     ventas = OrderItem.objects.filter(
         order__created_at__gte=hace_30,
+        order__currency=currency,
         order__status__in=["paid", "shipped", "completed"]
     ).values(
         "product__id", "product__name", "product__stock",
@@ -2267,6 +2271,7 @@ def inventory_rotation(request):
             "stock_actual":     v["product__stock"],
             "unidades_vendidas":v["unidades_vendidas"] or 0,
             "ingresos":         float(v["ingresos"] or 0),
+            "currency":         currency,
         })
 
     return Response(data)
