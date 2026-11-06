@@ -4,7 +4,7 @@ import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { Gift, Ticket, Users, DollarSign } from "lucide-react"
 import { adminGetRewardsDashboard } from "../../api/rewards.api"
-import { StatCard, AdminPageHeader, SectionCard, SecondaryButton, StatusBadge } from "../../components/admin/ui"
+import { StatCard, AdminPageHeader, SectionCard, SecondaryButton, StatusBadge, ErrorState } from "../../components/admin/ui"
 import { useSiteSettings } from "../../hooks/useSiteSettings"
 
 function KpiCard({ label, value, subtitle, variant = "light", testId, Icon }) {
