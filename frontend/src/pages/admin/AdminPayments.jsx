@@ -5,6 +5,7 @@ import { getAdminPayments, updatePaymentStatus } from "../../api/admin.api"
 import { StatCard, DataTable, StatusBadge, AdminPageHeader, SecondaryButton } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
 import { Inbox, Bell } from "lucide-react"
+import { formatMoney } from "../dashboard/dashboardV3Data"
 
 const STATUS = {
   pending:   { label:"Pendiente",   color:"#D97706" },
@@ -57,10 +58,11 @@ function StatusSelector({ paymentId, current }) {
 
 export default function AdminPayments() {
   const [statusFilter, setStatusFilter] = useState("")
+  const [currency, setCurrency] = useState("CLP")
 
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-payments", statusFilter],
-    queryFn:  () => getAdminPayments(statusFilter ? { status:statusFilter } : {}),
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ["admin-payments", statusFilter, currency],
+    queryFn:  () => getAdminPayments({ ...(statusFilter ? { status: statusFilter } : {}), currency }),
   })
   const payments = data?.results || []
 
@@ -76,7 +78,7 @@ export default function AdminPayments() {
     { key:"provider", header:"Método",
       render:p => <span style={{ color:"var(--admin-text-muted)" }}>{PROVIDERS[p.provider] || p.provider}</span> },
     { key:"amount", header:"Monto", sortable:true, align:"right",
-      render:p => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>${Number(p.amount).toLocaleString("es-CL")}</span> },
+      render:p => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{formatMoney(p.amount, p.currency)}</span> },
     { key:"status", header:"Estado",
       render:p => {
         const isPendingTransfer = p.status === "pending" &&
