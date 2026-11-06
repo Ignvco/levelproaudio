@@ -12,6 +12,6 @@ export function EmptyState({ Icon = Inbox, title = "Sin resultados", description
   )
 }
 
-export function ErrorState({ title = "Ocurrió un error", description = "No pudimos cargar la información. Intentá de nuevo.", action, testId }) {
-  return <EmptyState title={title} description={description} action={action} testId={testId || "error-state"} />
+export function ErrorState({ title = "Ocurrió un error", description = "No pudimos cargar la información. Intenta nuevamente.", action, testId }) {
+  return <div role="alert"><EmptyState title={title} description={description} action={action} testId={testId || "error-state"} /></div>
 }
