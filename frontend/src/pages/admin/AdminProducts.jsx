@@ -246,7 +246,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
       } else {
         await createAdminProduct(payload)
       }
-      queryClient.invalidateQueries(["admin-products"])
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] })
       onSave?.()
       onClose()
     } catch (e) {
@@ -269,7 +269,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
       fd.append("alt_text", form.name)
       const newImg = await uploadProductImage(product.id, fd)
       setImages(prev => [...prev, newImg])
-      queryClient.invalidateQueries(["admin-products"])
+      queryClient.invalidateQueries({ queryKey: ["admin-products"] })
     } catch (e) {
       showToast(e?.response?.data?.detail || "No se pudo subir la imagen. Intentá de nuevo.", "error")
     } finally { setUploadingImg(false) }
@@ -855,7 +855,7 @@ export default function AdminProducts() {
 
   const deleteMutation = useMutation({
     mutationFn: deleteAdminProduct,
-    onSuccess:  () => { queryClient.invalidateQueries(["admin-products"]); setToDelete(null) },
+    onSuccess:  () => { queryClient.invalidateQueries({ queryKey: ["admin-products"] }); setToDelete(null) },
     onError:    (e) => {
       showToast(e?.response?.data?.detail || "No se pudo eliminar el producto. Puede estar referenciado en pedidos existentes.", "error")
       setToDelete(null)
@@ -930,7 +930,7 @@ export default function AdminProducts() {
           categories={categories}
           brands={brands}
           onClose={() => setModal(null)}
-          onSave={() => queryClient.invalidateQueries(["admin-products"])}
+          onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-products"] })}
         />
       )}
 
