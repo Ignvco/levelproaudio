@@ -15,6 +15,9 @@ import { getEnrollments } from "../api/academy.api"
 import { getMyLoyalty } from "../api/loyalty.api"
 import { getBrands } from "../api/products.api"
 import { mediaUrl } from "../utils/mediaUrl"
+import {
+  asRows, count, formatMoney, loyaltyHistory, firstOrderItem,
+} from "./dashboard/dashboardV3Data"
 
 const ORDER_STATUS_MAP = {
   paid:      { label: "En proceso",  tone: "success", step: 1 },
@@ -31,11 +34,12 @@ export default function Dashboard() {
   const {
     data: ordersData,
     isError: ordersError,
+    isPending: ordersLoading,
     refetch: refetchOrders,
   } = useQuery({ queryKey: ["orders"], queryFn: getOrders })
 
-  const { data: enrollData } = useQuery({ queryKey: ["enrollments"], queryFn: getEnrollments })
-  const { data: loyalty }    = useQuery({ queryKey: ["my-loyalty"], queryFn: getMyLoyalty })
+  const { data: enrollData, isPending: enrollLoading } = useQuery({ queryKey: ["enrollments"], queryFn: getEnrollments })
+  const { data: loyalty, isPending: loyaltyLoading }    = useQuery({ queryKey: ["my-loyalty"], queryFn: getMyLoyalty })
   const { data: brandsData } = useQuery({ queryKey: ["brands"], queryFn: getBrands, staleTime: 1000 * 60 * 5 })
 
   if (ordersError) {
@@ -52,35 +56,29 @@ export default function Dashboard() {
     )
   }
 
-  const orders      = ordersData?.results || ordersData || []
-  const enrollments = enrollData?.results || enrollData || []
-  const points      = loyalty?.puntos_disponibles ?? 2450
-  const loyaltyTier = loyalty?.tier?.name || "Pro Explorer"
-
-  const latestOrder = orders[0] || {
-    id: 9824,
-    short_id: "LP-9824",
-    status: "shipped",
-    total: 389990,
-    created_at: new Date().toISOString(),
+  if (ordersLoading) {
+    return <div className="v3-main-content" data-testid="dashboard-home"><div className="v3-card" role="status">Cargando los datos reales de tu cuenta…</div></div>
   }
-  const orderStatus = ORDER_STATUS_MAP[latestOrder?.status] || ORDER_STATUS_MAP.shipped
+
+  const orders      = asRows(ordersData)
+  const enrollments = asRows(enrollData)
+  const points      = loyalty?.puntos_disponibles
+  const loyaltyTier = loyalty?.nivel || "Sin nivel asignado"
+  const levelProgress = count(loyalty?.progreso_nivel)
+
+  const latestOrder = orders[0] || null
+  const orderStatus = latestOrder
+    ? (ORDER_STATUS_MAP[latestOrder.status] || { label: "Estado por confirmar", tone: "neutral", step: 0 })
+    : null
 
   const latestEnrollment = enrollments[0] || null
-  const courseTitle = latestEnrollment?.course?.title || "Técnicas Avanzadas de Mezcla & Mastering"
-  const courseProgress = Math.min(100, Math.max(0, Math.round(latestEnrollment?.progress_percentage || 68)))
+  const courseTitle = latestEnrollment?.course?.title || latestEnrollment?.course_title || null
+  const courseProgress = Math.max(0, Math.min(100, count(latestEnrollment?.progress_percentage)))
 
-  const userName = user?.first_name || user?.email?.split("@")[0] || "Ignacio"
-
-  const brandsList = (Array.isArray(brandsData) ? brandsData : brandsData?.results || []).filter(b => b.is_active !== false)
-  const displayBrands = brandsList.length > 0 ? brandsList : [
-    { id: "b1", name: "Universal Audio", slug: "universal-audio" },
-    { id: "b2", name: "Neumann", slug: "neumann" },
-    { id: "b3", name: "Shure", slug: "shure" },
-    { id: "b4", name: "Sennheiser", slug: "sennheiser" },
-    { id: "b5", name: "Adam Audio", slug: "adam-audio" },
-    { id: "b6", name: "Focusrite", slug: "focusrite" },
-  ]
+  const userName = user?.first_name || user?.email?.split("@")[0] || "Cliente LevelPro"
+  const displayBrands = asRows(brandsData).filter(b => b?.name && b.is_active !== false)
+  const pointMovements = loyaltyHistory(loyalty, period)
+  const monthLabel = new Intl.DateTimeFormat("es-CL", { month: "long", year: "numeric" }).format(new Date())
 
   return (
     <div className="v3-main-content" data-testid="dashboard-home">
@@ -99,7 +97,7 @@ export default function Dashboard() {
         <div className="v3-controls-row">
           <div className="v3-pill-btn">
             <Calendar size={14} />
-            <span>24 Oct – 24 Nov, 2026</span>
+            <span>{monthLabel} · resumen actual</span>
             <ChevronDown size={13} style={{ opacity: 0.6 }} />
           </div>
 
@@ -136,10 +134,10 @@ export default function Dashboard() {
 
           <div style={{ margin: "4px 0 16px" }}>
             <div style={{ fontSize: 36, fontWeight: 800, color: "#FFFFFF", letterSpacing: "-0.03em" }}>
-              {points.toLocaleString("es-CL")} <span style={{ fontSize: 18, color: "var(--v3-accent)" }}>pts</span>
+              {loyaltyLoading || points == null ? "—" : count(points).toLocaleString("es-CL")} <span style={{ fontSize: 18, color: "var(--v3-accent)" }}>pts</span>
             </div>
             <p style={{ fontSize: 12, color: "var(--v3-text-dark-muted)", margin: "4px 0 0" }}>
-              Nivel <strong style={{ color: "#fff" }}>{loyaltyTier}</strong> · 1.5x Multiplicador activo
+              Nivel <strong style={{ color: "#fff" }}>{loyaltyLoading ? "Consultando" : loyaltyTier}</strong> · Puntos disponibles
             </p>
           </div>
 
