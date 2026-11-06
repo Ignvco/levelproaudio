@@ -5,7 +5,7 @@
 // (12 páginas con el mismo bloque de "position: fixed" copiado y pegado).
 // Ahora el layout vive en un solo lugar; el contenido del formulario sigue
 // siendo específico de cada página (children).
-import { useEffect, useId, useRef } from "react"
+import { cloneElement, isValidElement, useEffect, useId, useRef } from "react"
 import { PrimaryButton, SecondaryButton } from "./Buttons"
 
 export function FormModal({
@@ -101,12 +101,37 @@ export const formInputStyle = {
   fontSize: "13px", outline: "none",
 }
 
-export function FormField({ label, children }) {
+export function FormField({ label, children, id, description, error }) {
+  const generatedId = useId()
+  const directControl = isValidElement(children)
+    && typeof children.type === "string"
+    && ["input", "select", "textarea"].includes(children.type)
+  const controlId = directControl ? (children.props.id || id || generatedId) : undefined
+  const hintId = `${generatedId}-hint`
+  const style = { display: "block", fontSize: "12px", fontWeight: 600,
+    color: "var(--admin-text-secondary, var(--text-2))", marginBottom: "7px" }
+  const rendered = directControl
+    ? cloneElement(children, {
+        id: controlId,
+        ...(description || error ? {
+          "aria-describedby": [children.props["aria-describedby"], hintId].filter(Boolean).join(" "),
+        } : {}),
+        ...(error ? { "aria-invalid": true } : {}),
+      })
+    : children
+
   return (
-    <div>
-      <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
-        color: "var(--text-2)", marginBottom: "7px" }}>{label}</label>
-      {children}
+    <div className="au-formfield">
+      {directControl
+        ? <label htmlFor={controlId} style={style}>{label}</label>
+        : <span style={style}>{label}</span>}
+      {rendered}
+      {(description || error) && (
+        <p id={hintId} role={error ? "alert" : undefined}
+          className={error ? "au-formfield__error" : "au-formfield__help"}>
+          {error || description}
+        </p>
+      )}
     </div>
   )
 }
