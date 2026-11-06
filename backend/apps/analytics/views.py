@@ -2437,7 +2437,10 @@ def executive_dashboard(request):
             "var_dia":        variacion(ventas_hoy["total"], ventas_ayer["total"]),
             "var_mes":        variacion(ventas_mes["total"], ventas_mes_ant["total"]),
         },
-        "utilidad_mes":    float(utilidad_mes),
+        # Product costs are cataloged in CLP. Foreign-currency profit is
+        # unknown until explicit matching cost and FX provenance exists.
+        "utilidad_mes":    float(utilidad_mes) if currency == "CLP" else None,
+        "utilidad_certificada": currency == "CLP" and not IncomeRecord.objects.filter(currency__isnull=True).exists(),
         "inventario": {
             "criticos":  criticos,
             "sin_stock": sin_stock,
