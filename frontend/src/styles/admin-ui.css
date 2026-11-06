@@ -1597,3 +1597,65 @@
 @media (prefers-reduced-motion: reduce) {
   .admin-root .au-btn__spinner { animation: none; border-color: currentColor; }
 }
+
+
+/* V3.2.1 — Catalogue, Academy and Finance interior refinement.
+   Scoped to authenticated dashboard components; no storefront overrides. */
+.admin-root .au-pcard,
+.admin-root .au-acard {
+  min-width: 0;
+  background: #fff;
+  border-color: rgba(16, 20, 24, .09);
+  box-shadow: 0 8px 26px -16px rgba(16, 20, 24, .19);
+}
+.admin-root .au-pcard__sub,
+.admin-root .au-acard__sub {
+  color: #667085;
+  line-height: 1.5;
+}
+.admin-root .au-pcard__title {
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}
+.admin-root .au-acard__foot,
+.admin-root .au-pcard__buyrow {
+  flex-wrap: wrap;
+  align-items: center;
+}
+.admin-root .au-acard__actions {
+  flex-wrap: wrap;
+  min-width: 0;
+}
+.admin-root .au-acard__price {
+  max-width: 100%;
+  white-space: normal;
+}
+.admin-root .lp-seg-tabs {
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+.admin-root .lp-seg-tab[aria-pressed="true"] {
+  background: #fff;
+  color: var(--admin-text);
+  box-shadow: 0 3px 10px rgba(16, 20, 24, .08);
+}
+.admin-root .au-table thead th {
+  font-variant-numeric: tabular-nums;
+}
+.admin-root .au-table td {
+  overflow-wrap: anywhere;
+}
+@media (hover: hover) {
+  .admin-root .au-pcard:hover,
+  .admin-root .au-acard:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 16px 34px -20px rgba(16, 20, 24, .25);
+  }
+}
+@media (max-width: 620px) {
+  .admin-root .au-pcard,
+  .admin-root .au-acard { border-radius: 20px; }
+  .admin-root .au-pcard__buyrow { gap: 10px; }
+  .admin-root .au-acard__foot { gap: 8px; }
+  .admin-root .lp-seg-tabs { width: 100%; }
+}
