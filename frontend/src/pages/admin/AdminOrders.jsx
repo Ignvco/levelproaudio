@@ -11,6 +11,7 @@ import {
   PrimaryButton, SecondaryButton, formInputStyle,
 } from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
+import { formatMoney } from "../dashboard/dashboardV3Data"
 
 const STATUS = {
   pending:   { label:"Pendiente",  color:"#D97706" },
@@ -35,7 +36,7 @@ function OrderPanel({ order, onClose }) {
       shipping_carrier: carrier, tracking_number: tracking,
     }),
     onSuccess: () => {
-      queryClient.invalidateQueries(["admin-orders"])
+      queryClient.invalidateQueries({ queryKey: ["admin-orders"] })
     },
     onError: (e) => {
       showToast(e?.response?.data?.detail || "No se pudo guardar el envío.", "error")
@@ -46,8 +47,8 @@ function OrderPanel({ order, onClose }) {
   const statusMutation = useMutation({
     mutationFn: (s) => updateOrderStatus(order.id, s),
     onSuccess: () => {
-      queryClient.invalidateQueries(["admin-orders"])
-      queryClient.invalidateQueries(["admin-dashboard"])
+      queryClient.invalidateQueries({ queryKey: ["admin-orders"] })
+      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] })
       queryClient.invalidateQueries(["admin-payments"])
       queryClient.invalidateQueries(["admin-finance-summary"])
     },
@@ -224,11 +225,11 @@ function OrderPanel({ order, onClose }) {
                     {item.product_name}
                   </p>
                   <p style={{ fontSize:"11.5px", color:"var(--admin-text-muted)" }}>
-                    ${Number(item.price).toLocaleString("es-CL")} × {item.quantity}
+                    {formatMoney(item.price, order.currency)} × {item.quantity}
                   </p>
                 </div>
                 <span style={{ fontSize:"13px", fontWeight:700, color:"var(--admin-text)", flexShrink:0, marginLeft:"12px" }}>
-                  ${Number(item.subtotal).toLocaleString("es-CL")}
+                  {formatMoney(item.subtotal, order.currency)}
                 </span>
               </div>
             ))}
@@ -242,7 +243,7 @@ function OrderPanel({ order, onClose }) {
                 fontFamily:"var(--font-display)", fontSize:"1.35rem", fontWeight:800,
                 color:"var(--admin-primary-text)",
               }}>
-                ${Number(order.total).toLocaleString("es-CL")}
+                {formatMoney(order.total, order.currency)}
               </span>
             </div>
           </div>
@@ -314,7 +315,7 @@ export default function AdminOrders() {
     { key:"email", header:"Cliente", sortable:true,
       render:o => <span style={{ color:"var(--admin-text-muted)" }}>{o.email}</span> },
     { key:"total", header:"Total", sortable:true, align:"right",
-      render:o => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>${Number(o.total).toLocaleString("es-CL")}</span> },
+      render:o => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{formatMoney(o.total, o.currency)}</span> },
     { key:"status", header:"Estado",
       render:o => <StatusBadge tone={TONE[o.status] || "neutral"}>{STATUS[o.status]?.label || o.status}</StatusBadge> },
     { key:"created_at", header:"Fecha", sortable:true,
