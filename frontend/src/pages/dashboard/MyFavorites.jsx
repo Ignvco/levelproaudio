@@ -9,6 +9,8 @@ import {
   AdminPageHeader,
   StatCard,
   PrimaryButton,
+  SecondaryButton,
+  ErrorState,
 } from "../../components/admin/ui"
 
 export default function MyFavorites() {
@@ -16,7 +18,7 @@ export default function MyFavorites() {
   const favIds   = useFavoritesStore(s => s.ids || [])
   useEffect(() => { loadFavs() }, [loadFavs])
 
-  const { data, isLoading, refetch } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["my-favorites"],
     queryFn: getFavorites,
   })
@@ -40,7 +42,7 @@ export default function MyFavorites() {
       <AdminPageHeader
         eyebrow="LEVELPRO / MI CUENTA"
         title="Mis favoritos"
-        description={`${products.length} producto${products.length !== 1 ? "s" : ""} guardado${products.length !== 1 ? "s" : ""} en tu lista de deseos`}
+        description={isLoading || isError ? "Tu selección personal de productos" : `${products.length} producto${products.length !== 1 ? "s" : ""} guardado${products.length !== 1 ? "s" : ""} en tu lista de deseos`}
         breadcrumbs={[
           { label: "Inicio", to: "/dashboard" },
           { label: "Favoritos" },
@@ -52,8 +54,8 @@ export default function MyFavorites() {
         }
       />
 
-      {/* KPI Strip */}
-      <div className="lp-grid-kpi">
+      {/* Totales solo cuando la consulta se completó. */}
+      {!isLoading && !isError && <div className="lp-grid-kpi">
         <StatCard
           variant="ink"
           Icon={Heart}
@@ -66,7 +68,7 @@ export default function MyFavorites() {
           Icon={Package}
           label="Stock disponible"
           value={inStockCount}
-          sub="Listos para despacho"
+          sub="Con unidades disponibles"
         />
         <StatCard
           variant="light"
@@ -75,7 +77,13 @@ export default function MyFavorites() {
           value={discountedCount}
           sub="Con precio especial"
         />
-      </div>
+      </div>}
+
+      {!isLoading && isError && (
+        <ErrorState title="No pudimos cargar tus favoritos"
+          description="Tu lista sigue guardada. Puedes reintentar la consulta."
+          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
+      )}
 
       {isLoading && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "20px" }}>
@@ -85,7 +93,7 @@ export default function MyFavorites() {
         </div>
       )}
 
-      {!isLoading && products.length === 0 && (
+      {!isLoading && !isError && products.length === 0 && (
         <div className="au-card" style={{ padding: "64px 24px", textAlign: "center" }}>
           <div
             style={{
@@ -115,7 +123,7 @@ export default function MyFavorites() {
         </div>
       )}
 
-      {!isLoading && products.length > 0 && (
+      {!isLoading && !isError && products.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "20px" }}>
           {products.map(p => {
             const priceDropped = p.price_when_added && Number(p.price) < Number(p.price_when_added)
