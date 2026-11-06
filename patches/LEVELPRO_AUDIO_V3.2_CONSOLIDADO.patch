@@ -1,0 +1,2666 @@
+diff --git a/backend/apps/analytics/currency.py b/backend/apps/analytics/currency.py
+new file mode 100644
+--- /dev/null
++++ b/backend/apps/analytics/currency.py
+@@ -0,0 +1,30 @@
++"""Currency isolation for reporting and internal accounting.
++
++Order totals represent original checkout currency; Payment amounts represent
++the actual gateway currency. Never add them together without a conversion.
++"""
++from decimal import Decimal
++from django.db.models import Sum
++
++CURRENCIES = ("CLP", "USD", "ARS")
++
++
++def requested_currency(request):
++    code = (request.query_params.get("currency") or "CLP").strip().upper()
++    return code if code in CURRENCIES else None
++
++
++def currency_error():
++    from rest_framework.response import Response
++    return Response({"error": "Moneda inválida. Utiliza CLP, USD o ARS."}, status=400)
++
++
++def amount(qs, field="amount"):
++    return qs.aggregate(value=Sum(field))["value"] or Decimal("0.00")
++
++
++def summarize_by_currency(qs, field="total"):
++    return {
++        currency: float(amount(qs.filter(currency=currency), field))
++        for currency in CURRENCIES
++    }
+diff --git a/backend/apps/analytics/migrations/0004_currency_integrity.py b/backend/apps/analytics/migrations/0004_currency_integrity.py
+new file mode 100644
+--- /dev/null
++++ b/backend/apps/analytics/migrations/0004_currency_integrity.py
+@@ -0,0 +1,59 @@
++from django.db import migrations, models
++
++
++def classify_legacy_revenue(apps, schema_editor):
++    """Classify only rows whose original order denomination is unambiguous.
++
++    An old PayPal USD settlement for a CLP order may be stored at the gateway
++    amount instead of the order amount. Leave such rows unclassified rather
++    than silently presenting them as CLP revenue.
++    """
++    IncomeRecord = apps.get_model("analytics", "IncomeRecord")
++    for record in IncomeRecord.objects.select_related("order", "payment").iterator(chunk_size=500):
++        currency = None
++        order = record.order
++        payment = record.payment
++        if order and order.currency in ("CLP", "USD", "ARS"):
++            if record.amount == order.total:
++                ambiguous = bool(
++                    payment and payment.currency != order.currency
++                    and payment.amount == record.amount
++                )
++                if not ambiguous:
++                    currency = order.currency
++        elif not order and payment and payment.currency in ("CLP", "USD", "ARS"):
++            if record.amount == payment.amount:
++                currency = payment.currency
++        if currency:
++            IncomeRecord.objects.filter(pk=record.pk).update(currency=currency)
++
++    # Historical withdrawals had no currency field, so they deliberately
++    # remain NULL until manually reconciled. Do not label them CLP by guess.
++
++
++class Migration(migrations.Migration):
++    dependencies = [("analytics", "0003_withdrawal_created_by_withdrawaldeletionlog")]
++
++    operations = [
++        migrations.AddField(
++            model_name="incomerecord", name="currency",
++            field=models.CharField(max_length=3, null=True, blank=True),
++        ),
++        migrations.AddField(
++            model_name="withdrawal", name="currency",
++            field=models.CharField(max_length=3, null=True, blank=True),
++        ),
++        migrations.AddField(
++            model_name="withdrawaldeletionlog", name="currency",
++            field=models.CharField(max_length=3, null=True, blank=True),
++        ),
++        migrations.RunPython(classify_legacy_revenue, migrations.RunPython.noop),
++        migrations.AlterField(
++            model_name="incomerecord", name="currency",
++            field=models.CharField(max_length=3, default="CLP", null=True, blank=True),
++        ),
++        migrations.AlterField(
++            model_name="withdrawal", name="currency",
++            field=models.CharField(max_length=3, default="CLP", null=True, blank=True),
++        ),
++    ]
+diff --git a/backend/apps/analytics/models.py b/backend/apps/analytics/models.py
+--- a/backend/apps/analytics/models.py
++++ b/backend/apps/analytics/models.py
+@@ -51,6 +51,8 @@ class IncomeRecord(TimeStampedModel):
+         null=True, blank=True, related_name="income_records"
+     )
+     amount      = models.DecimalField(max_digits=12, decimal_places=2)
++    # None marks ambiguous historical records awaiting explicit reconciliation.
++    currency    = models.CharField(max_length=3, default="CLP", null=True, blank=True)
+     description = models.CharField(max_length=255, blank=True)
+     source      = models.CharField(
+         max_length=50,
+@@ -74,6 +76,11 @@ def create_distributions(self):
+         se puede editar desde el admin — si alguien creaba la categoría
+         "Utilidad neta" antes que las demás, el cálculo salía mal).
+         """
++        # Product cost_price is stored in CLP. A foreign-currency sale cannot
++        # be allocated against CLP cost without an explicit documented FX rate.
++        # Keep the gross sale record, but do not invent category profits.
++        if (self.currency or "").upper() != "CLP":
++            return
+         categories = DistributionCategory.objects.filter(is_active=True).order_by("order")
+         fixed_and_percent = [c for c in categories if c.cat_type in ("fixed", "percent")]
+         remainder_cats    = [c for c in categories if c.cat_type == "remainder"]
+@@ -133,6 +140,7 @@ class Meta:
+ 
+ 
+ class Withdrawal(TimeStampedModel):
++    currency    = models.CharField(max_length=3, default="CLP", null=True, blank=True)
+     category    = models.ForeignKey(
+         DistributionCategory, on_delete=models.PROTECT,
+         related_name="withdrawals"
+@@ -159,6 +167,7 @@ class WithdrawalDeletionLog(TimeStampedModel):
+     el borrado la elimine para siempre.
+     """
+     original_id        = models.UUIDField()
++    currency           = models.CharField(max_length=3, null=True, blank=True)
+     category_name       = models.CharField(max_length=100)
+     amount               = models.DecimalField(max_digits=12, decimal_places=2)
+     destination          = models.CharField(max_length=255)
+diff --git a/backend/apps/analytics/signals.py b/backend/apps/analytics/signals.py
+--- a/backend/apps/analytics/signals.py
++++ b/backend/apps/analytics/signals.py
+@@ -32,6 +32,7 @@ def create_income_on_order_paid(sender, instance, **kwargs):
+             status="approved"
+         ).first(),  # puede ser None si fue simulado
+         amount      = Decimal(str(instance.total)),
++        currency    = instance.currency,
+         description = f"Venta — Orden #{str(instance.id)[:8].upper()}",
+         source      = "payment",
+     )
+@@ -57,7 +58,11 @@ def create_income_on_payment_approved(sender, instance, **kwargs):
+     record = IncomeRecord.objects.create(
+         payment     = instance,
+         order       = instance.order,
+-        amount      = Decimal(str(instance.amount)),
++        # Ingreso COMERCIAL: always use the order's original currency.
++        # The gateway Payment remains the source for the actual settlement
++        # denomination (e.g. PayPal USD for an Order in CLP).
++        amount      = Decimal(str(instance.order.total)),
++        currency    = instance.order.currency,
+         description = f"Pago aprobado — Orden #{str(instance.order.id)[:8].upper()}",
+         source      = "payment",
+     )
+diff --git a/backend/apps/analytics/tests_currency_isolation.py b/backend/apps/analytics/tests_currency_isolation.py
+new file mode 100644
+--- /dev/null
++++ b/backend/apps/analytics/tests_currency_isolation.py
+@@ -0,0 +1,159 @@
++"""V3.2 contract tests: monetary totals never combine denominations."""
++from decimal import Decimal
++
++from django.contrib.auth import get_user_model
++from django.test import TestCase
++from rest_framework.test import APIClient
++
++from apps.analytics.models import DistributionCategory, IncomeDistribution, IncomeRecord, Withdrawal
++from apps.orders.models import Order, OrderItem, OrderStatus
++from apps.payments.models import Payment, PaymentProvider, PaymentStatus
++from apps.products.models import Product, Category
++
++
++class CurrencyIsolationTest(TestCase):
++    def setUp(self):
++        self.admin = get_user_model().objects.create_superuser(
++            email="v32-admin@example.test", username="v32-admin", password="x"
++        )
++        self.client = APIClient()
++        self.client.force_authenticate(user=self.admin)
++
++    def order(self, currency, amount, status=OrderStatus.PAID):
++        return Order.objects.create(
++            currency=currency, total=Decimal(str(amount)), status=status,
++            email="buyer@example.test", shipping_address="Test",
++        )
++
++    def get_report(self, url, currency="CLP"):
++        response = self.client.get(url, {"currency": currency})
++        self.assertEqual(response.status_code, 200, getattr(response, "data", None))
++        self.assertEqual(response.data["currency"], currency)
++        return response.data
++
++    def test_commerce_reporting_does_not_sum_clp_usd_ars(self):
++        self.order("CLP", "100000")
++        self.order("USD", "100")
++        self.order("ARS", "20000")
++
++        for currency, expected in (("CLP", 100000), ("USD", 100), ("ARS", 20000)):
++            dash = self.get_report("/api/v1/admin/dashboard/", currency)
++            self.assertEqual(dash["revenue"]["total"], expected)
++            analytics = self.get_report("/api/v1/admin/analytics/", currency)
++            self.assertEqual(analytics["kpis"]["total_revenue"], expected)
++            self.assertEqual(dash["revenue_by_currency"][currency], expected)
++            finance = self.get_report("/api/v1/admin/finance/summary/", currency)
++            self.assertEqual(finance["total_income"], expected)
++            self.assertFalse(finance["reconciliation_required"])
++            self.assertEqual(finance["net_balance"], expected)
++        self.assertEqual(IncomeRecord.objects.count(), 3)
++
++    def test_gateway_usd_is_not_misclassified_as_clp_commercial_income(self):
++        order = self.order("CLP", "85000", status=OrderStatus.PENDING)
++        pay = Payment.objects.create(
++            order=order, provider=PaymentProvider.PAYPAL,
++            currency="USD", amount=Decimal("90.00"),
++            status=PaymentStatus.APPROVED,
++        )
++        record = IncomeRecord.objects.get(order=order)
++        self.assertEqual(record.currency, "CLP")
++        self.assertEqual(record.amount, order.total)
++        self.assertNotEqual(record.amount, pay.amount)
++
++        usd = self.get_report("/api/v1/admin/payments/", "USD")
++        self.assertEqual(usd["total_approved"], 90)
++        self.assertEqual(len(usd["results"]), 1)
++        clp = self.get_report("/api/v1/admin/payments/", "CLP")
++        self.assertEqual(clp["total_approved"], 0)
++        self.assertEqual(len(clp["results"]), 0)
++
++    def test_foreign_revenue_does_not_use_clp_product_cost_for_distribution(self):
++        fixed = DistributionCategory.objects.create(name="Costo", cat_type="fixed")
++        remainder = DistributionCategory.objects.create(name="Utilidad", cat_type="remainder")
++        usd = self.order("USD", "42.50")
++        record = IncomeRecord.objects.get(order=usd)
++        self.assertEqual(record.currency, "USD")
++        self.assertFalse(IncomeDistribution.objects.filter(income_record=record).exists())
++        self.assertTrue(DistributionCategory.objects.filter(pk=fixed.pk).exists())
++        self.assertTrue(DistributionCategory.objects.filter(pk=remainder.pk).exists())
++
++    def test_historical_unclassified_withdrawal_blocks_reuse_of_category_funds(self):
++        cat = DistributionCategory.objects.create(name="Reserva", cat_type="percent", percentage=10)
++        clp_order = self.order("CLP", "100000")
++        record = IncomeRecord.objects.get(order=clp_order)
++        # This distribution is now auto-generated for CLP; simulate a legacy
++        # withdrawal where currency cannot be inferred.
++        Withdrawal.objects.create(
++            category=cat, amount=Decimal("1000"), currency=None,
++            destination="Legacy bank",
++        )
++        response = self.client.post("/api/v1/admin/finance/withdrawals/", {
++            "category_id": str(cat.id), "amount": "500",
++            "currency": "CLP", "destination": "Bank",
++        }, format="json")
++        self.assertEqual(response.status_code, 409)
++        self.assertEqual(Withdrawal.objects.filter(category=cat).count(), 1)
++        overview = self.get_report("/api/v1/admin/finance/summary/")
++        balance = next(row for row in overview["summary"] if row["id"] == str(cat.id))
++        self.assertTrue(balance["reconciliation_required"])
++        self.assertIsNone(balance["balance"])
++        self.assertTrue(overview["reconciliation_required"])
++        self.assertIsNone(overview["net_balance"])
++        self.assertEqual(overview["net_balance_identified_only"], 100000)
++
++    def test_reject_unsupported_currency(self):
++        for route in (
++            "/api/v1/admin/dashboard/", "/api/v1/admin/analytics/",
++            "/api/v1/admin/payments/", "/api/v1/admin/finance/summary/",
++            "/api/v1/admin/finance/by-product/", "/api/v1/admin/executive/",
++            "/api/v1/admin/finance/withdrawals/",
++        ):
++            response = self.client.get(route, {"currency": "EUR"})
++            self.assertEqual(response.status_code, 400, route)
++
++    def test_category_sales_sum_unit_prices_with_quantity_in_selected_currency(self):
++        category = Category.objects.create(name="Test V3.2", slug="v32-products")
++        product = Product.objects.create(
++            name="Test Mic V3.2", slug="v32-test-mic", category=category,
++            price=Decimal("15000"), cost_price=Decimal("5000"),
++            stock=5, is_active=True,
++        )
++        clp_order = self.order("CLP", "30000")
++        OrderItem.objects.create(
++            order=clp_order, product=product,
++            product_name=product.name, price=Decimal("15000"), quantity=2,
++        )
++        usd_order = self.order("USD", "10")
++        OrderItem.objects.create(
++            order=usd_order, product=product,
++            product_name=product.name, price=Decimal("10"), quantity=1,
++        )
++        clp = self.get_report("/api/v1/admin/analytics/", "CLP")
++        usd = self.get_report("/api/v1/admin/analytics/", "USD")
++        self.assertEqual(clp["revenue_by_category"][0]["total"], 30000)
++        self.assertEqual(usd["revenue_by_category"][0]["total"], 10)
++        usd_products = self.get_report("/api/v1/admin/finance/by-product/", "USD")
++        self.assertIsNone(usd_products["results"][0]["total_cost"])
++        self.assertIsNone(usd_products["results"][0]["profit"])
++        self.assertIsNone(usd_products["results"][0]["margin"])
++
++    def test_executive_dashboard_foreign_profit_is_not_fabricated(self):
++        self.order("USD", "120")
++        self.order("ARS", "5000")
++        for code in ("USD", "ARS"):
++            dashboard = self.get_report("/api/v1/admin/executive/", code)
++            self.assertIsNone(dashboard["utilidad_mes"])
++            self.assertEqual(dashboard["utilidad_estado"], "sin_costos_comparables")
++
++    def test_payments_and_revenue_do_not_use_same_currency_when_gateway_differs(self):
++        order = self.order("CLP", "85000", status=OrderStatus.PENDING)
++        Payment.objects.create(
++            order=order, provider=PaymentProvider.PAYPAL,
++            amount=Decimal("90.00"), currency="USD",
++            status=PaymentStatus.APPROVED,
++        )
++        commercial = self.get_report("/api/v1/admin/finance/summary/", "CLP")
++        settlement = self.get_report("/api/v1/admin/payments/", "USD")
++        self.assertEqual(commercial["total_income"], 85000)
++        self.assertEqual(settlement["total_approved"], 90)
++        self.assertEqual(self.get_report("/api/v1/admin/payments/", "CLP")["total_approved"], 0)
+diff --git a/backend/apps/analytics/views.py b/backend/apps/analytics/views.py
+--- a/backend/apps/analytics/views.py
++++ b/backend/apps/analytics/views.py
+@@ -44,6 +44,7 @@
+     import_courses_from_excel, import_courses_from_csv,
+ )
+ from apps.analytics.models import DistributionCategory, IncomeRecord, IncomeDistribution, Withdrawal
++from apps.analytics.currency import requested_currency, currency_error, summarize_by_currency, amount
+ from apps.services.serializers import ServiceDetailSerializer
+ 
+ # ═══════════════════════════════════════════════════════════
+@@ -712,13 +713,17 @@ def admin_lesson_video_upload_url(request):
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def dashboard_overview(request):
++    currency = requested_currency(request)
++    if currency is None:
++        return currency_error()
+     now         = timezone.now()
+     today       = now.date()
+     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+     last_30     = now - timedelta(days=30)
+     last_7      = now - timedelta(days=7)
+ 
+-    paid_orders = Order.objects.filter(status__in=["paid", "shipped", "completed"])
++    all_paid_orders = Order.objects.filter(status__in=["paid", "shipped", "completed"])
++    paid_orders = all_paid_orders.filter(currency=currency)
+ 
+     total_revenue      = paid_orders.aggregate(t=Sum("total"))["t"] or 0
+     revenue_this_month = paid_orders.filter(
+@@ -757,7 +762,7 @@ def dashboard_overview(request):
+ 
+     top_products = (
+         OrderItem.objects
+-        .filter(order__status__in=["paid", "shipped", "completed"])
++        .filter(order__status__in=["paid", "shipped", "completed"], order__currency=currency)
+         .values("product_name")
+         .annotate(total_sold=Sum("quantity"), revenue=Sum("price"))
+         .order_by("-total_sold")[:5]
+@@ -784,6 +789,8 @@ def dashboard_overview(request):
+         pass
+ 
+     return Response({
++        "currency": currency,
++        "revenue_by_currency": summarize_by_currency(all_paid_orders),
+         "revenue": {
+             "total":        float(total_revenue),
+             "this_month":   float(revenue_this_month),
+@@ -823,6 +830,7 @@ def dashboard_overview(request):
+                 "id":      str(o.id),
+                 "email":   o.email,
+                 "total":   float(o.total),
++                "currency": o.currency,
+                 "status":  o.status,
+                 "created": o.created_at.strftime("%Y-%m-%d %H:%M"),
+             }
+@@ -837,6 +845,7 @@ def dashboard_overview(request):
+                     "user_name":  f"{o.user.first_name} {o.user.last_name}".strip()
+                                   if o.user else "Invitado",
+                     "total":      float(o.total),
++                    "currency":   o.currency,
+                     "created":    o.created_at.strftime("%d/%m %H:%M"),
+                     "items_count": o.items.count(),
+                 }
+@@ -873,9 +882,10 @@ def admin_users(request):
+     data = []
+     for u in users[:100]:
+         orders_count = Order.objects.filter(user=u).count()
+-        total_spent  = Order.objects.filter(
++        paid_by_user = Order.objects.filter(
+             user=u, status__in=["paid", "shipped", "completed"]
+-        ).aggregate(t=Sum("total"))["t"] or 0
++        )
++        spend_by_currency = summarize_by_currency(paid_by_user)
+         data.append({
+             "id":           str(u.id),
+             "email":        u.email,
+@@ -884,7 +894,9 @@ def admin_users(request):
+             "date_joined":  u.date_joined.strftime("%Y-%m-%d"),
+             "is_active":    u.is_active,
+             "orders_count": orders_count,
+-            "total_spent":  float(total_spent),
++            "total_spent": spend_by_currency["CLP"],  # Legacy CLP-only field
++            "total_spent_currency": "CLP",
++            "spend_by_currency": spend_by_currency,
+         })
+ 
+     return Response({"results": data, "count": users.count()})
+@@ -963,8 +975,11 @@ def admin_delete_enrollment(request, enrollment_id):
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def admin_payments(request):
++    currency = requested_currency(request)
++    if currency is None:
++        return currency_error()
+     status_filter = request.query_params.get("status")
+-    payments = Payment.objects.select_related("order").order_by("-created_at")
++    payments = Payment.objects.select_related("order").filter(currency=currency).order_by("-created_at")
+ 
+     if status_filter:
+         payments = payments.filter(status=status_filter)
+@@ -985,7 +1000,8 @@ def admin_payments(request):
+         status="approved"
+     ).aggregate(t=Sum("amount"))["t"] or 0
+ 
+-    return Response({"results": data, "total_approved": float(total_approved)})
++    return Response({"results": data, "currency": currency, "total_approved": float(total_approved),
++                     "approved_by_currency": summarize_by_currency(Payment.objects.filter(status="approved"), "amount")})
+ 
+ @api_view(["PATCH"])
+ @permission_classes([IsAdminOrStaff])
+@@ -1449,12 +1465,16 @@ def admin_enrollments(request):
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def analytics_full(request):
++    currency = requested_currency(request)
++    if currency is None:
++        return currency_error()
+     now      = timezone.now()
+     last_12m = now - timedelta(days=365)
+ 
+-    paid_orders = Order.objects.filter(
++    all_paid_orders = Order.objects.filter(
+         status__in=["paid", "shipped", "completed"]
+     )
++    paid_orders = all_paid_orders.filter(currency=currency)
+ 
+     sales_by_month = (
+         paid_orders.filter(created_at__gte=last_12m)
+@@ -1480,7 +1500,7 @@ def analytics_full(request):
+     )
+ 
+     revenue_by_provider = (
+-        Payment.objects.filter(status="approved")
++        Payment.objects.filter(status="approved", currency=currency)
+         .values("provider")
+         .annotate(total=Sum("amount"), count=Count("id"))
+         .order_by("-total")
+@@ -1497,10 +1517,14 @@ def analytics_full(request):
+         OrderItem.objects
+         .filter(
+             order__status__in=["paid", "shipped", "completed"],
++            order__currency=currency,
+             product__isnull=False
+         )
+         .values("product__category__name")
+-        .annotate(total=Sum("price"), count=Sum("quantity"))
++        .annotate(
++            total=Sum(ExpressionWrapper(F("price") * F("quantity"), output_field=DecimalField())),
++            count=Sum("quantity"),
++        )
+         .order_by("-total")[:8]
+     )
+ 
+@@ -1523,6 +1547,8 @@ def analytics_full(request):
+     )
+ 
+     return Response({
++        "currency": currency,
++        "revenue_by_currency": summarize_by_currency(all_paid_orders),
+         "kpis": {
+             "total_revenue":    float(total_revenue),
+             "avg_order_value":  float(avg_order_value),
+@@ -1919,24 +1945,31 @@ def admin_finance_category_detail(request, cat_id):
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def admin_finance_summary(request):
+-    """GET /api/v1/admin/finance/summary/"""
+-    
++    """GET /api/v1/admin/finance/summary/?currency=CLP|USD|ARS"""
++    currency = requested_currency(request)
++    if currency is None:
++        return currency_error()
+ 
+     categories = DistributionCategory.objects.filter(is_active=True)
+     summary = []
+ 
+     for cat in categories:
+         total_in  = IncomeDistribution.objects.filter(
+-            category=cat
++            category=cat, income_record__currency=currency
+         ).aggregate(t=Sum("amount"))["t"] or 0
+ 
+         total_out = Withdrawal.objects.filter(
+-            category=cat
++            category=cat, currency=currency
+         ).aggregate(t=Sum("amount"))["t"] or 0
+ 
+-        balance = float(total_in) - float(total_out)
++        unclassified = (
++            IncomeDistribution.objects.filter(category=cat, income_record__currency__isnull=True).exists()
++            or Withdrawal.objects.filter(category=cat, currency__isnull=True).exists()
++        )
++        balance = None if unclassified else float(total_in) - float(total_out)
+ 
+         summary.append({
++            "reconciliation_required": unclassified,
+             "id":         str(cat.id),
+             "name":       cat.name,
+             "cat_type":   cat.cat_type,
+@@ -1949,20 +1982,21 @@ def admin_finance_summary(request):
+         })
+ 
+     # Totales generales
+-    total_income = IncomeRecord.objects.aggregate(
++    total_income = IncomeRecord.objects.filter(currency=currency).aggregate(
+         t=Sum("amount"))["t"] or 0
+-    total_withdrawn = Withdrawal.objects.aggregate(
++    total_withdrawn = Withdrawal.objects.filter(currency=currency).aggregate(
+         t=Sum("amount"))["t"] or 0
+ 
+     # Últimos ingresos
+     
+-    recent = IncomeRecord.objects.select_related(
++    recent = IncomeRecord.objects.filter(currency=currency).select_related(
+         "order", "payment"
+     ).order_by("-created_at")[:20]
+ 
+     recent_data = [{
+         "id":          str(r.id),
+         "amount":      float(r.amount),
++        "currency":    r.currency,
+         "description": r.description,
+         "source":      r.source,
+         "created_at":  r.created_at.strftime("%d/%m/%Y %H:%M"),
+@@ -1974,36 +2008,58 @@ def admin_finance_summary(request):
+         } for d in r.distributions.all()],
+     } for r in recent]
+ 
++    unclassified_income_count = IncomeRecord.objects.filter(currency__isnull=True).count()
++    unclassified_withdrawals_count = Withdrawal.objects.filter(currency__isnull=True).count()
++    reconciliation_required = bool(
++        unclassified_income_count or unclassified_withdrawals_count
++        or any(row["reconciliation_required"] for row in summary)
++    )
++
+     return Response({
++        "currency": currency,
++        "reconciliation_required": reconciliation_required,
++        "unclassified_income_count": unclassified_income_count,
++        "unclassified_withdrawals_count": unclassified_withdrawals_count,
++        "income_by_currency": {code: float(amount(IncomeRecord.objects.filter(currency=code))) for code in ("CLP", "USD", "ARS")},
++        "withdrawals_by_currency": {code: float(amount(Withdrawal.objects.filter(currency=code))) for code in ("CLP", "USD", "ARS")},
+         "summary":          summary,
+         "total_income":     float(total_income),
+         "total_withdrawn":  float(total_withdrawn),
+-        "net_balance":      float(total_income) - float(total_withdrawn),
++        # Do not display an apparently definitive balance while unclassified
++        # historical entries could belong to the selected currency.
++        "net_balance":      None if reconciliation_required else float(total_income) - float(total_withdrawn),
++        "net_balance_identified_only": float(total_income) - float(total_withdrawn),
+         "recent_income":    recent_data,
+     })
+ 
+ 
+ @api_view(["GET", "POST"])
+ @permission_classes([IsAdminOrStaff])
+ def admin_finance_withdrawals(request):
+-    """GET/POST /api/v1/admin/finance/withdrawals/"""
+-    
++    """GET/POST /api/v1/admin/finance/withdrawals/ (currency-aware)."""
+     if request.method == "GET":
+-        ws = Withdrawal.objects.select_related("category", "created_by").order_by("-created_at")[:50]
++        currency = requested_currency(request)
++        if currency is None:
++            return currency_error()
++        ws = Withdrawal.objects.filter(currency=currency).select_related("category", "created_by").order_by("-created_at")[:50]
+         return Response([{
+             "id":            str(w.id),
+             "category_name": w.category.name,
+             "category_color":w.category.color,
+             "category_icon": w.category.icon,
+             "amount":        float(w.amount),
++            "currency":      w.currency,
+             "destination":   w.destination,
+             "notes":         w.notes,
+             "reference":     w.reference,
+             "created_by":    w.created_by.email if w.created_by else None,
+             "created_at":    w.created_at.strftime("%d/%m/%Y %H:%M"),
+         } for w in ws])
+ 
+-    # POST — registrar retiro
++    # POST: amount and category balance are always in the SAME denomination.
++    currency = str(request.data.get("currency") or "CLP").strip().upper()
++    if currency not in ("CLP", "USD", "ARS"):
++        return currency_error()
+     try:
+         cat = DistributionCategory.objects.get(id=request.data.get("category_id"))
+     except DistributionCategory.DoesNotExist:
+@@ -2014,14 +2070,23 @@ def admin_finance_withdrawals(request):
+     except Exception:
+         return Response({"error": "Monto inválido."}, status=400)
+ 
+-    if amount <= 0:
+-        return Response({"error": "El monto debe ser mayor a 0."}, status=400)
++    if not amount.is_finite() or amount <= 0:
++        return Response({"error": "El monto debe ser finito y mayor a 0."}, status=400)
+ 
+-    # No permitir retirar más de lo que la categoría realmente tiene
+-    # disponible (antes no había ningún chequeo — se podía dejar el
+-    # saldo en negativo con un typo).
+-    total_in  = IncomeDistribution.objects.filter(category=cat).aggregate(t=Sum("amount"))["t"] or Decimal("0")
+-    total_out = Withdrawal.objects.filter(category=cat).aggregate(t=Sum("amount"))["t"] or Decimal("0")
++    # Historical withdrawals lack a trustworthy currency. Stop rather than
++    # treating an unreconciled category as available for spending again.
++    if (
++        Withdrawal.objects.filter(category=cat, currency__isnull=True).exists()
++        or IncomeDistribution.objects.filter(category=cat, income_record__currency__isnull=True).exists()
++    ):
++        return Response(
++            {"error": "Esta categoría contiene movimientos históricos sin moneda conciliada. No se pueden registrar retiros hasta su revisión."},
++            status=409,
++        )
++
++    # Balance and withdrawal in identical denomination.
++    total_in  = IncomeDistribution.objects.filter(category=cat, income_record__currency=currency).aggregate(t=Sum("amount"))["t"] or Decimal("0")
++    total_out = Withdrawal.objects.filter(category=cat, currency=currency).aggregate(t=Sum("amount"))["t"] or Decimal("0")
+     balance   = Decimal(str(total_in)) - Decimal(str(total_out))
+     if amount > balance:
+         return Response(
+@@ -2032,6 +2097,7 @@ def admin_finance_withdrawals(request):
+     w = Withdrawal.objects.create(
+         category    = cat,
+         amount      = amount,
++        currency    = currency,
+         destination = request.data.get("destination", ""),
+         notes       = request.data.get("notes", ""),
+         reference   = request.data.get("reference", ""),
+@@ -2054,6 +2120,7 @@ def admin_finance_withdrawal_delete(request, withdrawal_id):
+     # Guarda el rastro ANTES de borrar — si no, se pierde para siempre.
+     WithdrawalDeletionLog.objects.create(
+         original_id          = w.id,
++        currency             = w.currency,
+         category_name         = w.category.name,
+         amount                 = w.amount,
+         destination            = w.destination,
+@@ -2067,12 +2134,15 @@ def admin_finance_withdrawal_delete(request, withdrawal_id):
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def admin_finance_by_product(request):
+-    """GET /api/v1/admin/finance/by-product/"""
+-    
++    """GET /api/v1/admin/finance/by-product/?currency=CLP|USD|ARS"""
++    currency = requested_currency(request)
++    if currency is None:
++        return currency_error()
+ 
+     # Solo órdenes pagadas
+     items = OrderItem.objects.filter(
+-        order__status__in=["paid", "shipped", "completed"]
++        order__status__in=["paid", "shipped", "completed"],
++        order__currency=currency,
+     ).select_related("product").values(
+         "product__name", "product__sku", "product__cost_price"
+     ).annotate(
+@@ -2085,23 +2155,26 @@ def admin_finance_by_product(request):
+ 
+     results = []
+     for item in items:
++        # Product.cost_price is in CLP. For USD/ARS orders, cost and
++        # margin are intentionally unavailable until an FX/cost ledger exists.
+         cost_price    = item["product__cost_price"] or Decimal("0")
+-        total_cost    = cost_price * item["units_sold"]
+-        profit        = item["total_revenue"] - total_cost
+-        margin        = round(float(profit) / float(item["total_revenue"]) * 100, 1) \
+-                        if item["total_revenue"] else 0
++        total_cost    = cost_price * item["units_sold"] if currency == "CLP" else None
++        profit        = item["total_revenue"] - total_cost if total_cost is not None else None
++        margin        = (round(float(profit) / float(item["total_revenue"]) * 100, 1)
++                         if profit is not None and item["total_revenue"] else None)
+ 
+         results.append({
+             "product_name":  item["product__name"],
+             "sku":           item["product__sku"],
+             "units_sold":    item["units_sold"],
+             "total_revenue": float(item["total_revenue"]),
+-            "total_cost":    float(total_cost),
+-            "profit":        float(profit),
++            "currency":      currency,
++            "total_cost":    float(total_cost) if total_cost is not None else None,
++            "profit":        float(profit) if profit is not None else None,
+             "margin":        margin,
+         })
+ 
+-    return Response({"results": results})    
++    return Response({"results": results, "currency": currency})    
+ 
+ 
+ # ── INVENTARIO INTELIGENTE ────────────────────────────────────
+@@ -2176,7 +2249,10 @@ def inventory_alerts(request):
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def inventory_rotation(request):
+-    """Productos más y menos vendidos con rotación"""
++    """Producto/unidades e ingresos en moneda de compra, sin mezclar."""
++    currency = requested_currency(request)
++    if currency is None:
++        return currency_error()
+     from apps.orders.models import OrderItem
+     from apps.products.models import Product
+     from django.db.models import Sum, Count, F
+@@ -2188,6 +2264,7 @@ def inventory_rotation(request):
+ 
+     ventas = OrderItem.objects.filter(
+         order__created_at__gte=hace_30,
++        order__currency=currency,
+         order__status__in=["paid", "shipped", "completed"]
+     ).values(
+         "product__id", "product__name", "product__stock",
+@@ -2205,6 +2282,7 @@ def inventory_rotation(request):
+             "stock_actual":     v["product__stock"],
+             "unidades_vendidas":v["unidades_vendidas"] or 0,
+             "ingresos":         float(v["ingresos"] or 0),
++            "currency":         currency,
+         })
+ 
+     return Response(data)
+@@ -2239,7 +2317,10 @@ def inventory_value_by_category(request):
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def executive_dashboard(request):
+-    """Dashboard ejecutivo — KPIs del negocio para mobile"""
++    """Dashboard ejecutivo — indicadores de ventas en moneda seleccionada."""
++    currency = requested_currency(request)
++    if currency is None:
++        return currency_error()
+ 
+     hoy        = timezone.now()
+     hoy_inicio = hoy.replace(hour=0, minute=0, second=0, microsecond=0)
+@@ -2252,6 +2333,7 @@ def executive_dashboard(request):
+     def get_ventas(desde, hasta=None):
+         qs = Order.objects.filter(
+             status__in=["paid", "shipped", "completed"],
++            currency=currency,
+             created_at__gte=desde,
+         )
+         if hasta:
+@@ -2283,6 +2365,7 @@ def variacion(actual, anterior):
+         "id":     str(o.id),
+         "status": o.status,
+         "total":  float(o.total),
++        "currency": o.currency,
+         "email":  o.email,
+         "hora":   o.created_at.strftime("%H:%M"),
+     } for o in ordenes_hoy]
+@@ -2306,6 +2389,7 @@ def variacion(actual, anterior):
+         utilidad_mes = IncomeDistribution.objects.filter(
+             category=utilidad_cat,
+             income_record__order__created_at__gte=mes_inicio,
++            income_record__currency=currency,
+         ).aggregate(t=Sum("amount"))["t"] or 0
+     except Exception as e:
+         import logging
+@@ -2319,6 +2403,7 @@ def variacion(actual, anterior):
+         dia_fin    = dia_inicio + timedelta(days=1)
+         v = Order.objects.filter(
+             status__in=["paid", "shipped", "completed"],
++            currency=currency,
+             created_at__gte=dia_inicio,
+             created_at__lt=dia_fin,
+         ).aggregate(total=Sum("total"), count=Count("id"))
+@@ -2333,13 +2418,15 @@ def variacion(actual, anterior):
+     from apps.orders.models import OrderItem
+     top_productos = OrderItem.objects.filter(
+         order__status__in=["paid", "shipped", "completed"],
++        order__currency=currency,
+         order__created_at__gte=mes_inicio,
+     ).values("product_name").annotate(
+         unidades=Sum("quantity"),
+         ingresos=Sum(F("quantity") * F("price")),
+     ).order_by("-ingresos")[:3]
+ 
+     return Response({
++        "currency": currency,
+         "ventas": {
+             "hoy":            float(ventas_hoy["total"] or 0),
+             "hoy_count":      ventas_hoy["count"] or 0,
+@@ -2350,7 +2437,10 @@ def variacion(actual, anterior):
+             "var_dia":        variacion(ventas_hoy["total"], ventas_ayer["total"]),
+             "var_mes":        variacion(ventas_mes["total"], ventas_mes_ant["total"]),
+         },
+-        "utilidad_mes":    float(utilidad_mes),
++        # Product costs are cataloged in CLP. Foreign-currency profit is
++        # unknown until explicit matching cost and FX provenance exists.
++        "utilidad_mes":    float(utilidad_mes) if currency == "CLP" else None,
++        "utilidad_estado": "estimacion_costos_catalogo_CLP" if currency == "CLP" else "sin_costos_comparables",
+         "inventario": {
+             "criticos":  criticos,
+             "sin_stock": sin_stock,
+diff --git a/backend/apps/billing/views.py b/backend/apps/billing/views.py
+--- a/backend/apps/billing/views.py
++++ b/backend/apps/billing/views.py
+@@ -27,6 +27,7 @@ def _serialize(d):
+         "numero_externo": d.numero_externo,
+         "fecha_emision":  d.fecha_emision.isoformat() if d.fecha_emision else None,
+         "monto":          float(d.monto) if d.monto is not None else None,
++        "currency":       d.order.currency,
+         "estado":         d.estado,
+         "estado_label":   d.get_estado_display(),
+         "observaciones":  d.observaciones,
+@@ -67,6 +68,7 @@ def tax_dashboard(request):
+                              if o.user else "") or o.email,
+             "email":        o.email,
+             "total":        float(o.total),
++            "currency":     o.currency,
+             "pago_estado":  o.status,
+             "documento":    _serialize(doc) if doc else None,
+         })
+diff --git a/docs/dashboard-v3/06-v3-2-refinamiento-integral.md b/docs/dashboard-v3/06-v3-2-refinamiento-integral.md
+new file mode 100644
+--- /dev/null
++++ b/docs/dashboard-v3/06-v3-2-refinamiento-integral.md
+@@ -0,0 +1,148 @@
++# LevelPro Audio — V3.2 · Auditoría integral y correcciones de estabilización
++
++Base: `ef614c9357675d7fb6a18658eb2e8694e072a38f`. Rama de trabajo:
++`feat/v3-2-integral-stabilization`. Este trabajo **NO implementa el Patch 14**.
++
++## 1. Alcance examinado
++
++Inspección estática de los 62 archivos de páginas React y sus rutas relacionadas,
++componentes de administración compartidos, layouts, hojas de estilo y módulos
++Django de órdenes, pagos, analítica, facturación e inventario. Evaluación de
++contratos API, caché React Query v5, importes y pantallas.
++
++**Límite de esta auditoría:** no ha habido sesión de navegador autenticado,
++capturas automatizadas de todos los módulos, ejecución de la suite Django en
++esta rama ni comprobación real de pasarelas. No afirmar certificación visual
++o de producción sin esas pruebas.
++
++## 2. Diagnóstico UX/UI
++
++- Dashboard V3.1 conserva lenguaje Editorial Bento aprobado; los encabezados
++  sobre tarjetas negras carecían de contraste y los tres tiles de usuario
++  empleaban demasiado alto sin contenido.
++- Los módulos interiores usan un catálogo amplio de componentes admin,
++  pero todavía combinan tokens CSS, estilos inline y controles locales.
++- `DataTable` tenía encabezados ordenables solo con clic, filas sin
++  navegación por teclado, menú sin cierre Escape y ordenación incorrecta
++  de cadenas monetarias/decimales.
++- `StatCard` disparaba clic sobre un `div` no semántico.
++- Algunos botones/enlaces compartidos ignoraban deshabilitado/carga.
++- Páginas seguían invocando `invalidateQueries(["..."])` con firma
++  anterior a React Query v5; la actualización visual podía mostrar datos
++  obsoletos tras algunas mutaciones.
++- La hoja V3.2 aplica contraste reforzado, foco visible, reduced motion,
++  tamaños responsive, densidad Bento más equilibrada y CSS transversal
++  sin cambiar rutas ni derechos de acceso.
++
++## 3. Diagnóstico contable y solución técnica
++
++**Tres dominios monetarios distintos:**
++
++1. **Comercio:** `Order.total` expresado en `Order.currency`.
++2. **Cobro real:** `Payment.amount` expresado en `Payment.currency`.
++   Ejemplo: orden CLP puede liquidarse por PayPal USD.
++3. **Tesorería interna:** `IncomeRecord`, `IncomeDistribution` y
++   `Withdrawal` con moneda propia e historial potencialmente ambiguo.
++
++En V3.1 existían `Sum(total)` sobre pedidos CLP/USD/ARS y
++`Sum(amount)` sobre pagos de múltiples pasarelas.
++
++Correcciones V3.2:
++- `GET /api/v1/admin/dashboard/?currency=...`,
++  `analytics/`, `executive/`, `payments/`,
++  `finance/summary/`, `finance/withdrawals/`,
++  `finance/by-product/` separan CLP/USD/ARS. Sin FX implícito.
++  Cuando no se informa la moneda, CLP es el valor de compatibilidad,
++  **no una suma mezclada**.
++- Retienen las formas históricas de respuesta cuando es posible;
++  añaden `currency` y totales de cada divisa.
++- Las categorías de analítica utilizan cantidad × precio unitario
++  dentro de la divisa original y no suman distintos currencies.
++- Nuevos `IncomeRecord` guardan el importe original del pedido,
++  aunque `Payment` tenga USD por PayPal.
++- `IncomeRecord.create_distributions()` no calcula costos ni
++  utilidades de ventas USD/ARS con `product.cost_price` expresado CLP:
++  guarda el ingreso comercial, pero no simula un margen convertido.
++- Migración `analytics.0004_currency_integrity`: clasifica ingresos
++  históricos solo con evidencia suficiente; importes históricos
++  ambiguos permanecen `currency=NULL`. Los retiros históricos quedan
++  sin clasificar hasta conciliación expresa.
++- Categorías que contienen ingresos o retiros históricos sin moneda
++  muestran `reconciliation_required` y balance `null`. API de retiro
++  devuelve 409 y bloquea operaciones sobre esa categoría hasta
++  resolver el histórico. No se pierde ni se reetiqueta dinero.
++- Se preserva en auditoría de eliminación el currency del retiro.
++- Monedas identificadas se muestran claramente en pedidos, clientes,
++  notificaciones, pagos, documentación tributaria y finanzas.
++- El selector CLP/USD/ARS del admin consulta cada reporte por divisa;
++  cambiar moneda no crea una conversión.
++
++## 4. Limitaciones contables pendientes de certificación
++
++- El costo de producto se mantiene expresado CLP. Rentabilidad en
++  USD/ARS no puede certificarse sin ledger de costo en la misma moneda
++  o tasa FX explícita por operación, no añadida aquí.
++- Los movimientos de tesorería históricos con `NULL` no se deben
++  imputar automáticamente a CLP. Requieren una conciliación documental.
++- El dashboard comercial filtra ventas por fecha de creación de pedido,
++  no por fecha efectiva del cobro. Por tanto, reporta **ventas de
++  pedidos pagados por fecha de pedido**, no flujo de caja bancario.
++- En caso de mezcla histórica de pagos y órdenes, la auditoría debe
++  verificar `Order.currency`, `Payment.currency` y evidencias
++  externas de conciliación antes de re-etiquetar registros.
++- La financiación y la contabilidad no quedan «100% certificadas»
++  hasta pruebas reales y revisión de históricos.
++
++## 5. Patch 14 — revisión de alcance, expresamente pausado
++
++**No existe implementación del Patch 14 en este cambio.**
++La propuesta original cubría idempotencia de pagos, reintentos,
++recuperación de órdenes, conciliación, callbacks tardíos, stock y
++trazabilidad. Riesgos y puntos de integración:
++- `backend/apps/payments/services.py` crea intents por pasarela;
++  requiere validar reintentos y referencia única antes de modificarlo.
++- `backend/apps/payments/views.py`, webhooks y retorno al checkout
++  necesitan revisión de transiciones/confirmaciones duplicadas.
++- `backend/apps/orders/models.py` y servicios de inventario
++  gobiernan cancelaciones, stock y cambios de estado.
++- `IncomeRecord` por signals tiene protección de existencia, pero
++  eso no sustituye una política de idempotencia transaccional global.
++- Diseñar pruebas de pagos tardíos, doble evento y reservas, **sin
++  introducir todavía cambios de lógica**.
++
++La Fase V3.2 no debe usarse para declarar implementado Patch 14.
++
++## 6. Validación obligatoria antes de integrar
++
++Backend (lo ejecuta Cloud Build; no es obligatorio instalar Python en Mac):
++
++```bash
++python manage.py makemigrations --check --dry-run
++python -m pytest apps/analytics/tests_currency_isolation.py -q
++python -m pytest -q
++```
++
++Frontend con Node/npm del proyecto:
++
++```bash
++npm ci
++npm run lint
++npm run test:unit
++npm run build
++```
++
++QA manual al menos:
++- Admin y cliente con cero pedidos y con pedidos CLP/USD/ARS.
++- Orden CLP liquidada por PayPal USD: el ingreso comercial sigue CLP,
++  liquidación de pasarela se ve USD.
++- Reportes mensuales, 7D, 30D, 1A sin suma entre monedas.
++- Finanzas con histórico NULL: alerta visible y retiro bloqueado.
++- Efectos sobre módulos de pedidos, facturación, inventario y Rewards.
++- Módulos con cambios de estado: la caché se actualiza correctamente.
++- React Query v5, pantallas vacías, errores de API, foco y navegación.
++- 1440, 1024, 768, 430 y 390 px. Revisar visual de todas las rutas
++  antes de dar por finalizada la fase.
++- Validar triggers/despliegue y migración solo con backup y plan rollback.
++
++Estado: **implementación en rama**, pruebas de cloud y QA autenticada
++**pendientes**; jamás mezclar con aprobación de producción.
+diff --git a/docs/dashboard-v3/07-v3-2-consolidacion.md b/docs/dashboard-v3/07-v3-2-consolidacion.md
+new file mode 100644
+--- /dev/null
++++ b/docs/dashboard-v3/07-v3-2-consolidacion.md
+@@ -0,0 +1,68 @@
++# LevelPro Audio V3.2 — Consolidación segura de ramas
++
++**Estado:** candidata a QA, no desplegada, no certificada para producción.  
++**Base estable:** `ef614c9357675d7fb6a18658eb2e8694e072a38f` (Dashboard V3.1).  
++**Rama principal de consolidación:** `feat/v3-2-consolidado`.  
++**Patch 14:** absolutamente pausado; no se modifica su alcance.
++
++## 1. Origen del trabajo
++
++Se encontraron dos implementaciones paralelas:
++- `feat/v3-2-integral-stabilization` (47 commits frente al V3.1; modelo y migración monetaria de tesorería, UX de interiores, numerosos controles financieros).
++- `feat/v3-2-refinamiento-integral` (34 commits frente al V3.1; consultas comerciales segregadas y correcciones adicionales de modales, búsqueda y navegación).
++
++**Decisión:** utilizar la primera como base, porque contiene la migración `analytics.0004_currency_integrity` y la clasificación conservadora de históricos. Incorporar selectivamente de la segunda accesibilidad y controles de integridad. No hacer merges de Git automáticos ni reaplicar archivos completos con implementaciones incompatibles.
++
++## 2. Cambios consolidados
++
++- CLP, USD y ARS independientes para ventas, pagos de pasarela, analytics, finanzas y reportes; nunca se aplica conversión FX implícita.
++- Se distingue el total comercial de la orden (moneda del pedido) del monto cobrado por la pasarela (moneda de la transacción). En PayPal, ambos pueden diferir.
++- Registros financieros `IncomeRecord` y `Withdrawal` incorporan `currency`. Los registros antiguos sin evidencia suficiente permanecen `NULL` después de migración; no se les atribuye CLP por conveniencia.
++- Los ingresos de ventas extranjeras no generan utilidad de productos basada en costos CLP. Ejecutivo muestra utilidad extranjera `null`, no cero falsamente.
++- Las categorías con movimientos no clasificados bloquean retiros (HTTP 409) hasta conciliación documentada.
++- Una cuenta con histórico incompleto devuelve `net_balance: null` y `reconciliation_required: true`; el panel presenta «Por conciliar», no un saldo supuestamente definitivo. El subtipo `net_balance_identified_only` es informativo y no sustituye un balance conciliado.
++- Componentes compartidos de UI: tablas, botones, KPI, diálogos, búsqueda y pestañas con accesibilidad de teclado, estados de carga y etiquetado. Diálogos restauran foco al control anterior y mantienen navegación Tab dentro del modal.
++- Dashboard V3 Bento mantiene identidad gráfica; mejorar contraste, navegación y densidad sin sustituir funciones.
++
++## 3. Consideraciones de despliegue críticas
++
++### Migración histórica
++`analytics.0004_currency_integrity` es una **migración de esquema y de datos**. Antes de aplicarla en producción:
++
++1. Hacer respaldo verificable de Cloud SQL, con restauración ensayada en entorno aislado.
++2. Ejecutar la migración sobre una copia anonimizada, verificar conteos/importes por moneda y los registros dejados en NULL.
++3. Verificar que las versiones Django y el esquema anterior correspondan exactamente a la dependencia `analytics.0003`.
++4. Confirmar el flujo de migraciones en Cloud Run, ya que `backend/Dockerfile.prod` ejecuta `manage.py migrate` al iniciar. Un despliegue prematuro activará automáticamente `0004`.
++5. Comprobar categorías que bloquearían nuevos retiros y diseñar su conciliación real; nunca marcar automáticamente registros históricos desconocidos como CLP.
++
++### QA obligatoria
++En backend, usando el entorno Docker/CI ya configurado:
++```bash
++python manage.py makemigrations --check --dry-run
++python manage.py check
++python -m pytest apps/analytics/tests_currency_isolation.py -q
++python -m pytest -q
++```
++
++En `frontend/`:
++```bash
++npm ci
++npm run lint
++npm run test:unit
++npm run build
++```
++
++QA autenticada: vista Admin Home, Finanzas, Analytics, Tesorería, Pagos, Pedidos, Facturación, Inventario, Academy, Rewards, Servicios, Panel Usuario; escritorio 1440/1280, tablet 768, móvil 390/320; carga/error/vacío; roles, accesibilidad, mantenimiento de identidades de marca y funciones; compras y cobros en sandbox.
++
++**El trabajo en GitHub y la verificación estructural del diff NO equivalen a una ejecución de Cloud Build ni a pruebas de flujo real.**
++
++## 4. Bloqueos abiertos
++
++- Clasificación manual documentada de retirados e ingresos históricos ambiguos en tesorería: no hay tipo de cambio automático ni reconciliación inferida.
++- No se ha ejecutado restauración de DB ni migración sobre copia de producción.
++- No se ha verificado responsive y UX 1:1 de todas las rutas mediante navegador autenticado.
++- La certificación final de V3.2 depende de QA y del resultado de las pruebas automáticas.
++
++## 5. Política de integración
++
++No fusionar las dos ramas antiguas entre sí, no desplegar la rama candidata sin superar los gates indicados, no eliminar las ramas de origen mientras exista trabajo por auditar. Generar un solo patch desde la base estable y verificarlo mediante `git apply --check`. Mantener Patch 14 pausado.
+diff --git a/frontend/package.json b/frontend/package.json
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -16,7 +16,7 @@
+     "test:payment:browser": "node --test tests/payment-return.browser.mjs",
+     "lint": "eslint .",
+     "preview": "vite preview",
+-    "test:unit": "node --test tests/payment-return.test.mjs tests/jsonld.test.mjs tests/seo.test.mjs tests/dashboard-payment-methods.test.mjs tests/dashboard-v3-data.test.mjs",
++    "test:unit": "node --test tests/payment-return.test.mjs tests/jsonld.test.mjs tests/seo.test.mjs tests/dashboard-payment-methods.test.mjs tests/dashboard-v3-data.test.mjs tests/v3-2-currency.test.mjs",
+     "test:browser": "node --test tests/payment-return.browser.mjs tests/transfer-instructions.browser.mjs tests/jsonld.browser.mjs tests/seo.browser.mjs tests/routes.browser.mjs",
+     "test:nginx": "node --test tests/seo-nginx.test.mjs",
+     "check:bundle": "node scripts/check-bundle.mjs"
+diff --git a/frontend/src/api/admin.api.js b/frontend/src/api/admin.api.js
+--- a/frontend/src/api/admin.api.js
++++ b/frontend/src/api/admin.api.js
+@@ -4,9 +4,12 @@ import api from "./client"
+ 
+ const BASE = "/admin"
+ 
++// React Query also passes a context object to a queryFn reference.
++const reportingCurrency = value => typeof value === "string" && ["CLP", "USD", "ARS"].includes(value) ? value : "CLP"
++
+ // ── Dashboard & Analytics ────────────────────────────────────
+-export const getAdminDashboard  = () => api.get(`${BASE}/dashboard/`).then(r => r.data)
+-export const getAnalytics       = () => api.get(`${BASE}/analytics/`).then(r => r.data)
++export const getAdminDashboard  = (currency = "CLP") => api.get(`${BASE}/dashboard/`, { params: { currency: reportingCurrency(currency) } }).then(r => r.data)
++export const getAnalytics       = (currency = "CLP") => api.get(`${BASE}/analytics/`, { params: { currency: reportingCurrency(currency) } }).then(r => r.data)
+ 
+ // ── Orders ───────────────────────────────────────────────────
+ export const getAdminOrders     = (params) => api.get(`${BASE}/orders/`, { params }).then(r => r.data)
+@@ -127,8 +130,8 @@ export const downloadTemplate  = () =>
+ // Al final del archivo, agrega:
+ 
+ // ── FINANZAS ─────────────────────────────────────────────────
+-export const getFinanceSummary     = () =>
+-  api.get(`${BASE}/finance/summary/`).then(r => r.data)
++export const getFinanceSummary     = (currency = "CLP") =>
++  api.get(`${BASE}/finance/summary/`, { params: { currency: reportingCurrency(currency) } }).then(r => r.data)
+ 
+ export const getFinanceCategories  = () =>
+   api.get(`${BASE}/finance/categories/`).then(r => r.data)
+@@ -142,8 +145,8 @@ export const updateFinanceCategory = (id, data) =>
+ export const deleteFinanceCategory = (id) =>
+   api.delete(`${BASE}/finance/categories/${id}/`).then(r => r.data)
+ 
+-export const getWithdrawals        = () =>
+-  api.get(`${BASE}/finance/withdrawals/`).then(r => r.data)
++export const getWithdrawals        = (currency = "CLP") =>
++  api.get(`${BASE}/finance/withdrawals/`, { params: { currency: reportingCurrency(currency) } }).then(r => r.data)
+ 
+ export const createWithdrawal      = (data) =>
+   api.post(`${BASE}/finance/withdrawals/`, data).then(r => r.data)
+diff --git a/frontend/src/components/admin/ui/AccountingCurrencySelect.jsx b/frontend/src/components/admin/ui/AccountingCurrencySelect.jsx
+new file mode 100644
+--- /dev/null
++++ b/frontend/src/components/admin/ui/AccountingCurrencySelect.jsx
+@@ -0,0 +1,13 @@
++import { ACCOUNTING_CURRENCIES } from "../../../utils/accountingCurrency"
++
++/** Selects reporting denomination, never performs an FX conversion. */
++export default function AccountingCurrencySelect({ value, onChange, id = "reporting-currency" }) {
++  return (
++    <label className="au-currency-select" htmlFor={id}>
++      <span>Moneda</span>
++      <select id={id} className="au-select" value={value} onChange={e => onChange(e.target.value)}>
++        {ACCOUNTING_CURRENCIES.map(code => <option key={code} value={code}>{code}</option>)}
++      </select>
++    </label>
++  )
++}
+diff --git a/frontend/src/components/admin/ui/AdminTabs.jsx b/frontend/src/components/admin/ui/AdminTabs.jsx
+--- a/frontend/src/components/admin/ui/AdminTabs.jsx
++++ b/frontend/src/components/admin/ui/AdminTabs.jsx
+@@ -6,7 +6,7 @@ export function AdminTabs({ tabs = [], value, onChange, testId }) {
+         const key = t.key ?? t
+         const label = t.label ?? t
+         return (
+-          <button key={key} type="button"
++          <button key={key} type="button" aria-pressed={value === key}
+             className={`au-tab ${value === key ? "is-active" : ""}`}
+             onClick={() => onChange?.(key)}
+             data-testid={`tab-${key}`}>
+diff --git a/frontend/src/components/admin/ui/Buttons.jsx b/frontend/src/components/admin/ui/Buttons.jsx
+--- a/frontend/src/components/admin/ui/Buttons.jsx
++++ b/frontend/src/components/admin/ui/Buttons.jsx
+@@ -7,9 +7,13 @@ function base(variant, size, className) {
+ 
+ function Btn({ variant, size, className, to, href, children, testId, loading, disabled, ...rest }) {
+   const cls = base(variant, size, className)
++  if ((to || href) && (disabled || loading)) {
++    return <span className={cls} aria-disabled="true" data-testid={testId} {...rest}>{children}</span>
++  }
+   if (to) return <Link to={to} className={cls} data-testid={testId} {...rest}>{children}</Link>
+   if (href) return <a href={href} className={cls} data-testid={testId} {...rest}>{children}</a>
+-  return <button className={cls} data-testid={testId} disabled={disabled || Boolean(loading)} {...rest}>{children}</button>
++  return <button type="button" className={cls} data-testid={testId}
++    aria-busy={Boolean(loading)} disabled={disabled || Boolean(loading)} {...rest}>{children}</button>
+ }
+ 
+ export const PrimaryButton   = (p) => <Btn variant="primary" {...p} />
+@@ -19,6 +23,7 @@ export const DangerButton     = (p) => <Btn variant="danger" {...p} />
+ export function IconButton({ children, ghost, danger, className, testId, ...rest }) {
+   return (
+     <button
++      type="button"
+       className={`au-iconbtn ${ghost ? "au-iconbtn--ghost" : ""} ${danger ? "au-iconbtn--danger" : ""} ${className || ""}`.trim()}
+       data-testid={testId}
+       {...rest}
+diff --git a/frontend/src/components/admin/ui/ConfirmationModal.jsx b/frontend/src/components/admin/ui/ConfirmationModal.jsx
+--- a/frontend/src/components/admin/ui/ConfirmationModal.jsx
++++ b/frontend/src/components/admin/ui/ConfirmationModal.jsx
+@@ -1,25 +1,41 @@
+ // components/admin/ui/ConfirmationModal.jsx
+-import { useEffect } from "react"
++import { useEffect, useId, useRef } from "react"
+ import { PrimaryButton, SecondaryButton, DangerButton } from "./Buttons"
+ 
+ export function ConfirmationModal({
+   open, title = "¿Confirmar acción?", description,
+   confirmLabel = "Confirmar", cancelLabel = "Cancelar",
+   danger = false, loading = false, onConfirm, onCancel, testId,
+ }) {
++  const titleId = useId()
++  const dialogRef = useRef(null)
++  const actionRef = useRef(onCancel)
++  useEffect(() => { actionRef.current = onCancel }, [onCancel])
+   useEffect(() => {
+     if (!open) return
+-    const h = (e) => e.key === "Escape" && onCancel?.()
++    const previous = document.activeElement
++    dialogRef.current?.focus()
++    const h = e => {
++      if (e.key === "Escape") actionRef.current?.()
++      if (e.key !== "Tab") return
++      const buttons = [...(dialogRef.current?.querySelectorAll("button:not([disabled])") || [])]
++      if (!buttons.length) { e.preventDefault(); return }
++      if (e.shiftKey && (document.activeElement === buttons[0] || document.activeElement === dialogRef.current)) {
++        e.preventDefault(); buttons[buttons.length - 1].focus()
++      } else if (!e.shiftKey && document.activeElement === buttons[buttons.length - 1]) {
++        e.preventDefault(); buttons[0].focus()
++      }
++    }
+     window.addEventListener("keydown", h)
+-    return () => window.removeEventListener("keydown", h)
+-  }, [open, onCancel])
++    return () => { window.removeEventListener("keydown", h); previous?.focus?.() }
++  }, [open])
+ 
+   if (!open) return null
+   const Confirm = danger ? DangerButton : PrimaryButton
+   return (
+     <div className="au-modal__backdrop" onClick={onCancel} data-testid={testId || "confirm-modal"}>
+-      <div className="au-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+-        <p className="au-modal__title">{title}</p>
++      <div className="au-modal" ref={dialogRef} tabIndex={-1} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby={titleId}>
++        <p id={titleId} className="au-modal__title">{title}</p>
+         {description && <p className="au-modal__desc">{description}</p>}
+         <div className="au-modal__actions">
+           <SecondaryButton onClick={onCancel} testId="confirm-cancel">{cancelLabel}</SecondaryButton>
+diff --git a/frontend/src/components/admin/ui/DataTable.jsx b/frontend/src/components/admin/ui/DataTable.jsx
+--- a/frontend/src/components/admin/ui/DataTable.jsx
++++ b/frontend/src/components/admin/ui/DataTable.jsx
+@@ -11,19 +11,21 @@ function RowMenu({ actions, row }) {
+   const ref = useRef(null)
+   useEffect(() => {
+     const h = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false)
++    const escape = (e) => { if (e.key === "Escape") setOpen(false) }
+     document.addEventListener("mousedown", h)
+-    return () => document.removeEventListener("mousedown", h)
++    document.addEventListener("keydown", escape)
++    return () => { document.removeEventListener("mousedown", h); document.removeEventListener("keydown", escape) }
+   }, [])
+   return (
+     <div className="au-rowmenu" ref={ref}>
+       <button className="au-iconbtn au-iconbtn--ghost" onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
+-        aria-label="Acciones" data-testid="row-actions-trigger">
++        aria-label="Acciones" aria-haspopup="menu" aria-expanded={open} data-testid="row-actions-trigger">
+         <MoreHorizontal size={18} />
+       </button>
+       {open && (
+-        <div className="au-rowmenu__list">
++        <div className="au-rowmenu__list" role="menu">
+           {actions.map((a, i) => (
+-            <button key={i} className={`au-rowmenu__item ${a.danger ? "au-rowmenu__item--danger" : ""}`}
++            <button type="button" role="menuitem" key={i} className={`au-rowmenu__item ${a.danger ? "au-rowmenu__item--danger" : ""}`}
+               onClick={(e) => { e.stopPropagation(); setOpen(false); a.onClick?.(row) }}>
+               {a.icon && <a.icon size={14} />}{a.label}
+             </button>
+@@ -51,7 +53,7 @@ export function DataTable({
+   const [pageSize, setPageSize] = useState(initialPageSize)
+   const [selected, setSelected] = useState(() => new Set())
+ 
+-  const keys = searchKeys || columns.filter((c) => c.key).map((c) => c.key)
++  const keys = useMemo(() => searchKeys || columns.filter((c) => c.key).map((c) => c.key), [searchKeys, columns])
+ 
+   const filtered = useMemo(() => {
+     let rows = data
+@@ -64,8 +66,12 @@ export function DataTable({
+         const av = a[sort.key], bv = b[sort.key]
+         if (av == null) return 1
+         if (bv == null) return -1
+-        const cmp = typeof av === "number" && typeof bv === "number"
+-          ? av - bv : String(av).localeCompare(String(bv), "es")
++        // Numeric strings (DecimalField API values) must sort numerically.
++        const numeric = v => typeof v === "number" ? v
++          : (typeof v === "string" && /^-?\d+(?:\.\d+)?$/.test(v) ? Number(v) : null)
++        const an = numeric(av), bn = numeric(bv)
++        const cmp = an != null && bn != null
++          ? an - bn : String(av).localeCompare(String(bv), "es", { sensitivity: "base" })
+         return sort.dir === "asc" ? cmp : -cmp
+       })
+     }
+@@ -136,14 +142,16 @@ export function DataTable({
+                   )}
+                   {columns.map((c) => (
+                     <th key={c.key || c.header} className={c.sortable ? "is-sortable" : ""}
+-                      style={{ width: c.width, textAlign: c.align }}
+-                      onClick={() => c.sortable && c.key && toggleSort(c.key)}>
+-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+-                        {c.header}
+-                        {c.sortable && (sort.key === c.key
+-                          ? (sort.dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />)
+-                          : <ArrowUpDown size={12} style={{ opacity: .4 }} />)}
+-                      </span>
++                      scope="col"
++                      aria-sort={c.sortable && sort.key === c.key ? (sort.dir === "asc" ? "ascending" : "descending") : undefined}
++                      style={{ width: c.width, textAlign: c.align }}>
++                      {c.sortable && c.key ? (
++                        <button type="button" className="au-table-sort" onClick={() => toggleSort(c.key)}>
++                          {c.header}
++                          {sort.key === c.key ? (sort.dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />)
++                            : <ArrowUpDown size={12} style={{ opacity: .4 }} />}
++                        </button>
++                      ) : <span>{c.header}</span>}
+                     </th>
+                   ))}
+                   {rowActions && <th style={{ width: 56 }} />}
+@@ -153,7 +161,9 @@ export function DataTable({
+                 {pageRows.map((row) => {
+                   const id = getRowId(row)
+                   return (
+-                    <tr key={id} onClick={() => onRowClick?.(row)} style={{ cursor: onRowClick ? "pointer" : "default" }} data-testid={`${testId}-row`}>
++                    <tr key={id} onClick={() => onRowClick?.(row)}
++                      onKeyDown={e => { if (onRowClick && (e.key === "Enter" || e.key === " ") && e.target === e.currentTarget) { e.preventDefault(); onRowClick(row) } }}
++                      tabIndex={onRowClick ? 0 : undefined} style={{ cursor: onRowClick ? "pointer" : "default" }} data-testid={`${testId}-row`}>
+                       {selectable && (
+                         <td onClick={(e) => e.stopPropagation()}>
+                           <input type="checkbox" className="au-checkbox" checked={selected.has(id)} onChange={() => toggleRow(id)} aria-label="Seleccionar fila" />
+diff --git a/frontend/src/components/admin/ui/FormModal.jsx b/frontend/src/components/admin/ui/FormModal.jsx
+--- a/frontend/src/components/admin/ui/FormModal.jsx
++++ b/frontend/src/components/admin/ui/FormModal.jsx
+@@ -5,20 +5,40 @@
+ // (12 páginas con el mismo bloque de "position: fixed" copiado y pegado).
+ // Ahora el layout vive en un solo lugar; el contenido del formulario sigue
+ // siendo específico de cada página (children).
+-import { useEffect } from "react"
++import { useEffect, useId, useRef } from "react"
+ import { PrimaryButton, SecondaryButton } from "./Buttons"
+ 
+ export function FormModal({
+   open, title, children, onClose, onSave,
+   saving = false, saveLabel = "Guardar", cancelLabel = "Cancelar",
+   error, maxWidth = "440px", scrollableBody = false, testId,
+ }) {
++  const titleId = useId()
++  const dialogRef = useRef(null)
++  const actionRef = useRef(onClose)
++  useEffect(() => { actionRef.current = onClose }, [onClose])
++
+   useEffect(() => {
+     if (!open) return
+-    const h = (e) => e.key === "Escape" && onClose?.()
++    const previous = document.activeElement
++    dialogRef.current?.focus()
++    const h = (e) => {
++      if (e.key === "Escape") actionRef.current?.()
++      if (e.key !== "Tab") return
++      const candidates = [...(dialogRef.current?.querySelectorAll(
++        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
++      ) || [])]
++      if (!candidates.length) { e.preventDefault(); dialogRef.current?.focus(); return }
++      const first = candidates[0], last = candidates[candidates.length - 1]
++      if (e.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
++        e.preventDefault(); last.focus()
++      } else if (!e.shiftKey && document.activeElement === last) {
++        e.preventDefault(); first.focus()
++      }
++    }
+     window.addEventListener("keydown", h)
+-    return () => window.removeEventListener("keydown", h)
+-  }, [open, onClose])
++    return () => { window.removeEventListener("keydown", h); previous?.focus?.() }
++  }, [open])
+ 
+   if (!open) return null
+ 
+@@ -32,20 +52,23 @@ export function FormModal({
+         }}
+         onClick={(e) => e.stopPropagation()}
+         role="dialog"
++        ref={dialogRef}
++        tabIndex={-1}
++        aria-labelledby={titleId}
+         aria-modal="true"
+       >
+         <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)",
+           display: "flex", justifyContent: "space-between", alignItems: "center",
+           flexShrink: 0 }}>
+-          <p style={{ fontSize: "15px", fontWeight: 500 }}>{title}</p>
+-          <button onClick={onClose} aria-label="Cerrar" style={{ background: "none",
++          <p id={titleId} style={{ fontSize: "15px", fontWeight: 700, color: "var(--admin-text)" }}>{title}</p>
++          <button type="button" onClick={onClose} aria-label="Cerrar" style={{ background: "none",
+             border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: "22px" }}>×</button>
+         </div>
+ 
+         <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px",
+           ...(scrollableBody ? { flex: 1, overflowY: "auto" } : {}) }}>
+           {error && (
+-            <div style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
++            <div role="alert" style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
+               background: "rgba(255,77,77,0.08)", border: "1px solid rgba(255,77,77,0.2)",
+               color: "var(--danger)", fontSize: "13px" }}>
+               {error}
+diff --git a/frontend/src/components/admin/ui/Inputs.jsx b/frontend/src/components/admin/ui/Inputs.jsx
+--- a/frontend/src/components/admin/ui/Inputs.jsx
++++ b/frontend/src/components/admin/ui/Inputs.jsx
+@@ -6,7 +6,7 @@ export function SearchInput({ value, onChange, placeholder = "Buscar...", testId
+     <div className="au-search">
+       <Search size={15} strokeWidth={2} />
+       <input value={value} onChange={(e) => onChange?.(e.target.value)}
+-        placeholder={placeholder} data-testid={testId || "search-input"} />
++        placeholder={placeholder} aria-label={placeholder} data-testid={testId || "search-input"} />
+     </div>
+   )
+ }
+diff --git a/frontend/src/components/admin/ui/StatCard.jsx b/frontend/src/components/admin/ui/StatCard.jsx
+--- a/frontend/src/components/admin/ui/StatCard.jsx
++++ b/frontend/src/components/admin/ui/StatCard.jsx
+@@ -59,5 +59,7 @@ export function StatCard({
+   )
+ 
+   if (to) return <Link to={to} className={cls} data-testid={testId}>{inner}</Link>
+-  return <div className={cls} onClick={onClick} data-testid={testId}>{inner}</div>
++  if (onClick) return <button type="button" className={cls} onClick={onClick} data-testid={testId}
++    style={{ width: "100%", textAlign: "left", cursor: "pointer", font: "inherit" }}>{inner}</button>
++  return <div className={cls} data-testid={testId}>{inner}</div>
+ }
+diff --git a/frontend/src/layouts/AdminLayout.jsx b/frontend/src/layouts/AdminLayout.jsx
+--- a/frontend/src/layouts/AdminLayout.jsx
++++ b/frontend/src/layouts/AdminLayout.jsx
+@@ -8,13 +8,14 @@ import { getAdminDashboard } from "../api/admin.api"
+ import AdminSearch from "../components/admin/AdminSearch"
+ import { useSiteSettings } from "../hooks/useSiteSettings"
+ import logoImg from "../assets/logo.png"
++import { formatCurrency } from "../utils/accountingCurrency"
+ import {
+   Search, Bell, Menu, X, ChevronDown, CheckCircle2,
+   Clock, AlertTriangle, MessageSquare, ExternalLink, LogOut,
+   LayoutDashboard, ShoppingBag, Package, GraduationCap, Wrench, Gift, Wallet, Settings
+ } from "lucide-react"
+ 
+-const clpN = (n) => `$${Math.round(n || 0).toLocaleString("es-CL")}`
++const clpN = (n, currency) => formatCurrency(n, currency)
+ 
+ // Mapa de navegación agrupado
+ const navGroups = [
+@@ -217,7 +218,7 @@ function NotificationsBell() {
+                           <p style={{ fontSize: 13, fontWeight: 600, margin: 0, color: "var(--v3-text-primary)" }}>#{o.short_id}</p>
+                           <p style={{ fontSize: 11, margin: 0, color: "var(--v3-text-muted)" }}>{o.user_name || "Cliente"}</p>
+                         </div>
+-                        <span style={{ fontSize: 12.5, fontWeight: 700 }}>{clpN(o.total)}</span>
++                        <span style={{ fontSize: 12.5, fontWeight: 700 }}>{clpN(o.total, o.currency)}</span>
+                       </div>
+                     ))}
+                   </div>
+diff --git a/frontend/src/pages/CourseDetail.jsx b/frontend/src/pages/CourseDetail.jsx
+--- a/frontend/src/pages/CourseDetail.jsx
++++ b/frontend/src/pages/CourseDetail.jsx
+@@ -194,7 +194,7 @@ export default function CourseDetail() {
+     mutationFn: () => enrollCourse(slug),
+     onSuccess: () => {
+       setShowSuccess(true)
+-      queryClient.invalidateQueries(["course", slug])
++      queryClient.invalidateQueries({ queryKey: ["course", slug] })
+     },
+     onError: (e) => showToast(e?.response?.data?.error || "No se pudo completar la inscripción. Intentá de nuevo.", "error"),
+   })
+@@ -237,8 +237,8 @@ export default function CourseDetail() {
+     setCompletedIds(next)
+     try {
+       await markLessonComplete(lesson.id, !done)
+-      queryClient.invalidateQueries(["course", slug])
+-      queryClient.invalidateQueries(["course-progress", slug])
++      queryClient.invalidateQueries({ queryKey: ["course", slug] })
++      queryClient.invalidateQueries({ queryKey: ["course-progress", slug] })
+     } catch { setCompletedIds(completedIds) }
+   }
+ 
+diff --git a/frontend/src/pages/admin/AdminAcademy.jsx b/frontend/src/pages/admin/AdminAcademy.jsx
+--- a/frontend/src/pages/admin/AdminAcademy.jsx
++++ b/frontend/src/pages/admin/AdminAcademy.jsx
+@@ -127,7 +127,7 @@ export default function AdminAcademy() {
+   })
+   const deleteMutation = useMutation({
+     mutationFn: deleteAdminCourse,
+-    onSuccess:  () => { queryClient.invalidateQueries(["admin-courses"]); setToDelete(null) },
++    onSuccess:  () => { queryClient.invalidateQueries({ queryKey: ["admin-courses"] }); setToDelete(null) },
+     onError:    (e) => {
+       showToast(e?.response?.data?.detail || "No se pudo eliminar el curso.", "error")
+       setToDelete(null)
+@@ -151,7 +151,7 @@ export default function AdminAcademy() {
+         <CourseModal
+           course={modal === "new" ? null : modal}
+           onClose={() => setModal(null)}
+-          onSave={() => queryClient.invalidateQueries(["admin-courses"])}
++          onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-courses"] })}
+         />
+       )}
+ 
+diff --git a/frontend/src/pages/admin/AdminBilling.jsx b/frontend/src/pages/admin/AdminBilling.jsx
+--- a/frontend/src/pages/admin/AdminBilling.jsx
++++ b/frontend/src/pages/admin/AdminBilling.jsx
+@@ -13,11 +13,12 @@ import {
+   SecondaryButton, StatCard, EmptyState, SkeletonTable,
+ } from "../../components/admin/ui"
+ import { showToast } from "../../components/ui/ToastNotification"
++import { formatCurrency } from "../../utils/accountingCurrency"
+ import { ExternalLink, FileText, Inbox, CheckCircle2, Clock3 } from "lucide-react"
+ 
+ const SII_URL = "https://www4.sii.cl/consdcvinternetui/"
+ 
+-const money = (v) => v == null ? "—" : `$${Number(v).toLocaleString("es-CL")}`
++const money = (value, currency) => formatCurrency(value, currency)
+ 
+ const ESTADO_TONE = {
+   pendiente: "warning",
+@@ -56,7 +57,7 @@ function RecordModal({ row, onClose }) {
+           borderRadius: "var(--r-md)", fontSize: "13px", color: "var(--text-2)",
+         }}>
+           <strong style={{ color: "var(--text)" }}>{row.cliente}</strong><br/>
+-          {row.email} · {money(row.total)}
++          {row.email} · {money(row.total, row.currency)}
+         </div>
+ 
+         <a href={SII_URL} target="_blank" rel="noreferrer"
+@@ -168,7 +169,7 @@ export default function AdminBilling() {
+                   <tr key={r.order_id}>
+                     <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text)" }}>#{r.order_short}</td>
+                     <td style={{ color: "var(--admin-text)", fontWeight: 500 }}>{r.cliente}</td>
+-                    <td style={{ fontWeight: 700, color: "var(--admin-primary-text)" }}>{money(r.total)}</td>
++                    <td style={{ fontWeight: 700, color: "var(--admin-primary-text)" }}>{money(r.total, r.currency)}</td>
+                     <td>
+                       <StatusBadge tone="success">Pagado</StatusBadge>
+                     </td>
+diff --git a/frontend/src/pages/admin/AdminBrands.jsx b/frontend/src/pages/admin/AdminBrands.jsx
+--- a/frontend/src/pages/admin/AdminBrands.jsx
++++ b/frontend/src/pages/admin/AdminBrands.jsx
+@@ -122,7 +122,7 @@ export default function AdminBrands() {
+   })
+   const deleteMutation = useMutation({
+     mutationFn: deleteAdminBrand,
+-    onSuccess:  () => { queryClient.invalidateQueries(["admin-brands"]); setToDelete(null) },
++    onSuccess:  () => { queryClient.invalidateQueries({ queryKey: ["admin-brands"] }); setToDelete(null) },
+     onError:    (e) => {
+       showToast(e?.response?.data?.detail || "No se pudo eliminar la marca. Puede tener productos asociados.", "error")
+       setToDelete(null)
+@@ -138,7 +138,7 @@ export default function AdminBrands() {
+         <BrandModal
+           brand={modal === "new" ? null : modal}
+           onClose={() => setModal(null)}
+-          onSave={() => queryClient.invalidateQueries(["admin-brands"])}
++          onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-brands"] })}
+         />
+       )}
+ 
+diff --git a/frontend/src/pages/admin/AdminCategories.jsx b/frontend/src/pages/admin/AdminCategories.jsx
+--- a/frontend/src/pages/admin/AdminCategories.jsx
++++ b/frontend/src/pages/admin/AdminCategories.jsx
+@@ -265,7 +265,7 @@ export default function AdminCategories() {
+       await Promise.all(
+         ordered.map((cat, i) => reorderCategory(cat.id, i))
+       )
+-      queryClient.invalidateQueries(["admin-categories"])
++      queryClient.invalidateQueries({ queryKey: ["admin-categories"] })
+     } catch (e) {
+       console.error("Error guardando orden:", e)
+     }
+@@ -291,7 +291,7 @@ export default function AdminCategories() {
+     mutationFn: (cat) => deleteCategory(cat.id),
+     onSuccess:  () => {
+       setLocalRoots(null)
+-      queryClient.invalidateQueries(["admin-categories"])
++      queryClient.invalidateQueries({ queryKey: ["admin-categories"] })
+       setToDelete(null)
+     },
+     onError: (e) => {
+@@ -304,7 +304,7 @@ export default function AdminCategories() {
+ 
+   const handleSave = () => {
+     setLocalRoots(null)
+-    queryClient.invalidateQueries(["admin-categories"])
++    queryClient.invalidateQueries({ queryKey: ["admin-categories"] })
+     setModal(null)
+   }
+ 
+diff --git a/frontend/src/pages/admin/AdminDashboard.jsx b/frontend/src/pages/admin/AdminDashboard.jsx
+--- a/frontend/src/pages/admin/AdminDashboard.jsx
++++ b/frontend/src/pages/admin/AdminDashboard.jsx
+@@ -10,12 +10,13 @@ import {
+ import { getAdminDashboard, getAnalytics } from "../../api/admin.api"
+ import { StatusBadge, ErrorState } from "../../components/admin/ui"
+ import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip } from "recharts"
++import AccountingCurrencySelect from "../../components/admin/ui/AccountingCurrencySelect"
++import { formatCurrency } from "../../utils/accountingCurrency"
+ import {
+   adminRecentOrders, adminFulfillment, adminCategoryMix, adminSalesSeries,
+-  monthlyShare, count, formatMoney,
++  monthlyShare, count,
+ } from "../dashboard/dashboardV3Data"
+ 
+-const clp = (n) => formatMoney(n, "CLP")
+ 
+ const ORDER_STATUS_MAP = {
+   paid:      { label: "Pagado",     tone: "success" },
+@@ -48,15 +49,17 @@ function formatShortDate(iso) {
+ export default function AdminDashboard() {
+   const navigate = useNavigate()
+   const [period, setPeriod] = useState("30D")
++  const [currency, setCurrency] = useState("CLP")
++  const clp = (n) => formatCurrency(n, currency)
+ 
+   const { data, isPending, isError, refetch, isFetching } = useQuery({
+-    queryKey: ["admin-dashboard"],
+-    queryFn: getAdminDashboard,
++    queryKey: ["admin-dashboard", currency],
++    queryFn: () => getAdminDashboard(currency),
+     refetchInterval: 60000,
+   })
+   const { data: analytics } = useQuery({
+-    queryKey: ["admin-analytics"],
+-    queryFn: getAnalytics,
++    queryKey: ["admin-analytics", currency],
++    queryFn: () => getAnalytics(currency),
+     refetchInterval: 120000,
+   })
+ 
+@@ -108,11 +111,11 @@ export default function AdminDashboard() {
+         </div>
+ 
+         <div className="v3-controls-row">
+-          <div className="v3-pill-btn">
++          <div className="v3-pill-btn" aria-label="Mes informado">
+             <Calendar size={14} />
+-            <span>{monthLabel} · información actual</span>
+-            <ChevronDown size={13} style={{ opacity: 0.6 }} />
++            <span>{monthLabel}</span>
+           </div>
++          <AccountingCurrencySelect id="admin-dashboard-currency" value={currency} onChange={setCurrency} />
+ 
+           <button
+             type="button"
+@@ -535,7 +538,7 @@ export default function AdminDashboard() {
+                   <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                     <StatusBadge tone={st.tone}>{st.label}</StatusBadge>
+                     <span style={{ fontSize: 14, fontWeight: 800, color: "var(--v3-text-primary)", minWidth: 90, textAlign: "right" }}>
+-                      {o.total == null ? "—" : o.currency ? formatMoney(o.total, o.currency) : new Intl.NumberFormat("es-CL").format(o.total)}
++                      {o.total == null ? "—" : o.currency ? formatCurrency(o.total, o.currency) : `${new Intl.NumberFormat("es-CL").format(o.total)} (moneda no indicada)`}
+                     </span>
+                     <ChevronRight size={15} style={{ color: "var(--v3-text-muted)" }} />
+                   </div>
+diff --git a/frontend/src/pages/admin/AdminEnrollments.jsx b/frontend/src/pages/admin/AdminEnrollments.jsx
+--- a/frontend/src/pages/admin/AdminEnrollments.jsx
++++ b/frontend/src/pages/admin/AdminEnrollments.jsx
+@@ -16,7 +16,7 @@ function EnrollModal({ courses, users, onClose, onSave }) {
+   const mutation = useMutation({
+     mutationFn: createAdminEnrollment,
+     onSuccess: () => {
+-      queryClient.invalidateQueries(["admin-enrollments"])
++      queryClient.invalidateQueries({ queryKey: ["admin-enrollments"] })
+       onSave?.(); onClose()
+     },
+     onError: (e) => setError(e?.response?.data?.detail || "Error al inscribir."),
+@@ -86,7 +86,7 @@ export default function AdminEnrollments() {
+         <EnrollModal
+           courses={courses} users={users}
+           onClose={() => setModal(false)}
+-          onSave={() => queryClient.invalidateQueries(["admin-enrollments"])}
++          onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-enrollments"] })}
+         />
+       )}
+ 
+diff --git a/frontend/src/pages/admin/AdminFinance.jsx b/frontend/src/pages/admin/AdminFinance.jsx
+--- a/frontend/src/pages/admin/AdminFinance.jsx
++++ b/frontend/src/pages/admin/AdminFinance.jsx
+@@ -5,14 +5,16 @@ import api                                       from "../../api/client"
+ import { TrendingUp, ArrowUpFromLine, Wallet, Pencil, Trash2, Inbox }   from "lucide-react"
+ import { StatCard, AdminPageHeader, SectionCard, DataTable, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle, ConfirmationModal }  from "../../components/admin/ui"
+ import { showToast } from "../../components/ui/ToastNotification"
++import AccountingCurrencySelect from "../../components/admin/ui/AccountingCurrencySelect"
++import { formatCurrency } from "../../utils/accountingCurrency"
+ import {
+   getFinanceSummary, getFinanceCategories,
+   createFinanceCategory, updateFinanceCategory, deleteFinanceCategory,
+   getWithdrawals, createWithdrawal, deleteWithdrawal,
+   getAnalytics,
+ } from "../../api/admin.api"
+ 
+-const fmt   = n => `$${Number(n || 0).toLocaleString("es-CL")}`
++const fmt = (n, currency = "CLP") => formatCurrency(n, currency)
+ const TABS  = [
+   { key:"overview",    label:"Resumen"       },
+   { key:"income",      label:"Ingresos"      },
+@@ -28,7 +30,7 @@ function KpiCard({ label, value, sub, variant = "light", Icon }) {
+ }
+ 
+ // ── Barra de distribución ─────────────────────────────────────
+-function DistributionBar({ categories }) {
++function DistributionBar({ categories, currency = "CLP" }) {
+   if (!categories?.length) return null
+   return (
+     <div>
+@@ -39,7 +41,7 @@ function DistributionBar({ categories }) {
+           <div key={c.id} style={{ flex:Math.max(c.balance, 0),
+             background:c.color, transition:"flex 0.5s ease",
+             minWidth: c.balance > 0 ? "4px" : "0" }}
+-            title={`${c.name}: ${fmt(c.balance)}`} />
++            title={`${c.name}: ${c.reconciliation_required ? "Conciliación requerida" : fmt(c.balance, currency)}`} />
+         ))}
+       </div>
+       <div style={{ display:"flex", flexWrap:"wrap", gap:"8px" }}>
+@@ -52,7 +54,7 @@ function DistributionBar({ categories }) {
+             <span style={{ fontSize:"12px", color:"var(--text-2)" }}>
+               {c.icon} {c.name}
+             </span>
+-            <span style={{ fontSize:"12px", fontWeight:700, color:"var(--text)" }}>{fmt(c.balance)}</span>
++            <span style={{ fontSize:"12px", fontWeight:700, color:"var(--text)" }}>{c.reconciliation_required ? "Por conciliar" : fmt(c.balance, currency)}</span>
+           </div>
+         ))}
+       </div>
+@@ -165,9 +167,10 @@ function CategoryModal({ category, onClose, onSave }) {
+ }
+ 
+ // ── Modal retiro ──────────────────────────────────────────────
+-function WithdrawalModal({ categories, onClose, onSave }) {
++function WithdrawalModal({ categories, onClose, onSave, currency = "CLP" }) {
+   const [form, setForm] = useState({
+     category_id: categories[0]?.id || "",
++    currency,
+     amount:      "",
+     destination: "",
+     notes:       "",
+@@ -182,6 +185,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
+     if (!form.amount || !form.destination) {
+       setError("Monto y cuenta destino son requeridos."); return
+     }
++    if (selectedCat?.reconciliation_required) { setError("Esta categoría requiere conciliación antes de registrar retiros."); return }
+     if (selectedCat && parseFloat(form.amount) > selectedCat.balance) {
+       setError(`Saldo insuficiente en ${selectedCat.name}. Disponible: ${fmt(selectedCat.balance)}`)
+       return
+@@ -197,7 +201,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
+   return (
+     <FormModal
+       open
+-      title="Registrar retiro"
++      title={`Registrar retiro · ${currency}`}
+       onClose={onClose}
+       onSave={handleSave}
+       saving={saving}
+@@ -212,7 +216,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
+           style={formInputStyle}>
+           {categories.map(c => (
+             <option key={c.id} value={c.id}>
+-              {c.icon} {c.name} — disponible: {fmt(c.balance)}
++              {c.icon} {c.name} — {c.reconciliation_required ? "Por conciliar" : `disponible: ${fmt(c.balance, currency)}`}
+             </option>
+           ))}
+         </select>
+@@ -226,7 +230,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
+           </p>
+           <p style={{ fontFamily:"var(--font-display)", fontSize:"1.4rem",
+             color: selectedCat.balance > 0 ? "var(--accent)" : "var(--danger)" }}>
+-            {fmt(selectedCat.balance)}
++            {selectedCat.reconciliation_required ? "Por conciliar" : fmt(selectedCat.balance, currency)}
+           </p>
+         </div>
+       )}
+@@ -255,41 +259,43 @@ function WithdrawalModal({ categories, onClose, onSave }) {
+ // ── AdminFinance ──────────────────────────────────────────────
+ export default function AdminFinance() {
+   const [tab, setTab]   = useState("overview")
++  const [currency, setCurrency] = useState("CLP")
++  const money = value => fmt(value, currency)
+   const [modal, setModal] = useState(null)
+   const [toDeleteWithdrawal, setToDeleteWithdrawal] = useState(null)
+   const [toDeleteCategory, setToDeleteCategory]     = useState(null)
+   const queryClient     = useQueryClient()
+ 
+-  const { data:summary, isLoading } = useQuery({
+-    queryKey: ["admin-finance-summary"],
+-    queryFn:  getFinanceSummary,
++  const { data:summary, isLoading, isError: financeError } = useQuery({
++    queryKey: ["admin-finance-summary", currency],
++    queryFn:  () => getFinanceSummary(currency),
+     refetchInterval: 60000,
+   })
+   const { data:categories = [] } = useQuery({
+     queryKey: ["admin-finance-categories"],
+     queryFn:  getFinanceCategories,
+   })
+   const { data:withdrawals = [] } = useQuery({
+-    queryKey: ["admin-finance-withdrawals"],
+-    queryFn:  getWithdrawals,
++    queryKey: ["admin-finance-withdrawals", currency],
++    queryFn:  () => getWithdrawals(currency),
+     enabled:  tab === "withdrawals" || tab === "overview",
+   })
+   const { data:incomeByProduct } = useQuery({
+-    queryKey: ["admin-finance-by-product"],
+-    queryFn:  () => api.get("/admin/finance/by-product/").then(r => r.data),
++    queryKey: ["admin-finance-by-product", currency],
++    queryFn:  () => api.get("/admin/finance/by-product/", { params: { currency } }).then(r => r.data),
+     enabled:  tab === "by_product",
+   })
+   const { data:analytics } = useQuery({
+-    queryKey: ["admin-analytics"],
+-    queryFn:  getAnalytics,
++    queryKey: ["admin-analytics", currency],
++    queryFn:  () => getAnalytics(currency),
+     enabled:  tab === "analysis",
+   })
+ 
+   const deleteWithdrawalMutation = useMutation({
+     mutationFn: deleteWithdrawal,
+     onSuccess: () => {
+-      queryClient.invalidateQueries(["admin-finance-summary"])
+-      queryClient.invalidateQueries(["admin-finance-withdrawals"])
++      queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-finance-withdrawals"] })
+       setToDeleteWithdrawal(null)
+     },
+     onError: (e) => {
+@@ -300,8 +306,8 @@ export default function AdminFinance() {
+   const deleteCatMutation = useMutation({
+     mutationFn: deleteFinanceCategory,
+     onSuccess: (data) => {
+-      queryClient.invalidateQueries(["admin-finance-categories"])
+-      queryClient.invalidateQueries(["admin-finance-summary"])
++      queryClient.invalidateQueries({ queryKey: ["admin-finance-categories"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
+       setToDeleteCategory(null)
+       if (data?.detail) showToast(data.detail)
+     },
+@@ -311,14 +317,16 @@ export default function AdminFinance() {
+   })
+ 
+   const onSave = () => {
+-    queryClient.invalidateQueries(["admin-finance-summary"])
+-    queryClient.invalidateQueries(["admin-finance-categories"])
+-    queryClient.invalidateQueries(["admin-finance-withdrawals"])
++    queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
++    queryClient.invalidateQueries({ queryKey: ["admin-finance-categories"] })
++    queryClient.invalidateQueries({ queryKey: ["admin-finance-withdrawals"] })
+   }
+ 
+   const summaryCategories = summary?.summary      || []
+   const recentIncome      = summary?.recent_income || []
+ 
++  if (financeError) return <div className="au-page"><div className="au-card" role="alert" style={{ padding: 24 }}>No se pudieron cargar los saldos. Verifica la conexión antes de operar.</div></div>
++
+   if (isLoading) return (
+     <div className="au-page">
+       <div className="lp-kpi-strip">
+@@ -339,7 +347,7 @@ export default function AdminFinance() {
+         <CategoryModal category={modal.item} onClose={() => setModal(null)} onSave={onSave} />
+       )}
+       {modal==="withdrawal" && (
+-        <WithdrawalModal categories={summaryCategories}
++        <WithdrawalModal categories={summaryCategories} currency={currency}
+           onClose={() => setModal(null)} onSave={onSave} />
+       )}
+ 
+@@ -365,40 +373,48 @@ export default function AdminFinance() {
+       />
+ 
+       <AdminPageHeader eyebrow="LEVELPRO / NEGOCIO" title="Finanzas"
+-        description="Distribución automática de ingresos, fondos disponibles, retiros y rentabilidad por SKU"
++        description={`Ingresos, retiros y estadísticas separados en ${currency}, sin conversiones automáticas`}
+         actions={
+           <>
+-            <SecondaryButton onClick={() => setModal("withdrawal")} data-testid="register-withdrawal-btn">
+-              ↑ Registrar retiro
+-            </SecondaryButton>
+-            <PrimaryButton onClick={() => setModal("category")} data-testid="new-category-btn">
+-              + Nueva categoría
+-            </PrimaryButton>
++            <AccountingCurrencySelect id="finance-currency" value={currency} onChange={code => { setCurrency(code); setTab("overview") }} />
++            {currency === "CLP" && (
++              <>
++                <SecondaryButton onClick={() => setModal("withdrawal")} disabled={summaryCategories.every(c => c.reconciliation_required || !(Number(c.balance) > 0))} data-testid="register-withdrawal-btn">
++                  Registrar retiro
++                </SecondaryButton>
++                <PrimaryButton onClick={() => setModal("category")} data-testid="new-category-btn">Nueva categoría</PrimaryButton>
++              </>
++            )}
+           </>
+         } />
+ 
+       {/* KPIs */}
+       <div className="lp-kpi-strip">
+         <KpiCard variant="ink" label="Ingresos totales"
+-          value={fmt(summary?.total_income)} sub="Desde todos los pagos aprobados"
++          value={money(summary?.total_income)} sub={`Ingresos identificados en ${currency}`}
+           Icon={TrendingUp} />
+         <KpiCard variant="light" label="Total retirado"
+-          value={fmt(summary?.total_withdrawn)} sub="Suma de todos los retiros" Icon={ArrowUpFromLine} />
++          value={money(summary?.total_withdrawn)} sub={`Retiros identificados en ${currency}`} Icon={ArrowUpFromLine} />
+         <KpiCard variant="primary" label="Balance neto"
+-          value={fmt(summary?.net_balance)} sub="Ingresos − retiros"
++          value={summary?.reconciliation_required ? "Por conciliar" : money(summary?.net_balance)}
++          sub={summary?.reconciliation_required ? "Sin balance certificado: historial pendiente" : "Saldo verificado por moneda"}
+           Icon={Wallet} />
+       </div>
+ 
+-      {/* Barra distribución */}
+-      {summaryCategories.length > 0 && (
+-        <SectionCard eyebrow="TESORERÍA INTERNA" title="Distribución de fondos disponibles">
+-          <DistributionBar categories={summaryCategories} />
++      {(summary?.unclassified_income_count > 0 || summary?.unclassified_withdrawals_count > 0) && (
++        <div className="lp-callout lp-callout--warning" role="alert">
++          Existen {summary.unclassified_income_count} ingresos y {summary.unclassified_withdrawals_count} retiros históricos sin moneda identificada. Los importes de ingresos y retiros son únicamente los movimientos clasificados, no un saldo integral. Las categorías afectadas siguen bloqueadas hasta conciliar el historial.
++        </div>
++      )}
++      {currency === "CLP" && summaryCategories.length > 0 && (
++        <SectionCard eyebrow="TESORERÍA INTERNA" title="Distribución de fondos clasificados">
++          <DistributionBar categories={summaryCategories} currency={currency} />
+         </SectionCard>
+       )}
+ 
+       {/* Tabs */}
+       <div className="lp-seg-tabs">
+-        {TABS.map(({ key, label }) => (
++        {TABS.filter(t => currency === "CLP" || t.key !== "categories").map(({ key, label }) => (
+           <button
+             key={key}
+             type="button"
+@@ -417,7 +433,7 @@ export default function AdminFinance() {
+           {/* Cards por categoría */}
+           <div style={{ display:"grid",
+             gridTemplateColumns:"repeat(auto-fill, minmax(250px, 1fr))", gap:"14px" }}>
+-            {summaryCategories.map(cat => (
++            {currency === "CLP" && summaryCategories.map(cat => (
+               <div key={cat.id} className="au-acard">
+                 <div className="au-acard__head">
+                   <span className="au-acard__tag" style={{ display:"inline-flex", alignItems:"center", gap:"6px" }}>
+@@ -429,8 +445,8 @@ export default function AdminFinance() {
+ 
+                 <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"2px" }}>
+                   {[
+-                    { label:"Ingresado",  value: fmt(cat.total_in),        color:"#0F9940" },
+-                    { label:"Retirado",   value: `−${fmt(cat.total_out)}`, color:"#EF4444" },
++                    { label:"Ingresado",  value: money(cat.total_in),        color:"#0F9940" },
++                    { label:"Retirado",   value: `−${money(cat.total_out)}`, color:"#EF4444" },
+                   ].map(({ label, value, color }) => (
+                     <div key={label} style={{ display:"flex", justifyContent:"space-between",
+                       fontSize:"12.5px" }}>
+@@ -445,7 +461,7 @@ export default function AdminFinance() {
+                   <span style={{ fontFamily:"var(--font-display)", fontSize:"1.5rem", fontWeight:800,
+                     letterSpacing:"-.02em", lineHeight:1,
+                     color: cat.balance >= 0 ? "#0F9940" : "#EF4444" }}>
+-                    {fmt(cat.balance)}
++                    {cat.reconciliation_required ? "Por conciliar" : money(cat.balance)}
+                   </span>
+                 </div>
+               </div>
+@@ -476,7 +492,7 @@ export default function AdminFinance() {
+                   </div>
+                   <span style={{ fontSize:"14px", fontWeight:700,
+                     color:"var(--admin-danger)", flexShrink:0 }}>
+-                    −{fmt(w.amount)}
++                    −{money(w.amount)}
+                   </span>
+                 </div>
+               ))}
+@@ -498,7 +514,7 @@ export default function AdminFinance() {
+               </div>
+             )},
+             { key:"amount", header:"Monto", sortable:true, align:"right", render:income => (
+-              <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{fmt(income.amount)}</span>
++              <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{money(income.amount)}</span>
+             )},
+             { key:"created_at", header:"Fecha", sortable:true, render:income => (
+               <span style={{ color:"var(--admin-text-muted)" }}>{income.created_at}</span>
+@@ -510,7 +526,7 @@ export default function AdminFinance() {
+                     borderRadius:"100px", fontWeight:500,
+                     color:d.category_color, background:`${d.category_color}14`,
+                     border:`1px solid ${d.category_color}30` }}>
+-                    {d.category_icon} {d.category_name}: {fmt(d.amount)}
++                    {d.category_icon} {d.category_name}: {money(d.amount)}
+                   </span>
+                 ))}
+               </div>
+@@ -541,7 +557,7 @@ export default function AdminFinance() {
+               </div>
+             )},
+             { key:"amount", header:"Monto", sortable:true, align:"right", render:w => (
+-              <span style={{ fontWeight:700, color:"var(--admin-danger)" }}>−{fmt(w.amount)}</span>
++              <span style={{ fontWeight:700, color:"var(--admin-danger)" }}>−{money(w.amount)}</span>
+             )},
+             { key:"created_at", header:"Fecha", sortable:true, render:w => (
+               <div>
+@@ -553,15 +569,15 @@ export default function AdminFinance() {
+           data={withdrawals} getRowId={w => w.id}
+           searchable searchKeys={["destination","category_name"]} searchPlaceholder="Buscar retiro..."
+           toolbarExtra={
+-            <PrimaryButton onClick={() => setModal("withdrawal")} data-testid="register-withdrawal-btn-2">
++            <PrimaryButton disabled={currency !== "CLP" || summaryCategories.every(c => c.reconciliation_required || !(Number(c.balance) > 0))} onClick={() => setModal("withdrawal")} data-testid="register-withdrawal-btn-2">
+               + Registrar retiro
+             </PrimaryButton>
+           }
+           rowActions={w => [
+             { label:"Eliminar", icon:Trash2, danger:true, onClick:() => setToDeleteWithdrawal(w) },
+           ]}
+           emptyIcon={Inbox} emptyTitle="Sin retiros registrados"
+-          emptyDesc="Registrá un retiro con el botón de arriba."
++          emptyDesc="Los retiros se muestran por moneda. Para registrar uno se requiere saldo de categoría conciliado."
+           testId="withdrawals-table" />
+       )}
+ 
+@@ -642,14 +658,14 @@ export default function AdminFinance() {
+             { key:"units_sold", header:"Vendidos", sortable:true, align:"right",
+               render:p => <span style={{ color:"var(--admin-text)" }}>{p.units_sold} u.</span> },
+             { key:"total_revenue", header:"Ingreso total", sortable:true, align:"right",
+-              render:p => <span style={{ color:"var(--admin-primary-text)", fontWeight:600 }}>{fmt(p.total_revenue)}</span> },
++              render:p => <span style={{ color:"var(--admin-primary-text)", fontWeight:600 }}>{money(p.total_revenue)}</span> },
+             { key:"total_cost", header:"Costo total", sortable:true, align:"right",
+-              render:p => <span style={{ color:"var(--admin-danger)" }}>{fmt(p.total_cost)}</span> },
++              render:p => <span style={{ color:"var(--admin-danger)" }}>{p.total_cost == null ? "Costo CLP no comparable" : money(p.total_cost)}</span> },
+             { key:"profit", header:"Utilidad real", sortable:true, align:"right", render:p => (
+               <div style={{ textAlign:"right" }}>
+                 <p style={{ fontSize:"13px", fontWeight:700,
+-                  color: p.profit >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>{fmt(p.profit)}</p>
+-                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{p.margin}% margen</p>
++                  color: p.profit >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>{p.profit == null ? "—" : money(p.profit)}</p>
++                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{p.margin == null ? "Requiere tasa de costo" : `${p.margin}% margen`}</p>
+               </div>
+             )},
+           ]}
+@@ -670,9 +686,9 @@ export default function AdminFinance() {
+               {/* KPIs estratégicos */}
+               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:"14px" }}>
+                 <StatCard Icon={TrendingUp} label="Ingresos totales"
+-                  value={fmt(analytics.kpis?.total_revenue)} />
++                  value={money(analytics.kpis?.total_revenue)} />
+                 <StatCard Icon={Wallet} label="Ticket promedio"
+-                  value={fmt(analytics.kpis?.avg_order_value)} />
++                  value={money(analytics.kpis?.avg_order_value)} />
+                 <StatCard Icon={Inbox} label="Clientes únicos"
+                   value={analytics.kpis?.total_customers ?? 0} />
+                 <StatCard Icon={TrendingUp} label="Tasa de repetición"
+@@ -682,17 +698,17 @@ export default function AdminFinance() {
+               {/* Ventas por mes */}
+               <AnalysisBarSection title="Ventas por mes"
+                 data={(analytics.sales_by_month || []).map(m => ({ label:m.month, value:m.total }))}
+-                fmt={fmt} />
++                fmt={money} />
+ 
+               {/* Ingresos por categoría */}
+               <AnalysisBarSection title="Ingresos por categoría"
+                 data={(analytics.revenue_by_category || []).map(c => ({ label:c.category, value:c.total }))}
+-                fmt={fmt} />
++                fmt={money} />
+ 
+               {/* Ingresos por método de pago */}
+               <AnalysisBarSection title="Ingresos por método de pago"
+                 data={(analytics.revenue_by_provider || []).map(p => ({ label:p.provider, value:p.total }))}
+-                fmt={fmt} />
++                fmt={money} />
+ 
+               {/* Órdenes por estado */}
+               <AnalysisBarSection title="Órdenes por estado"
+diff --git a/frontend/src/pages/admin/AdminLessons.jsx b/frontend/src/pages/admin/AdminLessons.jsx
+--- a/frontend/src/pages/admin/AdminLessons.jsx
++++ b/frontend/src/pages/admin/AdminLessons.jsx
+@@ -300,7 +300,7 @@ export default function AdminLessons() {
+   })
+   const deleteMutation = useMutation({
+     mutationFn: deleteAdminLesson,
+-    onSuccess:  () => { queryClient.invalidateQueries(["admin-lessons"]); setToDelete(null) },
++    onSuccess:  () => { queryClient.invalidateQueries({ queryKey: ["admin-lessons"] }); setToDelete(null) },
+     onError:    (e) => {
+       showToast(e?.response?.data?.detail || "No se pudo eliminar la lección.", "error")
+       setToDelete(null)
+@@ -319,7 +319,7 @@ export default function AdminLessons() {
+           moduleId={moduleFilter}
+           modules={modules}
+           onClose={() => setModal(null)}
+-          onSave={() => queryClient.invalidateQueries(["admin-lessons"])}
++          onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-lessons"] })}
+         />
+       )}
+ 
+diff --git a/frontend/src/pages/admin/AdminLoyalty.jsx b/frontend/src/pages/admin/AdminLoyalty.jsx
+--- a/frontend/src/pages/admin/AdminLoyalty.jsx
++++ b/frontend/src/pages/admin/AdminLoyalty.jsx
+@@ -34,7 +34,7 @@ function AdjustModal({ account, onClose }) {
+       reason:  form.reason,
+     }),
+     onSuccess: () => {
+-      queryClient.invalidateQueries(["admin-loyalty-summary"])
++      queryClient.invalidateQueries({ queryKey: ["admin-loyalty-summary"] })
+       onClose()
+     },
+     onError: (e) => setError(e?.response?.data?.detail || "Error al ajustar."),
+@@ -109,7 +109,7 @@ export default function AdminLoyalty() {
+     setSavingCfg(true)
+     try {
+       await updateLoyaltyConfig(cfgForm)
+-      queryClient.invalidateQueries(["admin-loyalty-config"])
++      queryClient.invalidateQueries({ queryKey: ["admin-loyalty-config"] })
+       setCfgOk(true); setTimeout(() => setCfgOk(false), 3000)
+     } finally { setSavingCfg(false) }
+   }
+diff --git a/frontend/src/pages/admin/AdminModules.jsx b/frontend/src/pages/admin/AdminModules.jsx
+--- a/frontend/src/pages/admin/AdminModules.jsx
++++ b/frontend/src/pages/admin/AdminModules.jsx
+@@ -32,7 +32,7 @@ function ModuleModal({ module, courseId, courses = [], onClose, onSave }) {
+       ? updateAdminModule(module.id, payload)
+       : createAdminModule(payload)
+     req.then(() => {
+-      queryClient.invalidateQueries(["admin-modules"])
++      queryClient.invalidateQueries({ queryKey: ["admin-modules"] })
+       onSave?.(); onClose()
+     }).catch(e => {
+       setError(e?.response?.data?.detail || e?.response?.data?.course?.[0] || "Error al guardar.")
+@@ -88,7 +88,7 @@ export default function AdminModules() {
+   })
+   const deleteMutation = useMutation({
+     mutationFn: deleteAdminModule,
+-    onSuccess:  () => { queryClient.invalidateQueries(["admin-modules"]); setToDelete(null) },
++    onSuccess:  () => { queryClient.invalidateQueries({ queryKey: ["admin-modules"] }); setToDelete(null) },
+     onError:    (e) => {
+       showToast(e?.response?.data?.detail || "No se pudo eliminar el módulo.", "error")
+       setToDelete(null)
+@@ -109,7 +109,7 @@ export default function AdminModules() {
+           courseId={courseFilter}
+           courses={courses}
+           onClose={() => setModal(null)}
+-          onSave={() => queryClient.invalidateQueries(["admin-modules"])}
++          onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-modules"] })}
+         />
+       )}
+ 
+diff --git a/frontend/src/pages/admin/AdminOrders.jsx b/frontend/src/pages/admin/AdminOrders.jsx
+--- a/frontend/src/pages/admin/AdminOrders.jsx
++++ b/frontend/src/pages/admin/AdminOrders.jsx
+@@ -11,6 +11,7 @@ import {
+   PrimaryButton, SecondaryButton, formInputStyle,
+ } from "../../components/admin/ui"
+ import { showToast } from "../../components/ui/ToastNotification"
++import { formatCurrency } from "../../utils/accountingCurrency"
+ 
+ const STATUS = {
+   pending:   { label:"Pendiente",  color:"#D97706" },
+@@ -35,7 +36,7 @@ function OrderPanel({ order, onClose }) {
+       shipping_carrier: carrier, tracking_number: tracking,
+     }),
+     onSuccess: () => {
+-      queryClient.invalidateQueries(["admin-orders"])
++      queryClient.invalidateQueries({ queryKey: ["admin-orders"] })
+     },
+     onError: (e) => {
+       showToast(e?.response?.data?.detail || "No se pudo guardar el envío.", "error")
+@@ -46,10 +47,10 @@ function OrderPanel({ order, onClose }) {
+   const statusMutation = useMutation({
+     mutationFn: (s) => updateOrderStatus(order.id, s),
+     onSuccess: () => {
+-      queryClient.invalidateQueries(["admin-orders"])
+-      queryClient.invalidateQueries(["admin-dashboard"])
+-      queryClient.invalidateQueries(["admin-payments"])
+-      queryClient.invalidateQueries(["admin-finance-summary"])
++      queryClient.invalidateQueries({ queryKey: ["admin-orders"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-payments"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
+     },
+     onError: (e) => {
+       showToast(e?.response?.data?.detail || "No se pudo actualizar el estado de la orden.", "error")
+@@ -224,11 +225,11 @@ function OrderPanel({ order, onClose }) {
+                     {item.product_name}
+                   </p>
+                   <p style={{ fontSize:"11.5px", color:"var(--admin-text-muted)" }}>
+-                    ${Number(item.price).toLocaleString("es-CL")} × {item.quantity}
++                    {formatCurrency(item.price, order.currency)} × {item.quantity}
+                   </p>
+                 </div>
+                 <span style={{ fontSize:"13px", fontWeight:700, color:"var(--admin-text)", flexShrink:0, marginLeft:"12px" }}>
+-                  ${Number(item.subtotal).toLocaleString("es-CL")}
++                  {formatCurrency(item.subtotal, order.currency)}
+                 </span>
+               </div>
+             ))}
+@@ -242,7 +243,7 @@ function OrderPanel({ order, onClose }) {
+                 fontFamily:"var(--font-display)", fontSize:"1.35rem", fontWeight:800,
+                 color:"var(--admin-primary-text)",
+               }}>
+-                ${Number(order.total).toLocaleString("es-CL")}
++                {formatCurrency(order.total, order.currency)}
+               </span>
+             </div>
+           </div>
+@@ -270,7 +271,7 @@ function OrderPanel({ order, onClose }) {
+                     <p style={{ fontSize:"12.5px", fontWeight:600, color:"var(--admin-text)" }}>{p.provider}</p>
+                     <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{p.paid_at || p.created_at}</p>
+                   </div>
+-                  <StatusBadge tone={TONE[p.status] || "neutral"}>{p.status}</StatusBadge>
++                  <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><span>{formatCurrency(p.amount, p.currency)}</span><StatusBadge tone={TONE[p.status] || "neutral"}>{p.status}</StatusBadge></span>
+                 </div>
+               ))}
+             </div>
+@@ -314,7 +315,7 @@ export default function AdminOrders() {
+     { key:"email", header:"Cliente", sortable:true,
+       render:o => <span style={{ color:"var(--admin-text-muted)" }}>{o.email}</span> },
+     { key:"total", header:"Total", sortable:true, align:"right",
+-      render:o => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>${Number(o.total).toLocaleString("es-CL")}</span> },
++      render:o => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{formatCurrency(o.total, o.currency)}</span> },
+     { key:"status", header:"Estado",
+       render:o => <StatusBadge tone={TONE[o.status] || "neutral"}>{STATUS[o.status]?.label || o.status}</StatusBadge> },
+     { key:"created_at", header:"Fecha", sortable:true,
+diff --git a/frontend/src/pages/admin/AdminPayments.jsx b/frontend/src/pages/admin/AdminPayments.jsx
+--- a/frontend/src/pages/admin/AdminPayments.jsx
++++ b/frontend/src/pages/admin/AdminPayments.jsx
+@@ -5,6 +5,8 @@ import { getAdminPayments, updatePaymentStatus } from "../../api/admin.api"
+ import { StatCard, DataTable, StatusBadge, AdminPageHeader, SecondaryButton } from "../../components/admin/ui"
+ import { showToast } from "../../components/ui/ToastNotification"
+ import { Inbox, Bell } from "lucide-react"
++import AccountingCurrencySelect from "../../components/admin/ui/AccountingCurrencySelect"
++import { formatCurrency, formatGatewayAmount } from "../../utils/accountingCurrency"
+ 
+ const STATUS = {
+   pending:   { label:"Pendiente",   color:"#D97706" },
+@@ -26,10 +28,10 @@ function StatusSelector({ paymentId, current }) {
+   const mutation    = useMutation({
+     mutationFn: (s) => updatePaymentStatus(paymentId, s),
+     onSuccess:  () => {
+-      queryClient.invalidateQueries(["admin-payments"])
+-      queryClient.invalidateQueries(["admin-orders"])
+-      queryClient.invalidateQueries(["admin-dashboard"])
+-      queryClient.invalidateQueries(["admin-finance-summary"])
++      queryClient.invalidateQueries({ queryKey: ["admin-payments"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-orders"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
+     },
+     onError: (e) => {
+       showToast(e?.response?.data?.detail || "No se pudo actualizar el estado del pago. Verificá antes de asumir que se marcó.", "error")
+@@ -57,10 +59,11 @@ function StatusSelector({ paymentId, current }) {
+ 
+ export default function AdminPayments() {
+   const [statusFilter, setStatusFilter] = useState("")
++  const [currency, setCurrency] = useState("CLP")
+ 
+-  const { data, isLoading } = useQuery({
+-    queryKey: ["admin-payments", statusFilter],
+-    queryFn:  () => getAdminPayments(statusFilter ? { status:statusFilter } : {}),
++  const { data, isLoading, isError } = useQuery({
++    queryKey: ["admin-payments", statusFilter, currency],
++    queryFn:  () => getAdminPayments({ ...(statusFilter && { status: statusFilter }), currency }),
+   })
+   const payments = data?.results || []
+ 
+@@ -76,7 +79,7 @@ export default function AdminPayments() {
+     { key:"provider", header:"Método",
+       render:p => <span style={{ color:"var(--admin-text-muted)" }}>{PROVIDERS[p.provider] || p.provider}</span> },
+     { key:"amount", header:"Monto", sortable:true, align:"right",
+-      render:p => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>${Number(p.amount).toLocaleString("es-CL")}</span> },
++      render:p => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{formatGatewayAmount(p)}</span> },
+     { key:"status", header:"Estado",
+       render:p => {
+         const isPendingTransfer = p.status === "pending" &&
+@@ -108,10 +111,8 @@ export default function AdminPayments() {
+       <AdminPageHeader
+         eyebrow="LEVELPRO / VENTAS"
+         title="Pagos"
+-        description={data?.total_approved > 0
+-          ? `Total aprobado: $${Number(data.total_approved).toLocaleString("es-CL")}`
+-          : "Conciliación de transacciones, pasarelas y transferencias"}
+-        actions={<SecondaryButton to="/admin/payment-methods" size="sm">Métodos de pago</SecondaryButton>}
++        description={`Aprobado en ${currency}: ${formatCurrency(data?.total_approved ?? 0, currency)} · cobros en moneda de pasarela`}
++        actions={<><AccountingCurrencySelect id="admin-payments-currency" value={currency} onChange={setCurrency} /><SecondaryButton to="/admin/payment-methods" size="sm">Métodos de pago</SecondaryButton></>}
+       />
+ 
+       {pendingTransfers.length > 0 && (
+@@ -157,7 +158,7 @@ export default function AdminPayments() {
+       </div>
+ 
+       <DataTable
+-        columns={columns} data={payments} loading={isLoading}
++        columns={columns} data={payments} loading={isLoading} error={isError}
+         getRowId={p => p.id}
+         searchable searchKeys={["order_email", "order_id"]} searchPlaceholder="Buscar por email u orden..."
+         filters={[{
+diff --git a/frontend/src/pages/admin/AdminProducts.jsx b/frontend/src/pages/admin/AdminProducts.jsx
+--- a/frontend/src/pages/admin/AdminProducts.jsx
++++ b/frontend/src/pages/admin/AdminProducts.jsx
+@@ -246,7 +246,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
+       } else {
+         await createAdminProduct(payload)
+       }
+-      queryClient.invalidateQueries(["admin-products"])
++      queryClient.invalidateQueries({ queryKey: ["admin-products"] })
+       onSave?.()
+       onClose()
+     } catch (e) {
+@@ -269,7 +269,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
+       fd.append("alt_text", form.name)
+       const newImg = await uploadProductImage(product.id, fd)
+       setImages(prev => [...prev, newImg])
+-      queryClient.invalidateQueries(["admin-products"])
++      queryClient.invalidateQueries({ queryKey: ["admin-products"] })
+     } catch (e) {
+       showToast(e?.response?.data?.detail || "No se pudo subir la imagen. Intentá de nuevo.", "error")
+     } finally { setUploadingImg(false) }
+@@ -855,7 +855,7 @@ export default function AdminProducts() {
+ 
+   const deleteMutation = useMutation({
+     mutationFn: deleteAdminProduct,
+-    onSuccess:  () => { queryClient.invalidateQueries(["admin-products"]); setToDelete(null) },
++    onSuccess:  () => { queryClient.invalidateQueries({ queryKey: ["admin-products"] }); setToDelete(null) },
+     onError:    (e) => {
+       showToast(e?.response?.data?.detail || "No se pudo eliminar el producto. Puede estar referenciado en pedidos existentes.", "error")
+       setToDelete(null)
+@@ -930,7 +930,7 @@ export default function AdminProducts() {
+           categories={categories}
+           brands={brands}
+           onClose={() => setModal(null)}
+-          onSave={() => queryClient.invalidateQueries(["admin-products"])}
++          onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-products"] })}
+         />
+       )}
+ 
+diff --git a/frontend/src/pages/admin/AdminServices.jsx b/frontend/src/pages/admin/AdminServices.jsx
+--- a/frontend/src/pages/admin/AdminServices.jsx
++++ b/frontend/src/pages/admin/AdminServices.jsx
+@@ -145,13 +145,13 @@ export default function AdminServices() {
+ 
+   const reqMutation = useMutation({
+     mutationFn: ({ id, data }) => updateRequestStatus(id, data),
+-    onSuccess:  () => queryClient.invalidateQueries(["admin-requests"]),
++    onSuccess:  () => queryClient.invalidateQueries({ queryKey: ["admin-requests"] }),
+     onError:    (err) => showToast(err?.response?.data?.error || "No se pudo actualizar la solicitud.", "error"),
+   })
+ 
+   const bookingMutation = useMutation({
+     mutationFn: ({ id, status }) => updateBookingStatus(id, status),
+-    onSuccess:  () => queryClient.invalidateQueries(["admin-bookings"]),
++    onSuccess:  () => queryClient.invalidateQueries({ queryKey: ["admin-bookings"] }),
+     onError:    (err) => showToast(err?.response?.data?.error || "No se pudo actualizar la reserva.", "error"),
+   })
+ 
+diff --git a/frontend/src/pages/dashboard/MyBookings.jsx b/frontend/src/pages/dashboard/MyBookings.jsx
+--- a/frontend/src/pages/dashboard/MyBookings.jsx
++++ b/frontend/src/pages/dashboard/MyBookings.jsx
+@@ -43,7 +43,7 @@ export default function MyBookings() {
+   const cancelMutation = useMutation({
+     mutationFn: cancelBooking,
+     onSuccess: () => {
+-      queryClient.invalidateQueries(["my-bookings"])
++      queryClient.invalidateQueries({ queryKey: ["my-bookings"] })
+       setToCancel(null)
+       showToast("Reserva cancelada correctamente")
+     },
+diff --git a/frontend/src/pages/dashboard/Orders.jsx b/frontend/src/pages/dashboard/Orders.jsx
+--- a/frontend/src/pages/dashboard/Orders.jsx
++++ b/frontend/src/pages/dashboard/Orders.jsx
+@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
+ import { useNavigate } from "react-router-dom"
+ import { ShoppingBag, Package, Clock, CheckCircle2, DollarSign } from "lucide-react"
+ import { getOrders } from "../../api/orders.api"
++import { formatCurrency } from "../../utils/accountingCurrency"
+ import {
+   AdminPageHeader,
+   DataTable,
+@@ -32,9 +33,15 @@ export default function Orders() {
+   const totalOrders = orders.length
+   const inProgressCount = orders.filter(o => o.status === "paid" || o.status === "shipped").length
+   const pendingCount = orders.filter(o => o.status === "pending").length
+-  const totalSpent = orders
+-    .filter(o => o.status !== "cancelled")
+-    .reduce((acc, o) => acc + (Number(o.total) || 0), 0)
++  const totalsByCurrency = orders
++    .filter(o => ["paid", "shipped", "completed"].includes(o.status))
++    .reduce((totals, order) => {
++      const currency = ["CLP", "USD", "ARS"].includes(order.currency) ? order.currency : null
++      if (currency) totals[currency] += Number(order.total) || 0
++      return totals
++    }, { CLP: 0, USD: 0, ARS: 0 })
++  const spentLabels = Object.entries(totalsByCurrency).filter(([, value]) => value !== 0)
++    .map(([currency, total]) => formatCurrency(total, currency))
+ 
+   const columns = [
+     {
+@@ -81,7 +88,7 @@ export default function Orders() {
+       align: "right",
+       render: o => (
+         <span style={{ fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--admin-primary-text)" }}>
+-          ${Number(o.total).toLocaleString("es-CL")}
++          {formatCurrency(o.total, o.currency)}
+         </span>
+       ),
+     },
+@@ -157,8 +164,8 @@ export default function Orders() {
+           variant="light"
+           Icon={DollarSign}
+           label="Total compras"
+-          value={`$${totalSpent.toLocaleString("es-CL")}`}
+-          sub="Inversión acumulada"
++          value={<span style={{ fontSize: 16, lineHeight: 1.4 }}>{spentLabels.length ? spentLabels.join(" · ") : "—"}</span>}
++          sub="Compras pagadas, separadas por moneda"
+         />
+       </div>
+ 
+diff --git a/frontend/src/styles/admin-ui.css b/frontend/src/styles/admin-ui.css
+--- a/frontend/src/styles/admin-ui.css
++++ b/frontend/src/styles/admin-ui.css
+@@ -1385,3 +1385,103 @@
+ @media (max-width: 540px) {
+   .admin-root .lp-kpi-strip { grid-template-columns: minmax(0, 1fr); }
+ }
++
++/* V3.2 — Consistent interaction language across all admin and customer modules. */
++.admin-root :where(a, button, input, select, textarea, [tabindex]):focus-visible {
++  outline: 3px solid #159A49;
++  outline-offset: 2px;
++}
++.admin-root .au-btn,
++.admin-root .au-iconbtn,
++.admin-root .au-select,
++.admin-root input,
++.admin-root textarea {
++  font-family: var(--font-sans);
++}
++.admin-root .au-btn:disabled,
++.admin-root .au-iconbtn:disabled,
++.admin-root [aria-disabled="true"] {
++  opacity: .55;
++  cursor: not-allowed;
++  transform: none;
++  box-shadow: none;
++  pointer-events: none;
++}
++.admin-root .au-table-sort {
++  display: inline-flex;
++  align-items: center;
++  gap: 6px;
++  width: 100%;
++  padding: 3px 0;
++  text-align: inherit;
++  background: transparent;
++  border: 0;
++  color: inherit;
++  font: inherit;
++  font-weight: 750;
++  text-transform: inherit;
++  letter-spacing: inherit;
++  cursor: pointer;
++}
++.admin-root .au-table-sort:focus-visible {
++  outline-offset: 3px;
++}
++.admin-root .au-table tbody tr[tabindex]:focus-visible {
++  outline: 2px solid #159A49;
++  outline-offset: -2px;
++}
++.admin-root .au-table tbody td {
++  font-variant-numeric: tabular-nums;
++}
++.admin-root .au-currency-select {
++  display: inline-flex;
++  align-items: center;
++  gap: 8px;
++  padding-left: 4px;
++  font-size: 12px;
++  font-weight: 650;
++  color: var(--admin-page-text-muted);
++  white-space: nowrap;
++}
++.admin-root .au-currency-select .au-select {
++  min-width: 90px;
++  color: var(--admin-text);
++}
++.admin-root .au-card {
++  min-width: 0;
++}
++.admin-root .au-table-wrap {
++  max-width: 100%;
++}
++.admin-root .au-toolbar .au-search,
++.admin-root .au-toolbar .au-search input {
++  max-width: 100%;
++}
++@media (max-width: 640px) {
++  .admin-root .au-toolbar {
++    padding: 12px;
++  }
++  .admin-root .au-toolbar__left,
++  .admin-root .au-toolbar__right {
++    width: 100%;
++  }
++  .admin-root .au-toolbar .au-search,
++  .admin-root .au-toolbar .au-search input {
++    width: 100%;
++  }
++  .admin-root .au-table thead th,
++  .admin-root .au-table tbody td {
++    padding: 11px 12px;
++  }
++  .admin-root .au-header__actions {
++    width: 100%;
++  }
++}
++@media (prefers-reduced-motion: reduce) {
++  .admin-root *,
++  .admin-root *::before,
++  .admin-root *::after {
++    transition-duration: .01ms !important;
++    animation-duration: .01ms !important;
++  }
++}
+diff --git a/frontend/src/styles/v3-editorial-bento.css b/frontend/src/styles/v3-editorial-bento.css
+--- a/frontend/src/styles/v3-editorial-bento.css
++++ b/frontend/src/styles/v3-editorial-bento.css
+@@ -925,3 +925,92 @@
+     justify-content: flex-start;
+   }
+ }
++
++/* ======================================================================
++   V3.2 — Accessibility, editorial density and responsive Bento refinements
++   Pure presentation: leaves route, API and business behavior unchanged.
++   ====================================================================== */
++.v3-shell .v3-card-obsidian .v3-card-title-dark {
++  color: #F8FAFC !important;
++  font-weight: 680;
++  letter-spacing: -0.015em;
++}
++.v3-shell .v3-card-obsidian .v3-micro-label-dark {
++  color: #C0C6CF;
++}
++.v3-shell .v3-card-obsidian .v3-donut-sub,
++.v3-shell .v3-card-obsidian .v3-text-dark-muted {
++  color: #B8C0C9;
++}
++.v3-shell :where(a, button, select, input, textarea, [tabindex]):focus-visible {
++  outline: 3px solid #159A49;
++  outline-offset: 3px;
++}
++.v3-shell .v3-card-obsidian :where(a, button):focus-visible {
++  outline-color: #1AFF6E;
++}
++.v3-shell .v3-bento-grid > *,
++.v3-shell .v3-card,
++.v3-shell .v3-card-obsidian {
++  min-width: 0;
++}
++.v3-shell .v3-card,
++.v3-shell .v3-card-obsidian {
++  isolation: isolate;
++}
++.v3-shell .v3-card-accent {
++  box-shadow: 0 8px 24px rgba(26, 255, 110, .14);
++}
++.v3-shell .v3-card-accent:hover {
++  box-shadow: 0 12px 26px rgba(26, 255, 110, .24);
++}
++.v3-shell .v3-neon-trio {
++  grid-template-columns: repeat(2, minmax(0, 1fr));
++  grid-template-rows: repeat(2, minmax(0, 1fr));
++  align-self: stretch;
++}
++.v3-shell .v3-neon-trio > .v3-card-accent:first-child {
++  grid-column: 1 / -1;
++}
++.v3-shell .v3-neon-trio > .v3-card-accent {
++  min-width: 0;
++  min-height: 0;
++}
++.v3-shell .v3-subheader,
++.v3-shell .v3-controls-row {
++  min-width: 0;
++}
++.v3-shell .v3-pill-btn,
++.v3-shell .v3-btn-action {
++  line-height: 1.3;
++}
++@media (max-width: 860px) {
++  .v3-shell .v3-neon-trio {
++    grid-template-columns: 1fr !important;
++    grid-template-rows: auto !important;
++    align-self: auto;
++  }
++  .v3-shell .v3-neon-trio > .v3-card-accent {
++    min-height: 112px;
++  }
++}
++@media (max-width: 460px) {
++  .v3-shell .v3-floating-header { padding: 0 9px; }
++  .v3-shell .v3-nav-island { min-width: 0; }
++  .v3-shell .v3-subheader { padding-inline: 12px; }
++  .v3-shell .v3-bento-grid { padding-inline: 12px; gap: 12px; }
++  .v3-shell .v3-card,
++  .v3-shell .v3-card-obsidian { padding: 18px 16px; }
++  .v3-shell .v3-title { font-size: clamp(1.45rem, 6vw, 1.8rem); }
++  .v3-shell .v3-controls-row > * { max-width: 100%; }
++}
++@media (prefers-reduced-motion: reduce) {
++  .v3-shell *,
++  .v3-shell *::before,
++  .v3-shell *::after {
++    animation-duration: .01ms !important;
++    transition-duration: .01ms !important;
++    scroll-behavior: auto !important;
++  }
++  .v3-shell .v3-card-accent:hover { transform: none; }
++}
+diff --git a/frontend/src/utils/accountingCurrency.js b/frontend/src/utils/accountingCurrency.js
+new file mode 100644
+--- /dev/null
++++ b/frontend/src/utils/accountingCurrency.js
+@@ -0,0 +1,29 @@
++// Currency-aware display for original order and settlement amounts.
++// Never add dissimilar currencies or guess conversion rates.
++export const ACCOUNTING_CURRENCIES = ["CLP", "USD", "ARS"]
++
++export function formatCurrency(value, currency = "CLP") {
++  if (value === null || value === undefined || value === "") return "—"
++  const n = Number(value)
++  if (!Number.isFinite(n) || !ACCOUNTING_CURRENCIES.includes(currency)) return "—"
++  return new Intl.NumberFormat("es-CL", {
++    style: "currency", currency,
++    minimumFractionDigits: currency === "CLP" ? 0 : 2,
++    maximumFractionDigits: currency === "CLP" ? 0 : 2,
++  }).format(n)
++}
++
++export function formatOrderAmount(item) {
++  if (!ACCOUNTING_CURRENCIES.includes(item?.currency)) return "—"
++  return formatCurrency(item.total, item.currency)
++}
++
++export function formatGatewayAmount(payment) {
++  if (!ACCOUNTING_CURRENCIES.includes(payment?.currency)) return "—"
++  return formatCurrency(payment.amount, payment.currency)
++}
++
++export function validMoney(value) {
++  const n = Number(value)
++  return value != null && value !== "" && Number.isFinite(n) ? n : null
++}
+diff --git a/frontend/tests/v3-2-currency.test.mjs b/frontend/tests/v3-2-currency.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/frontend/tests/v3-2-currency.test.mjs
+@@ -0,0 +1,42 @@
++import test from "node:test"
++import assert from "node:assert/strict"
++import { readFileSync } from "node:fs"
++import {
++  ACCOUNTING_CURRENCIES, formatCurrency, formatOrderAmount,
++  formatGatewayAmount, validMoney,
++} from "../src/utils/accountingCurrency.js"
++
++test("formatos CLP USD ARS explícitos y cero legítimo", () => {
++  assert.deepEqual(ACCOUNTING_CURRENCIES, ["CLP", "USD", "ARS"])
++  assert.match(formatCurrency(0, "CLP"), /0/)
++  assert.match(formatCurrency(100, "USD"), /100/)
++  assert.match(formatCurrency(200, "ARS"), /200/)
++  assert.notEqual(formatCurrency(1000, "USD"), formatCurrency(1000, "CLP"))
++  assert.equal(formatCurrency(null, "CLP"), "—")
++  assert.equal(formatCurrency("abc", "USD"), "—")
++  assert.equal(formatCurrency(10, "EUR"), "—")
++  assert.equal(validMoney(null), null)
++  assert.equal(validMoney("0"), 0)
++})
++
++test("no confundir moneda de pedido con divisa del cobro PayPal", () => {
++  const order = { total: "90000", currency: "CLP" }
++  const settlement = { amount: "95.00", currency: "USD" }
++  assert.equal(formatOrderAmount(order), formatCurrency(90000, "CLP"))
++  assert.equal(formatGatewayAmount(settlement), formatCurrency(95, "USD"))
++  assert.notEqual(formatOrderAmount(order), formatGatewayAmount(settlement))
++})
++
++test("formatos de moneda ausente nunca inventan CLP para una orden", () => {
++  assert.equal(formatOrderAmount({ total: 10 }), "—")
++  assert.equal(formatGatewayAmount({ amount: 10 }), "—")
++})
++
++test("dashboards financieros y pagos consultan la divisa seleccionada", () => {
++  const root = new URL("../src/", import.meta.url)
++  const read = name => readFileSync(new URL(name, root), "utf8")
++  assert.match(read("pages/admin/AdminDashboard.jsx"), /getAdminDashboard\(currency\)/)
++  assert.match(read("pages/admin/AdminPayments.jsx"), /formatGatewayAmount\(p\)/)
++  assert.match(read("pages/admin/AdminFinance.jsx"), /getFinanceSummary\(currency\)/)
++  assert.doesNotMatch(read("pages/dashboard/Orders.jsx"), /reduce\(\(acc, o\) => acc \+ \(Number\(o\.total\)/)
++})
