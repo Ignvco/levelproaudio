@@ -2440,7 +2440,7 @@ def executive_dashboard(request):
         # Product costs are cataloged in CLP. Foreign-currency profit is
         # unknown until explicit matching cost and FX provenance exists.
         "utilidad_mes":    float(utilidad_mes) if currency == "CLP" else None,
-        "utilidad_certificada": currency == "CLP" and not IncomeRecord.objects.filter(currency__isnull=True).exists(),
+        "utilidad_estado": "estimacion_costos_catalogo_CLP" if currency == "CLP" else "sin_costos_comparables",
         "inventario": {
             "criticos":  criticos,
             "sin_stock": sin_stock,
