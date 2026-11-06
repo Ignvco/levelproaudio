@@ -19,6 +19,7 @@ import {
   StatusBadge,
   PrimaryButton,
   SecondaryButton,
+  ErrorState,
 } from "../../components/admin/ui"
 
 function TicketCard({ code, image }) {
@@ -291,7 +292,7 @@ function CampaignCard({ campaign }) {
 }
 
 export default function MyEntries() {
-  const { data = [], isLoading } = useQuery({
+  const { data = [], isLoading, isError, refetch } = useQuery({
     queryKey: ["my-reward-entries"],
     queryFn:  getMyEntries,
   })
@@ -318,8 +319,8 @@ export default function MyEntries() {
         }
       />
 
-      {/* KPI Strip */}
-      <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
+      {/* KPI disponibles únicamente después de una respuesta válida. */}
+      {!isLoading && !isError && <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
         <StatCard
           title="Campañas participadas"
           value={campaigns.length}
@@ -340,7 +341,7 @@ export default function MyEntries() {
           description="Por realizarse próximamente"
           variant={activeCampaigns > 0 ? "amber" : "default"}
         />
-      </div>
+      </div>}
 
       {/* Content */}
       {isLoading ? (
@@ -349,6 +350,10 @@ export default function MyEntries() {
             <div key={i} className="au-skeleton" style={{ height: "140px", borderRadius: "var(--admin-radius-lg)" }} />
           ))}
         </div>
+      ) : isError ? (
+        <ErrorState title="No pudimos cargar tus participaciones"
+          description="Tus tickets permanecen registrados. Vuelve a consultar la información."
+          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
       ) : campaigns.length === 0 ? (
         <div
           className="au-card"
