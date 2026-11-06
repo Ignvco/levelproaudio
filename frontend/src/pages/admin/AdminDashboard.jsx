@@ -12,10 +12,10 @@ import { StatusBadge, ErrorState } from "../../components/admin/ui"
 import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip } from "recharts"
 import {
   adminRecentOrders, adminFulfillment, adminCategoryMix, adminSalesSeries,
-  monthlyShare, count,
+  monthlyShare, count, formatMoney,
 } from "../dashboard/dashboardV3Data"
 
-const clp = (n) => `$${Math.round(n || 0).toLocaleString("es-CL")}`
+const clp = (n) => formatMoney(n, "CLP")
 
 const ORDER_STATUS_MAP = {
   paid:      { label: "Pagado",     tone: "success" },
@@ -535,7 +535,7 @@ export default function AdminDashboard() {
                   <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
                     <StatusBadge tone={st.tone}>{st.label}</StatusBadge>
                     <span style={{ fontSize: 14, fontWeight: 800, color: "var(--v3-text-primary)", minWidth: 90, textAlign: "right" }}>
-                      {o.total === null ? "—" : clp(o.total)}
+                      {o.total == null ? "—" : o.currency ? formatMoney(o.total, o.currency) : new Intl.NumberFormat("es-CL").format(o.total)}
                     </span>
                     <ChevronRight size={15} style={{ color: "var(--v3-text-muted)" }} />
                   </div>
