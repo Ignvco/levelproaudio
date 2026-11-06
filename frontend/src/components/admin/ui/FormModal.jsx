@@ -15,13 +15,15 @@ export function FormModal({
 }) {
   const titleId = useId()
   const dialogRef = useRef(null)
+  const actionRef = useRef(onClose)
+  useEffect(() => { actionRef.current = onClose }, [onClose])
 
   useEffect(() => {
     if (!open) return
     const previous = document.activeElement
     dialogRef.current?.focus()
     const h = (e) => {
-      if (e.key === "Escape") onClose?.()
+      if (e.key === "Escape") actionRef.current?.()
       if (e.key !== "Tab") return
       const candidates = [...(dialogRef.current?.querySelectorAll(
         'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -36,7 +38,7 @@ export function FormModal({
     }
     window.addEventListener("keydown", h)
     return () => { window.removeEventListener("keydown", h); previous?.focus?.() }
-  }, [open, onClose])
+  }, [open])
 
   if (!open) return null
 
