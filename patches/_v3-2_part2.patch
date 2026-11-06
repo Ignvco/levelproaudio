@@ -1,0 +1,249 @@
+diff --git a/frontend/src/components/admin/ui/Buttons.jsx b/frontend/src/components/admin/ui/Buttons.jsx
+--- a/frontend/src/components/admin/ui/Buttons.jsx
++++ b/frontend/src/components/admin/ui/Buttons.jsx
+@@ -7,9 +7,12 @@
+ 
+ function Btn({ variant, size, className, to, href, children, testId, loading, disabled, ...rest }) {
+   const cls = base(variant, size, className)
++  if ((to || href) && (disabled || loading)) {
++    return <span className={cls} aria-disabled="true" aria-busy={Boolean(loading)} data-testid={testId}>{children}</span>
++  }
+   if (to) return <Link to={to} className={cls} data-testid={testId} {...rest}>{children}</Link>
+   if (href) return <a href={href} className={cls} data-testid={testId} {...rest}>{children}</a>
+-  return <button className={cls} data-testid={testId} disabled={disabled || Boolean(loading)} {...rest}>{children}</button>
++  return <button type="button" className={cls} data-testid={testId} disabled={disabled || Boolean(loading)} aria-busy={Boolean(loading)} {...rest}>{children}</button>
+ }
+ 
+ export const PrimaryButton   = (p) => <Btn variant="primary" {...p} />
+@@ -19,6 +22,7 @@
+ export function IconButton({ children, ghost, danger, className, testId, ...rest }) {
+   return (
+     <button
++      type="button"
+       className={`au-iconbtn ${ghost ? "au-iconbtn--ghost" : ""} ${danger ? "au-iconbtn--danger" : ""} ${className || ""}`.trim()}
+       data-testid={testId}
+       {...rest}
+diff --git a/frontend/src/components/admin/ui/ConfirmationModal.jsx b/frontend/src/components/admin/ui/ConfirmationModal.jsx
+--- a/frontend/src/components/admin/ui/ConfirmationModal.jsx
++++ b/frontend/src/components/admin/ui/ConfirmationModal.jsx
+@@ -1,5 +1,5 @@
+ // components/admin/ui/ConfirmationModal.jsx
+-import { useEffect } from "react"
++import { useEffect, useId, useRef } from "react"
+ import { PrimaryButton, SecondaryButton, DangerButton } from "./Buttons"
+ 
+ export function ConfirmationModal({
+@@ -7,19 +7,23 @@
+   confirmLabel = "Confirmar", cancelLabel = "Cancelar",
+   danger = false, loading = false, onConfirm, onCancel, testId,
+ }) {
++  const titleId = useId()
++  const dialogRef = useRef(null)
+   useEffect(() => {
+     if (!open) return
++    const previous = document.activeElement
++    dialogRef.current?.focus()
+     const h = (e) => e.key === "Escape" && onCancel?.()
+     window.addEventListener("keydown", h)
+-    return () => window.removeEventListener("keydown", h)
++    return () => { window.removeEventListener("keydown", h); previous?.focus?.() }
+   }, [open, onCancel])
+ 
+   if (!open) return null
+   const Confirm = danger ? DangerButton : PrimaryButton
+   return (
+     <div className="au-modal__backdrop" onClick={onCancel} data-testid={testId || "confirm-modal"}>
+-      <div className="au-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+-        <p className="au-modal__title">{title}</p>
++      <div className="au-modal" onClick={(e) => e.stopPropagation()} ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId}>
++        <p id={titleId} className="au-modal__title">{title}</p>
+         {description && <p className="au-modal__desc">{description}</p>}
+         <div className="au-modal__actions">
+           <SecondaryButton onClick={onCancel} testId="confirm-cancel">{cancelLabel}</SecondaryButton>
+diff --git a/frontend/src/components/admin/ui/DataTable.jsx b/frontend/src/components/admin/ui/DataTable.jsx
+--- a/frontend/src/components/admin/ui/DataTable.jsx
++++ b/frontend/src/components/admin/ui/DataTable.jsx
+@@ -136,14 +136,17 @@
+                   )}
+                   {columns.map((c) => (
+                     <th key={c.key || c.header} className={c.sortable ? "is-sortable" : ""}
+-                      style={{ width: c.width, textAlign: c.align }}
+-                      onClick={() => c.sortable && c.key && toggleSort(c.key)}>
+-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+-                        {c.header}
+-                        {c.sortable && (sort.key === c.key
+-                          ? (sort.dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />)
+-                          : <ArrowUpDown size={12} style={{ opacity: .4 }} />)}
+-                      </span>
++                      scope="col" aria-sort={c.sortable ? sort.key === c.key ? sort.dir === "asc" ? "ascending" : "descending" : "none" : undefined}
++                      style={{ width: c.width, textAlign: c.align }}>
++                      {c.sortable && c.key ? (
++                        <button type="button" className="au-table-sort-btn" onClick={() => toggleSort(c.key)}
++                          style={{ display: "inline-flex", alignItems: "center", gap: 5, border: 0, background: "transparent", font: "inherit", color: "inherit", cursor: "pointer", padding: "3px 0" }}>
++                          {c.header}
++                          {sort.key === c.key
++                            ? sort.dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />
++                            : <ArrowUpDown size={12} style={{ opacity: .4 }} />}
++                        </button>
++                      ) : <span>{c.header}</span>}
+                     </th>
+                   ))}
+                   {rowActions && <th style={{ width: 56 }} />}
+@@ -153,7 +156,13 @@
+                 {pageRows.map((row) => {
+                   const id = getRowId(row)
+                   return (
+-                    <tr key={id} onClick={() => onRowClick?.(row)} style={{ cursor: onRowClick ? "pointer" : "default" }} data-testid={`${testId}-row`}>
++                    <tr key={id} onClick={() => onRowClick?.(row)}
++                      tabIndex={onRowClick ? 0 : undefined}
++                      onKeyDown={e => {
++                        if (!onRowClick || (e.target !== e.currentTarget)) return
++                        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRowClick(row) }
++                      }}
++                      style={{ cursor: onRowClick ? "pointer" : "default" }} data-testid={`${testId}-row`}>
+                       {selectable && (
+                         <td onClick={(e) => e.stopPropagation()}>
+                           <input type="checkbox" className="au-checkbox" checked={selected.has(id)} onChange={() => toggleRow(id)} aria-label="Seleccionar fila" />
+diff --git a/frontend/src/components/admin/ui/FormModal.jsx b/frontend/src/components/admin/ui/FormModal.jsx
+--- a/frontend/src/components/admin/ui/FormModal.jsx
++++ b/frontend/src/components/admin/ui/FormModal.jsx
+@@ -5,7 +5,7 @@
+ // (12 páginas con el mismo bloque de "position: fixed" copiado y pegado).
+ // Ahora el layout vive en un solo lugar; el contenido del formulario sigue
+ // siendo específico de cada página (children).
+-import { useEffect } from "react"
++import { useEffect, useId, useRef } from "react"
+ import { PrimaryButton, SecondaryButton } from "./Buttons"
+ 
+ export function FormModal({
+@@ -13,11 +13,15 @@
+   saving = false, saveLabel = "Guardar", cancelLabel = "Cancelar",
+   error, maxWidth = "440px", scrollableBody = false, testId,
+ }) {
++  const titleId = useId()
++  const dialogRef = useRef(null)
+   useEffect(() => {
+     if (!open) return
++    const previous = document.activeElement
++    dialogRef.current?.focus()
+     const h = (e) => e.key === "Escape" && onClose?.()
+     window.addEventListener("keydown", h)
+-    return () => window.removeEventListener("keydown", h)
++    return () => { window.removeEventListener("keydown", h); previous?.focus?.() }
+   }, [open, onClose])
+ 
+   if (!open) return null
+@@ -32,20 +36,23 @@
+         }}
+         onClick={(e) => e.stopPropagation()}
+         role="dialog"
++        ref={dialogRef}
++        tabIndex={-1}
++        aria-labelledby={titleId}
+         aria-modal="true"
+       >
+         <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)",
+           display: "flex", justifyContent: "space-between", alignItems: "center",
+           flexShrink: 0 }}>
+-          <p style={{ fontSize: "15px", fontWeight: 500 }}>{title}</p>
+-          <button onClick={onClose} aria-label="Cerrar" style={{ background: "none",
++          <p id={titleId} style={{ fontSize: "15px", fontWeight: 700, color: "var(--admin-text)" }}>{title}</p>
++          <button type="button" onClick={onClose} aria-label="Cerrar" style={{ background: "none",
+             border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: "22px" }}>×</button>
+         </div>
+ 
+         <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px",
+           ...(scrollableBody ? { flex: 1, overflowY: "auto" } : {}) }}>
+           {error && (
+-            <div style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
++            <div role="alert" style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
+               background: "rgba(255,77,77,0.08)", border: "1px solid rgba(255,77,77,0.2)",
+               color: "var(--danger)", fontSize: "13px" }}>
+               {error}
+diff --git a/frontend/src/components/admin/ui/Inputs.jsx b/frontend/src/components/admin/ui/Inputs.jsx
+--- a/frontend/src/components/admin/ui/Inputs.jsx
++++ b/frontend/src/components/admin/ui/Inputs.jsx
+@@ -6,7 +6,7 @@
+     <div className="au-search">
+       <Search size={15} strokeWidth={2} />
+       <input value={value} onChange={(e) => onChange?.(e.target.value)}
+-        placeholder={placeholder} data-testid={testId || "search-input"} />
++        placeholder={placeholder} aria-label={placeholder} data-testid={testId || "search-input"} />
+     </div>
+   )
+ }
+diff --git a/frontend/src/components/admin/ui/StatCard.jsx b/frontend/src/components/admin/ui/StatCard.jsx
+--- a/frontend/src/components/admin/ui/StatCard.jsx
++++ b/frontend/src/components/admin/ui/StatCard.jsx
+@@ -59,5 +59,7 @@
+   )
+ 
+   if (to) return <Link to={to} className={cls} data-testid={testId}>{inner}</Link>
+-  return <div className={cls} onClick={onClick} data-testid={testId}>{inner}</div>
++  if (onClick) return <button type="button" className={cls} onClick={onClick} data-testid={testId}
++    style={{ width: "100%", textAlign: "left", font: "inherit" }}>{inner}</button>
++  return <div className={cls} data-testid={testId}>{inner}</div>
+ }
+diff --git a/frontend/src/pages/Dashboard.jsx b/frontend/src/pages/Dashboard.jsx
+--- a/frontend/src/pages/Dashboard.jsx
++++ b/frontend/src/pages/Dashboard.jsx
+@@ -117,7 +117,7 @@
+             ==================================================================== */}
+         <div
+           className="v3-card-obsidian"
+-          style={{ gridColumn: "span 4", minHeight: 460 }}
++          style={{ gridColumn: "span 4", gridRow: "span 2", minHeight: 460 }}
+           data-testid="dash-alert"
+         >
+           <div className="v3-card-header">
+diff --git a/frontend/src/pages/admin/AdminBilling.jsx b/frontend/src/pages/admin/AdminBilling.jsx
+--- a/frontend/src/pages/admin/AdminBilling.jsx
++++ b/frontend/src/pages/admin/AdminBilling.jsx
+@@ -14,10 +14,11 @@
+ } from "../../components/admin/ui"
+ import { showToast } from "../../components/ui/ToastNotification"
+ import { ExternalLink, FileText, Inbox, CheckCircle2, Clock3 } from "lucide-react"
++import { formatMoney } from "../dashboard/dashboardV3Data"
+ 
+ const SII_URL = "https://www4.sii.cl/consdcvinternetui/"
+ 
+-const money = (v) => v == null ? "—" : `$${Number(v).toLocaleString("es-CL")}`
++const money = (v, currency = "CLP") => formatMoney(v, currency)
+ 
+ const ESTADO_TONE = {
+   pendiente: "warning",
+@@ -33,7 +34,7 @@
+     numero_externo: doc?.numero_externo || "",
+     fecha_emision:  doc?.fecha_emision  || "",
+     estado:         doc?.estado         || "pendiente",
+-    monto:          doc?.monto ?? row.total,
++    monto:          doc?.monto ?? (row.currency === "CLP" ? row.total : ""),
+     observaciones:  doc?.observaciones  || "",
+   })
+ 
+@@ -56,9 +57,15 @@
+           borderRadius: "var(--r-md)", fontSize: "13px", color: "var(--text-2)",
+         }}>
+           <strong style={{ color: "var(--text)" }}>{row.cliente}</strong><br/>
+-          {row.email} · {money(row.total)}
++          {row.email} · {money(row.total, row.currency)}
+         </div>
+ 
++        {row.currency !== "CLP" && (
++          <p role="note" style={{ color: "var(--admin-text-muted)", fontSize: 12 }}>
++            Pedido en {row.currency || "moneda desconocida"}: el monto tributario se debe ingresar desde el documento real emitido en SII.
++            No se convierte automáticamente desde el importe de la orden.
++          </p>
++        )}
+         <a href={SII_URL} target="_blank" rel="noreferrer"
+           style={{
+             display: "inline-flex", alignItems: "center", gap: "8px",
+@@ -168,7 +175,7 @@
+                   <tr key={r.order_id}>
+                     <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text)" }}>#{r.order_short}</td>
+                     <td style={{ color: "var(--admin-text)", fontWeight: 500 }}>{r.cliente}</td>
+-                    <td style={{ fontWeight: 700, color: "var(--admin-primary-text)" }}>{money(r.total)}</td>
++                    <td style={{ fontWeight: 700, color: "var(--admin-primary-text)" }}>{money(r.total, r.currency)}</td>
+                     <td>
+                       <StatusBadge tone="success">Pagado</StatusBadge>
+                     </td>
