@@ -22,25 +22,30 @@ export function MetricBadge({ delta, className = "" }) {
  *  - "compact"        → versión compacta para grillas densas
  */
 export function StatCard({
-  Icon, label, value, sub, delta, deltaSuffix = "%", badge,
+  Icon, icon, label, title, value, sub, description, delta, deltaSuffix = "%", badge,
   variant = "dark", to, onClick, loading = false, interactive, testId,
 }) {
   if (loading) return <div className="au-lp au-skel" style={{ height: 152, background: undefined }} data-testid={testId ? `${testId}-loading` : undefined} />
 
+  const lbl = label || title
+  const s = sub || description
+  const IconComp = Icon || (typeof icon === "function" ? icon : null)
+  const renderedIcon = IconComp ? <IconComp size={variant === "compact" ? 17 : 20} strokeWidth={2} /> : (icon || null)
+
   const isInteractive = interactive ?? Boolean(to || onClick)
   const cls = `au-lp au-lp--${variant} ${isInteractive ? "au-lp--interactive" : ""}`.trim()
-  const hasFoot = sub != null || delta != null || badge
+  const hasFoot = s != null || delta != null || badge
 
   const inner = (
     <>
       <div className="au-lp__top">
-        {label && <span className="au-lp__tag">{label}</span>}
-        {Icon && <span className="au-lp__icon"><Icon size={variant === "compact" ? 17 : 20} strokeWidth={2} /></span>}
+        {lbl && <span className="au-lp__tag">{lbl}</span>}
+        {renderedIcon && <span className="au-lp__icon">{renderedIcon}</span>}
       </div>
       <div className="au-lp__value">{value}</div>
       {hasFoot && (
         <div className="au-lp__foot">
-          {sub != null && <span className="au-lp__pill">{sub}</span>}
+          {s != null && <span className="au-lp__pill">{s}</span>}
           {delta != null && (
             <span className={`au-lp__delta ${delta >= 0 ? "au-lp__delta--pos" : "au-lp__delta--neg"}`}>
               {delta >= 0 ? <TrendingUp size={13} strokeWidth={2.4} /> : <TrendingDown size={13} strokeWidth={2.4} />}
