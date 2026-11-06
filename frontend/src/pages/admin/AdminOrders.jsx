@@ -298,7 +298,7 @@ export default function AdminOrders() {
   const [statusFilter,  setStatusFilter]  = useState("")
   const [selectedOrder, setSelectedOrder] = useState(null)
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-orders", statusFilter],
     queryFn:  () => getAdminOrders({ ...(statusFilter && { status: statusFilter }) }),
   })
@@ -339,7 +339,7 @@ export default function AdminOrders() {
       <AdminPageHeader
         eyebrow="LEVELPRO / VENTAS"
         title="Órdenes"
-        description={`${totalCount} pedidos registrados en el sistema`}
+        description={isLoading || isError ? "Gestión de pedidos y despachos" : `${totalCount} pedidos en el filtro actual`}
         actions={
           <>
             <SecondaryButton to="/admin/special-orders" size="sm">Bajo pedido</SecondaryButton>
@@ -349,7 +349,7 @@ export default function AdminOrders() {
         }
       />
 
-      <div className="lp-grid-kpi">
+      {!isLoading && !isError && <div className="lp-grid-kpi">
         <StatCard
           variant="ink"
           label="Total pedidos"
@@ -382,10 +382,10 @@ export default function AdminOrders() {
           Icon={PackageCheck}
           onClick={() => setStatusFilter(statusFilter === "shipped" ? "" : "shipped")}
         />
-      </div>
+      </div>}
 
       <DataTable
-        columns={columns} data={orders} loading={isLoading}
+        columns={columns} data={orders} loading={isLoading} error={isError} onRetry={() => refetch()}
         getRowId={o => o.id}
         searchable searchKeys={["email", "id"]} searchPlaceholder="Buscar por email o ID..."
         filters={[{
