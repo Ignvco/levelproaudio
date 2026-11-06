@@ -882,9 +882,10 @@ def admin_users(request):
     data = []
     for u in users[:100]:
         orders_count = Order.objects.filter(user=u).count()
-        total_spent  = Order.objects.filter(
+        paid_by_user = Order.objects.filter(
             user=u, status__in=["paid", "shipped", "completed"]
-        ).aggregate(t=Sum("total"))["t"] or 0
+        )
+        spend_by_currency = summarize_by_currency(paid_by_user)
         data.append({
             "id":           str(u.id),
             "email":        u.email,
@@ -893,7 +894,9 @@ def admin_users(request):
             "date_joined":  u.date_joined.strftime("%Y-%m-%d"),
             "is_active":    u.is_active,
             "orders_count": orders_count,
-            "total_spent":  float(total_spent),
+            "total_spent": spend_by_currency["CLP"],  # Legacy CLP-only field
+            "total_spent_currency": "CLP",
+            "spend_by_currency": spend_by_currency,
         })
 
     return Response({"results": data, "count": users.count()})
