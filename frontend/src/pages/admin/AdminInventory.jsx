@@ -108,15 +108,15 @@ export default function AdminInventory() {
             <div className="lp-kpi-strip">
               <KPI variant="ink" label="Valor en inventario"
                 value={fmt(summary?.valor_inventario)}
-                sub="Costo conocido del stock · CLP"
+                sub={summary?.cost_missing_count > 0 ? `${summary.cost_missing_count} productos con costo pendiente · CLP` : "Costo conocido del stock · CLP"}
                 Icon={Coins} />
               <KPI variant="light" label="Valor a precio de venta"
                 value={fmt(summary?.valor_venta)}
                 sub="Valorización catálogo CLP"
                 Icon={Tag} />
               <KPI variant="primary" label="Ganancia potencial"
-                value={fmt(summary?.ganancia_potencial)}
-                sub="Estimación venta − costo · CLP"
+                value={summary?.profit_calculable === false ? "Por completar" : fmt(summary?.ganancia_potencial)}
+                sub={summary?.profit_calculable === false ? "Faltan costos para calcular una ganancia coherente" : "Estimación venta − costo · CLP"}
                 Icon={TrendingUp} />
               <KPI variant="light" label="Total productos"
                 value={summary?.total_productos||0}
