@@ -404,77 +404,51 @@ export default function Dashboard() {
           </div>
 
           <div className="v3-micro-list" style={{ marginTop: 4 }}>
-            {/* Row 1: Compra */}
-            <div className="v3-micro-item" style={{ padding: "12px 6px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <span className="v3-item-avatar dark">
-                  <Package size={17} />
-                </span>
-                <div>
-                  <p style={{ fontSize: 13.5, fontWeight: 700, color: "var(--v3-text-primary)", margin: 0 }}>
-                    Monitores de Estudio Yamaha HS8 (Par)
-                  </p>
-                  <p style={{ fontSize: 11.5, color: "var(--v3-text-muted)", margin: "2px 0 0" }}>
-                    Tienda Oficial · Orden #LP-9824 · Hoy, 24 Oct
-                  </p>
+            {orders.slice(0, 3).map(o => {
+              const status = ORDER_STATUS_MAP[o.status] || { label: "Estado por confirmar", tone: "neutral" }
+              const dateValue = o.created_at ? new Date(o.created_at) : null
+              const date = dateValue && !Number.isNaN(dateValue.getTime())
+                ? new Intl.DateTimeFormat("es-CL", { day: "numeric", month: "short", year: "numeric" }).format(dateValue)
+                : "Fecha no disponible"
+              return (
+                <Link key={o.id} to={`/dashboard/orders/${o.id}`} className="v3-micro-item" style={{ padding: "12px 6px", textDecoration: "none", color: "inherit" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                    <span className="v3-item-avatar dark"><Package size={17} /></span>
+                    <div>
+                      <p style={{ fontSize: 13.5, fontWeight: 700, color: "var(--v3-text-primary)", margin: 0 }}>{firstOrderItem(o)}</p>
+                      <p style={{ fontSize: 11.5, color: "var(--v3-text-muted)", margin: "2px 0 0" }}>
+                        Orden #{String(o.id).slice(0, 8).toUpperCase()} · {date}
+                      </p>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
+                    <span style={{ fontSize: 14, fontWeight: 800, color: "var(--v3-text-primary)", minWidth: 90, textAlign: "right" }}>{formatMoney(o.total, o.currency)}</span>
+                    <ChevronRight size={15} style={{ color: "var(--v3-text-muted)" }} />
+                  </div>
+                </Link>
+              )
+            })}
+            {pointMovements.slice(0, 2).map(t => (
+              <Link key={t.key} to="/dashboard/loyalty" className="v3-micro-item" style={{ padding: "12px 6px", textDecoration: "none", color: "inherit" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+                  <span className="v3-item-avatar accent"><Star size={17} /></span>
+                  <div>
+                    <p style={{ fontSize: 13.5, fontWeight: 700, color: "var(--v3-text-primary)", margin: 0 }}>{t.label}</p>
+                    <p style={{ fontSize: 11.5, color: "var(--v3-text-muted)", margin: "2px 0 0" }}>LevelPro Club · {t.date}</p>
+                  </div>
                 </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <StatusBadge tone="info">En despacho</StatusBadge>
-                <span style={{ fontSize: 14, fontWeight: 800, color: "var(--v3-text-primary)", minWidth: 90, textAlign: "right" }}>
-                  $ 689.990
-                </span>
-                <ChevronRight size={15} style={{ color: "var(--v3-text-muted)" }} />
-              </div>
-            </div>
-
-            {/* Row 2: Puntos Acreditados */}
-            <div className="v3-micro-item" style={{ padding: "12px 6px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <span className="v3-item-avatar accent">
-                  <Star size={17} />
-                </span>
-                <div>
-                  <p style={{ fontSize: 13.5, fontWeight: 700, color: "var(--v3-text-primary)", margin: 0 }}>
-                    Puntos Acreditados por Compra
-                  </p>
-                  <p style={{ fontSize: 11.5, color: "var(--v3-text-muted)", margin: "2px 0 0" }}>
-                    Fidelización LevelPro · Ayer, 23 Oct
-                  </p>
+                <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: "var(--btn-green)" }}>
+                    {t.points == null ? "—" : `${t.type === "earn" ? "+" : t.type === "redeem" ? "−" : ""}${Math.abs(t.points).toLocaleString("es-CL")} pts`}
+                  </span>
+                  <ChevronRight size={15} style={{ color: "var(--v3-text-muted)" }} />
                 </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <StatusBadge tone="success">+690 pts</StatusBadge>
-                <span style={{ fontSize: 14, fontWeight: 800, color: "var(--btn-green)", minWidth: 90, textAlign: "right" }}>
-                  Acreditado
-                </span>
-                <ChevronRight size={15} style={{ color: "var(--v3-text-muted)" }} />
-              </div>
-            </div>
-
-            {/* Row 3: Curso */}
-            <div className="v3-micro-item" style={{ padding: "12px 6px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                <span className="v3-item-avatar" style={{ background: "#EEF0F2", color: "var(--v3-text-primary)" }}>
-                  <GraduationCap size={17} />
-                </span>
-                <div>
-                  <p style={{ fontSize: 13.5, fontWeight: 700, color: "var(--v3-text-primary)", margin: 0 }}>
-                    Masterclass Acústica de Cuartos de Control
-                  </p>
-                  <p style={{ fontSize: 11.5, color: "var(--v3-text-muted)", margin: "2px 0 0" }}>
-                    LevelPro Academy · 18 Oct
-                  </p>
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-                <StatusBadge tone="success">Inscrito</StatusBadge>
-                <span style={{ fontSize: 14, fontWeight: 800, color: "var(--v3-text-primary)", minWidth: 90, textAlign: "right" }}>
-                  $ 45.000
-                </span>
-                <ChevronRight size={15} style={{ color: "var(--v3-text-muted)" }} />
-              </div>
-            </div>
+              </Link>
+            ))}
+            {orders.length === 0 && pointMovements.length === 0 && (
+              <p role="status" style={{ color: "var(--v3-text-muted)", fontSize: 13 }}>Todavía no hay pedidos ni movimientos de puntos para mostrar.</p>
+            )}
           </div>
         </div>
       </div>
