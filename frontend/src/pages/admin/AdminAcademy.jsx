@@ -7,7 +7,7 @@ import {
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { formatCurrency } from "../../utils/accountingCurrency"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import { Link } from "react-router-dom"
 import { Pencil, Trash2, GraduationCap, BookOpen, Users } from "lucide-react"
 import BulkImportPanel from "../../components/admin/BulkImportPanel"

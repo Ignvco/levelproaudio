@@ -10,7 +10,7 @@ import { PrimaryButton, SecondaryButton } from "./Buttons"
 
 export function FormModal({
   open, title, children, onClose, onSave,
-  saving = false, saveLabel = "Guardar", cancelLabel = "Cancelar",
+  saving = false, saveDisabled = false, saveLabel = "Guardar", cancelLabel = "Cancelar",
   error, maxWidth = "440px", scrollableBody = false, testId,
 }) {
   const titleId = useId()
@@ -81,7 +81,7 @@ export function FormModal({
           <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)",
             display: "flex", gap: "10px", justifyContent: "flex-end", flexShrink: 0 }}>
             <SecondaryButton onClick={onClose}>{cancelLabel}</SecondaryButton>
-            <PrimaryButton onClick={onSave} disabled={saving}>
+            <PrimaryButton onClick={onSave} disabled={saving || saveDisabled}>
               {saving ? "Guardando..." : saveLabel}
             </PrimaryButton>
           </div>

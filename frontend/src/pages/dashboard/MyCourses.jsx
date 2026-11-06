@@ -5,7 +5,7 @@ import { GraduationCap, Film, Download, BookOpen, CheckCircle2, ArrowRight } fro
 import { getEnrollments, downloadCertificate } from "../../api/academy.api"
 import { queryDisplayState, listFromResponse } from "../../utils/queryDisplayState"
 import { mediaUrl } from "../../utils/mediaUrl"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import {
   AdminPageHeader,
   StatCard,

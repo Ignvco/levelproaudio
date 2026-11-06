@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 import { useAuthStore } from "../../store/authStore"
 import api from "../../api/client"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import {
   AdminPageHeader,
   PrimaryButton,

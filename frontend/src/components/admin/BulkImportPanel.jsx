@@ -2,7 +2,7 @@
 import { useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import api from "../../api/client"
-import { showToast } from "../ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 
 /**
  * <BulkImportPanel

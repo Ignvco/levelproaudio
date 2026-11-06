@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminSiteSettings, updateSiteSettings } from "../../api/siteSettings.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { AdminPageHeader, PrimaryButton, SecondaryButton, ErrorState, FormField } from "../../components/admin/ui"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 
 const TABS = [
   { id: "hero",     label: "Hero"        },

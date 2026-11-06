@@ -11,14 +11,14 @@ import { createServiceRequest, checkoutService, createBooking } from "../api/ser
 import { createPayment } from "../api/payments.api"
 import { useAuthStore } from "../store/authStore"
 import { RichText } from "../components/ui/RichText"
-import { showToast } from "../components/ui/ToastNotification"
+import { showToast } from "../utils/toast"
 import ServiceProcess from "../components/services/ServiceProcess"
 import ServiceCard from "../components/services/ServiceCard"
 import { serviceCover } from "../utils/serviceCover"
 import Seo from "../components/Seo"
 import Button from "../components/ui/Button"
 import JsonLd from "../components/JsonLd"
-import { SITE_URL, absUrl } from "../utils/seo"
+import { SITE_URL } from "../utils/seo"
 import { useSiteSettings } from "../hooks/useSiteSettings"
 
 const CARD = {

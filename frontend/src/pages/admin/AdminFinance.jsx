@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api                                       from "../../api/client"          // ← fix crítico
 import { TrendingUp, ArrowUpFromLine, Wallet, Pencil, Trash2, Inbox }   from "lucide-react"
 import { StatCard, AdminPageHeader, SectionCard, DataTable, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle, ConfirmationModal, ErrorState }  from "../../components/admin/ui"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import AccountingCurrencySelect from "../../components/admin/ui/AccountingCurrencySelect"
 import { formatCurrency } from "../../utils/accountingCurrency"
 import {

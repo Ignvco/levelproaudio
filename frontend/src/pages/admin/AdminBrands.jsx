@@ -6,7 +6,7 @@ import { Tag, ArrowUpRight, CheckCircle2, Globe } from "lucide-react"
 import { mediaUrl } from "../../utils/mediaUrl"
 import BulkImportPanel from "../../components/admin/BulkImportPanel"
 import { AdminPageHeader, PrimaryButton, StatCard, FormModal, FormField, formInputStyle, ConfirmationModal, ErrorState, SecondaryButton, EmptyState } from "../../components/admin/ui"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 
 function BrandModal({ brand, onClose, onSave }) {
   const [form, setForm]     = useState({

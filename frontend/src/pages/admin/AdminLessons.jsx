@@ -9,9 +9,10 @@ import {
 import api from "../../api/client"
 import {
   AdminPageHeader, PrimaryButton, SecondaryButton, StatusBadge, IconButton,
-  FormModal, FormField, formInputStyle as inputSt, ConfirmationModal,
+  FormModal, FormField, formInputStyle as inputSt, ConfirmationModal, ErrorState,
 } from "../../components/admin/ui"
-import { showToast } from "../../components/ui/ToastNotification"
+import { listFromResponse, queryDisplayState } from "../../utils/queryDisplayState"
+import { showToast } from "../../utils/toast"
 import { Pencil, Trash2 } from "lucide-react"
 
 // PUT directo a la URL firmada de GCS — Cloud Run tiene un límite duro
@@ -36,7 +37,7 @@ function uploadFileDirectToGCS(url, file, contentType, onProgress) {
   })
 }
 
-function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
+function LessonModal({ lesson, moduleId, modules, modulesQuery, onClose, onSave }) {
   const [form, setForm]     = useState({
     title:              lesson?.title              || "",
     video_url:          lesson?.video_url          || "",
@@ -54,8 +55,12 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState("")
   const queryClient         = useQueryClient()
+  const modulesState = queryDisplayState(modulesQuery)
 
   const submit = async () => {
+    if (saving || modulesState !== "ready") return
+    if (!form.title.trim()) { setError("El título es requerido."); return }
+    if (!form.module) { setError("Selecciona un módulo."); return }
     setSaving(true); setError(""); setProgress(0)
     try {
       const payload = {
@@ -115,17 +120,22 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
       onClose={onClose}
       onSave={submit}
       saving={saving}
+      saveDisabled={modulesState !== "ready"}
       error={error}
       maxWidth="500px"
       scrollableBody
       testId="lesson-modal"
     >
+      {modulesState === "loading" && <p role="status">Consultando módulos…</p>}
+      {modulesState === "error" && <ErrorState title="No pudimos cargar los módulos"
+        action={<SecondaryButton onClick={() => modulesQuery.refetch()}>Reintentar módulos</SecondaryButton>} />}
       <FormField label="Título *">
         <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))}
           style={inputSt} placeholder="Nombre de la lección" />
       </FormField>
       <FormField label="Módulo *">
         <select value={form.module}
+          disabled={modulesState !== "ready"}
           onChange={e => setForm(p => ({ ...p, module: e.target.value }))}
           style={inputSt}>
           <option value="">Seleccionar módulo</option>
@@ -172,6 +182,7 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
             {videoMode === "url" ? (
               <>
                 <input value={form.video_url}
+                  aria-label="URL del video"
                   data-testid="input-video-url"
                   onChange={e => setForm(p => ({ ...p, video_url: e.target.value }))}
                   style={inputSt} placeholder="https://youtube.com/watch?v=..." />
@@ -183,7 +194,7 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
               </>
             ) : (
               <>
-                <label style={{
+                <label className="au-upload-zone" style={{
                   display:"flex", flexDirection:"column", alignItems:"center",
                   gap:"6px", padding:"22px",
                   background:"var(--surface-2)",
@@ -200,9 +211,10 @@ function LessonModal({ lesson, moduleId, modules, onClose, onSave }) {
                     if (f) setVideoFile(f)
                   }}>
                   <input type="file" accept="video/*"
+                    aria-label="Archivo de video"
                     data-testid="input-video-file"
                     onChange={e => setVideoFile(e.target.files?.[0] || null)}
-                    style={{ display:"none" }} />
+                    className="au-sr-only" />
                   {videoFile ? (
                     <>
                       <p style={{ fontSize:"13px", color:"var(--accent-text)", fontWeight:500 }}>
@@ -291,11 +303,11 @@ export default function AdminLessons() {
   const [toDelete, setToDelete] = useState(null)
   const queryClient       = useQueryClient()
 
-  const { data, isLoading } = useQuery({
+  const lessonsQuery = useQuery({
     queryKey: ["admin-lessons", moduleFilter],
     queryFn:  () => getAdminLessons(moduleFilter ? { module: moduleFilter } : {}),
   })
-  const { data: modulesData } = useQuery({
+  const modulesQuery = useQuery({
     queryKey: ["admin-modules-all"], queryFn: () => getAdminModules({}),
   })
   const deleteMutation = useMutation({
@@ -307,8 +319,11 @@ export default function AdminLessons() {
     },
   })
 
-  const lessons = data?.results || data || []
-  const modules = modulesData?.results || modulesData || []
+  const state = queryDisplayState(lessonsQuery)
+  const modulesState = queryDisplayState(modulesQuery)
+  const lessons = listFromResponse(lessonsQuery.data)
+  const modules = listFromResponse(modulesQuery.data)
+  const canEdit = state === "ready" && modulesState === "ready"
   const currentModule = modules.find(m => m.id.toString() === moduleFilter)
 
   return (
@@ -318,6 +333,7 @@ export default function AdminLessons() {
           lesson={modal === "new" ? null : modal}
           moduleId={moduleFilter}
           modules={modules}
+          modulesQuery={modulesQuery}
           onClose={() => setModal(null)}
           onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-lessons"] })}
         />
@@ -337,7 +353,7 @@ export default function AdminLessons() {
       <AdminPageHeader
         eyebrow="LEVELPRO / ACADEMIA"
         title="Lecciones"
-        description={`${lessons.length} lecciones registradas`}
+        description={state === "ready" ? `${lessons.length} lecciones en esta vista` : undefined}
         breadcrumbs={[
           { label: "Academia", to: "/admin/academy" },
           { label: "Módulos", to: "/admin/academy/modules" },
@@ -346,13 +362,18 @@ export default function AdminLessons() {
         actions={
           <>
             <SecondaryButton to="/admin/academy/modules" size="sm">← Módulos</SecondaryButton>
-            <PrimaryButton onClick={() => setModal("new")}>+ Nueva lección</PrimaryButton>
+            <PrimaryButton disabled={!canEdit} onClick={() => setModal("new")}>+ Nueva lección</PrimaryButton>
           </>
         }
       />
 
-      {isLoading ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+      {modulesState === "error" && <ErrorState title="No pudimos cargar los módulos"
+        action={<SecondaryButton onClick={() => modulesQuery.refetch()}>Reintentar módulos</SecondaryButton>} />}
+      {state === "error" ? (
+        <ErrorState title="No pudimos cargar las lecciones"
+          action={<SecondaryButton onClick={() => lessonsQuery.refetch()}>Reintentar lecciones</SecondaryButton>} />
+      ) : state === "loading" ? (
+        <div role="status" aria-label="Cargando lecciones" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {[...Array(5)].map((_, i) => (
             <div key={i} className="skeleton" style={{ height: "56px", borderRadius: "14px" }} />
           ))}
@@ -406,8 +427,8 @@ export default function AdminLessons() {
                     </td>
                     <td style={{ textAlign: "right" }}>
                       <div style={{ display: "inline-flex", gap: "6px" }}>
-                        <IconButton icon={Pencil} label="Editar" onClick={() => setModal(lesson)} />
-                        <IconButton icon={Trash2} label="Eliminar" danger onClick={() => setToDelete(lesson)} />
+                        <IconButton icon={Pencil} label={`Editar lección ${lesson.title}`} disabled={!canEdit} onClick={() => setModal(lesson)} />
+                        <IconButton icon={Trash2} label={`Eliminar lección ${lesson.title}`} danger onClick={() => setToDelete(lesson)} />
                       </div>
                     </td>
                   </tr>

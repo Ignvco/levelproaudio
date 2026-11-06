@@ -29,7 +29,7 @@ export function useMagneticHover(strength = 0.3) {
       el.removeEventListener("mousemove", onMouseMove)
       el.removeEventListener("mouseleave", onMouseLeave)
     }
-  }, [])
+  }, [strength])
 
   return ref
 }

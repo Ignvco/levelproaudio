@@ -6,7 +6,7 @@ import {
   AdminPageHeader, StatusBadge, FormModal, FormField, formInputStyle,
   ConfirmationModal, EmptyState, StatCard, IconButton, SecondaryButton,
 } from "../../components/admin/ui"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import { PackageSearch, Pencil, Trash2, Clock3, CheckCircle2, Bell } from "lucide-react"
 
 const STATUS = {

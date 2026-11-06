@@ -4,27 +4,31 @@ import { useQuery } from "@tanstack/react-query"
 import { getAdminUsers } from "../../api/admin.api"
 import { DataTable, StatusBadge, AdminPageHeader, StatCard } from "../../components/admin/ui"
 import { Users as UsersIcon, UserCheck, ShieldCheck } from "lucide-react"
+import { listFromResponse, queryDisplayState } from "../../utils/queryDisplayState"
+import { adminUserRole } from "../../utils/adminListData"
 
-const roleOf = (u) => u.is_superuser ? "super" : u.is_staff ? "admin" : "cliente"
 const ROLE = {
   super:   { label:"Super",   tone:"info" },
   admin:   { label:"Admin",   tone:"success" },
   cliente: { label:"Cliente", tone:"neutral" },
+  unknown: { label:"Sin datos", tone:"neutral" },
 }
 
 export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState("")
 
-  const { data, isLoading } = useQuery({
+  const usersQuery = useQuery({
     queryKey: ["admin-users"],
     queryFn:  () => getAdminUsers({}),
   })
 
-  const allUsers = (data?.results || data || []).map(u => ({ ...u, _role: roleOf(u) }))
+  const state = queryDisplayState(usersQuery)
+  const allUsers = listFromResponse(usersQuery.data).map(u => ({ ...u, _role: adminUserRole(u) }))
   const users = allUsers.filter(u => !roleFilter || u._role === roleFilter)
-  const totalCount = data?.count || allUsers.length
-  const clientCount = allUsers.filter(u => u._role === "cliente").length
-  const staffCount = allUsers.filter(u => u._role === "admin" || u._role === "super").length
+  const totalCount = state === "ready" ? (usersQuery.data?.count ?? allUsers.length) : "—"
+  const rolesKnown = state === "ready" && allUsers.every(u => u._role !== "unknown")
+  const clientCount = rolesKnown ? allUsers.filter(u => u._role === "cliente").length : "—"
+  const staffCount = rolesKnown ? allUsers.filter(u => u._role === "admin" || u._role === "super").length : "—"
 
   const columns = [
     { key:"first_name", header:"Usuario", sortable:true, render:u => (
@@ -57,7 +61,7 @@ export default function AdminUsers() {
       <AdminPageHeader
         eyebrow="LEVELPRO / CLIENTES"
         title="Usuarios"
-        description={`${totalCount} usuarios registrados en la plataforma`}
+        description={state === "ready" ? `${totalCount} usuarios registrados en la plataforma` : undefined}
       />
 
       <div className="lp-kpi-strip">
@@ -73,19 +77,24 @@ export default function AdminUsers() {
           Icon={UserCheck}
           label="Clientes"
           value={clientCount}
-          sub="Compradores y alumnos"
+          sub="En esta vista"
         />
         <StatCard
           variant="light"
           Icon={ShieldCheck}
           label="Equipo Staff / Admin"
           value={staffCount}
-          sub="Con acceso administrativo"
+          sub="En esta vista"
         />
       </div>
 
+      {state === "ready" && totalCount > allUsers.length && (
+        <p className="au-formfield__help">Mostrando {allUsers.length} de {totalCount} usuarios. La búsqueda y los filtros se aplican a esta vista.</p>
+      )}
       <DataTable
-        columns={columns} data={users} loading={isLoading}
+        columns={columns} data={users} loading={state === "loading"}
+        error={state === "error" ? "No se pudieron cargar los usuarios." : null}
+        onRetry={() => usersQuery.refetch()}
         getRowId={u => u.id}
         searchable searchKeys={["first_name", "last_name", "email"]}
         searchPlaceholder="Buscar por nombre o email..."

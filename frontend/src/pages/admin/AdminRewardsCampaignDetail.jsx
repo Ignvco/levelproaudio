@@ -11,7 +11,7 @@ import {
 } from "../../api/rewards.api"
 import { getProducts } from "../../api/products.api"
 import { mediaUrl } from "../../utils/mediaUrl"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import { AdminPageHeader, StatCard, SectionCard, SecondaryButton, StatusBadge } from "../../components/admin/ui"
 import { Ticket, Users, Package, Award } from "lucide-react"
 

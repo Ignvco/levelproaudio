@@ -9,7 +9,7 @@ import {
 } from "../../api/admin.api"
 import { getServiceCategories } from "../../api/services.api"
 import { mediaUrl } from "../../utils/mediaUrl"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import { AdminPageHeader, PrimaryButton, StatCard, FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
 import { Wrench, Inbox, CalendarCheck } from "lucide-react"
 

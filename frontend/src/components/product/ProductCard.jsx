@@ -12,7 +12,7 @@ import { ArrowUpRight }    from "lucide-react"
 import { useCartStore }    from "../../store/cartStore"
 import { usePrice }        from "../../hooks/usePrice"
 import { mediaUrl }        from "../../utils/mediaUrl"
-import { showToast }       from "../ui/ToastNotification"
+import { showToast }       from "../../utils/toast"
 import { FavoriteButton }  from "./FavoriteButton"
 import { getProductBadge } from "../../utils/productBadge"
 

@@ -15,7 +15,7 @@ import {
   Gift,
 } from "lucide-react"
 import { getMyLoyalty, getLoyaltyTransactions } from "../../api/loyalty.api"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import {
   AdminPageHeader,
   StatCard,

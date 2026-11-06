@@ -3,7 +3,7 @@ import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { adminListWinners, adminUpdateWinner, adminListCampaigns } from "../../api/rewards.api"
 import { mediaUrl } from "../../utils/mediaUrl"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import { AdminPageHeader, SecondaryButton, PrimaryButton } from "../../components/admin/ui"
 
 function WinnerCard({ w }) {

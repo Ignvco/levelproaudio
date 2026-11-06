@@ -8,12 +8,13 @@ import {
 } from "../../api/admin.api"
 import {
   AdminPageHeader, PrimaryButton, SecondaryButton, IconButton,
-  FormModal, FormField, formInputStyle, ConfirmationModal,
+  FormModal, FormField, formInputStyle, ConfirmationModal, ErrorState,
 } from "../../components/admin/ui"
-import { showToast } from "../../components/ui/ToastNotification"
+import { listFromResponse, queryDisplayState } from "../../utils/queryDisplayState"
+import { showToast } from "../../utils/toast"
 import { Pencil, Trash2 } from "lucide-react"
 
-function ModuleModal({ module, courseId, courses = [], onClose, onSave }) {
+function ModuleModal({ module, courseId, courses = [], coursesQuery, onClose, onSave }) {
   const [form, setForm]     = useState({
     title:  module?.title  || "",
     order:  module?.order  ?? 1,
@@ -22,8 +23,10 @@ function ModuleModal({ module, courseId, courses = [], onClose, onSave }) {
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState("")
   const queryClient         = useQueryClient()
+  const coursesState = queryDisplayState(coursesQuery)
 
   const handleSave = () => {
+    if (saving || coursesState !== "ready") return
     if (!form.title.trim()) { setError("El título es requerido."); return }
     if (!form.course)       { setError("Seleccioná un curso."); return }
     setSaving(true); setError("")
@@ -46,12 +49,18 @@ function ModuleModal({ module, courseId, courses = [], onClose, onSave }) {
       onClose={onClose}
       onSave={handleSave}
       saving={saving}
+      saveDisabled={coursesState !== "ready"}
+      scrollableBody
       error={error}
       testId="module-modal"
     >
+      {coursesState === "loading" && <p role="status">Consultando cursos…</p>}
+      {coursesState === "error" && <ErrorState title="No pudimos cargar los cursos"
+        action={<SecondaryButton onClick={() => coursesQuery.refetch()}>Reintentar cursos</SecondaryButton>} />}
       <FormField label="Curso *">
         <select value={form.course}
           onChange={e => setForm(p => ({ ...p, course: e.target.value }))}
+          disabled={coursesState !== "ready"}
           style={formInputStyle} data-testid="module-course-select">
           <option value="">Seleccionar curso</option>
           {courses.map(c => (
@@ -79,12 +88,12 @@ export default function AdminModules() {
   const [toDelete, setToDelete] = useState(null)
   const queryClient       = useQueryClient()
 
-  const { data, isLoading } = useQuery({
+  const modulesQuery = useQuery({
     queryKey: ["admin-modules", courseFilter],
     queryFn:  () => getAdminModules(courseFilter ? { course: courseFilter } : {}),
   })
-  const { data: coursesData } = useQuery({
-    queryKey: ["admin-courses"], queryFn: getAdminCourses,
+  const coursesQuery = useQuery({
+    queryKey: ["admin-courses"], queryFn: () => getAdminCourses({}),
   })
   const deleteMutation = useMutation({
     mutationFn: deleteAdminModule,
@@ -95,10 +104,11 @@ export default function AdminModules() {
     },
   })
 
-  const rawModules = data?.results ?? data
-  const modules = Array.isArray(rawModules) ? rawModules : []
-  const rawCourses = coursesData?.results ?? coursesData
-  const courses = Array.isArray(rawCourses) ? rawCourses : []
+  const state = queryDisplayState(modulesQuery)
+  const coursesState = queryDisplayState(coursesQuery)
+  const modules = listFromResponse(modulesQuery.data)
+  const courses = listFromResponse(coursesQuery.data)
+  const canEdit = state === "ready" && coursesState === "ready"
   const currentCourse = courses.find(c => c.id.toString() === courseFilter)
 
   return (
@@ -108,6 +118,7 @@ export default function AdminModules() {
           module={modal === "new" ? null : modal}
           courseId={courseFilter}
           courses={courses}
+          coursesQuery={coursesQuery}
           onClose={() => setModal(null)}
           onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-modules"] })}
         />
@@ -127,7 +138,7 @@ export default function AdminModules() {
       <AdminPageHeader
         eyebrow="LEVELPRO / ACADEMIA"
         title="Módulos"
-        description={`${modules.length} módulos configurados`}
+        description={state === "ready" ? `${modules.length} módulos en esta vista` : undefined}
         breadcrumbs={[
           { label: "Academia", to: "/admin/academy" },
           { label: currentCourse?.title || "Todos los módulos" },
@@ -135,13 +146,18 @@ export default function AdminModules() {
         actions={
           <>
             <SecondaryButton to="/admin/academy" size="sm">← Cursos</SecondaryButton>
-            <PrimaryButton onClick={() => setModal("new")}>+ Nuevo módulo</PrimaryButton>
+            <PrimaryButton disabled={!canEdit} onClick={() => setModal("new")}>+ Nuevo módulo</PrimaryButton>
           </>
         }
       />
 
-      {isLoading ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+      {coursesState === "error" && <ErrorState title="No pudimos cargar los cursos"
+        action={<SecondaryButton onClick={() => coursesQuery.refetch()}>Reintentar cursos</SecondaryButton>} />}
+      {state === "error" ? (
+        <ErrorState title="No pudimos cargar los módulos"
+          action={<SecondaryButton onClick={() => modulesQuery.refetch()}>Reintentar módulos</SecondaryButton>} />
+      ) : state === "loading" ? (
+        <div role="status" aria-label="Cargando módulos" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {[...Array(4)].map((_, i) => (
             <div key={i} className="skeleton" style={{ height: "56px", borderRadius: "14px" }} />
           ))}
@@ -189,8 +205,8 @@ export default function AdminModules() {
                     </td>
                     <td style={{ textAlign: "right" }}>
                       <div style={{ display: "inline-flex", gap: "6px" }}>
-                        <IconButton icon={Pencil} label="Editar" onClick={() => setModal(mod)} />
-                        <IconButton icon={Trash2} label="Eliminar" danger onClick={() => setToDelete(mod)} />
+                        <IconButton icon={Pencil} label={`Editar módulo ${mod.title}`} disabled={!canEdit} onClick={() => setModal(mod)} />
+                        <IconButton icon={Trash2} label={`Eliminar módulo ${mod.title}`} danger onClick={() => setToDelete(mod)} />
                       </div>
                     </td>
                   </tr>

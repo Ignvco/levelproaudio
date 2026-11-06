@@ -10,7 +10,7 @@ import {
   DataTable, StatusBadge, AdminPageHeader, StatCard,
   PrimaryButton, SecondaryButton, formInputStyle,
 } from "../../components/admin/ui"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import { formatCurrency } from "../../utils/accountingCurrency"
 
 const STATUS = {

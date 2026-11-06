@@ -1,7 +1,7 @@
 // components/services/ServiceProcess.jsx — "Cómo trabajamos" (pasos genéricos)
 import { MessagesSquare, Calculator, SlidersHorizontal, PackageCheck } from "lucide-react"
 
-export const PROCESS_STEPS = [
+const PROCESS_STEPS = [
   { Icon: MessagesSquare,     title: "Consultás",  desc: "Nos contás tu proyecto, objetivos y referencias." },
   { Icon: Calculator,         title: "Cotizamos",  desc: "Te enviamos una propuesta clara con precio y plazos." },
   { Icon: SlidersHorizontal,  title: "Ejecutamos", desc: "Nuestro equipo se pone manos a la obra con vos." },

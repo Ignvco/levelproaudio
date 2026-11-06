@@ -8,7 +8,7 @@ import {
   adminDeleteCampaign,
   adminDuplicateCampaign,
 } from "../../api/rewards.api"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import { getProducts } from "../../api/products.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, formInputStyle, ConfirmationModal } from "../../components/admin/ui"

@@ -3,7 +3,7 @@ import { Heart } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { useFavoritesStore } from "../../store/favoritesStore"
 import { useAuthStore } from "../../store/authStore"
-import { showToast } from "../ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 
 export function FavoriteButton({ productId, slug, size = 38, variant = "overlay" }) {
   const navigate = useNavigate()

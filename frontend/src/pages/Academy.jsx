@@ -5,7 +5,7 @@ import { getCourses, getCertifications, downloadCertificationSeal } from "../api
 import { useScrollReveal } from "../hooks/useScrollReveal"
 import CourseCard from "../components/academy/CourseCard"
 import Seo from "../components/Seo"
-import { showToast } from "../components/ui/ToastNotification"
+import { showToast } from "../utils/toast"
 import { useAuthStore } from "../store/authStore"
 
 export default function Academy() {

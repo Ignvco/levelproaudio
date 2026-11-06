@@ -22,7 +22,7 @@ import {
   ConfirmationModal,
   ErrorState,
 } from "../../components/admin/ui"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 
 const STATUS_MAP = {
   pending:   { label: "Pendiente",  status: "warning" },

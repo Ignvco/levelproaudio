@@ -7,7 +7,7 @@ import {
   uploadProductImage, deleteProductImage, setPrimaryImage,
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import { DataTable, StatusBadge, AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, ConfirmationModal } from "../../components/admin/ui"
 import { useSiteSettings } from "../../hooks/useSiteSettings"
 import { formatCurrency } from "../../utils/accountingCurrency"

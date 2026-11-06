@@ -11,7 +11,7 @@ import {
   AdminPageHeader, StatusBadge, FormModal, FormField, formInputStyle,
   ConfirmationModal, EmptyState, SectionCard, StatCard, PrimaryButton, SecondaryButton, IconButton, ErrorState, SkeletonTable,
 } from "../../components/admin/ui"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import { CreditCard, Landmark, Plus, Pencil, Trash2, CheckCircle2 } from "lucide-react"
 
 const METHOD_OPTIONS = [

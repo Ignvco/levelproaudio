@@ -10,14 +10,16 @@ import {
 import {
   AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, IconButton,
   StatusBadge, FormModal, FormField, formInputStyle,
-  ConfirmationModal, EmptyState,
+  ConfirmationModal, EmptyState, ErrorState,
 } from "../../components/admin/ui"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import { Award, Plus, Pencil, Trash2, CheckCircle2, BookOpen } from "lucide-react"
+import { listFromResponse, queryDisplayState } from "../../utils/queryDisplayState"
 
 function CertModal({ item, onClose }) {
   const qc = useQueryClient()
   const isEdit = !!item?.id
+  const [error, setError] = useState("")
   const [form, setForm] = useState({
     title:        item?.title        || "",
     description:  item?.description   || "",
@@ -27,11 +29,12 @@ function CertModal({ item, onClose }) {
     course_ids:   item?.courses?.map(c => c.id) || [],
   })
 
-  const { data: coursesData } = useQuery({
+  const coursesQuery = useQuery({
     queryKey: ["admin-courses-all"],
     queryFn:  () => getAdminCourses({ page_size: 100 }),
   })
-  const courses = coursesData?.results || coursesData || []
+  const courses = listFromResponse(coursesQuery.data)
+  const coursesState = queryDisplayState(coursesQuery)
 
   const toggleCourse = (id) => {
     setForm(p => ({
@@ -51,12 +54,17 @@ function CertModal({ item, onClose }) {
       showToast(isEdit ? "Certificación actualizada" : "Certificación creada")
       onClose()
     },
-    onError: (e) => showToast(e?.response?.data?.detail || "No se pudo guardar.", "error"),
+    onError: (e) => setError(e?.response?.data?.detail || "No se pudo guardar la certificación."),
   })
 
   return (
     <FormModal open title={isEdit ? "Editar certificación" : "Nueva certificación"} onClose={onClose}
-      onSave={() => save.mutate()} saving={save.isPending}>
+      onSave={() => {
+        if (coursesState !== "ready" || save.isPending) return
+        if (!form.title.trim()) { setError("Ingresa un título."); return }
+        setError("")
+        save.mutate()
+      }} saving={save.isPending} saveDisabled={coursesState !== "ready"} error={error} scrollableBody>
       <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
         <FormField label="Título">
           <input style={formInputStyle} value={form.title}
@@ -75,7 +83,12 @@ function CertModal({ item, onClose }) {
         <FormField label="Cursos requeridos (se obtiene al completar TODOS)">
           <div style={{ maxHeight: "200px", overflowY: "auto", border: "1px solid var(--border)",
             borderRadius: "var(--r-md)", padding: "4px" }}>
-            {courses.length === 0 ? (
+            {coursesState === "error" ? (
+              <ErrorState title="No se pudieron cargar los cursos"
+                action={<SecondaryButton onClick={() => coursesQuery.refetch()}>Reintentar cursos</SecondaryButton>} />
+            ) : coursesState === "loading" ? (
+              <p role="status">Cargando cursos…</p>
+            ) : courses.length === 0 ? (
               <p style={{ padding: "10px", fontSize: "12px", color: "var(--text-3)" }}>
                 No hay cursos disponibles.
               </p>
@@ -110,9 +123,11 @@ export default function AdminCertifications() {
   const [modal, setModal]       = useState(null)
   const [toDelete, setToDelete] = useState(null)
 
-  const { data: certs = [] } = useQuery({
+  const certsQuery = useQuery({
     queryKey: ["admin-certifications"], queryFn: listAdminCertifications,
   })
+  const state = queryDisplayState(certsQuery)
+  const certs = listFromResponse(certsQuery.data)
 
   const delMutation = useMutation({
     mutationFn: () => deleteAdminCertification(toDelete.id),
@@ -132,7 +147,7 @@ export default function AdminCertifications() {
       <AdminPageHeader
         eyebrow="LEVELPRO / ACADEMIA"
         title="Certificaciones"
-        subtitle="Rutas de certificación profesional: un conjunto de cursos que, al completarse todos, otorgan un sello al alumno."
+        description="Rutas de cursos y sellos profesionales."
         breadcrumbs={[
           { label: "Academia", to: "/admin/academy" },
           { label: "Certificaciones" },
@@ -140,7 +155,7 @@ export default function AdminCertifications() {
         actions={
           <>
             <SecondaryButton to="/admin/academy" size="sm">← Cursos</SecondaryButton>
-            <PrimaryButton icon={Plus} onClick={() => setModal("new")}>
+            <PrimaryButton icon={Plus} disabled={state !== "ready"} onClick={() => setModal("new")}>
               Nueva certificación
             </PrimaryButton>
           </>
@@ -152,21 +167,21 @@ export default function AdminCertifications() {
           variant="ink"
           Icon={Award}
           label="Rutas de certificación"
-          value={certs.length}
+          value={state === "ready" ? certs.length : "—"}
           sub="Configuradas en Academia"
         />
         <StatCard
           variant="primary"
           Icon={CheckCircle2}
           label="Publicadas"
-          value={publishedCount}
+          value={state === "ready" ? publishedCount : "—"}
           sub="Visibles para alumnos"
         />
         <StatCard
           variant="light"
           Icon={BookOpen}
           label="Cursos vinculados"
-          value={linkedCoursesCount}
+          value={state === "ready" ? linkedCoursesCount : "—"}
           sub="Requisitos acumulados"
         />
       </div>
@@ -184,11 +199,18 @@ export default function AdminCertifications() {
         />
       )}
 
-      {certs.length === 0 ? (
+      {state === "error" ? (
+        <ErrorState title="No se pudieron cargar las certificaciones"
+          action={<SecondaryButton onClick={() => certsQuery.refetch()}>Reintentar certificaciones</SecondaryButton>} />
+      ) : state === "loading" ? (
+        <div role="status" aria-label="Cargando certificaciones">
+          <div className="skeleton" style={{ height: "200px", borderRadius: "14px" }} />
+        </div>
+      ) : certs.length === 0 ? (
         <div className="au-card au-panel">
           <EmptyState Icon={Award}
             title="Sin certificaciones"
-            description="Creá una ruta agrupando varios cursos." />
+            description="Crea una ruta agrupando cursos." />
         </div>
       ) : (
         <div className="au-card au-table-wrap">
@@ -218,8 +240,8 @@ export default function AdminCertifications() {
                     </td>
                     <td style={{ textAlign: "right" }}>
                       <div style={{ display: "inline-flex", gap: "6px" }}>
-                        <IconButton icon={Pencil} label="Editar" onClick={() => setModal(c)} />
-                        <IconButton icon={Trash2} label="Eliminar" danger onClick={() => setToDelete(c)} />
+                        <IconButton icon={Pencil} label={`Editar certificación ${c.title}`} onClick={() => setModal(c)} />
+                        <IconButton icon={Trash2} label={`Eliminar certificación ${c.title}`} danger onClick={() => setToDelete(c)} />
                       </div>
                     </td>
                   </tr>

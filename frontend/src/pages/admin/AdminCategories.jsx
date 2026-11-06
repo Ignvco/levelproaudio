@@ -5,7 +5,7 @@
 import { useState, useRef, useCallback, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import api from "../../api/client"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import { AdminPageHeader, PrimaryButton, StatCard, StatusBadge, IconButton, FormModal, FormField, formInputStyle, ConfirmationModal, ErrorState, SecondaryButton } from "../../components/admin/ui"
 import { FolderTree, Layers, GitBranch, Pencil, Trash2 } from "lucide-react"
 
@@ -260,7 +260,7 @@ export default function AdminCategories() {
       )
       await queryClient.invalidateQueries({ queryKey: ["admin-categories"] })
       setLocalRoots(null)
-    } catch (e) {
+    } catch {
       showToast("No pudimos guardar el orden completo. Revisa la posición de las categorías y vuelve a intentarlo.", "error")
       setLocalRoots(null)
       queryClient.invalidateQueries({ queryKey: ["admin-categories"] })

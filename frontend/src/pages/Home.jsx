@@ -1058,7 +1058,6 @@ function ProductStudioCard({ product }) {
 // ═══════════════════════════════════════════════════════════════
 // (legacy) Course card antigua — reemplazada por el CourseCard folder-tab compartido
 // ═══════════════════════════════════════════════════════════════
-// eslint-disable-next-line no-unused-vars
 function CourseCardLegacy({ course }) {
   const thumb = course.thumbnail_url || course.thumbnail
   const levelColors = {
@@ -1198,7 +1197,6 @@ function CourseCardLegacy({ course }) {
 // ═══════════════════════════════════════════════════════════════
 // (legacy) Service card antigua — reemplazada por el ServiceCard profile compartido
 // ═══════════════════════════════════════════════════════════════
-// eslint-disable-next-line no-unused-vars
 function ServiceCardLegacy({ service }) {
   return (
     <Link to={`/services/${service.slug}`}

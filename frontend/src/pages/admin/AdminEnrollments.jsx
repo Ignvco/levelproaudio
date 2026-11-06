@@ -5,19 +5,24 @@ import {
   getAdminEnrollments, createAdminEnrollment,
   getAdminCourses, getAdminUsers,
 } from "../../api/admin.api"
-import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, FormField, formInputStyle } from "../../components/admin/ui"
+import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, FormField, formInputStyle, ErrorState } from "../../components/admin/ui"
 import { Users, CheckCircle2, GraduationCap } from "lucide-react"
+import { listFromResponse, queryDisplayState } from "../../utils/queryDisplayState"
+import { enrollmentProgress } from "../../utils/adminListData"
 
-function EnrollModal({ courses, users, onClose, onSave }) {
+function EnrollModal({ courses, users, coursesQuery, usersQuery, onClose }) {
   const [form, setForm]     = useState({ user: "", course: "" })
   const [error, setError]   = useState("")
   const queryClient         = useQueryClient()
+  const coursesState = queryDisplayState(coursesQuery)
+  const usersState = queryDisplayState(usersQuery)
+  const ready = coursesState === "ready" && usersState === "ready"
 
   const mutation = useMutation({
     mutationFn: createAdminEnrollment,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-enrollments"] })
-      onSave?.(); onClose()
+      onClose()
     },
     onError: (e) => setError(e?.response?.data?.detail || "Error al inscribir."),
   })
@@ -27,16 +32,31 @@ function EnrollModal({ courses, users, onClose, onSave }) {
       open
       title="Inscripción manual"
       onClose={onClose}
-      onSave={() => form.user && form.course && mutation.mutate(form)}
+      onSave={() => {
+        if (!ready || mutation.isPending) return
+        if (!form.user || !form.course) { setError("Selecciona un usuario y un curso."); return }
+        setError("")
+        mutation.mutate(form)
+      }}
       saving={mutation.isPending}
+      saveDisabled={!ready}
+      scrollableBody
       saveLabel="Inscribir"
       error={error}
       maxWidth="400px"
       testId="enroll-modal"
     >
+      {(coursesState === "loading" || usersState === "loading") && <p role="status">Cargando opciones…</p>}
+      {coursesState === "error" && <ErrorState title="No se pudieron cargar los cursos"
+        action={<SecondaryButton onClick={() => coursesQuery.refetch()}>Reintentar cursos</SecondaryButton>} />}
+      {usersState === "error" && <ErrorState title="No se pudieron cargar los usuarios"
+        action={<SecondaryButton onClick={() => usersQuery.refetch()}>Reintentar usuarios</SecondaryButton>} />}
+      {usersState === "ready" && usersQuery.data?.count > users.length && (
+        <p className="au-formfield__help">Mostrando {users.length} de {usersQuery.data.count} usuarios.</p>
+      )}
       <FormField label="Usuario *">
         <select value={form.user} onChange={e => setForm(p => ({ ...p, user: e.target.value }))}
-          style={formInputStyle}>
+          disabled={usersState !== "ready"} style={formInputStyle}>
           <option value="">Seleccionar usuario</option>
           {users.map(u => (
             <option key={u.id} value={u.id}>
@@ -47,7 +67,7 @@ function EnrollModal({ courses, users, onClose, onSave }) {
       </FormField>
       <FormField label="Curso *">
         <select value={form.course} onChange={e => setForm(p => ({ ...p, course: e.target.value }))}
-          style={formInputStyle}>
+          disabled={coursesState !== "ready"} style={formInputStyle}>
           <option value="">Seleccionar curso</option>
           {courses.map(c => (
             <option key={c.id} value={c.id}>{c.title}</option>
@@ -60,40 +80,43 @@ function EnrollModal({ courses, users, onClose, onSave }) {
 
 export default function AdminEnrollments() {
   const [modal, setModal] = useState(false)
-  const queryClient       = useQueryClient()
-
-  const { data, isLoading } = useQuery({
-    queryKey: ["admin-enrollments"], queryFn: getAdminEnrollments,
+  const enrollmentsQuery = useQuery({
+    queryKey: ["admin-enrollments"], queryFn: () => getAdminEnrollments({}),
   })
-  const { data: coursesData } = useQuery({
-    queryKey: ["admin-courses"], queryFn: getAdminCourses,
+  const coursesQuery = useQuery({
+    queryKey: ["admin-courses"], queryFn: () => getAdminCourses({}),
   })
-  const { data: usersData } = useQuery({
-    queryKey: ["admin-users"], queryFn: getAdminUsers,
+  const usersQuery = useQuery({
+    queryKey: ["admin-users"], queryFn: () => getAdminUsers({}),
   })
 
-  const enrollments = data?.results || data || []
-  const courses     = coursesData?.results || coursesData || []
-  const users       = usersData?.results   || usersData   || []
-  const completedCount = enrollments.filter(e => (e.progress_percentage || 0) >= 100).length
-  const avgProgress = enrollments.length > 0
-    ? Math.round(enrollments.reduce((acc, e) => acc + (Number(e.progress_percentage) || 0), 0) / enrollments.length)
-    : 0
+  const state = queryDisplayState(enrollmentsQuery)
+  const coursesState = queryDisplayState(coursesQuery)
+  const usersState = queryDisplayState(usersQuery)
+  const enrollments = listFromResponse(enrollmentsQuery.data)
+  const courses = listFromResponse(coursesQuery.data)
+  const users = listFromResponse(usersQuery.data)
+  const progress = enrollments.map(enrollmentProgress)
+  const progressKnown = state === "ready" && progress.every(p => p !== null)
+  const completedCount = progressKnown ? progress.filter(p => p === 100).length : "—"
+  const avgProgress = progressKnown && progress.length
+    ? `${Math.round(progress.reduce((sum, p) => sum + p, 0) / progress.length)}%` : "—"
+  const canEnroll = state === "ready" && coursesState === "ready" && usersState === "ready"
 
   return (
     <div className="au-page">
       {modal && (
         <EnrollModal
           courses={courses} users={users}
+          coursesQuery={coursesQuery} usersQuery={usersQuery}
           onClose={() => setModal(false)}
-          onSave={() => queryClient.invalidateQueries({ queryKey: ["admin-enrollments"] })}
         />
       )}
 
       <AdminPageHeader
         eyebrow="LEVELPRO / ACADEMIA"
         title="Inscripciones"
-        description={`${enrollments.length} inscripciones registradas`}
+        description={state === "ready" ? `${enrollments.length} inscripciones en esta vista · hasta 200 recientes` : undefined}
         breadcrumbs={[
           { label: "Academia", to: "/admin/academy" },
           { label: "Inscripciones" },
@@ -101,7 +124,7 @@ export default function AdminEnrollments() {
         actions={
           <>
             <SecondaryButton to="/admin/academy" size="sm">← Cursos</SecondaryButton>
-            <PrimaryButton onClick={() => setModal(true)}>+ Inscripción manual</PrimaryButton>
+            <PrimaryButton disabled={!canEnroll} onClick={() => setModal(true)}>+ Inscripción manual</PrimaryButton>
           </>
         }
       />
@@ -110,28 +133,35 @@ export default function AdminEnrollments() {
         <StatCard
           variant="ink"
           Icon={Users}
-          label="Inscripciones totales"
-          value={enrollments.length}
-          sub="Alumnos matriculados"
+          label="Inscripciones"
+          value={state === "ready" ? enrollments.length : "—"}
+          sub="En esta vista"
         />
         <StatCard
           variant="primary"
           Icon={CheckCircle2}
           label="Cursos completados"
           value={completedCount}
-          sub="Avance 100%"
+          sub="Avance 100% en esta vista"
         />
         <StatCard
           variant="light"
           Icon={GraduationCap}
           label="Avance promedio"
-          value={`${avgProgress}%`}
-          sub="Sobre matrículas activas"
+          value={avgProgress}
+          sub="Inscripciones de esta vista"
         />
       </div>
 
-      {isLoading ? (
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+      {coursesState === "error" && <ErrorState title="No se pudieron cargar los cursos"
+        action={<SecondaryButton onClick={() => coursesQuery.refetch()}>Reintentar cursos</SecondaryButton>} />}
+      {usersState === "error" && <ErrorState title="No se pudieron cargar los usuarios"
+        action={<SecondaryButton onClick={() => usersQuery.refetch()}>Reintentar usuarios</SecondaryButton>} />}
+      {state === "error" ? (
+        <ErrorState title="No se pudieron cargar las inscripciones"
+          action={<SecondaryButton onClick={() => enrollmentsQuery.refetch()}>Reintentar inscripciones</SecondaryButton>} />
+      ) : state === "loading" ? (
+        <div role="status" aria-label="Cargando inscripciones" style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {[...Array(5)].map((_, i) => (
             <div key={i} className="skeleton" style={{ height: "56px", borderRadius: "14px" }} />
           ))}
@@ -155,7 +185,9 @@ export default function AdminEnrollments() {
                       Sin inscripciones todavía.
                     </td>
                   </tr>
-                ) : enrollments.map((enr) => (
+                ) : enrollments.map((enr) => {
+                  const percent = enrollmentProgress(enr)
+                  return (
                   <tr key={enr.id}>
                     <td>
                       <p style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--admin-text)" }}>
@@ -167,18 +199,20 @@ export default function AdminEnrollments() {
                     </td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: "120px" }}>
-                        <div style={{ flex: 1, height: "6px", borderRadius: "9999px",
+                        {percent !== null && <div role="progressbar" aria-label={`Progreso de ${enr.user_email} en ${enr.course_title}`}
+                          aria-valuenow={percent} aria-valuemin={0} aria-valuemax={100}
+                          style={{ flex: 1, height: "6px", borderRadius: "9999px",
                           background: "var(--admin-surface-muted)", overflow: "hidden" }}>
                           <div style={{
                             height: "100%", borderRadius: "9999px",
-                            width: `${enr.progress_percentage || 0}%`,
+                            width: `${percent}%`,
                             background: "var(--admin-primary)",
                             transition: "width 600ms ease",
                           }} />
-                        </div>
+                        </div>}
                         <span style={{ fontSize: "11.5px", color: "var(--admin-primary-text)",
                           fontWeight: 700, fontFamily: "var(--font-mono)", flexShrink: 0 }}>
-                          {enr.progress_percentage || 0}%
+                          {percent === null ? "—" : `${percent}%`}
                         </span>
                       </div>
                     </td>
@@ -188,7 +222,8 @@ export default function AdminEnrollments() {
                       })}
                     </td>
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>

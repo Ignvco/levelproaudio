@@ -2,7 +2,7 @@
 // Elementos UI inspirados en la consola de audio profesional
 // — LED indicator, VU Meter, Digital Readout, Knob decorativo, Fader decorativo
 
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useState } from "react"
 
 // ─────────────────────────────────────────────────────────────────
 // LED indicator — punto luminoso pulsante estilo consola REC

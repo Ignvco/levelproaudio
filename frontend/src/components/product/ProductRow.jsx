@@ -6,7 +6,7 @@ import { useCartStore } from "../../store/cartStore"
 import { usePrice } from "../../hooks/usePrice"
 import { getProductBadge } from "../../utils/productBadge"
 import { mediaUrl } from "../../utils/mediaUrl"
-import { showToast } from "../ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import { FavoriteButton } from "./FavoriteButton"
 
 export default function ProductRow({ product }) {
@@ -18,7 +18,6 @@ export default function ProductRow({ product }) {
   useEffect(() => () => clearTimeout(timer.current), [])
 
   const img = mediaUrl(product.primary_image || (product.images && product.images[0]))
-  const brandLogo = product.brand_logo ? mediaUrl(product.brand_logo) : null
   const hasDiscount = product.compare_price && Number(product.compare_price) > Number(product.price)
   // Sin descuento — el badge de descuento ya vive en la imagen, este
   // es el pill secundario (últimas unidades / etiqueta curada / etc.)

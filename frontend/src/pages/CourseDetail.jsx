@@ -1,5 +1,4 @@
 // pages/CourseDetail.jsx
-/* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
@@ -9,7 +8,7 @@ import {
 } from "../api/academy.api"
 import { createPayment } from "../api/payments.api"
 import { cancelOrder } from "../api/orders.api"
-import { showToast } from "../components/ui/ToastNotification"
+import { showToast } from "../utils/toast"
 import { useAuthStore } from "../store/authStore"
 import { mediaUrl } from "../utils/mediaUrl"
 import Seo from "../components/Seo"
@@ -180,7 +179,7 @@ export default function CourseDetail() {
   useEffect(() => {
     if (!course) return
     const first = course.modules?.[0]?.lessons?.[0]
-    if (first && !first.is_locked && !activeLesson) setActiveLesson(first)
+    if (first && !first.is_locked) setActiveLesson(current => current || first)
   }, [course])
 
   useEffect(() => {

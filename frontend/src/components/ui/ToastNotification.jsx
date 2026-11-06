@@ -1,19 +1,12 @@
 // components/ui/ToastNotification.jsx
 import { useEffect, useState } from "react"
 
-let toastTimeout
-
-export function showToast(message, type = "success") {
-  window.dispatchEvent(new CustomEvent("show-toast", {
-    detail: { message, type }
-  }))
-}
-
 export default function ToastNotification() {
   const [toast, setToast]     = useState(null)
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
+    let toastTimeout
     const handler = (e) => {
       setToast(e.detail)
       setVisible(true)
@@ -21,7 +14,10 @@ export default function ToastNotification() {
       toastTimeout = setTimeout(() => setVisible(false), 3000)
     }
     window.addEventListener("show-toast", handler)
-    return () => window.removeEventListener("show-toast", handler)
+    return () => {
+      window.removeEventListener("show-toast", handler)
+      clearTimeout(toastTimeout)
+    }
   }, [])
 
   if (!toast) return null
@@ -34,7 +30,7 @@ export default function ToastNotification() {
   const c = colors[toast.type] || colors.info
 
   return (
-    <div style={{
+    <div role={toast.type === "error" ? "alert" : "status"} style={{
       position:     "fixed",
       bottom:       "28px",
       left:         "50%",

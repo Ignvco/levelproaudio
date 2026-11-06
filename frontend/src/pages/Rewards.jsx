@@ -6,7 +6,7 @@ import { Trophy, Users, Ticket, ArrowRight, X, Plus, Minus, CreditCard, Globe, S
 import { getActiveCampaigns, getPublicWinners, buyStickers } from "../api/rewards.api"
 import { createPayment } from "../api/payments.api"
 import { useAuthStore } from "../store/authStore"
-import { showToast } from "../components/ui/ToastNotification"
+import { showToast } from "../utils/toast"
 import { mediaUrl } from "../utils/mediaUrl"
 import ProductCard from "../components/product/ProductCard"
 import AcceptCheckbox from "../components/legal/AcceptCheckbox"

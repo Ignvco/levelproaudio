@@ -764,7 +764,10 @@ def dashboard_overview(request):
         OrderItem.objects
         .filter(order__status__in=["paid", "shipped", "completed"], order__currency=currency)
         .values("product_name")
-        .annotate(total_sold=Sum("quantity"), revenue=Sum("price"))
+        .annotate(
+            total_sold=Sum("quantity"),
+            revenue=Sum(ExpressionWrapper(F("price") * F("quantity"), output_field=DecimalField())),
+        )
         .order_by("-total_sold")[:5]
     )
 
@@ -893,6 +896,8 @@ def admin_users(request):
             "last_name":    u.last_name,
             "date_joined":  u.date_joined.strftime("%Y-%m-%d"),
             "is_active":    u.is_active,
+            "is_staff":     u.is_staff,
+            "is_superuser": u.is_superuser,
             "orders_count": orders_count,
             "total_spent": spend_by_currency["CLP"],  # Legacy CLP-only field
             "total_spent_currency": "CLP",

@@ -4,7 +4,6 @@ import { Check, X, SlidersHorizontal } from "lucide-react"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { buildCategoryTree } from "../../utils/categoryTree"
 
-const money = (v) => `$${Number(v).toLocaleString("es-CL")}`
 
 function Section({ title, children }) {
   return (
@@ -202,5 +201,3 @@ export default function ShopFilters({
     </div>
   )
 }
-
-export { money }

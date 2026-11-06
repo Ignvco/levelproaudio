@@ -21,7 +21,7 @@ ENV VITE_GOOGLE_CLIENT_ID=$VITE_GOOGLE_CLIENT_ID \
     VITE_SITE_DESCRIPTION=$VITE_SITE_DESCRIPTION \
     VITE_SITE_URL=$VITE_SITE_URL \
     VITE_GA_ID=$VITE_GA_ID
-RUN npm run test:unit && npm run build && npm run check:bundle
+RUN npm run lint && npm run test:unit && npm run build && npm run check:bundle
 
 FROM nginx:alpine
 # nginx.conf ya tiene la URL del backend hardcodeada — sin envsubst

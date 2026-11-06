@@ -12,7 +12,7 @@ import {
   AdminPageHeader, StatusBadge, FormModal, FormField, formInputStyle,
   SecondaryButton, StatCard, EmptyState, SkeletonTable, ErrorState,
 } from "../../components/admin/ui"
-import { showToast } from "../../components/ui/ToastNotification"
+import { showToast } from "../../utils/toast"
 import { formatCurrency } from "../../utils/accountingCurrency"
 import { initialTaxDocumentAmount } from "../../utils/billingViewData"
 import { ExternalLink, FileText, Inbox, CheckCircle2, Clock3 } from "lucide-react"

@@ -7,12 +7,14 @@ import { Search, SlidersHorizontal, X, ChevronDown, ArrowUpDown, PackageSearch, 
 import { getProducts, getCategories, getBrands } from "../api/products.api"
 import ProductCard from "../components/product/ProductCard"
 import ProductRow from "../components/product/ProductRow"
-import ShopFilters, { money } from "../components/product/ShopFilters"
+import ShopFilters from "../components/product/ShopFilters"
 import Seo from "../components/Seo"
 import Button from "../components/ui/Button"
 import { useScrollReveal } from "../hooks/useScrollReveal"
 import { useFavoritesStore } from "../store/favoritesStore"
 import { useAuthStore } from "../store/authStore"
+
+const money = (v) => `$${Number(v).toLocaleString("es-CL")}`
 
 const ORDERINGS = [
   { value: "-created_at", label: "Más recientes" },

@@ -16,7 +16,7 @@ export default function NotFound() {
       })
     }, 1000)
     return () => clearInterval(t)
-  }, [])
+  }, [navigate])
 
   return (
     <div style={{

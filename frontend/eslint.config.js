@@ -23,7 +23,8 @@ export default defineConfig([
       },
     },
     rules: {
-      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      // Icon parameters are React components referenced through JSX.
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]', argsIgnorePattern: '^Icon$' }],
       // React Compiler rules: deshabilitadas por ahora — el codebase tiene
       // patrones legacy que las violan pero funcionan correctamente.
       // Se cubrirán en una fase de refactor dedicado.
