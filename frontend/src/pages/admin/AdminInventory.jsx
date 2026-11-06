@@ -11,7 +11,7 @@ import { formatCurrency } from "../../utils/accountingCurrency"
 import { asInventoryRows, normalizeInventoryRotation, inventoryPreview, groupInventoryPreview } from "../../utils/inventoryViewData"
 
 const TABS = ["Resumen","Alertas","Rotación","Por categoría"]
-const fmt  = n => `$${Number(n||0).toLocaleString("es-CL")}`
+const fmt  = n => formatCurrency(n, "CLP")
 
 // ── campos reales backend inventory_summary ──
 // valor_inventario, valor_venta, ganancia_potencial
@@ -74,7 +74,7 @@ export default function AdminInventory() {
           <button
             key={t}
             type="button"
-            onClick={() => setTab(i)}
+            onClick={() => setTab(i)} aria-pressed={tab === i}
             className={`lp-seg-tab${tab === i ? " is-active" : ""}`}
           >
             {t}
@@ -108,15 +108,15 @@ export default function AdminInventory() {
             <div className="lp-kpi-strip">
               <KPI variant="ink" label="Valor en inventario"
                 value={fmt(summary?.valor_inventario)}
-                sub="Capital invertido en stock"
+                sub="Costo conocido del stock · CLP"
                 Icon={Coins} />
               <KPI variant="light" label="Valor a precio de venta"
                 value={fmt(summary?.valor_venta)}
-                sub="Si se vende todo el stock"
+                sub="Valorización catálogo CLP"
                 Icon={Tag} />
               <KPI variant="primary" label="Ganancia potencial"
                 value={fmt(summary?.ganancia_potencial)}
-                sub="Venta − costo del stock"
+                sub="Estimación venta − costo · CLP"
                 Icon={TrendingUp} />
               <KPI variant="light" label="Total productos"
                 value={summary?.total_productos||0}
@@ -266,7 +266,7 @@ export default function AdminInventory() {
         <div className="au-page">
           <div className="au-card au-panel" style={{ display:"flex", flexWrap:"wrap", alignItems:"center", justifyContent:"space-between", gap:12 }}>
             <p style={{ fontSize:13, color:"var(--admin-text-secondary)" }}>
-              Ventas de los últimos 30 días · Importes en la moneda original del pedido
+              Ventas de los últimos 30 días · Importes de pedidos en la moneda seleccionada
             </p>
             <label style={{ display:"inline-flex", alignItems:"center", gap:8, fontSize:12, fontWeight:650 }}>
               Moneda
@@ -288,7 +288,7 @@ export default function AdminInventory() {
           </div>
         ) : rotationList.length===0 ? (
           <div className="au-card au-panel" style={{ padding:"48px", textAlign:"center", color:"var(--admin-text-secondary)", fontSize:"14px" }}>
-            Sin datos de rotación todavía.
+            No hay ventas confirmadas en los últimos 30 días para esta moneda.
           </div>
         ) : (
           <SectionCard eyebrow="VELOCIDAD DE SALIDA" title={`Ventas por producto · ${rotationCurrency}`} flush>
