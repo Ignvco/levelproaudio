@@ -9,6 +9,11 @@ import {
 } from "lucide-react"
 import { getAdminDashboard, getAnalytics } from "../../api/admin.api"
 import { StatusBadge, ErrorState } from "../../components/admin/ui"
+import { ResponsiveContainer, AreaChart, Area, XAxis, Tooltip } from "recharts"
+import {
+  adminRecentOrders, adminFulfillment, adminCategoryMix, adminSalesSeries,
+  monthlyShare, count,
+} from "../dashboard/dashboardV3Data"
 
 const clp = (n) => `$${Math.round(n || 0).toLocaleString("es-CL")}`
 
@@ -30,11 +35,11 @@ function getInitials(nameOrEmail) {
 }
 
 function formatShortDate(iso) {
-  if (!iso) return "Hoy"
+  if (!iso) return "—"
   try {
     return new Date(iso).toLocaleDateString("es-CL", { day: "2-digit", month: "short" })
   } catch {
-    return "Hoy"
+    return "—"
   }
 }
 
@@ -42,7 +47,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate()
   const [period, setPeriod] = useState("30D")
 
-  const { data, isError, refetch, isFetching } = useQuery({
+  const { data, isPending, isError, refetch, isFetching } = useQuery({
     queryKey: ["admin-dashboard"],
     queryFn: getAdminDashboard,
     refetchInterval: 60000,
@@ -67,42 +72,25 @@ export default function AdminDashboard() {
     )
   }
 
-  const rev      = data?.revenue || { total: 18420000, this_month: 4680000, last_30_days: 4320000 }
-  const orders   = data?.orders || { total: 128, pending: 4, today: 3, this_month: 38 }
-  const users    = data?.users || { total: 1420, new_week: 14, new_month: 62 }
-  const products = data?.products || { total: 84, low_stock: 3, out_of_stock: 1 }
-  const academy  = data?.academy || { total_enrollments: 46, enrollments_month: 8 }
-  const actions  = data?.actions || {}
-  const pending  = actions.pending_orders || []
-  const recent   = data?.recent_orders || []
-  const unread   = actions.unread_service_requests || 1
+  if (isPending || !data) {
+    return <div className="v3-main-content" data-testid="admin-dashboard"><div className="v3-card" role="status">Cargando información real del negocio…</div></div>
+  }
 
-  const avgOrderValue = analytics?.kpis?.avg_order_value || 145000
-
-  const totalOrdersCount = orders.total || 128
-  const pendingOrdersCount = orders.pending || 4
-  const managedOrdersCount = Math.max(totalOrdersCount - pendingOrdersCount, 124)
-  const fulfillmentPct = totalOrdersCount > 0
-    ? Math.min(100, Math.max(0, Math.round((managedOrdersCount / totalOrdersCount) * 100)))
-    : 96
-
-  // Sample or real recent orders
-  const fallbackOrders = [
-    { id: 101, shortId: "LP-9824", clientName: "Robert Fox", total: 450900, status: "paid", created: new Date().toISOString() },
-    { id: 102, shortId: "LP-9823", clientName: "Kathryn Murphy", total: 128000, status: "shipped", created: new Date().toISOString() },
-    { id: 103, shortId: "LP-9822", clientName: "Darlene Robertson", total: 89000, status: "paid", created: new Date().toISOString() },
-    { id: 104, shortId: "LP-9821", clientName: "Albert Flores", total: 320000, status: "pending", created: new Date().toISOString() },
-  ]
-
-  const ordersList = (recent.length > 0 ? recent : pending.length > 0 ? pending : fallbackOrders).slice(0, 5).map((o) => ({
-    id: o.id,
-    shortId: o.short_id || o.shortId || String(o.id || "").slice(0, 8).toUpperCase(),
-    clientName: o.user_name || o.clientName || o.email?.split("@")[0] || "Cliente LevelPro",
-    email: o.email || "",
-    status: o.status || "paid",
-    total: o.total || 120000,
-    created: o.created || o.created_at,
-  }))
+  const rev      = data.revenue || {}
+  const orders   = data.orders || {}
+  const users    = data.users || {}
+  const products = data.products || {}
+  const academy  = data.academy || {}
+  const actions  = data.actions || {}
+  const unread   = count(actions.unread_service_requests)
+  const avgOrderValue = analytics?.kpis?.avg_order_value
+  const fulfillment = adminFulfillment(analytics, orders.total)
+  const fulfillmentPct = fulfillment?.percentage ?? 0
+  const share = monthlyShare(rev)
+  const ordersList = adminRecentOrders(data)
+  const salesSeries = adminSalesSeries(data, analytics, period)
+  const categoryMix = adminCategoryMix(analytics)
+  const monthLabel = new Intl.DateTimeFormat("es-CL", { month: "long", year: "numeric" }).format(new Date())
 
   return (
     <div className="v3-main-content" data-testid="admin-dashboard">
@@ -120,7 +108,7 @@ export default function AdminDashboard() {
         <div className="v3-controls-row">
           <div className="v3-pill-btn">
             <Calendar size={14} />
-            <span>27 Oct – 27 Nov, 2026</span>
+            <span>{monthLabel} · información actual</span>
             <ChevronDown size={13} style={{ opacity: 0.6 }} />
           </div>
 
@@ -173,8 +161,8 @@ export default function AdminDashboard() {
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start",
             background: "rgba(255, 255, 255, 0.08)", padding: "4px 12px", borderRadius: 999, fontSize: 11.5,
             color: "#E2E8F0", fontWeight: 600, border: "1px solid rgba(255, 255, 255, 0.1)" }}>
-            <span>Órdenes pagadas</span>
-            <span style={{ color: "var(--v3-accent)", fontWeight: 800 }}>{clp(rev.this_month || 4680000)}</span>
+            <span>Ventas pagadas del mes</span>
+            <span style={{ color: "var(--v3-accent)", fontWeight: 800 }}>{clp(rev.this_month)}</span>
             <ChevronDown size={12} style={{ opacity: 0.7 }} />
           </div>
 
@@ -199,7 +187,7 @@ export default function AdminDashboard() {
                 stroke="var(--v3-accent)"
                 strokeWidth="14"
                 strokeDasharray="452.39"
-                strokeDashoffset="120"
+                strokeDashoffset={452.39 * (1 - share / 100)}
                 strokeLinecap="round"
                 transform="rotate(-90 95 95)"
                 style={{ filter: "drop-shadow(0 0 10px rgba(26, 255, 110, 0.45))" }}
@@ -207,7 +195,7 @@ export default function AdminDashboard() {
             </svg>
             <div className="v3-donut-value">
               <span className="v3-donut-amount">{clp(rev.this_month || 4680000)}</span>
-              <span className="v3-donut-sub">Meta: $ 6.000.000</span>
+              <span className="v3-donut-sub">{share}% del total registrado</span>
             </div>
           </div>
 
@@ -219,13 +207,13 @@ export default function AdminDashboard() {
           </div>
 
           <p style={{ fontSize: 12, color: "var(--v3-text-dark-muted)", textAlign: "center", margin: "14px 0 0", lineHeight: 1.4 }}>
-            Rendimiento comercial proyectado al alza con respecto al mes anterior.
+            Participación del mes en los ingresos históricos registrados. Sin meta de ventas configurada.
           </p>
 
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "auto", paddingTop: 14,
             borderTop: "1px solid rgba(255, 255, 255, 0.08)", fontSize: 12 }}>
-            <span style={{ color: "var(--v3-text-dark-muted)" }}>Total órdenes: <strong style={{ color: "#fff" }}>{orders.this_month || 38}</strong></span>
-            <span style={{ color: "var(--v3-text-dark-muted)" }}>Ticket prom: <strong style={{ color: "var(--v3-accent)" }}>{clp(avgOrderValue)}</strong></span>
+            <span style={{ color: "var(--v3-text-dark-muted)" }}>Total órdenes: <strong style={{ color: "#fff" }}>{count(orders.this_month)}</strong></span>
+            <span style={{ color: "var(--v3-text-dark-muted)" }}>Ticket prom: <strong style={{ color: "var(--v3-accent)" }}>{(avgOrderValue == null ? "Sin datos" : clp(avgOrderValue))}</strong></span>
           </div>
         </div>
 
@@ -245,10 +233,10 @@ export default function AdminDashboard() {
 
           <div style={{ display: "flex", alignItems: "baseline", gap: 10, margin: "6px 0 10px" }}>
             <span style={{ fontSize: 36, fontWeight: 800, color: "var(--v3-text-primary)", letterSpacing: "-0.03em" }}>
-              {fulfillmentPct}%
+              {fulfillment ? `${fulfillmentPct}%` : "—"}
             </span>
             <span className="v3-trend-badge v3-trend-up">
-              ↑ 4.2% mes
+              {fulfillment ? "Órdenes enviadas/completadas" : "Consultando estados"}
             </span>
           </div>
 
@@ -279,10 +267,10 @@ export default function AdminDashboard() {
 
           <div style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
             <span style={{ color: "var(--v3-text-muted)" }}>
-              {managedOrdersCount} de {totalOrdersCount} órdenes despachadas
+              {fulfillment ? `${fulfillment.managed} de ${fulfillment.total} órdenes enviadas o completadas` : "Sin desglose de estados disponible"}
             </span>
             <span style={{ fontWeight: 700, color: "var(--btn-green)" }}>
-              Excelente
+              {fulfillment && fulfillment.total > 0 ? `${fulfillmentPct}%` : "Sin datos"}
             </span>
           </div>
         </div>
@@ -321,7 +309,7 @@ export default function AdminDashboard() {
                     Stock Crítico
                   </p>
                   <p style={{ fontSize: 11.5, color: "var(--v3-text-muted)", margin: 0 }}>
-                    {products.low_stock || 3} productos por agotar
+                    {count(products.low_stock)} productos por agotar
                   </p>
                 </div>
               </div>
@@ -344,7 +332,7 @@ export default function AdminDashboard() {
                     Órdenes Pendientes
                   </p>
                   <p style={{ fontSize: 11.5, color: "var(--v3-text-muted)", margin: 0 }}>
-                    {orders.pending || 4} pagos por confirmar
+                    {count(orders.pending)} pagos por confirmar
                   </p>
                 </div>
               </div>
@@ -367,7 +355,7 @@ export default function AdminDashboard() {
                     Servicio Técnico
                   </p>
                   <p style={{ fontSize: 11.5, color: "var(--v3-text-muted)", margin: 0 }}>
-                    {unread || 1} solicitud por asignar
+                    {unread} solicitud por asignar
                   </p>
                 </div>
               </div>
@@ -390,7 +378,7 @@ export default function AdminDashboard() {
                     Academia LevelPro
                   </p>
                   <p style={{ fontSize: 11.5, color: "var(--v3-text-muted)", margin: 0 }}>
-                    {academy.total_enrollments || 46} alumnos · {users.total || 1420} clientes
+                    {count(academy.total_enrollments)} alumnos · {count(users.total)} clientes
                   </p>
                 </div>
               </div>
