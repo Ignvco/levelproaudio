@@ -1,0 +1,714 @@
+diff --git a/frontend/src/pages/admin/AdminDashboard.jsx b/frontend/src/pages/admin/AdminDashboard.jsx
+--- a/frontend/src/pages/admin/AdminDashboard.jsx
++++ b/frontend/src/pages/admin/AdminDashboard.jsx
+@@ -15,7 +15,6 @@
+   monthlyShare, count, formatMoney,
+ } from "../dashboard/dashboardV3Data"
+ 
+-const clp = (n) => formatMoney(n, "CLP")
+ 
+ const ORDER_STATUS_MAP = {
+   paid:      { label: "Pagado",     tone: "success" },
+@@ -48,15 +47,17 @@
+ export default function AdminDashboard() {
+   const navigate = useNavigate()
+   const [period, setPeriod] = useState("30D")
++  const [currency, setCurrency] = useState("CLP")
++  const money = value => formatMoney(value, currency)
+ 
+   const { data, isPending, isError, refetch, isFetching } = useQuery({
+-    queryKey: ["admin-dashboard"],
+-    queryFn: getAdminDashboard,
++    queryKey: ["admin-dashboard", currency],
++    queryFn: () => getAdminDashboard(currency),
+     refetchInterval: 60000,
+   })
+-  const { data: analytics } = useQuery({
+-    queryKey: ["admin-analytics"],
+-    queryFn: getAnalytics,
++  const { data: analytics, isPending: analyticsLoading, isError: analyticsError } = useQuery({
++    queryKey: ["admin-analytics", currency],
++    queryFn: () => getAnalytics(currency),
+     refetchInterval: 120000,
+   })
+ 
+@@ -103,15 +104,20 @@
+             <span>Panel de Analítica</span>
+           </h1>
+           <p className="v3-title-sub">
+-            Rendimiento comercial en tiempo real, efectividad operativa y transacciones.
++            Indicadores comerciales por moneda, operaciones y alertas.
+           </p>
+         </div>
+ 
+         <div className="v3-controls-row">
++          <label className="v3-currency-control">
++            <span className="v3-currency-label">Moneda</span>
++            <select aria-label="Moneda de reportes" value={currency} onChange={e => setCurrency(e.target.value)}>
++              <option value="CLP">CLP</option><option value="USD">USD</option><option value="ARS">ARS</option>
++            </select>
++          </label>
+           <div className="v3-pill-btn">
+             <Calendar size={14} />
+-            <span>{monthLabel} · información actual</span>
+-            <ChevronDown size={13} style={{ opacity: 0.6 }} />
++            <span>{monthLabel} · corte actual</span>
+           </div>
+ 
+           <button
+@@ -163,8 +169,8 @@
+           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start",
+             background: "rgba(255, 255, 255, 0.08)", padding: "4px 12px", borderRadius: 999, fontSize: 11.5,
+             color: "#E2E8F0", fontWeight: 600, border: "1px solid rgba(255, 255, 255, 0.1)" }}>
+-            <span>Ventas pagadas del mes</span>
+-            <span style={{ color: "var(--v3-accent)", fontWeight: 800 }}>{clp(rev.this_month)}</span>
++            <span>Ventas pagadas del mes · {currency}</span>
++            <span style={{ color: "var(--v3-accent)", fontWeight: 800 }}>{money(rev.this_month)}</span>
+             <ChevronDown size={12} style={{ opacity: 0.7 }} />
+           </div>
+ 
+@@ -196,8 +202,8 @@
+               />
+             </svg>
+             <div className="v3-donut-value">
+-              <span className="v3-donut-amount">{clp(rev.this_month)}</span>
+-              <span className="v3-donut-sub">{share}% del total registrado</span>
++              <span className="v3-donut-amount">{money(rev.this_month)}</span>
++              <span className="v3-donut-sub">{share}% del total {currency}</span>
+             </div>
+           </div>
+ 
+@@ -209,13 +215,13 @@
+           </div>
+ 
+           <p style={{ fontSize: 12, color: "var(--v3-text-dark-muted)", textAlign: "center", margin: "14px 0 0", lineHeight: 1.4 }}>
+-            Participación del mes en los ingresos históricos registrados. Sin meta de ventas configurada.
++            Participación del mes sobre ingresos históricos en {currency}.
+           </p>
+ 
+           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "auto", paddingTop: 14,
+             borderTop: "1px solid rgba(255, 255, 255, 0.08)", fontSize: 12 }}>
+             <span style={{ color: "var(--v3-text-dark-muted)" }}>Total órdenes: <strong style={{ color: "#fff" }}>{count(orders.this_month)}</strong></span>
+-            <span style={{ color: "var(--v3-text-dark-muted)" }}>Ticket prom: <strong style={{ color: "var(--v3-accent)" }}>{(avgOrderValue == null ? "Sin datos" : clp(avgOrderValue))}</strong></span>
++            <span style={{ color: "var(--v3-text-dark-muted)" }}>Ticket prom: <strong style={{ color: "var(--v3-accent)" }}>{(avgOrderValue == null ? "Sin datos" : money(avgOrderValue))}</strong></span>
+           </div>
+         </div>
+ 
+@@ -406,14 +412,14 @@
+ 
+           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
+             <span style={{ fontSize: 32, fontWeight: 800, color: "var(--v3-text-primary)", letterSpacing: "-0.03em", whiteSpace: "nowrap" }}>
+-              {clp(rev.total)}
++              {money(rev.total)}
+             </span>
+-            <span className="v3-trend-badge">Serie de operaciones pagadas · {period}</span>
++            <span className="v3-trend-badge">Operaciones pagadas · {period} · {currency}</span>
+           </div>
+ 
+           {/* Series reales recibidas de dashboard/analytics; sin curvas ilustrativas. */}
+           <div style={{ height: 180, width: "100%", marginTop: 8 }} role="img" aria-label={salesSeries.length ? `Ventas registradas: ${period}` : "Sin ventas registradas para este período"}>
+-            {salesSeries.length ? (
++            {analyticsLoading ? <p role="status">Consultando serie de ventas…</p> : analyticsError ? <p role="alert">No se pudo cargar la serie de ventas.</p> : salesSeries.length ? (
+               <ResponsiveContainer width="100%" height="100%">
+                 <AreaChart data={salesSeries} margin={{ top: 10, left: 0, right: 8, bottom: 0 }}>
+                   <defs>
+@@ -423,7 +429,7 @@
+                     </linearGradient>
+                   </defs>
+                   <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#7D858E" }} axisLine={false} tickLine={false} minTickGap={18} />
+-                  <Tooltip formatter={value => [clp(value), "Ventas"]} contentStyle={{ background: "#101214", border: "none", color: "#fff", borderRadius: 14 }} />
++                  <Tooltip formatter={value => [money(value), "Ventas"]} contentStyle={{ background: "#101214", border: "none", color: "#fff", borderRadius: 14 }} />
+                   <Area type="monotone" dataKey="total" stroke="#101214" strokeWidth={2.5} fill="url(#v3RealSalesArea)" activeDot={{ r: 5, fill: "#1AFF6E" }} />
+                 </AreaChart>
+               </ResponsiveContainer>
+@@ -453,7 +459,7 @@
+             </Link>
+           </div>
+ 
+-          {categoryMix.length ? (
++          {analyticsLoading ? <p role="status">Consultando categorías…</p> : analyticsError ? <p role="alert">No se pudieron cargar las categorías.</p> : categoryMix.length ? (
+             <>
+               <div style={{ display: "flex", gap: 3, height: 12, borderRadius: 6, overflow: "hidden", margin: "14px 0 20px", background: "var(--v3-surface-soft)" }}>
+                 {categoryMix.map((cat, i) => (
+diff --git a/frontend/src/pages/admin/AdminFinance.jsx b/frontend/src/pages/admin/AdminFinance.jsx
+--- a/frontend/src/pages/admin/AdminFinance.jsx
++++ b/frontend/src/pages/admin/AdminFinance.jsx
+@@ -11,6 +11,7 @@
+   getWithdrawals, createWithdrawal, deleteWithdrawal,
+   getAnalytics,
+ } from "../../api/admin.api"
++import { formatMoney as formatCurrency } from "../dashboard/dashboardV3Data"
+ 
+ const fmt   = n => `$${Number(n || 0).toLocaleString("es-CL")}`
+ const TABS  = [
+@@ -255,6 +256,9 @@
+ // ── AdminFinance ──────────────────────────────────────────────
+ export default function AdminFinance() {
+   const [tab, setTab]   = useState("overview")
++  const [analysisCurrency, setAnalysisCurrency] = useState("CLP")
++  const [productCurrency, setProductCurrency] = useState("CLP")
++  const analysisMoney = value => formatCurrency(value, analysisCurrency)
+   const [modal, setModal] = useState(null)
+   const [toDeleteWithdrawal, setToDeleteWithdrawal] = useState(null)
+   const [toDeleteCategory, setToDeleteCategory]     = useState(null)
+@@ -275,13 +279,13 @@
+     enabled:  tab === "withdrawals" || tab === "overview",
+   })
+   const { data:incomeByProduct } = useQuery({
+-    queryKey: ["admin-finance-by-product"],
+-    queryFn:  () => api.get("/admin/finance/by-product/").then(r => r.data),
++    queryKey: ["admin-finance-by-product", productCurrency],
++    queryFn:  () => api.get("/admin/finance/by-product/", { params: { currency: productCurrency } }).then(r => r.data),
+     enabled:  tab === "by_product",
+   })
+-  const { data:analytics } = useQuery({
+-    queryKey: ["admin-analytics"],
+-    queryFn:  getAnalytics,
++  const { data:analytics, isError: analyticsError, refetch: refetchAnalytics } = useQuery({
++    queryKey: ["admin-analytics", analysisCurrency],
++    queryFn:  () => getAnalytics(analysisCurrency),
+     enabled:  tab === "analysis",
+   })
+ 
+@@ -316,6 +320,8 @@
+     queryClient.invalidateQueries(["admin-finance-withdrawals"])
+   }
+ 
++  const ledgerVerified = summary?.currency_integrity?.status === "clp_only_verifiable"
++  const ledgerRisk = summary?.currency_integrity?.status === "needs_classification"
+   const summaryCategories = summary?.summary      || []
+   const recentIncome      = summary?.recent_income || []
+ 
+@@ -377,20 +383,29 @@
+           </>
+         } />
+ 
++      {ledgerRisk && (
++        <div role="alert" className="lp-callout lp-callout--warning" style={{ marginBottom: 16 }}>
++          <p style={{ fontWeight: 700 }}>Conciliación multimoneda pendiente</p>
++          <p style={{ marginTop: 4, fontSize: 12 }}>
++            El registro de tesorería contiene movimientos históricos sin moneda clasificada o ingresos de otras monedas.
++            Sus saldos no están certificados. Revisa la clasificación antes de tomar decisiones de retiro.
++          </p>
++        </div>
++      )}
+       {/* KPIs */}
+       <div className="lp-kpi-strip">
+         <KpiCard variant="ink" label="Ingresos totales"
+-          value={fmt(summary?.total_income)} sub="Desde todos los pagos aprobados"
++          value={ledgerRisk ? "Por conciliar" : fmt(summary?.total_income)} sub={ledgerRisk ? "Monedas sin clasificar" : "Ingresos del registro"}
+           Icon={TrendingUp} />
+         <KpiCard variant="light" label="Total retirado"
+-          value={fmt(summary?.total_withdrawn)} sub="Suma de todos los retiros" Icon={ArrowUpFromLine} />
++          value={ledgerRisk ? "Por conciliar" : fmt(summary?.total_withdrawn)} sub={ledgerRisk ? "Retiros históricos sin moneda" : "Retiros registrados"} Icon={ArrowUpFromLine} />
+         <KpiCard variant="primary" label="Balance neto"
+-          value={fmt(summary?.net_balance)} sub="Ingresos − retiros"
++          value={ledgerRisk ? "Por conciliar" : fmt(summary?.net_balance)} sub={ledgerRisk ? "No certificado" : "Ingresos − retiros"}
+           Icon={Wallet} />
+       </div>
+ 
+       {/* Barra distribución */}
+-      {summaryCategories.length > 0 && (
++      {ledgerVerified && summaryCategories.length > 0 && (
+         <SectionCard eyebrow="TESORERÍA INTERNA" title="Distribución de fondos disponibles">
+           <DistributionBar categories={summaryCategories} />
+         </SectionCard>
+@@ -630,7 +645,20 @@
+ 
+       {/* ── POR PRODUCTO ── */}
+       {tab==="by_product" && (
+-        <DataTable
++        <div>
++          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 14 }}>
++            <p style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>
++              Importes por moneda. Costos y utilidad solo disponibles en CLP, donde el catálogo registra costos.
++            </p>
++            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
++              <span style={{ fontSize: 12 }}>Moneda</span>
++              <select className="au-select" aria-label="Moneda de productos vendidos" value={productCurrency}
++                onChange={e => setProductCurrency(e.target.value)}>
++                <option value="CLP">CLP</option><option value="USD">USD</option><option value="ARS">ARS</option>
++              </select>
++            </label>
++          </div>
++          <DataTable
+           columns={[
+             { key:"product_name", header:"Producto", sortable:true, render:p => (
+               <div>
+@@ -642,14 +670,14 @@
+             { key:"units_sold", header:"Vendidos", sortable:true, align:"right",
+               render:p => <span style={{ color:"var(--admin-text)" }}>{p.units_sold} u.</span> },
+             { key:"total_revenue", header:"Ingreso total", sortable:true, align:"right",
+-              render:p => <span style={{ color:"var(--admin-primary-text)", fontWeight:600 }}>{fmt(p.total_revenue)}</span> },
++              render:p => <span style={{ color:"var(--admin-primary-text)", fontWeight:600 }}>{formatCurrency(p.total_revenue, productCurrency)}</span> },
+             { key:"total_cost", header:"Costo total", sortable:true, align:"right",
+-              render:p => <span style={{ color:"var(--admin-danger)" }}>{fmt(p.total_cost)}</span> },
++              render:p => <span style={{ color:"var(--admin-danger)" }}>{p.total_cost == null ? "Sin costo comparable" : fmt(p.total_cost)}</span> },
+             { key:"profit", header:"Utilidad real", sortable:true, align:"right", render:p => (
+               <div style={{ textAlign:"right" }}>
+                 <p style={{ fontSize:"13px", fontWeight:700,
+-                  color: p.profit >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>{fmt(p.profit)}</p>
+-                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{p.margin}% margen</p>
++                  color: p.profit == null || p.profit >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>{p.profit == null ? "—" : fmt(p.profit)}</p>
++                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{p.margin == null ? "Costo en moneda no comparable" : `${p.margin}% margen`}</p>
+               </div>
+             )},
+           ]}
+@@ -658,21 +686,39 @@
+           emptyIcon={Inbox} emptyTitle="Sin datos todavía"
+           emptyDesc="Aparecen al aprobarse pagos con órdenes reales."
+           testId="by-product-table" />
+-      )}
++        </div>
++      )
+ 
+       {/* ── ANÁLISIS (consolida Vista Ejecutiva + Analytics) ── */}
+       {tab==="analysis" && (
+         <div style={{ display:"flex", flexDirection:"column", gap:"24px" }}>
+-          {!analytics ? (
+-            <p style={{ color:"var(--admin-text-muted)", padding:"40px 0" }}>Cargando análisis…</p>
++          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
++            <div>
++              <strong style={{ fontSize: 14 }}>Analítica por moneda</strong>
++              <p style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>Importes nativos sin conversión entre CLP, USD y ARS.</p>
++            </div>
++            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
++              <span style={{ fontSize: 12 }}>Moneda</span>
++              <select className="au-select" aria-label="Moneda de analítica" value={analysisCurrency}
++                onChange={e => setAnalysisCurrency(e.target.value)}>
++                <option value="CLP">CLP</option><option value="USD">USD</option><option value="ARS">ARS</option>
++              </select>
++            </label>
++          </div>
++          {analyticsError ? (
++            <div role="alert" style={{ padding: "25px 0" }}>
++              No fue posible cargar los resultados. <button type="button" onClick={() => refetchAnalytics()}>Reintentar</button>
++            </div>
++          ) : !analytics ? (
++            <p role="status" style={{ color:"var(--admin-text-muted)", padding:"40px 0" }}>Cargando análisis…</p>
+           ) : (
+             <>
+               {/* KPIs estratégicos */}
+               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:"14px" }}>
+                 <StatCard Icon={TrendingUp} label="Ingresos totales"
+-                  value={fmt(analytics.kpis?.total_revenue)} />
++                  value={analysisMoney(analytics.kpis?.total_revenue)} />
+                 <StatCard Icon={Wallet} label="Ticket promedio"
+-                  value={fmt(analytics.kpis?.avg_order_value)} />
++                  value={analysisMoney(analytics.kpis?.avg_order_value)} />
+                 <StatCard Icon={Inbox} label="Clientes únicos"
+                   value={analytics.kpis?.total_customers ?? 0} />
+                 <StatCard Icon={TrendingUp} label="Tasa de repetición"
+@@ -682,17 +728,17 @@
+               {/* Ventas por mes */}
+               <AnalysisBarSection title="Ventas por mes"
+                 data={(analytics.sales_by_month || []).map(m => ({ label:m.month, value:m.total }))}
+-                fmt={fmt} />
++                fmt={analysisMoney} />
+ 
+               {/* Ingresos por categoría */}
+               <AnalysisBarSection title="Ingresos por categoría"
+                 data={(analytics.revenue_by_category || []).map(c => ({ label:c.category, value:c.total }))}
+-                fmt={fmt} />
++                fmt={analysisMoney} />
+ 
+               {/* Ingresos por método de pago */}
+               <AnalysisBarSection title="Ingresos por método de pago"
+                 data={(analytics.revenue_by_provider || []).map(p => ({ label:p.provider, value:p.total }))}
+-                fmt={fmt} />
++                fmt={analysisMoney} />
+ 
+               {/* Órdenes por estado */}
+               <AnalysisBarSection title="Órdenes por estado"
+diff --git a/frontend/src/pages/admin/AdminOrders.jsx b/frontend/src/pages/admin/AdminOrders.jsx
+--- a/frontend/src/pages/admin/AdminOrders.jsx
++++ b/frontend/src/pages/admin/AdminOrders.jsx
+@@ -11,6 +11,7 @@
+   PrimaryButton, SecondaryButton, formInputStyle,
+ } from "../../components/admin/ui"
+ import { showToast } from "../../components/ui/ToastNotification"
++import { formatMoney } from "../dashboard/dashboardV3Data"
+ 
+ const STATUS = {
+   pending:   { label:"Pendiente",  color:"#D97706" },
+@@ -35,7 +36,7 @@
+       shipping_carrier: carrier, tracking_number: tracking,
+     }),
+     onSuccess: () => {
+-      queryClient.invalidateQueries(["admin-orders"])
++      queryClient.invalidateQueries({ queryKey: ["admin-orders"] })
+     },
+     onError: (e) => {
+       showToast(e?.response?.data?.detail || "No se pudo guardar el envío.", "error")
+@@ -46,8 +47,8 @@
+   const statusMutation = useMutation({
+     mutationFn: (s) => updateOrderStatus(order.id, s),
+     onSuccess: () => {
+-      queryClient.invalidateQueries(["admin-orders"])
+-      queryClient.invalidateQueries(["admin-dashboard"])
++      queryClient.invalidateQueries({ queryKey: ["admin-orders"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] })
+       queryClient.invalidateQueries(["admin-payments"])
+       queryClient.invalidateQueries(["admin-finance-summary"])
+     },
+@@ -224,11 +225,11 @@
+                     {item.product_name}
+                   </p>
+                   <p style={{ fontSize:"11.5px", color:"var(--admin-text-muted)" }}>
+-                    ${Number(item.price).toLocaleString("es-CL")} × {item.quantity}
++                    {formatMoney(item.price, order.currency)} × {item.quantity}
+                   </p>
+                 </div>
+                 <span style={{ fontSize:"13px", fontWeight:700, color:"var(--admin-text)", flexShrink:0, marginLeft:"12px" }}>
+-                  ${Number(item.subtotal).toLocaleString("es-CL")}
++                  {formatMoney(item.subtotal, order.currency)}
+                 </span>
+               </div>
+             ))}
+@@ -242,7 +243,7 @@
+                 fontFamily:"var(--font-display)", fontSize:"1.35rem", fontWeight:800,
+                 color:"var(--admin-primary-text)",
+               }}>
+-                ${Number(order.total).toLocaleString("es-CL")}
++                {formatMoney(order.total, order.currency)}
+               </span>
+             </div>
+           </div>
+@@ -314,7 +315,7 @@
+     { key:"email", header:"Cliente", sortable:true,
+       render:o => <span style={{ color:"var(--admin-text-muted)" }}>{o.email}</span> },
+     { key:"total", header:"Total", sortable:true, align:"right",
+-      render:o => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>${Number(o.total).toLocaleString("es-CL")}</span> },
++      render:o => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{formatMoney(o.total, o.currency)}</span> },
+     { key:"status", header:"Estado",
+       render:o => <StatusBadge tone={TONE[o.status] || "neutral"}>{STATUS[o.status]?.label || o.status}</StatusBadge> },
+     { key:"created_at", header:"Fecha", sortable:true,
+diff --git a/frontend/src/pages/admin/AdminPayments.jsx b/frontend/src/pages/admin/AdminPayments.jsx
+--- a/frontend/src/pages/admin/AdminPayments.jsx
++++ b/frontend/src/pages/admin/AdminPayments.jsx
+@@ -5,6 +5,7 @@
+ import { StatCard, DataTable, StatusBadge, AdminPageHeader, SecondaryButton } from "../../components/admin/ui"
+ import { showToast } from "../../components/ui/ToastNotification"
+ import { Inbox, Bell } from "lucide-react"
++import { formatMoney } from "../dashboard/dashboardV3Data"
+ 
+ const STATUS = {
+   pending:   { label:"Pendiente",   color:"#D97706" },
+@@ -26,10 +27,10 @@
+   const mutation    = useMutation({
+     mutationFn: (s) => updatePaymentStatus(paymentId, s),
+     onSuccess:  () => {
+-      queryClient.invalidateQueries(["admin-payments"])
+-      queryClient.invalidateQueries(["admin-orders"])
+-      queryClient.invalidateQueries(["admin-dashboard"])
+-      queryClient.invalidateQueries(["admin-finance-summary"])
++      queryClient.invalidateQueries({ queryKey: ["admin-payments"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-orders"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
+     },
+     onError: (e) => {
+       showToast(e?.response?.data?.detail || "No se pudo actualizar el estado del pago. Verificá antes de asumir que se marcó.", "error")
+@@ -57,10 +58,11 @@
+ 
+ export default function AdminPayments() {
+   const [statusFilter, setStatusFilter] = useState("")
++  const [currency, setCurrency] = useState("CLP")
+ 
+-  const { data, isLoading } = useQuery({
+-    queryKey: ["admin-payments", statusFilter],
+-    queryFn:  () => getAdminPayments(statusFilter ? { status:statusFilter } : {}),
++  const { data, isLoading, isError, refetch } = useQuery({
++    queryKey: ["admin-payments", statusFilter, currency],
++    queryFn:  () => getAdminPayments({ ...(statusFilter ? { status: statusFilter } : {}), currency }),
+   })
+   const payments = data?.results || []
+ 
+@@ -76,7 +78,7 @@
+     { key:"provider", header:"Método",
+       render:p => <span style={{ color:"var(--admin-text-muted)" }}>{PROVIDERS[p.provider] || p.provider}</span> },
+     { key:"amount", header:"Monto", sortable:true, align:"right",
+-      render:p => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>${Number(p.amount).toLocaleString("es-CL")}</span> },
++      render:p => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{formatMoney(p.amount, p.currency)}</span> },
+     { key:"status", header:"Estado",
+       render:p => {
+         const isPendingTransfer = p.status === "pending" &&
+@@ -108,12 +110,23 @@
+       <AdminPageHeader
+         eyebrow="LEVELPRO / VENTAS"
+         title="Pagos"
+-        description={data?.total_approved > 0
+-          ? `Total aprobado: $${Number(data.total_approved).toLocaleString("es-CL")}`
+-          : "Conciliación de transacciones, pasarelas y transferencias"}
+-        actions={<SecondaryButton to="/admin/payment-methods" size="sm">Métodos de pago</SecondaryButton>}
++        description={`Aprobados en ${currency}: ${formatMoney(data?.total_approved ?? 0, currency)} · sin conversión cambiaria`}
++        actions={<div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
++          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
++            <span style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>Moneda</span>
++            <select className="au-select" aria-label="Filtrar pagos por moneda"
++              value={currency} onChange={e => setCurrency(e.target.value)}>
++              <option value="CLP">CLP</option><option value="USD">USD</option><option value="ARS">ARS</option>
++            </select>
++          </label>
++          <SecondaryButton to="/admin/payment-methods" size="sm">Métodos de pago</SecondaryButton>
++        </div>}
+       />
+ 
++      {isError && <div role="alert" className="lp-callout lp-callout--warning">
++        No pudimos consultar los pagos de {currency}.
++        <button type="button" onClick={() => refetch()} style={{ marginLeft: 10 }}>Reintentar</button>
++      </div>}
+       {pendingTransfers.length > 0 && (
+         <div
+           onClick={() => setStatusFilter("pending")}
+diff --git a/frontend/src/pages/dashboard/Orders.jsx b/frontend/src/pages/dashboard/Orders.jsx
+--- a/frontend/src/pages/dashboard/Orders.jsx
++++ b/frontend/src/pages/dashboard/Orders.jsx
+@@ -10,6 +10,7 @@
+   StatCard,
+   PrimaryButton,
+ } from "../../components/admin/ui"
++import { formatMoney, completedOrderTotalsByCurrency } from "./dashboardV3Data"
+ 
+ const STATUS_MAP = {
+   pending:   { label: "Pendiente",  tone: "warning" },
+@@ -32,9 +33,8 @@
+   const totalOrders = orders.length
+   const inProgressCount = orders.filter(o => o.status === "paid" || o.status === "shipped").length
+   const pendingCount = orders.filter(o => o.status === "pending").length
+-  const totalSpent = orders
+-    .filter(o => o.status !== "cancelled")
+-    .reduce((acc, o) => acc + (Number(o.total) || 0), 0)
++  const { totals: totalsByCurrency, unknown: unclassifiedOrders } = completedOrderTotalsByCurrency(orders)
++  const spentGroups = Object.entries(totalsByCurrency).filter(([, value]) => value > 0)
+ 
+   const columns = [
+     {
+@@ -81,7 +81,7 @@
+       align: "right",
+       render: o => (
+         <span style={{ fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--admin-primary-text)" }}>
+-          ${Number(o.total).toLocaleString("es-CL")}
++          {formatMoney(o.total, o.currency)}
+         </span>
+       ),
+     },
+@@ -156,9 +156,13 @@
+         <StatCard
+           variant="light"
+           Icon={DollarSign}
+-          label="Total compras"
+-          value={`$${totalSpent.toLocaleString("es-CL")}`}
+-          sub="Inversión acumulada"
++          label="Compras pagadas"
++          value={spentGroups.length ? (
++            <span style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 15 }}>
++              {spentGroups.map(([code, value]) => <span key={code}>{formatMoney(value, code)}</span>)}
++            </span>
++          ) : "Sin pagos"}
++          sub={unclassifiedOrders.length ? `${unclassifiedOrders.length} orden(es) sin moneda válida` : "Totales independientes"}
+         />
+       </div>
+ 
+diff --git a/frontend/src/pages/dashboard/dashboardV3Data.js b/frontend/src/pages/dashboard/dashboardV3Data.js
+--- a/frontend/src/pages/dashboard/dashboardV3Data.js
++++ b/frontend/src/pages/dashboard/dashboardV3Data.js
+@@ -13,7 +13,10 @@
+ export function formatMoney(value, currency = "CLP") {
+   const number = finiteNumber(value)
+   if (number === null) return "—"
+-  const code = ["CLP", "USD", "ARS"].includes(currency) ? currency : "CLP"
++  const code = String(currency || "").toUpperCase()
++  if (!["CLP", "USD", "ARS"].includes(code)) {
++    return `${new Intl.NumberFormat("es-CL").format(number)} · ${code || "moneda sin definir"}`
++  }
+   return new Intl.NumberFormat("es-CL", { style: "currency", currency: code, maximumFractionDigits: code === "CLP" ? 0 : 2 }).format(number)
+ }
+ 
+@@ -86,3 +89,20 @@
+   const list = asRows(order?.items)
+   return list[0]?.product_name || "Compra LevelPro Audio"
+ }
++
++/** Native-currency totals. Never turn CLP+USD+ARS into one number. */
++export function completedOrderTotalsByCurrency(orders) {
++  const totals = { CLP: 0, USD: 0, ARS: 0 }
++  const unknown = []
++  for (const order of asRows(orders)) {
++    if (!["paid", "shipped", "completed"].includes(order?.status)) continue
++    const code = String(order?.currency || "").toUpperCase()
++    const amount = finiteNumber(order?.total)
++    if (!Object.prototype.hasOwnProperty.call(totals, code) || amount === null) {
++      unknown.push({ id: order?.id, currency: code || null, amount })
++      continue
++    }
++    totals[code] += amount
++  }
++  return { totals, unknown }
++}
+diff --git a/frontend/src/styles/v3-editorial-bento.css b/frontend/src/styles/v3-editorial-bento.css
+--- a/frontend/src/styles/v3-editorial-bento.css
++++ b/frontend/src/styles/v3-editorial-bento.css
+@@ -925,3 +925,111 @@
+     justify-content: flex-start;
+   }
+ }
++
++
++/* V3.2 — Refined interaction and data-density layer
++   Scope: authenticated dashboard shells only; storefront remains unchanged. */
++.v3-shell .v3-card-obsidian .v3-card-title-dark {
++  color: #fff;
++  opacity: 1;
++  font-weight: 700;
++}
++.v3-shell .v3-card-obsidian .v3-micro-label-dark {
++  color: #adb5c1;
++}
++.v3-shell .v3-card-obsidian .v3-donut-amount {
++  color: #fff;
++}
++.v3-currency-control {
++  display: inline-flex;
++  align-items: center;
++  gap: 8px;
++  border: 1px solid var(--v3-border);
++  background: var(--v3-surface);
++  border-radius: 999px;
++  padding: 5px 10px 5px 14px;
++}
++.v3-currency-label {
++  color: var(--v3-text-muted);
++  font-size: 11px;
++  font-weight: 600;
++}
++.v3-currency-control select {
++  border: 0;
++  background: transparent;
++  color: var(--v3-text-primary);
++  font: 700 12px var(--font-sans, sans-serif);
++  cursor: pointer;
++  min-width: 55px;
++  min-height: 30px;
++}
++.v3-shell :is(button, a, select, input, textarea, [tabindex]):focus-visible {
++  outline: 2px solid #087d36;
++  outline-offset: 3px;
++}
++.v3-card-accent {
++  min-height: 190px;
++  padding: 20px;
++  box-shadow: 0 7px 20px -8px rgba(26,255,110,.18);
++}
++.v3-card-accent:hover {
++  box-shadow: 0 10px 24px -10px rgba(26,255,110,.25);
++}
++.v3-neon-trio { align-self: start; }
++.v3-shell .v3-card,
++.v3-shell .v3-card-obsidian,
++.v3-shell .v3-card-accent {
++  min-width: 0;
++}
++.v3-shell .v3-micro-item { min-width: 0; }
++.v3-shell .v3-micro-item > div { min-width: 0; }
++@media (max-width: 860px) {
++  .v3-bento-grid > * { grid-row: auto !important; }
++  .v3-card-accent { min-height: 112px; }
++  .v3-currency-control { margin: 0; }
++}
++@media (prefers-reduced-motion: reduce) {
++  .v3-shell *, .v3-shell *::before, .v3-shell *::after {
++    animation-duration: .01ms !important;
++    animation-iteration-count: 1 !important;
++    transition-duration: .01ms !important;
++    scroll-behavior: auto !important;
++  }
++}
++
++
++/* V3.2 — Shared page controls: one visual language for all admin/user modules. */
++.v3-shell .au-page :is(input, select, textarea) {
++  font-family: var(--font-sans, sans-serif);
++  accent-color: var(--btn-green, #1a9d4e);
++}
++.v3-shell .au-page :is(input, select, textarea):focus-visible,
++.v3-shell .au-modal :is(input, select, textarea):focus-visible {
++  outline: 2px solid #0f9940;
++  outline-offset: 2px;
++}
++.v3-shell .au-page .au-table {
++  font-variant-numeric: tabular-nums;
++}
++.v3-shell .au-page .au-btn,
++.v3-shell .au-page .au-pill-btn {
++  font-weight: 650;
++  transition: background-color .17s ease, border-color .17s ease, box-shadow .17s ease, transform .17s ease;
++}
++.v3-shell .au-page .au-btn:disabled,
++.v3-shell .au-page .au-pill-btn:disabled {
++  cursor: not-allowed;
++  opacity: .55;
++}
++.v3-shell .au-modal {
++  max-height: min(90vh, 900px);
++  overflow-y: auto;
++}
++.v3-shell .au-modal__title {
++  letter-spacing: -.025em;
++}
++@media (max-width: 640px) {
++  .v3-shell .au-page { min-width: 0; }
++  .v3-shell .au-page .au-table-wrap { max-width: 100%; overflow-x: auto; }
++  .v3-shell .au-modal { max-height: 94dvh; }
++}
+diff --git a/frontend/tests/v3-2-currency.test.mjs b/frontend/tests/v3-2-currency.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/frontend/tests/v3-2-currency.test.mjs
+@@ -0,0 +1,46 @@
++import test from "node:test"
++import assert from "node:assert/strict"
++
++import {
++  completedOrderTotalsByCurrency, formatMoney, adminRecentOrders,
++} from "../src/pages/dashboard/dashboardV3Data.js"
++
++test("separa compras pagadas CLP/USD/ARS y excluye pendientes o cancelados", () => {
++  const rows = [
++    { id: "a", currency: "CLP", total: "12500", status: "paid" },
++    { id: "b", currency: "USD", total: "34.50", status: "shipped" },
++    { id: "c", currency: "ARS", total: "8500", status: "completed" },
++    { id: "d", currency: "USD", total: "2.50", status: "paid" },
++    { id: "e", currency: "USD", total: "500", status: "pending" },
++    { id: "f", currency: "ARS", total: "300", status: "cancelled" },
++  ]
++  const { totals, unknown } = completedOrderTotalsByCurrency(rows)
++  assert.deepEqual(totals, { CLP: 12500, USD: 37, ARS: 8500 })
++  assert.deepEqual(unknown, [])
++})
++
++test("revela monedas ausentes o inválidas, sin atribuir CLP por defecto", () => {
++  const { totals, unknown } = completedOrderTotalsByCurrency([
++    { id: "a", currency: "", total: 123, status: "paid" },
++    { id: "b", currency: "EUR", total: 45, status: "paid" },
++    { id: "c", currency: "USD", total: null, status: "shipped" },
++  ])
++  assert.deepEqual(totals, { CLP: 0, USD: 0, ARS: 0 })
++  assert.equal(unknown.length, 3)
++})
++
++test("formatea por moneda nativa sin convertir montos", () => {
++  assert.match(formatMoney(3000, "CLP"), /3.000/)
++  assert.match(formatMoney(19.99, "USD"), /19,99/)
++  assert.match(formatMoney(5000, "ARS"), /5.000/)
++  assert.equal(formatMoney(null, "CLP"), "—")
++  assert.match(formatMoney(50, "EUR"), /EUR/)
++  assert.match(formatMoney(50, null), /moneda sin definir/)
++})
++
++test("órdenes admin sin moneda no se reportan erróneamente como CLP", () => {
++  const rows = adminRecentOrders({ recent_orders: [
++    { id: "abc", total: 1250, status: "paid" },
++  ] })
++  assert.equal(rows[0].currency, null)
++})
