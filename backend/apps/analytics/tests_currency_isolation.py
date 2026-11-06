@@ -136,3 +136,24 @@ class CurrencyIsolationTest(TestCase):
         self.assertIsNone(usd_products["results"][0]["total_cost"])
         self.assertIsNone(usd_products["results"][0]["profit"])
         self.assertIsNone(usd_products["results"][0]["margin"])
+
+    def test_executive_dashboard_foreign_profit_is_not_fabricated(self):
+        self.order("USD", "120")
+        self.order("ARS", "5000")
+        for code in ("USD", "ARS"):
+            dashboard = self.get_report("/api/v1/admin/executive/", code)
+            self.assertIsNone(dashboard["utilidad_mes"])
+            self.assertEqual(dashboard["utilidad_estado"], "sin_costos_comparables")
+
+    def test_payments_and_revenue_do_not_use_same_currency_when_gateway_differs(self):
+        order = self.order("CLP", "85000", status=OrderStatus.PENDING)
+        Payment.objects.create(
+            order=order, provider=PaymentProvider.PAYPAL,
+            amount=Decimal("90.00"), currency="USD",
+            status=PaymentStatus.APPROVED,
+        )
+        commercial = self.get_report("/api/v1/admin/finance/summary/", "CLP")
+        settlement = self.get_report("/api/v1/admin/payments/", "USD")
+        self.assertEqual(commercial["total_income"], 85000)
+        self.assertEqual(settlement["total_approved"], 90)
+        self.assertEqual(self.get_report("/api/v1/admin/payments/", "CLP")["total_approved"], 0)
