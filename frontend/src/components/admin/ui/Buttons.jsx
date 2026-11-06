@@ -8,7 +8,7 @@ function base(variant, size, className) {
 function Btn({ variant, size, className, to, href, children, testId, loading, disabled, ...rest }) {
   const cls = base(variant, size, className)
   if ((to || href) && (disabled || loading)) {
-    return <span className={cls} role="presentation" aria-disabled="true" data-testid={testId}>{children}</span>
+    return <span className={cls} aria-disabled="true" data-testid={testId}>{children}</span>
   }
   if (to) return <Link to={to} className={cls} data-testid={testId} {...rest}>{children}</Link>
   if (href) return <a href={href} className={cls} data-testid={testId} {...rest}>{children}</a>
