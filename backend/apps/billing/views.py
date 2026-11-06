@@ -67,6 +67,7 @@ def tax_dashboard(request):
                              if o.user else "") or o.email,
             "email":        o.email,
             "total":        float(o.total),
+            "currency":     o.currency,
             "pago_estado":  o.status,
             "documento":    _serialize(doc) if doc else None,
         })
