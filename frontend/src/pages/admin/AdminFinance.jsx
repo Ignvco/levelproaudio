@@ -5,6 +5,8 @@ import api                                       from "../../api/client"        
 import { TrendingUp, ArrowUpFromLine, Wallet, Pencil, Trash2, Inbox }   from "lucide-react"
 import { StatCard, AdminPageHeader, SectionCard, DataTable, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle, ConfirmationModal }  from "../../components/admin/ui"
 import { showToast } from "../../components/ui/ToastNotification"
+import AccountingCurrencySelect from "../../components/admin/ui/AccountingCurrencySelect"
+import { formatCurrency } from "../../utils/accountingCurrency"
 import {
   getFinanceSummary, getFinanceCategories,
   createFinanceCategory, updateFinanceCategory, deleteFinanceCategory,
@@ -12,7 +14,7 @@ import {
   getAnalytics,
 } from "../../api/admin.api"
 
-const fmt   = n => `$${Number(n || 0).toLocaleString("es-CL")}`
+const fmt = (n, currency = "CLP") => formatCurrency(n, currency)
 const TABS  = [
   { key:"overview",    label:"Resumen"       },
   { key:"income",      label:"Ingresos"      },
@@ -28,7 +30,7 @@ function KpiCard({ label, value, sub, variant = "light", Icon }) {
 }
 
 // ── Barra de distribución ─────────────────────────────────────
-function DistributionBar({ categories }) {
+function DistributionBar({ categories, currency = "CLP" }) {
   if (!categories?.length) return null
   return (
     <div>
@@ -39,7 +41,7 @@ function DistributionBar({ categories }) {
           <div key={c.id} style={{ flex:Math.max(c.balance, 0),
             background:c.color, transition:"flex 0.5s ease",
             minWidth: c.balance > 0 ? "4px" : "0" }}
-            title={`${c.name}: ${fmt(c.balance)}`} />
+            title={`${c.name}: ${c.reconciliation_required ? "Conciliación requerida" : fmt(c.balance, currency)}`} />
         ))}
       </div>
       <div style={{ display:"flex", flexWrap:"wrap", gap:"8px" }}>
@@ -52,7 +54,7 @@ function DistributionBar({ categories }) {
             <span style={{ fontSize:"12px", color:"var(--text-2)" }}>
               {c.icon} {c.name}
             </span>
-            <span style={{ fontSize:"12px", fontWeight:700, color:"var(--text)" }}>{fmt(c.balance)}</span>
+            <span style={{ fontSize:"12px", fontWeight:700, color:"var(--text)" }}>{c.reconciliation_required ? "Por conciliar" : fmt(c.balance, currency)}</span>
           </div>
         ))}
       </div>
@@ -165,9 +167,10 @@ function CategoryModal({ category, onClose, onSave }) {
 }
 
 // ── Modal retiro ──────────────────────────────────────────────
-function WithdrawalModal({ categories, onClose, onSave }) {
+function WithdrawalModal({ categories, onClose, onSave, currency = "CLP" }) {
   const [form, setForm] = useState({
     category_id: categories[0]?.id || "",
+    currency,
     amount:      "",
     destination: "",
     notes:       "",
@@ -182,6 +185,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
     if (!form.amount || !form.destination) {
       setError("Monto y cuenta destino son requeridos."); return
     }
+    if (selectedCat?.reconciliation_required) { setError("Esta categoría requiere conciliación antes de registrar retiros."); return }
     if (selectedCat && parseFloat(form.amount) > selectedCat.balance) {
       setError(`Saldo insuficiente en ${selectedCat.name}. Disponible: ${fmt(selectedCat.balance)}`)
       return
@@ -197,7 +201,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
   return (
     <FormModal
       open
-      title="Registrar retiro"
+      title={`Registrar retiro · ${currency}`}
       onClose={onClose}
       onSave={handleSave}
       saving={saving}
@@ -212,7 +216,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
           style={formInputStyle}>
           {categories.map(c => (
             <option key={c.id} value={c.id}>
-              {c.icon} {c.name} — disponible: {fmt(c.balance)}
+              {c.icon} {c.name} — {c.reconciliation_required ? "Por conciliar" : `disponible: ${fmt(c.balance, currency)}`}
             </option>
           ))}
         </select>
@@ -226,7 +230,7 @@ function WithdrawalModal({ categories, onClose, onSave }) {
           </p>
           <p style={{ fontFamily:"var(--font-display)", fontSize:"1.4rem",
             color: selectedCat.balance > 0 ? "var(--accent)" : "var(--danger)" }}>
-            {fmt(selectedCat.balance)}
+            {selectedCat.reconciliation_required ? "Por conciliar" : fmt(selectedCat.balance, currency)}
           </p>
         </div>
       )}
@@ -255,14 +259,16 @@ function WithdrawalModal({ categories, onClose, onSave }) {
 // ── AdminFinance ──────────────────────────────────────────────
 export default function AdminFinance() {
   const [tab, setTab]   = useState("overview")
+  const [currency, setCurrency] = useState("CLP")
+  const money = value => fmt(value, currency)
   const [modal, setModal] = useState(null)
   const [toDeleteWithdrawal, setToDeleteWithdrawal] = useState(null)
   const [toDeleteCategory, setToDeleteCategory]     = useState(null)
   const queryClient     = useQueryClient()
 
   const { data:summary, isLoading } = useQuery({
-    queryKey: ["admin-finance-summary"],
-    queryFn:  getFinanceSummary,
+    queryKey: ["admin-finance-summary", currency],
+    queryFn:  () => getFinanceSummary(currency),
     refetchInterval: 60000,
   })
   const { data:categories = [] } = useQuery({
@@ -270,26 +276,26 @@ export default function AdminFinance() {
     queryFn:  getFinanceCategories,
   })
   const { data:withdrawals = [] } = useQuery({
-    queryKey: ["admin-finance-withdrawals"],
-    queryFn:  getWithdrawals,
+    queryKey: ["admin-finance-withdrawals", currency],
+    queryFn:  () => getWithdrawals(currency),
     enabled:  tab === "withdrawals" || tab === "overview",
   })
   const { data:incomeByProduct } = useQuery({
-    queryKey: ["admin-finance-by-product"],
-    queryFn:  () => api.get("/admin/finance/by-product/").then(r => r.data),
+    queryKey: ["admin-finance-by-product", currency],
+    queryFn:  () => api.get("/admin/finance/by-product/", { params: { currency } }).then(r => r.data),
     enabled:  tab === "by_product",
   })
   const { data:analytics } = useQuery({
-    queryKey: ["admin-analytics"],
-    queryFn:  getAnalytics,
+    queryKey: ["admin-analytics", currency],
+    queryFn:  () => getAnalytics(currency),
     enabled:  tab === "analysis",
   })
 
   const deleteWithdrawalMutation = useMutation({
     mutationFn: deleteWithdrawal,
     onSuccess: () => {
-      queryClient.invalidateQueries(["admin-finance-summary"])
-      queryClient.invalidateQueries(["admin-finance-withdrawals"])
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-withdrawals"] })
       setToDeleteWithdrawal(null)
     },
     onError: (e) => {
@@ -300,8 +306,8 @@ export default function AdminFinance() {
   const deleteCatMutation = useMutation({
     mutationFn: deleteFinanceCategory,
     onSuccess: (data) => {
-      queryClient.invalidateQueries(["admin-finance-categories"])
-      queryClient.invalidateQueries(["admin-finance-summary"])
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-categories"] })
+      queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
       setToDeleteCategory(null)
       if (data?.detail) showToast(data.detail)
     },
@@ -311,9 +317,9 @@ export default function AdminFinance() {
   })
 
   const onSave = () => {
-    queryClient.invalidateQueries(["admin-finance-summary"])
-    queryClient.invalidateQueries(["admin-finance-categories"])
-    queryClient.invalidateQueries(["admin-finance-withdrawals"])
+    queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
+    queryClient.invalidateQueries({ queryKey: ["admin-finance-categories"] })
+    queryClient.invalidateQueries({ queryKey: ["admin-finance-withdrawals"] })
   }
 
   const summaryCategories = summary?.summary      || []
@@ -339,7 +345,7 @@ export default function AdminFinance() {
         <CategoryModal category={modal.item} onClose={() => setModal(null)} onSave={onSave} />
       )}
       {modal==="withdrawal" && (
-        <WithdrawalModal categories={summaryCategories}
+        <WithdrawalModal categories={summaryCategories} currency={currency}
           onClose={() => setModal(null)} onSave={onSave} />
       )}
 
