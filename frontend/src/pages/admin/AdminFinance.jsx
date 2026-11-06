@@ -371,40 +371,47 @@ export default function AdminFinance() {
       />
 
       <AdminPageHeader eyebrow="LEVELPRO / NEGOCIO" title="Finanzas"
-        description="Distribución automática de ingresos, fondos disponibles, retiros y rentabilidad por SKU"
+        description={`Ingresos, retiros y estadísticas separados en ${currency}, sin conversiones automáticas`}
         actions={
           <>
-            <SecondaryButton onClick={() => setModal("withdrawal")} data-testid="register-withdrawal-btn">
-              ↑ Registrar retiro
-            </SecondaryButton>
-            <PrimaryButton onClick={() => setModal("category")} data-testid="new-category-btn">
-              + Nueva categoría
-            </PrimaryButton>
+            <AccountingCurrencySelect id="finance-currency" value={currency} onChange={code => { setCurrency(code); setTab("overview") }} />
+            {currency === "CLP" && (
+              <>
+                <SecondaryButton onClick={() => setModal("withdrawal")} disabled={summaryCategories.every(c => c.reconciliation_required || !(Number(c.balance) > 0))} data-testid="register-withdrawal-btn">
+                  Registrar retiro
+                </SecondaryButton>
+                <PrimaryButton onClick={() => setModal("category")} data-testid="new-category-btn">Nueva categoría</PrimaryButton>
+              </>
+            )}
           </>
         } />
 
       {/* KPIs */}
       <div className="lp-kpi-strip">
         <KpiCard variant="ink" label="Ingresos totales"
-          value={fmt(summary?.total_income)} sub="Desde todos los pagos aprobados"
+          value={money(summary?.total_income)} sub={`Ingresos identificados en ${currency}`}
           Icon={TrendingUp} />
         <KpiCard variant="light" label="Total retirado"
-          value={fmt(summary?.total_withdrawn)} sub="Suma de todos los retiros" Icon={ArrowUpFromLine} />
+          value={money(summary?.total_withdrawn)} sub={`Retiros identificados en ${currency}`} Icon={ArrowUpFromLine} />
         <KpiCard variant="primary" label="Balance neto"
-          value={fmt(summary?.net_balance)} sub="Ingresos − retiros"
+          value={money(summary?.net_balance)} sub="Saldo de movimientos clasificados"
           Icon={Wallet} />
       </div>
 
-      {/* Barra distribución */}
-      {summaryCategories.length > 0 && (
-        <SectionCard eyebrow="TESORERÍA INTERNA" title="Distribución de fondos disponibles">
-          <DistributionBar categories={summaryCategories} />
+      {(summary?.unclassified_income_count > 0 || summary?.unclassified_withdrawals_count > 0) && (
+        <div className="lp-callout lp-callout--warning" role="alert">
+          Existen {summary.unclassified_income_count} ingresos y {summary.unclassified_withdrawals_count} retiros históricos sin moneda identificada. No están incluidos en los saldos mostrados. Las categorías afectadas quedan bloqueadas hasta su conciliación.
+        </div>
+      )}
+      {currency === "CLP" && summaryCategories.length > 0 && (
+        <SectionCard eyebrow="TESORERÍA INTERNA" title="Distribución de fondos clasificados">
+          <DistributionBar categories={summaryCategories} currency={currency} />
         </SectionCard>
       )}
 
       {/* Tabs */}
       <div className="lp-seg-tabs">
-        {TABS.map(({ key, label }) => (
+        {TABS.filter(t => currency === "CLP" || t.key !== "categories").map(({ key, label }) => (
           <button
             key={key}
             type="button"
@@ -423,7 +430,7 @@ export default function AdminFinance() {
           {/* Cards por categoría */}
           <div style={{ display:"grid",
             gridTemplateColumns:"repeat(auto-fill, minmax(250px, 1fr))", gap:"14px" }}>
-            {summaryCategories.map(cat => (
+            {currency === "CLP" && summaryCategories.map(cat => (
               <div key={cat.id} className="au-acard">
                 <div className="au-acard__head">
                   <span className="au-acard__tag" style={{ display:"inline-flex", alignItems:"center", gap:"6px" }}>
@@ -436,7 +443,7 @@ export default function AdminFinance() {
                 <div style={{ display:"flex", flexDirection:"column", gap:"8px", marginTop:"2px" }}>
                   {[
                     { label:"Ingresado",  value: fmt(cat.total_in),        color:"#0F9940" },
-                    { label:"Retirado",   value: `−${fmt(cat.total_out)}`, color:"#EF4444" },
+                    { label:"Retirado",   value: `−${money(cat.total_out)}`, color:"#EF4444" },
                   ].map(({ label, value, color }) => (
                     <div key={label} style={{ display:"flex", justifyContent:"space-between",
                       fontSize:"12.5px" }}>
@@ -451,7 +458,7 @@ export default function AdminFinance() {
                   <span style={{ fontFamily:"var(--font-display)", fontSize:"1.5rem", fontWeight:800,
                     letterSpacing:"-.02em", lineHeight:1,
                     color: cat.balance >= 0 ? "#0F9940" : "#EF4444" }}>
-                    {fmt(cat.balance)}
+                    {cat.reconciliation_required ? "Por conciliar" : money(cat.balance)}
                   </span>
                 </div>
               </div>
@@ -482,7 +489,7 @@ export default function AdminFinance() {
                   </div>
                   <span style={{ fontSize:"14px", fontWeight:700,
                     color:"var(--admin-danger)", flexShrink:0 }}>
-                    −{fmt(w.amount)}
+                    −{money(w.amount)}
                   </span>
                 </div>
               ))}
@@ -504,7 +511,7 @@ export default function AdminFinance() {
               </div>
             )},
             { key:"amount", header:"Monto", sortable:true, align:"right", render:income => (
-              <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{fmt(income.amount)}</span>
+              <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{money(income.amount)}</span>
             )},
             { key:"created_at", header:"Fecha", sortable:true, render:income => (
               <span style={{ color:"var(--admin-text-muted)" }}>{income.created_at}</span>
@@ -516,7 +523,7 @@ export default function AdminFinance() {
                     borderRadius:"100px", fontWeight:500,
                     color:d.category_color, background:`${d.category_color}14`,
                     border:`1px solid ${d.category_color}30` }}>
-                    {d.category_icon} {d.category_name}: {fmt(d.amount)}
+                    {d.category_icon} {d.category_name}: {money(d.amount)}
                   </span>
                 ))}
               </div>
@@ -547,7 +554,7 @@ export default function AdminFinance() {
               </div>
             )},
             { key:"amount", header:"Monto", sortable:true, align:"right", render:w => (
-              <span style={{ fontWeight:700, color:"var(--admin-danger)" }}>−{fmt(w.amount)}</span>
+              <span style={{ fontWeight:700, color:"var(--admin-danger)" }}>−{money(w.amount)}</span>
             )},
             { key:"created_at", header:"Fecha", sortable:true, render:w => (
               <div>
@@ -676,9 +683,9 @@ export default function AdminFinance() {
               {/* KPIs estratégicos */}
               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:"14px" }}>
                 <StatCard Icon={TrendingUp} label="Ingresos totales"
-                  value={fmt(analytics.kpis?.total_revenue)} />
+                  value={money(analytics.kpis?.total_revenue)} />
                 <StatCard Icon={Wallet} label="Ticket promedio"
-                  value={fmt(analytics.kpis?.avg_order_value)} />
+                  value={money(analytics.kpis?.avg_order_value)} />
                 <StatCard Icon={Inbox} label="Clientes únicos"
                   value={analytics.kpis?.total_customers ?? 0} />
                 <StatCard Icon={TrendingUp} label="Tasa de repetición"
