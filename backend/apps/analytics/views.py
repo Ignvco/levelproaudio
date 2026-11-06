@@ -2008,16 +2008,27 @@ def admin_finance_summary(request):
         } for d in r.distributions.all()],
     } for r in recent]
 
+    unclassified_income_count = IncomeRecord.objects.filter(currency__isnull=True).count()
+    unclassified_withdrawals_count = Withdrawal.objects.filter(currency__isnull=True).count()
+    reconciliation_required = bool(
+        unclassified_income_count or unclassified_withdrawals_count
+        or any(row["reconciliation_required"] for row in summary)
+    )
+
     return Response({
         "currency": currency,
-        "unclassified_income_count": IncomeRecord.objects.filter(currency__isnull=True).count(),
-        "unclassified_withdrawals_count": Withdrawal.objects.filter(currency__isnull=True).count(),
+        "reconciliation_required": reconciliation_required,
+        "unclassified_income_count": unclassified_income_count,
+        "unclassified_withdrawals_count": unclassified_withdrawals_count,
         "income_by_currency": {code: float(amount(IncomeRecord.objects.filter(currency=code))) for code in ("CLP", "USD", "ARS")},
         "withdrawals_by_currency": {code: float(amount(Withdrawal.objects.filter(currency=code))) for code in ("CLP", "USD", "ARS")},
         "summary":          summary,
         "total_income":     float(total_income),
         "total_withdrawn":  float(total_withdrawn),
-        "net_balance":      float(total_income) - float(total_withdrawn),
+        # Do not display an apparently definitive balance while unclassified
+        # historical entries could belong to the selected currency.
+        "net_balance":      None if reconciliation_required else float(total_income) - float(total_withdrawn),
+        "net_balance_identified_only": float(total_income) - float(total_withdrawn),
         "recent_income":    recent_data,
     })
 
