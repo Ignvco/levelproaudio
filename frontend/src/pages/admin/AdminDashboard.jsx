@@ -14,7 +14,7 @@ import AccountingCurrencySelect from "../../components/admin/ui/AccountingCurren
 import { formatCurrency } from "../../utils/accountingCurrency"
 import {
   adminRecentOrders, adminFulfillment, adminCategoryMix, adminSalesSeries,
-  monthlyShare, count, formatMoney,
+  monthlyShare, count,
 } from "../dashboard/dashboardV3Data"
 
 
