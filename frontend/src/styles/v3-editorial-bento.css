@@ -925,3 +925,74 @@
     justify-content: flex-start;
   }
 }
+
+
+/* V3.2 — Refined interaction and data-density layer
+   Scope: authenticated dashboard shells only; storefront remains unchanged. */
+.v3-shell .v3-card-obsidian .v3-card-title-dark {
+  color: #fff;
+  opacity: 1;
+  font-weight: 700;
+}
+.v3-shell .v3-card-obsidian .v3-micro-label-dark {
+  color: #adb5c1;
+}
+.v3-shell .v3-card-obsidian .v3-donut-amount {
+  color: #fff;
+}
+.v3-currency-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--v3-border);
+  background: var(--v3-surface);
+  border-radius: 999px;
+  padding: 5px 10px 5px 14px;
+}
+.v3-currency-label {
+  color: var(--v3-text-muted);
+  font-size: 11px;
+  font-weight: 600;
+}
+.v3-currency-control select {
+  border: 0;
+  background: transparent;
+  color: var(--v3-text-primary);
+  font: 700 12px var(--font-sans, sans-serif);
+  cursor: pointer;
+  min-width: 55px;
+  min-height: 30px;
+}
+.v3-shell :is(button, a, select, input, textarea, [tabindex]):focus-visible {
+  outline: 2px solid #087d36;
+  outline-offset: 3px;
+}
+.v3-card-accent {
+  min-height: 190px;
+  padding: 20px;
+  box-shadow: 0 7px 20px -8px rgba(26,255,110,.18);
+}
+.v3-card-accent:hover {
+  box-shadow: 0 10px 24px -10px rgba(26,255,110,.25);
+}
+.v3-neon-trio { align-self: start; }
+.v3-shell .v3-card,
+.v3-shell .v3-card-obsidian,
+.v3-shell .v3-card-accent {
+  min-width: 0;
+}
+.v3-shell .v3-micro-item { min-width: 0; }
+.v3-shell .v3-micro-item > div { min-width: 0; }
+@media (max-width: 860px) {
+  .v3-bento-grid > * { grid-row: auto !important; }
+  .v3-card-accent { min-height: 112px; }
+  .v3-currency-control { margin: 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .v3-shell *, .v3-shell *::before, .v3-shell *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
