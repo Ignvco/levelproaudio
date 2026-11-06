@@ -26,7 +26,7 @@ export function adminRecentOrders(data) {
     clientName: o.user_name || o.email?.split("@")[0] || "Cliente LevelPro",
     status: o.status || (recent.length ? "unknown" : "pending"),
     total: finiteNumber(o.total),
-    currency: o.currency || "CLP",
+    currency: o.currency || null,
     created: o.created_at || o.created || null,
   }))
 }
