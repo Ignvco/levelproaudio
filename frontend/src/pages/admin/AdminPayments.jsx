@@ -61,7 +61,7 @@ export default function AdminPayments() {
   const [statusFilter, setStatusFilter] = useState("")
   const [currency, setCurrency] = useState("CLP")
 
-  const { data, isLoading, isError } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-payments", statusFilter, currency],
     queryFn:  () => getAdminPayments({ ...(statusFilter && { status: statusFilter }), currency }),
   })
@@ -111,13 +111,15 @@ export default function AdminPayments() {
       <AdminPageHeader
         eyebrow="LEVELPRO / VENTAS"
         title="Pagos"
-        description={`Aprobado en ${currency}: ${formatCurrency(data?.total_approved ?? 0, currency)} · cobros en moneda de pasarela`}
+        description={isLoading || isError ? `Consulta de cobros en ${currency}` : `Aprobado en ${currency}: ${formatCurrency(data?.total_approved, currency)} · cobros en moneda de pasarela`}
         actions={<><AccountingCurrencySelect id="admin-payments-currency" value={currency} onChange={setCurrency} /><SecondaryButton to="/admin/payment-methods" size="sm">Métodos de pago</SecondaryButton></>}
       />
 
       {pendingTransfers.length > 0 && (
         <div
+          role="button" tabIndex={0} aria-label="Ver transferencias pendientes de aprobación"
           onClick={() => setStatusFilter("pending")}
+          onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setStatusFilter("pending") } }}
           className="lp-callout lp-callout--warning"
           style={{ cursor:"pointer" }}>
           <div style={{ display:"flex", alignItems:"center", gap:"14px", flex:1, minWidth:0 }}>
@@ -137,8 +139,8 @@ export default function AdminPayments() {
         </div>
       )}
 
-      {/* KPIs rápidos por estado */}
-      <div className="au-grid" style={{ gridTemplateColumns:"repeat(auto-fill, minmax(175px, 1fr))" }}>
+      {/* KPIs visibles solo con una consulta confirmada. */}
+      {!isLoading && !isError && <div className="au-grid" style={{ gridTemplateColumns:"repeat(auto-fill, minmax(175px, 1fr))" }}>
         {Object.entries(STATUS).map(([s, { label }]) => {
           const count = payments.filter(p => p.status === s).length
           const active = statusFilter === s
@@ -155,10 +157,10 @@ export default function AdminPayments() {
             />
           )
         })}
-      </div>
+      </div>}
 
       <DataTable
-        columns={columns} data={payments} loading={isLoading} error={isError}
+        columns={columns} data={payments} loading={isLoading} error={isError} onRetry={() => refetch()}
         getRowId={p => p.id}
         searchable searchKeys={["order_email", "order_id"]} searchPlaceholder="Buscar por email u orden..."
         filters={[{
