@@ -1385,3 +1385,103 @@
 @media (max-width: 540px) {
   .admin-root .lp-kpi-strip { grid-template-columns: minmax(0, 1fr); }
 }
+
+/* V3.2 — Consistent interaction language across all admin and customer modules. */
+.admin-root :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 3px solid #159A49;
+  outline-offset: 2px;
+}
+.admin-root .au-btn,
+.admin-root .au-iconbtn,
+.admin-root .au-select,
+.admin-root input,
+.admin-root textarea {
+  font-family: var(--font-sans);
+}
+.admin-root .au-btn:disabled,
+.admin-root .au-iconbtn:disabled,
+.admin-root [aria-disabled="true"] {
+  opacity: .55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+  pointer-events: none;
+}
+.admin-root .au-table-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 0;
+  text-align: inherit;
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  font-weight: 750;
+  text-transform: inherit;
+  letter-spacing: inherit;
+  cursor: pointer;
+}
+.admin-root .au-table-sort:focus-visible {
+  outline-offset: 3px;
+}
+.admin-root .au-table tbody tr[tabindex]:focus-visible {
+  outline: 2px solid #159A49;
+  outline-offset: -2px;
+}
+.admin-root .au-table tbody td {
+  font-variant-numeric: tabular-nums;
+}
+.admin-root .au-currency-select {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 4px;
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--admin-page-text-muted);
+  white-space: nowrap;
+}
+.admin-root .au-currency-select .au-select {
+  min-width: 90px;
+  color: var(--admin-text);
+}
+.admin-root .au-card {
+  min-width: 0;
+}
+.admin-root .au-table-wrap {
+  max-width: 100%;
+}
+.admin-root .au-toolbar .au-search,
+.admin-root .au-toolbar .au-search input {
+  max-width: 100%;
+}
+@media (max-width: 640px) {
+  .admin-root .au-toolbar {
+    padding: 12px;
+  }
+  .admin-root .au-toolbar__left,
+  .admin-root .au-toolbar__right {
+    width: 100%;
+  }
+  .admin-root .au-toolbar .au-search,
+  .admin-root .au-toolbar .au-search input {
+    width: 100%;
+  }
+  .admin-root .au-table thead th,
+  .admin-root .au-table tbody td {
+    padding: 11px 12px;
+  }
+  .admin-root .au-header__actions {
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .admin-root *,
+  .admin-root *::before,
+  .admin-root *::after {
+    transition-duration: .01ms !important;
+    animation-duration: .01ms !important;
+  }
+}
