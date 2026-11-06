@@ -11,6 +11,7 @@ import {
   HelpCircle,
 } from "lucide-react"
 import { getBookings, cancelBooking } from "../../api/services.api"
+import { queryDisplayState, listFromResponse } from "../../utils/queryDisplayState"
 import {
   AdminPageHeader,
   StatCard,
@@ -37,8 +38,8 @@ export default function MyBookings() {
     queryFn:  getBookings,
   })
 
-  const raw = data?.results || data || []
-  const bookings = Array.isArray(raw) ? raw : []
+  const ready = queryDisplayState({ data, isPending: isLoading, isError }) === "ready"
+  const bookings = listFromResponse(data)
   const [toCancel, setToCancel] = useState(null)
 
   const cancelMutation = useMutation({
@@ -92,7 +93,7 @@ export default function MyBookings() {
       />
 
       {/* KPIs únicamente con datos confirmados. */}
-      {!isLoading && !isError && <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
+      {ready && <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
         <StatCard
           title="Total reservas"
           value={bookings.length}
