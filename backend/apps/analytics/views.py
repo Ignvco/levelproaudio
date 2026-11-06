@@ -2284,7 +2284,10 @@ def inventory_value_by_category(request):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def executive_dashboard(request):
-    """Dashboard ejecutivo — KPIs del negocio para mobile"""
+    """Dashboard ejecutivo — indicadores de ventas en moneda seleccionada."""
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
 
     hoy        = timezone.now()
     hoy_inicio = hoy.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -2297,6 +2300,7 @@ def executive_dashboard(request):
     def get_ventas(desde, hasta=None):
         qs = Order.objects.filter(
             status__in=["paid", "shipped", "completed"],
+            currency=currency,
             created_at__gte=desde,
         )
         if hasta:
@@ -2328,6 +2332,7 @@ def executive_dashboard(request):
         "id":     str(o.id),
         "status": o.status,
         "total":  float(o.total),
+        "currency": o.currency,
         "email":  o.email,
         "hora":   o.created_at.strftime("%H:%M"),
     } for o in ordenes_hoy]
@@ -2351,6 +2356,7 @@ def executive_dashboard(request):
         utilidad_mes = IncomeDistribution.objects.filter(
             category=utilidad_cat,
             income_record__order__created_at__gte=mes_inicio,
+            income_record__currency=currency,
         ).aggregate(t=Sum("amount"))["t"] or 0
     except Exception as e:
         import logging
@@ -2364,6 +2370,7 @@ def executive_dashboard(request):
         dia_fin    = dia_inicio + timedelta(days=1)
         v = Order.objects.filter(
             status__in=["paid", "shipped", "completed"],
+            currency=currency,
             created_at__gte=dia_inicio,
             created_at__lt=dia_fin,
         ).aggregate(total=Sum("total"), count=Count("id"))
@@ -2378,6 +2385,7 @@ def executive_dashboard(request):
     from apps.orders.models import OrderItem
     top_productos = OrderItem.objects.filter(
         order__status__in=["paid", "shipped", "completed"],
+        order__currency=currency,
         order__created_at__gte=mes_inicio,
     ).values("product_name").annotate(
         unidades=Sum("quantity"),
@@ -2385,6 +2393,7 @@ def executive_dashboard(request):
     ).order_by("-ingresos")[:3]
 
     return Response({
+        "currency": currency,
         "ventas": {
             "hoy":            float(ventas_hoy["total"] or 0),
             "hoy_count":      ventas_hoy["count"] or 0,
