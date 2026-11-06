@@ -1,0 +1,1604 @@
+diff --git a/backend/apps/analytics/currency_reporting.py b/backend/apps/analytics/currency_reporting.py
+new file mode 100644
+--- /dev/null
++++ b/backend/apps/analytics/currency_reporting.py
+@@ -0,0 +1,34 @@
++"""Currency-scoped reporting primitives.
++
++Never aggregate native order/payment amounts across CLP, USD and ARS.
++Amounts are reported in the currency in which the transaction was recorded.
++Currency conversion is deliberately outside the scope of these helpers.
++"""
++from django.db.models import Sum
++from rest_framework.exceptions import ValidationError
++
++SUPPORTED_CURRENCIES = ("CLP", "USD", "ARS")
++
++
++def reporting_currency(request):
++    requested = (request.query_params.get("currency", "CLP") or "").strip().upper()
++    if requested not in SUPPORTED_CURRENCIES:
++        raise ValidationError({"currency": "Moneda no válida. Usa CLP, USD o ARS."})
++    return requested
++
++
++def grouped_currency_totals(queryset, amount_field="total"):
++    rows = (
++        queryset.values("currency")
++        .annotate(total=Sum(amount_field))
++        .order_by("currency")
++    )
++    result = {currency: 0.0 for currency in SUPPORTED_CURRENCIES}
++    unknown = []
++    for row in rows:
++        code = (row.get("currency") or "").upper()
++        if code in result:
++            result[code] += float(row["total"] or 0)
++        else:
++            unknown.append({"currency": code or None, "total": float(row["total"] or 0)})
++    return result, unknown
+diff --git a/backend/apps/analytics/tests_currency_reporting.py b/backend/apps/analytics/tests_currency_reporting.py
+new file mode 100644
+--- /dev/null
++++ b/backend/apps/analytics/tests_currency_reporting.py
+@@ -0,0 +1,114 @@
++"""Regression: financial dashboard, analytics and payment aggregates cannot mix currencies."""
++from decimal import Decimal
++
++from django.contrib.auth import get_user_model
++from django.test import TestCase
++from rest_framework.test import APIClient
++from apps.orders.models import Order, OrderStatus
++from apps.payments.models import Payment, PaymentProvider, PaymentStatus
++from apps.products.models import Product, Category
++from apps.orders.models import OrderItem
++from apps.analytics.models import IncomeRecord
++
++
++class CurrencyScopedReportingTest(TestCase):
++    def setUp(self):
++        user_model = get_user_model()
++        self.admin = user_model.objects.create_superuser(
++            email="currency-admin@example.test", username="currency-admin", password="x"
++        )
++        self.client = APIClient()
++        self.client.force_authenticate(user=self.admin)
++        self.orders = {}
++        for code, amount in [("CLP", "1000"), ("USD", "25"), ("ARS", "3000")]:
++            order = Order.objects.create(
++                status=OrderStatus.PAID, total=Decimal(amount), currency=code,
++                email=f"{code.lower()}@example.test", shipping_address="Test",
++            )
++            self.orders[code] = order
++            Payment.objects.create(
++                order=order, provider=PaymentProvider.TRANSFER,
++                status=PaymentStatus.APPROVED, amount=Decimal(amount), currency=code,
++            )
++
++    def test_dashboard_currency_is_not_implicitly_converted_or_summed(self):
++        for code, expected in [("CLP", 1000), ("USD", 25), ("ARS", 3000)]:
++            response = self.client.get("/api/v1/admin/dashboard/", {"currency": code})
++            self.assertEqual(response.status_code, 200, response.data)
++            self.assertEqual(response.data["currency"], code)
++            self.assertEqual(response.data["revenue"]["total"], expected)
++            self.assertEqual(response.data["revenue_by_currency"], {"CLP": 1000, "USD": 25, "ARS": 3000})
++            self.assertTrue(all(row["total"] == expected for row in response.data["sales_chart"]))
++
++    def test_analytics_scoped_kpis_series_providers_and_categories(self):
++        for code, expected in [("CLP", 1000), ("USD", 25), ("ARS", 3000)]:
++            response = self.client.get("/api/v1/admin/analytics/", {"currency": code})
++            self.assertEqual(response.status_code, 200, response.data)
++            self.assertEqual(response.data["currency"], code)
++            self.assertEqual(response.data["kpis"]["total_revenue"], expected)
++            self.assertEqual(response.data["kpis"]["avg_order_value"], expected)
++            self.assertEqual(sum(row["total"] for row in response.data["sales_by_month"]), expected)
++            self.assertEqual(sum(row["total"] for row in response.data["revenue_by_provider"]), expected)
++
++    def test_admin_payments_total_approved_is_currency_scoped(self):
++        for code, expected in [("CLP", 1000), ("USD", 25), ("ARS", 3000)]:
++            response = self.client.get("/api/v1/admin/payments/", {"currency": code})
++            self.assertEqual(response.status_code, 200, response.data)
++            self.assertEqual(response.data["total_approved"], expected)
++            self.assertEqual(response.data["currency"], code)
++            self.assertTrue(all(row["currency"] == code for row in response.data["results"]))
++
++    def test_invalid_currency_is_rejected(self):
++        for endpoint in ("dashboard/", "analytics/", "payments/"):
++            response = self.client.get(f"/api/v1/admin/{endpoint}", {"currency": "EUR"})
++            self.assertEqual(response.status_code, 400)
++            self.assertFalse("total" in response.data)
++
++    def test_legacy_default_is_explicitly_clp_only(self):
++        for endpoint in ("dashboard/", "analytics/", "payments/"):
++            response = self.client.get(f"/api/v1/admin/{endpoint}")
++            self.assertEqual(response.status_code, 200)
++            self.assertEqual(response.data["currency"], "CLP")
++
++    def test_executive_dashboard_respects_requested_currency(self):
++        for code, expected in [("CLP", 1000), ("USD", 25), ("ARS", 3000)]:
++            response = self.client.get("/api/v1/admin/executive/", {"currency": code})
++            self.assertEqual(response.status_code, 200, response.data)
++            self.assertEqual(response.data["currency"], code)
++            self.assertEqual(response.data["ventas"]["mes"], expected)
++            self.assertEqual(sum(row["total"] for row in response.data["ventas_7dias"]), expected)
++            if code != "CLP":
++                self.assertIsNone(response.data["utilidad_mes"])
++
++    def test_by_product_keeps_native_revenue_and_never_subtracts_clp_cost_from_usd(self):
++        category = Category.objects.create(name="Currency test", slug="currency-test")
++        product = Product.objects.create(
++            name="Speaker", slug="speaker-currency-test", category=category,
++            price=Decimal("1000"), cost_price=Decimal("200"), stock=10, is_active=True,
++        )
++        for code, order in self.orders.items():
++            OrderItem.objects.create(
++                order=order, product=product, product_name="Speaker",
++                price=order.total, quantity=1,
++            )
++        for code, expected in [("CLP", 1000), ("USD", 25), ("ARS", 3000)]:
++            response = self.client.get("/api/v1/admin/finance/by-product/", {"currency": code})
++            self.assertEqual(response.status_code, 200, response.data)
++            self.assertEqual(response.data["currency"], code)
++            row = response.data["results"][0]
++            self.assertEqual(row["total_revenue"], expected)
++            if code == "CLP":
++                self.assertEqual(row["profit"], 800)
++            else:
++                self.assertIsNone(row["profit"])
++                self.assertIsNone(row["total_cost"])
++                self.assertIsNone(row["margin"])
++
++    def test_finance_summary_discloses_legacy_unclassified_currency_ledger(self):
++        IncomeRecord.objects.create(
++            order=self.orders["USD"], amount=Decimal("25"), source="payment",
++        )
++        response = self.client.get("/api/v1/admin/finance/summary/")
++        self.assertEqual(response.status_code, 200, response.data)
++        self.assertEqual(response.data["currency_integrity"]["status"], "needs_classification")
++        self.assertGreater(response.data["currency_integrity"]["foreign_currency_income_records"], 0)
+diff --git a/backend/apps/analytics/views.py b/backend/apps/analytics/views.py
+--- a/backend/apps/analytics/views.py
++++ b/backend/apps/analytics/views.py
+@@ -44,6 +44,7 @@
+     import_courses_from_excel, import_courses_from_csv,
+ )
+ from apps.analytics.models import DistributionCategory, IncomeRecord, IncomeDistribution, Withdrawal
++from apps.analytics.currency_reporting import reporting_currency, grouped_currency_totals
+ from apps.services.serializers import ServiceDetailSerializer
+ 
+ # ═══════════════════════════════════════════════════════════
+@@ -712,13 +713,16 @@
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def dashboard_overview(request):
++    currency = reporting_currency(request)
+     now         = timezone.now()
+     today       = now.date()
+     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+     last_30     = now - timedelta(days=30)
+     last_7      = now - timedelta(days=7)
+ 
+-    paid_orders = Order.objects.filter(status__in=["paid", "shipped", "completed"])
++    all_paid_orders = Order.objects.filter(status__in=["paid", "shipped", "completed"])
++    totals_by_currency, unknown_currency_totals = grouped_currency_totals(all_paid_orders)
++    paid_orders = all_paid_orders.filter(currency=currency)
+ 
+     total_revenue      = paid_orders.aggregate(t=Sum("total"))["t"] or 0
+     revenue_this_month = paid_orders.filter(
+@@ -757,7 +761,7 @@
+ 
+     top_products = (
+         OrderItem.objects
+-        .filter(order__status__in=["paid", "shipped", "completed"])
++        .filter(order__status__in=["paid", "shipped", "completed"], order__currency=currency)
+         .values("product_name")
+         .annotate(total_sold=Sum("quantity"), revenue=Sum("price"))
+         .order_by("-total_sold")[:5]
+@@ -784,6 +788,9 @@
+         pass
+ 
+     return Response({
++        "currency": currency,
++        "revenue_by_currency": totals_by_currency,
++        "unknown_currency_totals": unknown_currency_totals,
+         "revenue": {
+             "total":        float(total_revenue),
+             "this_month":   float(revenue_this_month),
+@@ -823,6 +830,7 @@
+                 "id":      str(o.id),
+                 "email":   o.email,
+                 "total":   float(o.total),
++                "currency": o.currency,
+                 "status":  o.status,
+                 "created": o.created_at.strftime("%Y-%m-%d %H:%M"),
+             }
+@@ -963,8 +971,11 @@
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def admin_payments(request):
++    currency = reporting_currency(request)
+     status_filter = request.query_params.get("status")
+-    payments = Payment.objects.select_related("order").order_by("-created_at")
++    approved_all = Payment.objects.filter(status="approved")
++    totals_by_currency, unknown_currency_totals = grouped_currency_totals(approved_all, "amount")
++    payments = Payment.objects.select_related("order").filter(currency=currency).order_by("-created_at")
+ 
+     if status_filter:
+         payments = payments.filter(status=status_filter)
+@@ -985,7 +996,13 @@
+         status="approved"
+     ).aggregate(t=Sum("amount"))["t"] or 0
+ 
+-    return Response({"results": data, "total_approved": float(total_approved)})
++    return Response({
++        "currency": currency,
++        "results": data,
++        "total_approved": float(total_approved),
++        "approved_by_currency": totals_by_currency,
++        "unknown_currency_totals": unknown_currency_totals,
++    })
+ 
+ @api_view(["PATCH"])
+ @permission_classes([IsAdminOrStaff])
+@@ -1449,12 +1466,15 @@
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def analytics_full(request):
++    currency = reporting_currency(request)
+     now      = timezone.now()
+     last_12m = now - timedelta(days=365)
+ 
+-    paid_orders = Order.objects.filter(
++    all_paid_orders = Order.objects.filter(
+         status__in=["paid", "shipped", "completed"]
+     )
++    totals_by_currency, unknown_currency_totals = grouped_currency_totals(all_paid_orders)
++    paid_orders = all_paid_orders.filter(currency=currency)
+ 
+     sales_by_month = (
+         paid_orders.filter(created_at__gte=last_12m)
+@@ -1480,7 +1500,7 @@
+     )
+ 
+     revenue_by_provider = (
+-        Payment.objects.filter(status="approved")
++        Payment.objects.filter(status="approved", currency=currency)
+         .values("provider")
+         .annotate(total=Sum("amount"), count=Count("id"))
+         .order_by("-total")
+@@ -1497,6 +1517,7 @@
+         OrderItem.objects
+         .filter(
+             order__status__in=["paid", "shipped", "completed"],
++            order__currency=currency,
+             product__isnull=False
+         )
+         .values("product__category__name")
+@@ -1514,15 +1535,18 @@
+ 
+     total_revenue    = paid_orders.aggregate(t=Sum("total"))["t"] or 0
+     avg_order_value  = paid_orders.aggregate(a=Avg("total"))["a"] or 0
+-    total_customers  = Order.objects.values("user").distinct().count()
++    total_customers  = paid_orders.values("user").distinct().count()
+     repeat_customers = (
+-        Order.objects.values("user")
++        paid_orders.values("user")
+         .annotate(c=Count("id"))
+         .filter(c__gt=1)
+         .count()
+     )
+ 
+     return Response({
++        "currency": currency,
++        "revenue_by_currency": totals_by_currency,
++        "unknown_currency_totals": unknown_currency_totals,
+         "kpis": {
+             "total_revenue":    float(total_revenue),
+             "avg_order_value":  float(avg_order_value),
+@@ -1919,9 +1943,34 @@
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def admin_finance_summary(request):
+-    """GET /api/v1/admin/finance/summary/"""
+-    
++    """GET /api/v1/admin/finance/summary/.
+ 
++    Legacy ledger has no native currency column for income distributions or
++    withdrawals. Report the classification risk explicitly; never claim a
++    mixed-currency balance is audited.
++    """
++    foreign_income_count = IncomeRecord.objects.filter(
++        Q(order__currency__in=["USD", "ARS"])
++        | Q(order__isnull=True, payment__currency__in=["USD", "ARS"])
++    ).count()
++    unidentified_income_count = IncomeRecord.objects.filter(
++        order__isnull=True, payment__isnull=True
++    ).count()
++    unidentified_withdrawal_count = Withdrawal.objects.count()
++    finance_integrity = {
++        "status": "needs_classification" if (
++            foreign_income_count or unidentified_income_count or unidentified_withdrawal_count
++        ) else "clp_only_verifiable",
++        "foreign_currency_income_records": foreign_income_count,
++        "unidentified_income_records": unidentified_income_count,
++        "withdrawals_without_currency": unidentified_withdrawal_count,
++        "warning": (
++            "Los saldos históricos no están certificados por moneda. "
++            "Clasifica ingresos y retiros antes de utilizarlos para decisiones financieras."
++        ) if (foreign_income_count or unidentified_income_count or unidentified_withdrawal_count) else None,
++    }
++
++
+     categories = DistributionCategory.objects.filter(is_active=True)
+     summary = []
+ 
+@@ -1975,6 +2024,7 @@
+     } for r in recent]
+ 
+     return Response({
++        "currency_integrity": finance_integrity,
+         "summary":          summary,
+         "total_income":     float(total_income),
+         "total_withdrawn":  float(total_withdrawn),
+@@ -2067,12 +2117,14 @@
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def admin_finance_by_product(request):
+-    """GET /api/v1/admin/finance/by-product/"""
++    """GET /api/v1/admin/finance/by-product/?currency=CLP|USD|ARS"""
++    currency = reporting_currency(request)
+     
+ 
+     # Solo órdenes pagadas
+     items = OrderItem.objects.filter(
+-        order__status__in=["paid", "shipped", "completed"]
++        order__status__in=["paid", "shipped", "completed"],
++        order__currency=currency,
+     ).select_related("product").values(
+         "product__name", "product__sku", "product__cost_price"
+     ).annotate(
+@@ -2085,23 +2137,26 @@
+ 
+     results = []
+     for item in items:
+-        cost_price    = item["product__cost_price"] or Decimal("0")
+-        total_cost    = cost_price * item["units_sold"]
+-        profit        = item["total_revenue"] - total_cost
+-        margin        = round(float(profit) / float(item["total_revenue"]) * 100, 1) \
+-                        if item["total_revenue"] else 0
++        # Product cost_price is maintained in the local catalog currency (CLP).
++        # Do NOT subtract CLP costs from USD or ARS sale amounts.
++        cost_price = item["product__cost_price"]
++        costs_known = currency == "CLP" and cost_price is not None
++        total_cost = cost_price * item["units_sold"] if costs_known else None
++        profit = item["total_revenue"] - total_cost if costs_known else None
++        margin = round(float(profit) / float(item["total_revenue"]) * 100, 1) \
++            if profit is not None and item["total_revenue"] else None
+ 
+         results.append({
+             "product_name":  item["product__name"],
+             "sku":           item["product__sku"],
+             "units_sold":    item["units_sold"],
+             "total_revenue": float(item["total_revenue"]),
+-            "total_cost":    float(total_cost),
+-            "profit":        float(profit),
++            "total_cost":    float(total_cost) if total_cost is not None else None,
++            "profit":        float(profit) if profit is not None else None,
+             "margin":        margin,
+         })
+ 
+-    return Response({"results": results})    
++    return Response({"currency": currency, "results": results, "cost_currency": "CLP"})    
+ 
+ 
+ # ── INVENTARIO INTELIGENTE ────────────────────────────────────
+@@ -2239,7 +2294,8 @@
+ @api_view(["GET"])
+ @permission_classes([IsAdminOrStaff])
+ def executive_dashboard(request):
+-    """Dashboard ejecutivo — KPIs del negocio para mobile"""
++    """Dashboard ejecutivo — KPIs del negocio para mobile, sin mezcla monetaria."""
++    currency = reporting_currency(request)
+ 
+     hoy        = timezone.now()
+     hoy_inicio = hoy.replace(hour=0, minute=0, second=0, microsecond=0)
+@@ -2252,6 +2308,7 @@
+     def get_ventas(desde, hasta=None):
+         qs = Order.objects.filter(
+             status__in=["paid", "shipped", "completed"],
++            currency=currency,
+             created_at__gte=desde,
+         )
+         if hasta:
+@@ -2276,6 +2333,7 @@
+ 
+     # ── Órdenes del día ──────────────────────────────────────
+     ordenes_hoy = Order.objects.filter(
++        currency=currency,
+         created_at__gte=hoy_inicio
+     ).select_related().order_by("-created_at")[:5]
+ 
+@@ -2283,6 +2341,7 @@
+         "id":     str(o.id),
+         "status": o.status,
+         "total":  float(o.total),
++        "currency": o.currency,
+         "email":  o.email,
+         "hora":   o.created_at.strftime("%H:%M"),
+     } for o in ordenes_hoy]
+@@ -2306,6 +2365,7 @@
+         utilidad_mes = IncomeDistribution.objects.filter(
+             category=utilidad_cat,
+             income_record__order__created_at__gte=mes_inicio,
++            income_record__order__currency=currency,
+         ).aggregate(t=Sum("amount"))["t"] or 0
+     except Exception as e:
+         import logging
+@@ -2319,6 +2379,7 @@
+         dia_fin    = dia_inicio + timedelta(days=1)
+         v = Order.objects.filter(
+             status__in=["paid", "shipped", "completed"],
++            currency=currency,
+             created_at__gte=dia_inicio,
+             created_at__lt=dia_fin,
+         ).aggregate(total=Sum("total"), count=Count("id"))
+@@ -2333,6 +2394,7 @@
+     from apps.orders.models import OrderItem
+     top_productos = OrderItem.objects.filter(
+         order__status__in=["paid", "shipped", "completed"],
++        order__currency=currency,
+         order__created_at__gte=mes_inicio,
+     ).values("product_name").annotate(
+         unidades=Sum("quantity"),
+@@ -2340,6 +2402,8 @@
+     ).order_by("-ingresos")[:3]
+ 
+     return Response({
++        "currency": currency,
++        "cost_profit_certified": currency == "CLP",
+         "ventas": {
+             "hoy":            float(ventas_hoy["total"] or 0),
+             "hoy_count":      ventas_hoy["count"] or 0,
+@@ -2350,7 +2414,7 @@
+             "var_dia":        variacion(ventas_hoy["total"], ventas_ayer["total"]),
+             "var_mes":        variacion(ventas_mes["total"], ventas_mes_ant["total"]),
+         },
+-        "utilidad_mes":    float(utilidad_mes),
++        "utilidad_mes":    float(utilidad_mes) if currency == "CLP" else None,
+         "inventario": {
+             "criticos":  criticos,
+             "sin_stock": sin_stock,
+diff --git a/backend/apps/billing/views.py b/backend/apps/billing/views.py
+--- a/backend/apps/billing/views.py
++++ b/backend/apps/billing/views.py
+@@ -67,6 +67,7 @@
+                              if o.user else "") or o.email,
+             "email":        o.email,
+             "total":        float(o.total),
++            "currency":     o.currency,
+             "pago_estado":  o.status,
+             "documento":    _serialize(doc) if doc else None,
+         })
+diff --git a/docs/v3-2/01-auditoria-ejecucion.md b/docs/v3-2/01-auditoria-ejecucion.md
+new file mode 100644
+--- /dev/null
++++ b/docs/v3-2/01-auditoria-ejecucion.md
+@@ -0,0 +1,102 @@
++# LEVELPRO AUDIO V3.2 — Auditoría integral / registro de ejecución
++
++Base auditada: `ef614c9357675d7fb6a18658eb2e8694e072a38f` (V3.1 validada).
++Rama de trabajo: `feat/v3-2-refinamiento-integral`.
++
++## Inventario del frontend
++
++Se inspeccionaron los 27 módulos/páginas de `frontend/src/pages/admin`,
++las 9 subpáginas de `frontend/src/pages/dashboard`, las 18 páginas de nivel
++superior, los layouts y 14 primitivas compartidas `components/admin/ui`.
++Se leyeron fuentes de API, backend de analytics, órdenes, pagos y facturación.
++
++La inspección ha sido **del código** y de las capturas de producción aportadas
++por el propietario para Admin Home/Cliente Home. No se dispone de un navegador
++autenticado con todas las rutas ni de capturas responsive de cada página.
++Por ello NO se certifica una auditoría visual 1:1 de cada módulo.
++
++### Conclusiones UX/UI
++
++- El lenguaje Bento V3 está concentrado en los dos Home; numerosas vistas
++  interiores mantienen sistema `admin-ui.css` y JSX con estilos inline.
++- AdminDashboard, AdminFinance, AdminProducts y Dashboard concentran muchos
++  estilos inline: una migración masiva e indiscriminada rompería el diseño.
++- Las tarjetas KPI accionables estaban implementadas como `div onClick`,
++  sin soporte de teclado; tablas usaban `th onClick`, y varios diálogos
++  carecían de nombre accesible y gestión de foco.
++- En el Home del usuario, las tarjetas verdes se expandían a la altura del
++  hero negro, dejando amplias zonas vacías. Se reajusta la composición para
++  dos filas Bento con un protagonista vertical.
++- Se normalizan foco visible, contraste de títulos oscuros, reduced motion
++  y controles de módulos dentro del shell, sin tocar el storefront público.
++
++## Finanzas y multimoneda: diagnóstico
++
++**P0 — resuelto en consultas comerciales de esta entrega:**
++- `dashboard_overview`: sumaba `Order.total` de todas las monedas.
++- `analytics_full`: KPI, series y ticket promedio agregaban órdenes
++  CLP/USD/ARS; ingresos por proveedor tampoco separaban monedas.
++- `admin_payments`: sumaba `Payment.amount` de todas las monedas.
++- `executive_dashboard`: KPIs diarios/mensuales y series mezclaban importes.
++- `admin_finance_by_product`: mezclaba ventas; además restaba costo de
++  catálogo CLP contra ventas USD/ARS.
++- UI de pedidos del cliente, gestión de órdenes Admin y registro tributario
++  presentaban importes extranjeros como `$` CLP.
++- `getAnalytics` utilizado en Finanzas no identificaba moneda.
++
++**Corrección implementada:**
++- Endpoints con `?currency=CLP|USD|ARS`, valor por defecto explícito CLP,
++  rechazo HTTP 400 de monedas no soportadas.
++- Totales de las 3 divisas reportados separadamente, sin conversiones.
++- Moneda en listado de documentos tributarios y selección de monedas en UI.
++- Costos, margen y utilidad de productos USD/ARS devueltos `null` hasta
++  disponer de costos comparables, sin tasa de cambio improvisada.
++- La lista de compras y sus KPIs no suman monedas distintas ni pedidos no
++  pagados.
++
++**P0 — detectado, NO resuelto aún: libro mayor histórico.**
++- `IncomeRecord`, `IncomeDistribution` y `Withdrawal` guardan montos
++  sin moneda explícita; `admin_finance_summary`, retiros, distribuciones
++  y balance histórico pueden ser matemáticamente ambiguos.
++- La API identifica ingresos extranjeros y movimientos sin clasificación;
++  el panel avisa que los saldos históricos no están certificados.
++- Debe diseñarse una migración de esquema con columna moneda, vinculación
++  verificable a órdenes/pagos, tratamiento de retiros históricos sin origen,
++  reconciliación de costos y auditoría de registros previos.
++- No se marcó un retiro como CLP por defecto, no se inventó un tipo de
++  cambio y NO se cambió el flujo monetario de retiros sin conciliación.
++- El catálogo almacena `cost_price` en moneda local; su coste histórico
++  no debe asumirse como coste definitivo de órdenes de exportación.
++- Rewards e integración fiscal requieren revisión de integridad monetaria
++  antes de certificar todo el negocio.
++
++## Patch 14 — estado
++
++**No existe implementación ni patch aprobado del 14**. Su alcance
++previamente planteado: idempotencia de intentos de pago, recuperación
++de pedidos pendientes, conciliación de pasarelas y protección de stock.
++No se abrió ni modificó lógica relativa al Patch 14 en V3.2.
++Se conserva absolutamente pausado.
++
++## Validación
++
++- Tests Django añadidos para CLP/USD/ARS en Dashboard, Analytics, Pagos,
++  Executive, reporte de producto, moneda inválida y riesgo financiero.
++- Tests JS añadidos para separación de totales, importe original y
++  moneda ausente.
++- Debe ejecutarse `python manage.py check`, `python -m pytest`,
++  `npm run lint`, `npm run test:unit`, `npm run build` en CI.
++- Debe revisarse visualmente en escritorio/tablet/móvil cada área antes
++  de fusionar, además de compras y pagos sandbox.
++- **No son pruebas ya ejecutadas**: las nuevas comprobaciones de Cloud Build
++  y QA autenticada requieren integrar el patch en el entorno del propietario.
++
++## Prioridad del siguiente lote dentro de V3.2
++
++1. Conciliación histórica y migración monetaria de tesorería, sin
++   reinterpretar retiros antiguos por defecto.
++2. Revisar recompensas, documentos fiscales y series monetarias restantes.
++3. Comprobar exhaustivamente estados de error/carga y responsive en todas
++   las páginas interiores, con capturas reales y pruebas E2E.
++4. QA funcional de roles, pagos y todos los módulos tras cambios comunes.
++5. Solo después, informe final de V3.2 y consideración del Patch 14.
+diff --git a/frontend/package.json b/frontend/package.json
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -16,7 +16,7 @@
+     "test:payment:browser": "node --test tests/payment-return.browser.mjs",
+     "lint": "eslint .",
+     "preview": "vite preview",
+-    "test:unit": "node --test tests/payment-return.test.mjs tests/jsonld.test.mjs tests/seo.test.mjs tests/dashboard-payment-methods.test.mjs tests/dashboard-v3-data.test.mjs",
++    "test:unit": "node --test tests/payment-return.test.mjs tests/jsonld.test.mjs tests/seo.test.mjs tests/dashboard-payment-methods.test.mjs tests/dashboard-v3-data.test.mjs tests/v3-2-currency.test.mjs",
+     "test:browser": "node --test tests/payment-return.browser.mjs tests/transfer-instructions.browser.mjs tests/jsonld.browser.mjs tests/seo.browser.mjs tests/routes.browser.mjs",
+     "test:nginx": "node --test tests/seo-nginx.test.mjs",
+     "check:bundle": "node scripts/check-bundle.mjs"
+diff --git a/frontend/src/api/admin.api.js b/frontend/src/api/admin.api.js
+--- a/frontend/src/api/admin.api.js
++++ b/frontend/src/api/admin.api.js
+@@ -5,8 +5,8 @@
+ const BASE = "/admin"
+ 
+ // ── Dashboard & Analytics ────────────────────────────────────
+-export const getAdminDashboard  = () => api.get(`${BASE}/dashboard/`).then(r => r.data)
+-export const getAnalytics       = () => api.get(`${BASE}/analytics/`).then(r => r.data)
++export const getAdminDashboard  = (currency = "CLP") => api.get(`${BASE}/dashboard/`, { params: { currency } }).then(r => r.data)
++export const getAnalytics       = (currency = "CLP") => api.get(`${BASE}/analytics/`, { params: { currency } }).then(r => r.data)
+ 
+ // ── Orders ───────────────────────────────────────────────────
+ export const getAdminOrders     = (params) => api.get(`${BASE}/orders/`, { params }).then(r => r.data)
+@@ -66,7 +66,7 @@
+ export const getAdminUsers  = (params) => api.get(`${BASE}/users/`, { params }).then(r => r.data)
+ 
+ // ── Payments ─────────────────────────────────────────────────
+-export const getAdminPayments = (params) => api.get(`${BASE}/payments/`, { params }).then(r => r.data)
++export const getAdminPayments = (params = {}) => api.get(`${BASE}/payments/`, { params: { currency: "CLP", ...params } }).then(r => r.data)
+ 
+ // ── Academy — cursos ─────────────────────────────────────────
+ export const getAdminAcademy    = () => api.get(`${BASE}/academy/`).then(r => r.data)
+diff --git a/frontend/src/components/admin/ui/AdminTabs.jsx b/frontend/src/components/admin/ui/AdminTabs.jsx
+--- a/frontend/src/components/admin/ui/AdminTabs.jsx
++++ b/frontend/src/components/admin/ui/AdminTabs.jsx
+@@ -1,12 +1,12 @@
+ // components/admin/ui/AdminTabs.jsx
+ export function AdminTabs({ tabs = [], value, onChange, testId }) {
+   return (
+-    <div className="au-tabs" data-testid={testId || "admin-tabs"}>
++    <div className="au-tabs" role="tablist" aria-label="Secciones" data-testid={testId || "admin-tabs"}>
+       {tabs.map((t) => {
+         const key = t.key ?? t
+         const label = t.label ?? t
+         return (
+-          <button key={key} type="button"
++          <button key={key} type="button" role="tab" aria-selected={value === key}
+             className={`au-tab ${value === key ? "is-active" : ""}`}
+             onClick={() => onChange?.(key)}
+             data-testid={`tab-${key}`}>
+diff --git a/frontend/src/components/admin/ui/Buttons.jsx b/frontend/src/components/admin/ui/Buttons.jsx
+--- a/frontend/src/components/admin/ui/Buttons.jsx
++++ b/frontend/src/components/admin/ui/Buttons.jsx
+@@ -7,9 +7,12 @@
+ 
+ function Btn({ variant, size, className, to, href, children, testId, loading, disabled, ...rest }) {
+   const cls = base(variant, size, className)
++  if ((to || href) && (disabled || loading)) {
++    return <span className={cls} aria-disabled="true" aria-busy={Boolean(loading)} data-testid={testId}>{children}</span>
++  }
+   if (to) return <Link to={to} className={cls} data-testid={testId} {...rest}>{children}</Link>
+   if (href) return <a href={href} className={cls} data-testid={testId} {...rest}>{children}</a>
+-  return <button className={cls} data-testid={testId} disabled={disabled || Boolean(loading)} {...rest}>{children}</button>
++  return <button type="button" className={cls} data-testid={testId} disabled={disabled || Boolean(loading)} aria-busy={Boolean(loading)} {...rest}>{children}</button>
+ }
+ 
+ export const PrimaryButton   = (p) => <Btn variant="primary" {...p} />
+@@ -19,6 +22,7 @@
+ export function IconButton({ children, ghost, danger, className, testId, ...rest }) {
+   return (
+     <button
++      type="button"
+       className={`au-iconbtn ${ghost ? "au-iconbtn--ghost" : ""} ${danger ? "au-iconbtn--danger" : ""} ${className || ""}`.trim()}
+       data-testid={testId}
+       {...rest}
+diff --git a/frontend/src/components/admin/ui/ConfirmationModal.jsx b/frontend/src/components/admin/ui/ConfirmationModal.jsx
+--- a/frontend/src/components/admin/ui/ConfirmationModal.jsx
++++ b/frontend/src/components/admin/ui/ConfirmationModal.jsx
+@@ -1,5 +1,5 @@
+ // components/admin/ui/ConfirmationModal.jsx
+-import { useEffect } from "react"
++import { useEffect, useId, useRef } from "react"
+ import { PrimaryButton, SecondaryButton, DangerButton } from "./Buttons"
+ 
+ export function ConfirmationModal({
+@@ -7,19 +7,23 @@
+   confirmLabel = "Confirmar", cancelLabel = "Cancelar",
+   danger = false, loading = false, onConfirm, onCancel, testId,
+ }) {
++  const titleId = useId()
++  const dialogRef = useRef(null)
+   useEffect(() => {
+     if (!open) return
++    const previous = document.activeElement
++    dialogRef.current?.focus()
+     const h = (e) => e.key === "Escape" && onCancel?.()
+     window.addEventListener("keydown", h)
+-    return () => window.removeEventListener("keydown", h)
++    return () => { window.removeEventListener("keydown", h); previous?.focus?.() }
+   }, [open, onCancel])
+ 
+   if (!open) return null
+   const Confirm = danger ? DangerButton : PrimaryButton
+   return (
+     <div className="au-modal__backdrop" onClick={onCancel} data-testid={testId || "confirm-modal"}>
+-      <div className="au-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true">
+-        <p className="au-modal__title">{title}</p>
++      <div className="au-modal" onClick={(e) => e.stopPropagation()} ref={dialogRef} tabIndex={-1} role="dialog" aria-modal="true" aria-labelledby={titleId}>
++        <p id={titleId} className="au-modal__title">{title}</p>
+         {description && <p className="au-modal__desc">{description}</p>}
+         <div className="au-modal__actions">
+           <SecondaryButton onClick={onCancel} testId="confirm-cancel">{cancelLabel}</SecondaryButton>
+diff --git a/frontend/src/components/admin/ui/DataTable.jsx b/frontend/src/components/admin/ui/DataTable.jsx
+--- a/frontend/src/components/admin/ui/DataTable.jsx
++++ b/frontend/src/components/admin/ui/DataTable.jsx
+@@ -136,14 +136,17 @@
+                   )}
+                   {columns.map((c) => (
+                     <th key={c.key || c.header} className={c.sortable ? "is-sortable" : ""}
+-                      style={{ width: c.width, textAlign: c.align }}
+-                      onClick={() => c.sortable && c.key && toggleSort(c.key)}>
+-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+-                        {c.header}
+-                        {c.sortable && (sort.key === c.key
+-                          ? (sort.dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />)
+-                          : <ArrowUpDown size={12} style={{ opacity: .4 }} />)}
+-                      </span>
++                      scope="col" aria-sort={c.sortable ? sort.key === c.key ? sort.dir === "asc" ? "ascending" : "descending" : "none" : undefined}
++                      style={{ width: c.width, textAlign: c.align }}>
++                      {c.sortable && c.key ? (
++                        <button type="button" className="au-table-sort-btn" onClick={() => toggleSort(c.key)}
++                          style={{ display: "inline-flex", alignItems: "center", gap: 5, border: 0, background: "transparent", font: "inherit", color: "inherit", cursor: "pointer", padding: "3px 0" }}>
++                          {c.header}
++                          {sort.key === c.key
++                            ? sort.dir === "asc" ? <ArrowUp size={12} /> : <ArrowDown size={12} />
++                            : <ArrowUpDown size={12} style={{ opacity: .4 }} />}
++                        </button>
++                      ) : <span>{c.header}</span>}
+                     </th>
+                   ))}
+                   {rowActions && <th style={{ width: 56 }} />}
+@@ -153,7 +156,13 @@
+                 {pageRows.map((row) => {
+                   const id = getRowId(row)
+                   return (
+-                    <tr key={id} onClick={() => onRowClick?.(row)} style={{ cursor: onRowClick ? "pointer" : "default" }} data-testid={`${testId}-row`}>
++                    <tr key={id} onClick={() => onRowClick?.(row)}
++                      tabIndex={onRowClick ? 0 : undefined}
++                      onKeyDown={e => {
++                        if (!onRowClick || (e.target !== e.currentTarget)) return
++                        if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onRowClick(row) }
++                      }}
++                      style={{ cursor: onRowClick ? "pointer" : "default" }} data-testid={`${testId}-row`}>
+                       {selectable && (
+                         <td onClick={(e) => e.stopPropagation()}>
+                           <input type="checkbox" className="au-checkbox" checked={selected.has(id)} onChange={() => toggleRow(id)} aria-label="Seleccionar fila" />
+diff --git a/frontend/src/components/admin/ui/FormModal.jsx b/frontend/src/components/admin/ui/FormModal.jsx
+--- a/frontend/src/components/admin/ui/FormModal.jsx
++++ b/frontend/src/components/admin/ui/FormModal.jsx
+@@ -5,7 +5,7 @@
+ // (12 páginas con el mismo bloque de "position: fixed" copiado y pegado).
+ // Ahora el layout vive en un solo lugar; el contenido del formulario sigue
+ // siendo específico de cada página (children).
+-import { useEffect } from "react"
++import { useEffect, useId, useRef } from "react"
+ import { PrimaryButton, SecondaryButton } from "./Buttons"
+ 
+ export function FormModal({
+@@ -13,11 +13,15 @@
+   saving = false, saveLabel = "Guardar", cancelLabel = "Cancelar",
+   error, maxWidth = "440px", scrollableBody = false, testId,
+ }) {
++  const titleId = useId()
++  const dialogRef = useRef(null)
+   useEffect(() => {
+     if (!open) return
++    const previous = document.activeElement
++    dialogRef.current?.focus()
+     const h = (e) => e.key === "Escape" && onClose?.()
+     window.addEventListener("keydown", h)
+-    return () => window.removeEventListener("keydown", h)
++    return () => { window.removeEventListener("keydown", h); previous?.focus?.() }
+   }, [open, onClose])
+ 
+   if (!open) return null
+@@ -32,20 +36,23 @@
+         }}
+         onClick={(e) => e.stopPropagation()}
+         role="dialog"
++        ref={dialogRef}
++        tabIndex={-1}
++        aria-labelledby={titleId}
+         aria-modal="true"
+       >
+         <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)",
+           display: "flex", justifyContent: "space-between", alignItems: "center",
+           flexShrink: 0 }}>
+-          <p style={{ fontSize: "15px", fontWeight: 500 }}>{title}</p>
+-          <button onClick={onClose} aria-label="Cerrar" style={{ background: "none",
++          <p id={titleId} style={{ fontSize: "15px", fontWeight: 700, color: "var(--admin-text)" }}>{title}</p>
++          <button type="button" onClick={onClose} aria-label="Cerrar" style={{ background: "none",
+             border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: "22px" }}>×</button>
+         </div>
+ 
+         <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px",
+           ...(scrollableBody ? { flex: 1, overflowY: "auto" } : {}) }}>
+           {error && (
+-            <div style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
++            <div role="alert" style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
+               background: "rgba(255,77,77,0.08)", border: "1px solid rgba(255,77,77,0.2)",
+               color: "var(--danger)", fontSize: "13px" }}>
+               {error}
+diff --git a/frontend/src/components/admin/ui/Inputs.jsx b/frontend/src/components/admin/ui/Inputs.jsx
+--- a/frontend/src/components/admin/ui/Inputs.jsx
++++ b/frontend/src/components/admin/ui/Inputs.jsx
+@@ -6,7 +6,7 @@
+     <div className="au-search">
+       <Search size={15} strokeWidth={2} />
+       <input value={value} onChange={(e) => onChange?.(e.target.value)}
+-        placeholder={placeholder} data-testid={testId || "search-input"} />
++        placeholder={placeholder} aria-label={placeholder} data-testid={testId || "search-input"} />
+     </div>
+   )
+ }
+diff --git a/frontend/src/components/admin/ui/StatCard.jsx b/frontend/src/components/admin/ui/StatCard.jsx
+--- a/frontend/src/components/admin/ui/StatCard.jsx
++++ b/frontend/src/components/admin/ui/StatCard.jsx
+@@ -59,5 +59,7 @@
+   )
+ 
+   if (to) return <Link to={to} className={cls} data-testid={testId}>{inner}</Link>
+-  return <div className={cls} onClick={onClick} data-testid={testId}>{inner}</div>
++  if (onClick) return <button type="button" className={cls} onClick={onClick} data-testid={testId}
++    style={{ width: "100%", textAlign: "left", font: "inherit" }}>{inner}</button>
++  return <div className={cls} data-testid={testId}>{inner}</div>
+ }
+diff --git a/frontend/src/pages/Dashboard.jsx b/frontend/src/pages/Dashboard.jsx
+--- a/frontend/src/pages/Dashboard.jsx
++++ b/frontend/src/pages/Dashboard.jsx
+@@ -117,7 +117,7 @@
+             ==================================================================== */}
+         <div
+           className="v3-card-obsidian"
+-          style={{ gridColumn: "span 4", minHeight: 460 }}
++          style={{ gridColumn: "span 4", gridRow: "span 2", minHeight: 460 }}
+           data-testid="dash-alert"
+         >
+           <div className="v3-card-header">
+diff --git a/frontend/src/pages/admin/AdminBilling.jsx b/frontend/src/pages/admin/AdminBilling.jsx
+--- a/frontend/src/pages/admin/AdminBilling.jsx
++++ b/frontend/src/pages/admin/AdminBilling.jsx
+@@ -14,10 +14,11 @@
+ } from "../../components/admin/ui"
+ import { showToast } from "../../components/ui/ToastNotification"
+ import { ExternalLink, FileText, Inbox, CheckCircle2, Clock3 } from "lucide-react"
++import { formatMoney } from "../dashboard/dashboardV3Data"
+ 
+ const SII_URL = "https://www4.sii.cl/consdcvinternetui/"
+ 
+-const money = (v) => v == null ? "—" : `$${Number(v).toLocaleString("es-CL")}`
++const money = (v, currency = "CLP") => formatMoney(v, currency)
+ 
+ const ESTADO_TONE = {
+   pendiente: "warning",
+@@ -33,7 +34,7 @@
+     numero_externo: doc?.numero_externo || "",
+     fecha_emision:  doc?.fecha_emision  || "",
+     estado:         doc?.estado         || "pendiente",
+-    monto:          doc?.monto ?? row.total,
++    monto:          doc?.monto ?? (row.currency === "CLP" ? row.total : ""),
+     observaciones:  doc?.observaciones  || "",
+   })
+ 
+@@ -56,9 +57,15 @@
+           borderRadius: "var(--r-md)", fontSize: "13px", color: "var(--text-2)",
+         }}>
+           <strong style={{ color: "var(--text)" }}>{row.cliente}</strong><br/>
+-          {row.email} · {money(row.total)}
++          {row.email} · {money(row.total, row.currency)}
+         </div>
+ 
++        {row.currency !== "CLP" && (
++          <p role="note" style={{ color: "var(--admin-text-muted)", fontSize: 12 }}>
++            Pedido en {row.currency || "moneda desconocida"}: el monto tributario se debe ingresar desde el documento real emitido en SII.
++            No se convierte automáticamente desde el importe de la orden.
++          </p>
++        )}
+         <a href={SII_URL} target="_blank" rel="noreferrer"
+           style={{
+             display: "inline-flex", alignItems: "center", gap: "8px",
+@@ -168,7 +175,7 @@
+                   <tr key={r.order_id}>
+                     <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text)" }}>#{r.order_short}</td>
+                     <td style={{ color: "var(--admin-text)", fontWeight: 500 }}>{r.cliente}</td>
+-                    <td style={{ fontWeight: 700, color: "var(--admin-primary-text)" }}>{money(r.total)}</td>
++                    <td style={{ fontWeight: 700, color: "var(--admin-primary-text)" }}>{money(r.total, r.currency)}</td>
+                     <td>
+                       <StatusBadge tone="success">Pagado</StatusBadge>
+                     </td>
+diff --git a/frontend/src/pages/admin/AdminDashboard.jsx b/frontend/src/pages/admin/AdminDashboard.jsx
+--- a/frontend/src/pages/admin/AdminDashboard.jsx
++++ b/frontend/src/pages/admin/AdminDashboard.jsx
+@@ -15,7 +15,6 @@
+   monthlyShare, count, formatMoney,
+ } from "../dashboard/dashboardV3Data"
+ 
+-const clp = (n) => formatMoney(n, "CLP")
+ 
+ const ORDER_STATUS_MAP = {
+   paid:      { label: "Pagado",     tone: "success" },
+@@ -48,15 +47,17 @@
+ export default function AdminDashboard() {
+   const navigate = useNavigate()
+   const [period, setPeriod] = useState("30D")
++  const [currency, setCurrency] = useState("CLP")
++  const money = value => formatMoney(value, currency)
+ 
+   const { data, isPending, isError, refetch, isFetching } = useQuery({
+-    queryKey: ["admin-dashboard"],
+-    queryFn: getAdminDashboard,
++    queryKey: ["admin-dashboard", currency],
++    queryFn: () => getAdminDashboard(currency),
+     refetchInterval: 60000,
+   })
+-  const { data: analytics } = useQuery({
+-    queryKey: ["admin-analytics"],
+-    queryFn: getAnalytics,
++  const { data: analytics, isPending: analyticsLoading, isError: analyticsError } = useQuery({
++    queryKey: ["admin-analytics", currency],
++    queryFn: () => getAnalytics(currency),
+     refetchInterval: 120000,
+   })
+ 
+@@ -103,15 +104,20 @@
+             <span>Panel de Analítica</span>
+           </h1>
+           <p className="v3-title-sub">
+-            Rendimiento comercial en tiempo real, efectividad operativa y transacciones.
++            Indicadores comerciales por moneda, operaciones y alertas.
+           </p>
+         </div>
+ 
+         <div className="v3-controls-row">
++          <label className="v3-currency-control">
++            <span className="v3-currency-label">Moneda</span>
++            <select aria-label="Moneda de reportes" value={currency} onChange={e => setCurrency(e.target.value)}>
++              <option value="CLP">CLP</option><option value="USD">USD</option><option value="ARS">ARS</option>
++            </select>
++          </label>
+           <div className="v3-pill-btn">
+             <Calendar size={14} />
+-            <span>{monthLabel} · información actual</span>
+-            <ChevronDown size={13} style={{ opacity: 0.6 }} />
++            <span>{monthLabel} · corte actual</span>
+           </div>
+ 
+           <button
+@@ -163,8 +169,8 @@
+           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, alignSelf: "flex-start",
+             background: "rgba(255, 255, 255, 0.08)", padding: "4px 12px", borderRadius: 999, fontSize: 11.5,
+             color: "#E2E8F0", fontWeight: 600, border: "1px solid rgba(255, 255, 255, 0.1)" }}>
+-            <span>Ventas pagadas del mes</span>
+-            <span style={{ color: "var(--v3-accent)", fontWeight: 800 }}>{clp(rev.this_month)}</span>
++            <span>Ventas pagadas del mes · {currency}</span>
++            <span style={{ color: "var(--v3-accent)", fontWeight: 800 }}>{money(rev.this_month)}</span>
+             <ChevronDown size={12} style={{ opacity: 0.7 }} />
+           </div>
+ 
+@@ -196,8 +202,8 @@
+               />
+             </svg>
+             <div className="v3-donut-value">
+-              <span className="v3-donut-amount">{clp(rev.this_month)}</span>
+-              <span className="v3-donut-sub">{share}% del total registrado</span>
++              <span className="v3-donut-amount">{money(rev.this_month)}</span>
++              <span className="v3-donut-sub">{share}% del total {currency}</span>
+             </div>
+           </div>
+ 
+@@ -209,13 +215,13 @@
+           </div>
+ 
+           <p style={{ fontSize: 12, color: "var(--v3-text-dark-muted)", textAlign: "center", margin: "14px 0 0", lineHeight: 1.4 }}>
+-            Participación del mes en los ingresos históricos registrados. Sin meta de ventas configurada.
++            Participación del mes sobre ingresos históricos en {currency}.
+           </p>
+ 
+           <div style={{ display: "flex", justifyContent: "space-between", marginTop: "auto", paddingTop: 14,
+             borderTop: "1px solid rgba(255, 255, 255, 0.08)", fontSize: 12 }}>
+             <span style={{ color: "var(--v3-text-dark-muted)" }}>Total órdenes: <strong style={{ color: "#fff" }}>{count(orders.this_month)}</strong></span>
+-            <span style={{ color: "var(--v3-text-dark-muted)" }}>Ticket prom: <strong style={{ color: "var(--v3-accent)" }}>{(avgOrderValue == null ? "Sin datos" : clp(avgOrderValue))}</strong></span>
++            <span style={{ color: "var(--v3-text-dark-muted)" }}>Ticket prom: <strong style={{ color: "var(--v3-accent)" }}>{(avgOrderValue == null ? "Sin datos" : money(avgOrderValue))}</strong></span>
+           </div>
+         </div>
+ 
+@@ -406,14 +412,14 @@
+ 
+           <div style={{ display: "flex", alignItems: "baseline", gap: 12, marginBottom: 8, flexWrap: "wrap" }}>
+             <span style={{ fontSize: 32, fontWeight: 800, color: "var(--v3-text-primary)", letterSpacing: "-0.03em", whiteSpace: "nowrap" }}>
+-              {clp(rev.total)}
++              {money(rev.total)}
+             </span>
+-            <span className="v3-trend-badge">Serie de operaciones pagadas · {period}</span>
++            <span className="v3-trend-badge">Operaciones pagadas · {period} · {currency}</span>
+           </div>
+ 
+           {/* Series reales recibidas de dashboard/analytics; sin curvas ilustrativas. */}
+           <div style={{ height: 180, width: "100%", marginTop: 8 }} role="img" aria-label={salesSeries.length ? `Ventas registradas: ${period}` : "Sin ventas registradas para este período"}>
+-            {salesSeries.length ? (
++            {analyticsLoading ? <p role="status">Consultando serie de ventas…</p> : analyticsError ? <p role="alert">No se pudo cargar la serie de ventas.</p> : salesSeries.length ? (
+               <ResponsiveContainer width="100%" height="100%">
+                 <AreaChart data={salesSeries} margin={{ top: 10, left: 0, right: 8, bottom: 0 }}>
+                   <defs>
+@@ -423,7 +429,7 @@
+                     </linearGradient>
+                   </defs>
+                   <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#7D858E" }} axisLine={false} tickLine={false} minTickGap={18} />
+-                  <Tooltip formatter={value => [clp(value), "Ventas"]} contentStyle={{ background: "#101214", border: "none", color: "#fff", borderRadius: 14 }} />
++                  <Tooltip formatter={value => [money(value), "Ventas"]} contentStyle={{ background: "#101214", border: "none", color: "#fff", borderRadius: 14 }} />
+                   <Area type="monotone" dataKey="total" stroke="#101214" strokeWidth={2.5} fill="url(#v3RealSalesArea)" activeDot={{ r: 5, fill: "#1AFF6E" }} />
+                 </AreaChart>
+               </ResponsiveContainer>
+@@ -453,7 +459,7 @@
+             </Link>
+           </div>
+ 
+-          {categoryMix.length ? (
++          {analyticsLoading ? <p role="status">Consultando categorías…</p> : analyticsError ? <p role="alert">No se pudieron cargar las categorías.</p> : categoryMix.length ? (
+             <>
+               <div style={{ display: "flex", gap: 3, height: 12, borderRadius: 6, overflow: "hidden", margin: "14px 0 20px", background: "var(--v3-surface-soft)" }}>
+                 {categoryMix.map((cat, i) => (
+diff --git a/frontend/src/pages/admin/AdminFinance.jsx b/frontend/src/pages/admin/AdminFinance.jsx
+--- a/frontend/src/pages/admin/AdminFinance.jsx
++++ b/frontend/src/pages/admin/AdminFinance.jsx
+@@ -11,6 +11,7 @@
+   getWithdrawals, createWithdrawal, deleteWithdrawal,
+   getAnalytics,
+ } from "../../api/admin.api"
++import { formatMoney as formatCurrency } from "../dashboard/dashboardV3Data"
+ 
+ const fmt   = n => `$${Number(n || 0).toLocaleString("es-CL")}`
+ const TABS  = [
+@@ -255,6 +256,9 @@
+ // ── AdminFinance ──────────────────────────────────────────────
+ export default function AdminFinance() {
+   const [tab, setTab]   = useState("overview")
++  const [analysisCurrency, setAnalysisCurrency] = useState("CLP")
++  const [productCurrency, setProductCurrency] = useState("CLP")
++  const analysisMoney = value => formatCurrency(value, analysisCurrency)
+   const [modal, setModal] = useState(null)
+   const [toDeleteWithdrawal, setToDeleteWithdrawal] = useState(null)
+   const [toDeleteCategory, setToDeleteCategory]     = useState(null)
+@@ -275,13 +279,13 @@
+     enabled:  tab === "withdrawals" || tab === "overview",
+   })
+   const { data:incomeByProduct } = useQuery({
+-    queryKey: ["admin-finance-by-product"],
+-    queryFn:  () => api.get("/admin/finance/by-product/").then(r => r.data),
++    queryKey: ["admin-finance-by-product", productCurrency],
++    queryFn:  () => api.get("/admin/finance/by-product/", { params: { currency: productCurrency } }).then(r => r.data),
+     enabled:  tab === "by_product",
+   })
+-  const { data:analytics } = useQuery({
+-    queryKey: ["admin-analytics"],
+-    queryFn:  getAnalytics,
++  const { data:analytics, isError: analyticsError, refetch: refetchAnalytics } = useQuery({
++    queryKey: ["admin-analytics", analysisCurrency],
++    queryFn:  () => getAnalytics(analysisCurrency),
+     enabled:  tab === "analysis",
+   })
+ 
+@@ -316,6 +320,8 @@
+     queryClient.invalidateQueries(["admin-finance-withdrawals"])
+   }
+ 
++  const ledgerVerified = summary?.currency_integrity?.status === "clp_only_verifiable"
++  const ledgerRisk = summary?.currency_integrity?.status === "needs_classification"
+   const summaryCategories = summary?.summary      || []
+   const recentIncome      = summary?.recent_income || []
+ 
+@@ -377,20 +383,29 @@
+           </>
+         } />
+ 
++      {ledgerRisk && (
++        <div role="alert" className="lp-callout lp-callout--warning" style={{ marginBottom: 16 }}>
++          <p style={{ fontWeight: 700 }}>Conciliación multimoneda pendiente</p>
++          <p style={{ marginTop: 4, fontSize: 12 }}>
++            El registro de tesorería contiene movimientos históricos sin moneda clasificada o ingresos de otras monedas.
++            Sus saldos no están certificados. Revisa la clasificación antes de tomar decisiones de retiro.
++          </p>
++        </div>
++      )}
+       {/* KPIs */}
+       <div className="lp-kpi-strip">
+         <KpiCard variant="ink" label="Ingresos totales"
+-          value={fmt(summary?.total_income)} sub="Desde todos los pagos aprobados"
++          value={ledgerRisk ? "Por conciliar" : fmt(summary?.total_income)} sub={ledgerRisk ? "Monedas sin clasificar" : "Ingresos del registro"}
+           Icon={TrendingUp} />
+         <KpiCard variant="light" label="Total retirado"
+-          value={fmt(summary?.total_withdrawn)} sub="Suma de todos los retiros" Icon={ArrowUpFromLine} />
++          value={ledgerRisk ? "Por conciliar" : fmt(summary?.total_withdrawn)} sub={ledgerRisk ? "Retiros históricos sin moneda" : "Retiros registrados"} Icon={ArrowUpFromLine} />
+         <KpiCard variant="primary" label="Balance neto"
+-          value={fmt(summary?.net_balance)} sub="Ingresos − retiros"
++          value={ledgerRisk ? "Por conciliar" : fmt(summary?.net_balance)} sub={ledgerRisk ? "No certificado" : "Ingresos − retiros"}
+           Icon={Wallet} />
+       </div>
+ 
+       {/* Barra distribución */}
+-      {summaryCategories.length > 0 && (
++      {ledgerVerified && summaryCategories.length > 0 && (
+         <SectionCard eyebrow="TESORERÍA INTERNA" title="Distribución de fondos disponibles">
+           <DistributionBar categories={summaryCategories} />
+         </SectionCard>
+@@ -630,7 +645,20 @@
+ 
+       {/* ── POR PRODUCTO ── */}
+       {tab==="by_product" && (
+-        <DataTable
++        <div>
++          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", gap: 10, alignItems: "center", marginBottom: 14 }}>
++            <p style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>
++              Importes por moneda. Costos y utilidad solo disponibles en CLP, donde el catálogo registra costos.
++            </p>
++            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
++              <span style={{ fontSize: 12 }}>Moneda</span>
++              <select className="au-select" aria-label="Moneda de productos vendidos" value={productCurrency}
++                onChange={e => setProductCurrency(e.target.value)}>
++                <option value="CLP">CLP</option><option value="USD">USD</option><option value="ARS">ARS</option>
++              </select>
++            </label>
++          </div>
++          <DataTable
+           columns={[
+             { key:"product_name", header:"Producto", sortable:true, render:p => (
+               <div>
+@@ -642,14 +670,14 @@
+             { key:"units_sold", header:"Vendidos", sortable:true, align:"right",
+               render:p => <span style={{ color:"var(--admin-text)" }}>{p.units_sold} u.</span> },
+             { key:"total_revenue", header:"Ingreso total", sortable:true, align:"right",
+-              render:p => <span style={{ color:"var(--admin-primary-text)", fontWeight:600 }}>{fmt(p.total_revenue)}</span> },
++              render:p => <span style={{ color:"var(--admin-primary-text)", fontWeight:600 }}>{formatCurrency(p.total_revenue, productCurrency)}</span> },
+             { key:"total_cost", header:"Costo total", sortable:true, align:"right",
+-              render:p => <span style={{ color:"var(--admin-danger)" }}>{fmt(p.total_cost)}</span> },
++              render:p => <span style={{ color:"var(--admin-danger)" }}>{p.total_cost == null ? "Sin costo comparable" : fmt(p.total_cost)}</span> },
+             { key:"profit", header:"Utilidad real", sortable:true, align:"right", render:p => (
+               <div style={{ textAlign:"right" }}>
+                 <p style={{ fontSize:"13px", fontWeight:700,
+-                  color: p.profit >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>{fmt(p.profit)}</p>
+-                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{p.margin}% margen</p>
++                  color: p.profit == null || p.profit >= 0 ? "var(--admin-primary-text)" : "var(--admin-danger)" }}>{p.profit == null ? "—" : fmt(p.profit)}</p>
++                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)" }}>{p.margin == null ? "Costo en moneda no comparable" : `${p.margin}% margen`}</p>
+               </div>
+             )},
+           ]}
+@@ -658,21 +686,39 @@
+           emptyIcon={Inbox} emptyTitle="Sin datos todavía"
+           emptyDesc="Aparecen al aprobarse pagos con órdenes reales."
+           testId="by-product-table" />
+-      )}
++        </div>
++      )
+ 
+       {/* ── ANÁLISIS (consolida Vista Ejecutiva + Analytics) ── */}
+       {tab==="analysis" && (
+         <div style={{ display:"flex", flexDirection:"column", gap:"24px" }}>
+-          {!analytics ? (
+-            <p style={{ color:"var(--admin-text-muted)", padding:"40px 0" }}>Cargando análisis…</p>
++          <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
++            <div>
++              <strong style={{ fontSize: 14 }}>Analítica por moneda</strong>
++              <p style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>Importes nativos sin conversión entre CLP, USD y ARS.</p>
++            </div>
++            <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
++              <span style={{ fontSize: 12 }}>Moneda</span>
++              <select className="au-select" aria-label="Moneda de analítica" value={analysisCurrency}
++                onChange={e => setAnalysisCurrency(e.target.value)}>
++                <option value="CLP">CLP</option><option value="USD">USD</option><option value="ARS">ARS</option>
++              </select>
++            </label>
++          </div>
++          {analyticsError ? (
++            <div role="alert" style={{ padding: "25px 0" }}>
++              No fue posible cargar los resultados. <button type="button" onClick={() => refetchAnalytics()}>Reintentar</button>
++            </div>
++          ) : !analytics ? (
++            <p role="status" style={{ color:"var(--admin-text-muted)", padding:"40px 0" }}>Cargando análisis…</p>
+           ) : (
+             <>
+               {/* KPIs estratégicos */}
+               <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(200px, 1fr))", gap:"14px" }}>
+                 <StatCard Icon={TrendingUp} label="Ingresos totales"
+-                  value={fmt(analytics.kpis?.total_revenue)} />
++                  value={analysisMoney(analytics.kpis?.total_revenue)} />
+                 <StatCard Icon={Wallet} label="Ticket promedio"
+-                  value={fmt(analytics.kpis?.avg_order_value)} />
++                  value={analysisMoney(analytics.kpis?.avg_order_value)} />
+                 <StatCard Icon={Inbox} label="Clientes únicos"
+                   value={analytics.kpis?.total_customers ?? 0} />
+                 <StatCard Icon={TrendingUp} label="Tasa de repetición"
+@@ -682,17 +728,17 @@
+               {/* Ventas por mes */}
+               <AnalysisBarSection title="Ventas por mes"
+                 data={(analytics.sales_by_month || []).map(m => ({ label:m.month, value:m.total }))}
+-                fmt={fmt} />
++                fmt={analysisMoney} />
+ 
+               {/* Ingresos por categoría */}
+               <AnalysisBarSection title="Ingresos por categoría"
+                 data={(analytics.revenue_by_category || []).map(c => ({ label:c.category, value:c.total }))}
+-                fmt={fmt} />
++                fmt={analysisMoney} />
+ 
+               {/* Ingresos por método de pago */}
+               <AnalysisBarSection title="Ingresos por método de pago"
+                 data={(analytics.revenue_by_provider || []).map(p => ({ label:p.provider, value:p.total }))}
+-                fmt={fmt} />
++                fmt={analysisMoney} />
+ 
+               {/* Órdenes por estado */}
+               <AnalysisBarSection title="Órdenes por estado"
+diff --git a/frontend/src/pages/admin/AdminOrders.jsx b/frontend/src/pages/admin/AdminOrders.jsx
+--- a/frontend/src/pages/admin/AdminOrders.jsx
++++ b/frontend/src/pages/admin/AdminOrders.jsx
+@@ -11,6 +11,7 @@
+   PrimaryButton, SecondaryButton, formInputStyle,
+ } from "../../components/admin/ui"
+ import { showToast } from "../../components/ui/ToastNotification"
++import { formatMoney } from "../dashboard/dashboardV3Data"
+ 
+ const STATUS = {
+   pending:   { label:"Pendiente",  color:"#D97706" },
+@@ -35,7 +36,7 @@
+       shipping_carrier: carrier, tracking_number: tracking,
+     }),
+     onSuccess: () => {
+-      queryClient.invalidateQueries(["admin-orders"])
++      queryClient.invalidateQueries({ queryKey: ["admin-orders"] })
+     },
+     onError: (e) => {
+       showToast(e?.response?.data?.detail || "No se pudo guardar el envío.", "error")
+@@ -46,8 +47,8 @@
+   const statusMutation = useMutation({
+     mutationFn: (s) => updateOrderStatus(order.id, s),
+     onSuccess: () => {
+-      queryClient.invalidateQueries(["admin-orders"])
+-      queryClient.invalidateQueries(["admin-dashboard"])
++      queryClient.invalidateQueries({ queryKey: ["admin-orders"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] })
+       queryClient.invalidateQueries(["admin-payments"])
+       queryClient.invalidateQueries(["admin-finance-summary"])
+     },
+@@ -224,11 +225,11 @@
+                     {item.product_name}
+                   </p>
+                   <p style={{ fontSize:"11.5px", color:"var(--admin-text-muted)" }}>
+-                    ${Number(item.price).toLocaleString("es-CL")} × {item.quantity}
++                    {formatMoney(item.price, order.currency)} × {item.quantity}
+                   </p>
+                 </div>
+                 <span style={{ fontSize:"13px", fontWeight:700, color:"var(--admin-text)", flexShrink:0, marginLeft:"12px" }}>
+-                  ${Number(item.subtotal).toLocaleString("es-CL")}
++                  {formatMoney(item.subtotal, order.currency)}
+                 </span>
+               </div>
+             ))}
+@@ -242,7 +243,7 @@
+                 fontFamily:"var(--font-display)", fontSize:"1.35rem", fontWeight:800,
+                 color:"var(--admin-primary-text)",
+               }}>
+-                ${Number(order.total).toLocaleString("es-CL")}
++                {formatMoney(order.total, order.currency)}
+               </span>
+             </div>
+           </div>
+@@ -314,7 +315,7 @@
+     { key:"email", header:"Cliente", sortable:true,
+       render:o => <span style={{ color:"var(--admin-text-muted)" }}>{o.email}</span> },
+     { key:"total", header:"Total", sortable:true, align:"right",
+-      render:o => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>${Number(o.total).toLocaleString("es-CL")}</span> },
++      render:o => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{formatMoney(o.total, o.currency)}</span> },
+     { key:"status", header:"Estado",
+       render:o => <StatusBadge tone={TONE[o.status] || "neutral"}>{STATUS[o.status]?.label || o.status}</StatusBadge> },
+     { key:"created_at", header:"Fecha", sortable:true,
+diff --git a/frontend/src/pages/admin/AdminPayments.jsx b/frontend/src/pages/admin/AdminPayments.jsx
+--- a/frontend/src/pages/admin/AdminPayments.jsx
++++ b/frontend/src/pages/admin/AdminPayments.jsx
+@@ -5,6 +5,7 @@
+ import { StatCard, DataTable, StatusBadge, AdminPageHeader, SecondaryButton } from "../../components/admin/ui"
+ import { showToast } from "../../components/ui/ToastNotification"
+ import { Inbox, Bell } from "lucide-react"
++import { formatMoney } from "../dashboard/dashboardV3Data"
+ 
+ const STATUS = {
+   pending:   { label:"Pendiente",   color:"#D97706" },
+@@ -26,10 +27,10 @@
+   const mutation    = useMutation({
+     mutationFn: (s) => updatePaymentStatus(paymentId, s),
+     onSuccess:  () => {
+-      queryClient.invalidateQueries(["admin-payments"])
+-      queryClient.invalidateQueries(["admin-orders"])
+-      queryClient.invalidateQueries(["admin-dashboard"])
+-      queryClient.invalidateQueries(["admin-finance-summary"])
++      queryClient.invalidateQueries({ queryKey: ["admin-payments"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-orders"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] })
++      queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
+     },
+     onError: (e) => {
+       showToast(e?.response?.data?.detail || "No se pudo actualizar el estado del pago. Verificá antes de asumir que se marcó.", "error")
+@@ -57,10 +58,11 @@
+ 
+ export default function AdminPayments() {
+   const [statusFilter, setStatusFilter] = useState("")
++  const [currency, setCurrency] = useState("CLP")
+ 
+-  const { data, isLoading } = useQuery({
+-    queryKey: ["admin-payments", statusFilter],
+-    queryFn:  () => getAdminPayments(statusFilter ? { status:statusFilter } : {}),
++  const { data, isLoading, isError, refetch } = useQuery({
++    queryKey: ["admin-payments", statusFilter, currency],
++    queryFn:  () => getAdminPayments({ ...(statusFilter ? { status: statusFilter } : {}), currency }),
+   })
+   const payments = data?.results || []
+ 
+@@ -76,7 +78,7 @@
+     { key:"provider", header:"Método",
+       render:p => <span style={{ color:"var(--admin-text-muted)" }}>{PROVIDERS[p.provider] || p.provider}</span> },
+     { key:"amount", header:"Monto", sortable:true, align:"right",
+-      render:p => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>${Number(p.amount).toLocaleString("es-CL")}</span> },
++      render:p => <span style={{ fontWeight:700, color:"var(--admin-primary-text)" }}>{formatMoney(p.amount, p.currency)}</span> },
+     { key:"status", header:"Estado",
+       render:p => {
+         const isPendingTransfer = p.status === "pending" &&
+@@ -108,12 +110,23 @@
+       <AdminPageHeader
+         eyebrow="LEVELPRO / VENTAS"
+         title="Pagos"
+-        description={data?.total_approved > 0
+-          ? `Total aprobado: $${Number(data.total_approved).toLocaleString("es-CL")}`
+-          : "Conciliación de transacciones, pasarelas y transferencias"}
+-        actions={<SecondaryButton to="/admin/payment-methods" size="sm">Métodos de pago</SecondaryButton>}
++        description={`Aprobados en ${currency}: ${formatMoney(data?.total_approved ?? 0, currency)} · sin conversión cambiaria`}
++        actions={<div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 10 }}>
++          <label style={{ display: "flex", alignItems: "center", gap: 8 }}>
++            <span style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>Moneda</span>
++            <select className="au-select" aria-label="Filtrar pagos por moneda"
++              value={currency} onChange={e => setCurrency(e.target.value)}>
++              <option value="CLP">CLP</option><option value="USD">USD</option><option value="ARS">ARS</option>
++            </select>
++          </label>
++          <SecondaryButton to="/admin/payment-methods" size="sm">Métodos de pago</SecondaryButton>
++        </div>}
+       />
+ 
++      {isError && <div role="alert" className="lp-callout lp-callout--warning">
++        No pudimos consultar los pagos de {currency}.
++        <button type="button" onClick={() => refetch()} style={{ marginLeft: 10 }}>Reintentar</button>
++      </div>}
+       {pendingTransfers.length > 0 && (
+         <div
+           onClick={() => setStatusFilter("pending")}
+diff --git a/frontend/src/pages/dashboard/Orders.jsx b/frontend/src/pages/dashboard/Orders.jsx
+--- a/frontend/src/pages/dashboard/Orders.jsx
++++ b/frontend/src/pages/dashboard/Orders.jsx
+@@ -10,6 +10,7 @@
+   StatCard,
+   PrimaryButton,
+ } from "../../components/admin/ui"
++import { formatMoney, completedOrderTotalsByCurrency } from "./dashboardV3Data"
+ 
+ const STATUS_MAP = {
+   pending:   { label: "Pendiente",  tone: "warning" },
+@@ -32,9 +33,8 @@
+   const totalOrders = orders.length
+   const inProgressCount = orders.filter(o => o.status === "paid" || o.status === "shipped").length
+   const pendingCount = orders.filter(o => o.status === "pending").length
+-  const totalSpent = orders
+-    .filter(o => o.status !== "cancelled")
+-    .reduce((acc, o) => acc + (Number(o.total) || 0), 0)
++  const { totals: totalsByCurrency, unknown: unclassifiedOrders } = completedOrderTotalsByCurrency(orders)
++  const spentGroups = Object.entries(totalsByCurrency).filter(([, value]) => value > 0)
+ 
+   const columns = [
+     {
+@@ -81,7 +81,7 @@
+       align: "right",
+       render: o => (
+         <span style={{ fontWeight: 700, fontFamily: "var(--font-mono)", color: "var(--admin-primary-text)" }}>
+-          ${Number(o.total).toLocaleString("es-CL")}
++          {formatMoney(o.total, o.currency)}
+         </span>
+       ),
+     },
+@@ -156,9 +156,13 @@
+         <StatCard
+           variant="light"
+           Icon={DollarSign}
+-          label="Total compras"
+-          value={`$${totalSpent.toLocaleString("es-CL")}`}
+-          sub="Inversión acumulada"
++          label="Compras pagadas"
++          value={spentGroups.length ? (
++            <span style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 15 }}>
++              {spentGroups.map(([code, value]) => <span key={code}>{formatMoney(value, code)}</span>)}
++            </span>
++          ) : "Sin pagos"}
++          sub={unclassifiedOrders.length ? `${unclassifiedOrders.length} orden(es) sin moneda válida` : "Totales independientes"}
+         />
+       </div>
+ 
+diff --git a/frontend/src/pages/dashboard/dashboardV3Data.js b/frontend/src/pages/dashboard/dashboardV3Data.js
+--- a/frontend/src/pages/dashboard/dashboardV3Data.js
++++ b/frontend/src/pages/dashboard/dashboardV3Data.js
+@@ -13,7 +13,10 @@
+ export function formatMoney(value, currency = "CLP") {
+   const number = finiteNumber(value)
+   if (number === null) return "—"
+-  const code = ["CLP", "USD", "ARS"].includes(currency) ? currency : "CLP"
++  const code = String(currency || "").toUpperCase()
++  if (!["CLP", "USD", "ARS"].includes(code)) {
++    return `${new Intl.NumberFormat("es-CL").format(number)} · ${code || "moneda sin definir"}`
++  }
+   return new Intl.NumberFormat("es-CL", { style: "currency", currency: code, maximumFractionDigits: code === "CLP" ? 0 : 2 }).format(number)
+ }
+ 
+@@ -86,3 +89,20 @@
+   const list = asRows(order?.items)
+   return list[0]?.product_name || "Compra LevelPro Audio"
+ }
++
++/** Native-currency totals. Never turn CLP+USD+ARS into one number. */
++export function completedOrderTotalsByCurrency(orders) {
++  const totals = { CLP: 0, USD: 0, ARS: 0 }
++  const unknown = []
++  for (const order of asRows(orders)) {
++    if (!["paid", "shipped", "completed"].includes(order?.status)) continue
++    const code = String(order?.currency || "").toUpperCase()
++    const amount = finiteNumber(order?.total)
++    if (!Object.prototype.hasOwnProperty.call(totals, code) || amount === null) {
++      unknown.push({ id: order?.id, currency: code || null, amount })
++      continue
++    }
++    totals[code] += amount
++  }
++  return { totals, unknown }
++}
+diff --git a/frontend/src/styles/v3-editorial-bento.css b/frontend/src/styles/v3-editorial-bento.css
+--- a/frontend/src/styles/v3-editorial-bento.css
++++ b/frontend/src/styles/v3-editorial-bento.css
+@@ -925,3 +925,111 @@
+     justify-content: flex-start;
+   }
+ }
++
++
++/* V3.2 — Refined interaction and data-density layer
++   Scope: authenticated dashboard shells only; storefront remains unchanged. */
++.v3-shell .v3-card-obsidian .v3-card-title-dark {
++  color: #fff;
++  opacity: 1;
++  font-weight: 700;
++}
++.v3-shell .v3-card-obsidian .v3-micro-label-dark {
++  color: #adb5c1;
++}
++.v3-shell .v3-card-obsidian .v3-donut-amount {
++  color: #fff;
++}
++.v3-currency-control {
++  display: inline-flex;
++  align-items: center;
++  gap: 8px;
++  border: 1px solid var(--v3-border);
++  background: var(--v3-surface);
++  border-radius: 999px;
++  padding: 5px 10px 5px 14px;
++}
++.v3-currency-label {
++  color: var(--v3-text-muted);
++  font-size: 11px;
++  font-weight: 600;
++}
++.v3-currency-control select {
++  border: 0;
++  background: transparent;
++  color: var(--v3-text-primary);
++  font: 700 12px var(--font-sans, sans-serif);
++  cursor: pointer;
++  min-width: 55px;
++  min-height: 30px;
++}
++.v3-shell :is(button, a, select, input, textarea, [tabindex]):focus-visible {
++  outline: 2px solid #087d36;
++  outline-offset: 3px;
++}
++.v3-card-accent {
++  min-height: 190px;
++  padding: 20px;
++  box-shadow: 0 7px 20px -8px rgba(26,255,110,.18);
++}
++.v3-card-accent:hover {
++  box-shadow: 0 10px 24px -10px rgba(26,255,110,.25);
++}
++.v3-neon-trio { align-self: start; }
++.v3-shell .v3-card,
++.v3-shell .v3-card-obsidian,
++.v3-shell .v3-card-accent {
++  min-width: 0;
++}
++.v3-shell .v3-micro-item { min-width: 0; }
++.v3-shell .v3-micro-item > div { min-width: 0; }
++@media (max-width: 860px) {
++  .v3-bento-grid > * { grid-row: auto !important; }
++  .v3-card-accent { min-height: 112px; }
++  .v3-currency-control { margin: 0; }
++}
++@media (prefers-reduced-motion: reduce) {
++  .v3-shell *, .v3-shell *::before, .v3-shell *::after {
++    animation-duration: .01ms !important;
++    animation-iteration-count: 1 !important;
++    transition-duration: .01ms !important;
++    scroll-behavior: auto !important;
++  }
++}
++
++
++/* V3.2 — Shared page controls: one visual language for all admin/user modules. */
++.v3-shell .au-page :is(input, select, textarea) {
++  font-family: var(--font-sans, sans-serif);
++  accent-color: var(--btn-green, #1a9d4e);
++}
++.v3-shell .au-page :is(input, select, textarea):focus-visible,
++.v3-shell .au-modal :is(input, select, textarea):focus-visible {
++  outline: 2px solid #0f9940;
++  outline-offset: 2px;
++}
++.v3-shell .au-page .au-table {
++  font-variant-numeric: tabular-nums;
++}
++.v3-shell .au-page .au-btn,
++.v3-shell .au-page .au-pill-btn {
++  font-weight: 650;
++  transition: background-color .17s ease, border-color .17s ease, box-shadow .17s ease, transform .17s ease;
++}
++.v3-shell .au-page .au-btn:disabled,
++.v3-shell .au-page .au-pill-btn:disabled {
++  cursor: not-allowed;
++  opacity: .55;
++}
++.v3-shell .au-modal {
++  max-height: min(90vh, 900px);
++  overflow-y: auto;
++}
++.v3-shell .au-modal__title {
++  letter-spacing: -.025em;
++}
++@media (max-width: 640px) {
++  .v3-shell .au-page { min-width: 0; }
++  .v3-shell .au-page .au-table-wrap { max-width: 100%; overflow-x: auto; }
++  .v3-shell .au-modal { max-height: 94dvh; }
++}
+diff --git a/frontend/tests/v3-2-currency.test.mjs b/frontend/tests/v3-2-currency.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/frontend/tests/v3-2-currency.test.mjs
+@@ -0,0 +1,46 @@
++import test from "node:test"
++import assert from "node:assert/strict"
++
++import {
++  completedOrderTotalsByCurrency, formatMoney, adminRecentOrders,
++} from "../src/pages/dashboard/dashboardV3Data.js"
++
++test("separa compras pagadas CLP/USD/ARS y excluye pendientes o cancelados", () => {
++  const rows = [
++    { id: "a", currency: "CLP", total: "12500", status: "paid" },
++    { id: "b", currency: "USD", total: "34.50", status: "shipped" },
++    { id: "c", currency: "ARS", total: "8500", status: "completed" },
++    { id: "d", currency: "USD", total: "2.50", status: "paid" },
++    { id: "e", currency: "USD", total: "500", status: "pending" },
++    { id: "f", currency: "ARS", total: "300", status: "cancelled" },
++  ]
++  const { totals, unknown } = completedOrderTotalsByCurrency(rows)
++  assert.deepEqual(totals, { CLP: 12500, USD: 37, ARS: 8500 })
++  assert.deepEqual(unknown, [])
++})
++
++test("revela monedas ausentes o inválidas, sin atribuir CLP por defecto", () => {
++  const { totals, unknown } = completedOrderTotalsByCurrency([
++    { id: "a", currency: "", total: 123, status: "paid" },
++    { id: "b", currency: "EUR", total: 45, status: "paid" },
++    { id: "c", currency: "USD", total: null, status: "shipped" },
++  ])
++  assert.deepEqual(totals, { CLP: 0, USD: 0, ARS: 0 })
++  assert.equal(unknown.length, 3)
++})
++
++test("formatea por moneda nativa sin convertir montos", () => {
++  assert.match(formatMoney(3000, "CLP"), /3.000/)
++  assert.match(formatMoney(19.99, "USD"), /19,99/)
++  assert.match(formatMoney(5000, "ARS"), /5.000/)
++  assert.equal(formatMoney(null, "CLP"), "—")
++  assert.match(formatMoney(50, "EUR"), /EUR/)
++  assert.match(formatMoney(50, null), /moneda sin definir/)
++})
++
++test("órdenes admin sin moneda no se reportan erróneamente como CLP", () => {
++  const rows = adminRecentOrders({ recent_orders: [
++    { id: "abc", total: 1250, status: "paid" },
++  ] })
++  assert.equal(rows[0].currency, null)
++})
