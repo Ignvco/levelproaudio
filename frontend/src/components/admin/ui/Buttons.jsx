@@ -8,12 +8,15 @@ function base(variant, size, className) {
 function Btn({ variant, size, className, to, href, children, testId, loading, disabled, ...rest }) {
   const cls = base(variant, size, className)
   if ((to || href) && (disabled || loading)) {
-    return <span className={cls} aria-disabled="true" data-testid={testId} {...rest}>{children}</span>
+    return <span className={cls} role="presentation" aria-disabled="true" data-testid={testId}>{children}</span>
   }
   if (to) return <Link to={to} className={cls} data-testid={testId} {...rest}>{children}</Link>
   if (href) return <a href={href} className={cls} data-testid={testId} {...rest}>{children}</a>
   return <button type="button" className={cls} data-testid={testId}
-    aria-busy={Boolean(loading)} disabled={disabled || Boolean(loading)} {...rest}>{children}</button>
+    aria-busy={Boolean(loading)} disabled={disabled || Boolean(loading)} {...rest}>
+    {loading && <span className="au-btn__spinner" aria-hidden="true" />}
+    {children}
+  </button>
 }
 
 export const PrimaryButton   = (p) => <Btn variant="primary" {...p} />
