@@ -1,0 +1,1259 @@
+diff --git a/docs/dashboard-v3/08-v3-2-1-ux-quality-gates.md b/docs/dashboard-v3/08-v3-2-1-ux-quality-gates.md
+new file mode 100644
+--- /dev/null
++++ b/docs/dashboard-v3/08-v3-2-1-ux-quality-gates.md
+@@ -0,0 +1,83 @@
++# LevelPro Audio V3.2.1 — UX & UI Quality Gates (lote 1)
++
++**Estado:** implementación en rama, sin merge ni despliegue.  
++**Base estable:** `dd052aa7b516b96dd18df04f1d85580868cb9eab` (V3.2, Cloud Build reportado como exitoso por el propietario).  
++**Rama:** `feat/v3-2-1-ux-quality-gates`.  
++**Patch 14:** permanece pausado, no se modifica lógica de pagos, inventario, contabilidad ni pasarelas.
++
++## Objetivo y diseño
++
++Consolidar una experiencia editorial Bento LevelPro coherente en **las páginas interiores del usuario y del administrador**. Reutilizar las tarjetas, tipografía Geist, colores Obsidian/Canvas y acento `#1AFF6E`; evitar un reemplazo masivo de layouts que podría romper los flujos ya existentes.
++
++### Cambios reales de esta entrega
++
++**Base compartida:**
++- `AdminPageHeader`: acepta las dos variantes históricas `breadcrumb` y `breadcrumbs`, con jerarquía de navegación reconocible y marca de página actual.
++- `FormField`: vincula de forma accesible etiquetas con inputs/selects/textarea directos; conserva campos compuestos sin imponer IDs incorrectos. Admite ayuda y error con `aria-describedby`.
++- `DataTable`: mejores nombres de selectores y encabezados, mensajes de error y opción `onRetry` (retrocompatible).
++- `Pagination`: navegación semántica, botones `type=button` y página actual anunciada.
++- `Buttons`: los enlaces deshabilitados no mantienen manejadores de clic, y los estados de ejecución tienen spinner de carga.
++- `EmptyState`: los errores se anuncian por separado de las listas vacías.
++- `admin-ui.css`: densidad y alineaciones editoriales consistentes, superficies suaves, texto y formularios, estados de foco, accesibilidad y responsive. Estilos acotados a `.admin-root` de los dos dashboards.
++
++**Usuario / consultas autenticadas:**
++- Cursos, Favoritos, Pedidos, Reservas, Mis servicios y Participaciones: un error de API ya no finge que el usuario tenga cero registros. Se ofrecen reintentos y se evita mostrar KPIs falsos.
++- Fidelización: cuando falla la API no permanece el skeleton indefinidamente; se pueden reintentar consultas, los fallos al cargar más movimientos se notifican y la FAQ funciona con teclado. No se inventa un mínimo de canje si la API no lo informa.
++- Curso: tarjetas navegables por teclado sin ejecutar acciones hijas dos veces.
++- Detalle de servicio: diálogo con nombre accesible, foco inicial, Escape y restauración de foco.
++
++**Administrador:**
++- Rewards: muestra fallo de consulta y botón de reintento en lugar de loading infinito.
++- Servicios: campo de respuesta vinculado correctamente con su etiqueta.
++- Configuración: captura errores de carga sin mostrar formularios incompletos, muestra estado de caché desactualizada, sustituye alerts del navegador por notificaciones LevelPro y comparte labels de formulario.
++
++## Integridad funcional y límites
++
++- Cambios limitados a React, CSS, pruebas y documentación; **no hay migraciones nuevas ni modificaciones a Django**.
++- Todos los componentes afectados conservan las props anteriores; se agregan opciones retrocompatibles.
++- No se cambió ningún endpoint ni contrato de API. El estado `error` debe diferenciarse del estado `empty`.
++- No se declara modificada toda la plataforma ni certificados todos los módulos. Este lote es una base transversal, no un cierre visual 1:1 de las aproximadamente 62 páginas inventariadas en V3.2.
++- Sigue pendiente la conciliación contable de movimientos históricos multimoneda de V3.2, fuera del alcance de esta mejora visual.
++- Si el backend de configuración no responde y ya existe un formulario cargado, se muestra una advertencia de datos posiblemente desactualizados; se conserva el estado local de edición.
++
++## Pruebas nuevas y validación
++
++Se agrega `frontend/tests/v3-2-1-query-states.test.mjs` a `npm run test:unit`.
++
++Se verificó aisladamente que un error tiene prioridad frente a loading/empty, que un cero válido sigue siendo válido y que los resultados paginados se normalizan sin inventar registros. **No se ha ejecutado aún el frontend build completo de este lote**.
++
++Comandos en tu Mac, desde `frontend/`:
++
++```bash
++npm ci
++npm run lint
++npm run test:unit
++npm run build
++```
++
++Como alternativa sin instalar Python, desde la raíz:
++
++```bash
++gcloud builds submit . --config cloudbuild.v3-2-qa.yaml
++```
++
++**El Cloud Build de QA no despliega a producción.** No utilizar `cloudbuild.yaml` estándar como preflight porque sí despliega.
++
++### QA autenticada requerida para aceptar lote 1
++
++| Módulos | Escenarios |
++|---|---|
++| Admin: Rewards y Configuración | Carga normal; API desconectada; reintento; guardar y validar feedback |
++| Admin: Servicios | Editar respuesta y verificar label/foco, permisos y estado |
++| Cliente: Pedidos, Cursos, Favoritos | Sin registros reales; con registros reales; API desconectada |
++| Cliente: Reservas, Servicios, Participaciones | Datos reales, error, reintento y navegación |
++| Cliente: Fidelización | Cero puntos, historial, carga siguiente página, error, FAQ con teclado |
++| Componentes transversales | FormField, FormModal, DataTable, Pagination, botones deshabilitados |
++| Responsive | 1440, 1280, 1024, 768, 430, 390 y 320 px |
++| Accesibilidad | Tab/Shift+Tab, Enter/Espacio, foco visible, contrastes, reduced-motion |
++
++**Pendiente por continuar dentro de V3.2.1:** revisión visual autenticada del resto de rutas, paneles internos, responsive de tablas complejas y acciones con múltiples pasos, así como QA integral de perfiles, formularios y permisos.
++
++## Política de publicación
++
++No marcar QA aprobado hasta recibir logs verificables de lint, unit tests y build y ejecutar revisión visual real. No desplegar automáticamente este lote desde la rama. El propietario puede aplicar un patch generado desde la base indicada después de realizar preflight.
+diff --git a/frontend/package.json b/frontend/package.json
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -16,7 +16,7 @@
+     "test:payment:browser": "node --test tests/payment-return.browser.mjs",
+     "lint": "eslint .",
+     "preview": "vite preview",
+-    "test:unit": "node --test tests/payment-return.test.mjs tests/jsonld.test.mjs tests/seo.test.mjs tests/dashboard-payment-methods.test.mjs tests/dashboard-v3-data.test.mjs tests/v3-2-currency.test.mjs",
++    "test:unit": "node --test tests/payment-return.test.mjs tests/jsonld.test.mjs tests/seo.test.mjs tests/dashboard-payment-methods.test.mjs tests/dashboard-v3-data.test.mjs tests/v3-2-currency.test.mjs tests/v3-2-1-query-states.test.mjs",
+     "test:browser": "node --test tests/payment-return.browser.mjs tests/transfer-instructions.browser.mjs tests/jsonld.browser.mjs tests/seo.browser.mjs tests/routes.browser.mjs",
+     "test:nginx": "node --test tests/seo-nginx.test.mjs",
+     "check:bundle": "node scripts/check-bundle.mjs"
+diff --git a/frontend/src/components/admin/ui/AdminPageHeader.jsx b/frontend/src/components/admin/ui/AdminPageHeader.jsx
+--- a/frontend/src/components/admin/ui/AdminPageHeader.jsx
++++ b/frontend/src/components/admin/ui/AdminPageHeader.jsx
+@@ -2,17 +2,18 @@
+ import { Link } from "react-router-dom"
+ import { ChevronRight } from "lucide-react"
+ 
+-export function AdminPageHeader({ eyebrow, title, description, subtitle, actions, breadcrumbs, testId }) {
++export function AdminPageHeader({ eyebrow, title, description, subtitle, actions, breadcrumbs, breadcrumb, testId }) {
+   const desc = description || subtitle
++  const crumbs = Array.isArray(breadcrumbs) ? breadcrumbs : Array.isArray(breadcrumb) ? breadcrumb : []
+   return (
+     <div className="au-header" data-testid={testId || "admin-page-header"}>
+       <div>
+-        {breadcrumbs?.length > 0 && (
+-          <nav className="au-header__crumbs" aria-label="breadcrumb">
+-            {breadcrumbs.map((c, i) => (
++        {crumbs?.length > 0 && (
++          <nav className="au-header__crumbs" aria-label="Ruta de navegación">
++            {crumbs.map((c, i) => (
+               <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+-                {c.to ? <Link to={c.to}>{c.label}</Link> : <span>{c.label}</span>}
+-                {i < breadcrumbs.length - 1 && <ChevronRight size={13} />}
++                {c.to ? <Link to={c.to}>{c.label}</Link> : <span aria-current={i === crumbs.length - 1 ? "page" : undefined}>{c.label}</span>}
++                {i < crumbs.length - 1 && <ChevronRight size={13} />}
+               </span>
+             ))}
+           </nav>
+diff --git a/frontend/src/components/admin/ui/Buttons.jsx b/frontend/src/components/admin/ui/Buttons.jsx
+--- a/frontend/src/components/admin/ui/Buttons.jsx
++++ b/frontend/src/components/admin/ui/Buttons.jsx
+@@ -8,12 +8,15 @@ function base(variant, size, className) {
+ function Btn({ variant, size, className, to, href, children, testId, loading, disabled, ...rest }) {
+   const cls = base(variant, size, className)
+   if ((to || href) && (disabled || loading)) {
+-    return <span className={cls} aria-disabled="true" data-testid={testId} {...rest}>{children}</span>
++    return <span className={cls} aria-disabled="true" data-testid={testId}>{children}</span>
+   }
+   if (to) return <Link to={to} className={cls} data-testid={testId} {...rest}>{children}</Link>
+   if (href) return <a href={href} className={cls} data-testid={testId} {...rest}>{children}</a>
+   return <button type="button" className={cls} data-testid={testId}
+-    aria-busy={Boolean(loading)} disabled={disabled || Boolean(loading)} {...rest}>{children}</button>
++    aria-busy={Boolean(loading)} disabled={disabled || Boolean(loading)} {...rest}>
++    {loading && <span className="au-btn__spinner" aria-hidden="true" />}
++    {children}
++  </button>
+ }
+ 
+ export const PrimaryButton   = (p) => <Btn variant="primary" {...p} />
+diff --git a/frontend/src/components/admin/ui/DataTable.jsx b/frontend/src/components/admin/ui/DataTable.jsx
+--- a/frontend/src/components/admin/ui/DataTable.jsx
++++ b/frontend/src/components/admin/ui/DataTable.jsx
+@@ -5,6 +5,7 @@ import { SearchInput, FilterSelect } from "./Inputs"
+ import { EmptyState, ErrorState } from "./EmptyState"
+ import { Pagination } from "./Pagination"
+ import { SkeletonTable } from "./Skeletons"
++import { SecondaryButton } from "./Buttons"
+ 
+ function RowMenu({ actions, row }) {
+   const [open, setOpen] = useState(false)
+@@ -18,7 +19,7 @@ function RowMenu({ actions, row }) {
+   }, [])
+   return (
+     <div className="au-rowmenu" ref={ref}>
+-      <button className="au-iconbtn au-iconbtn--ghost" onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
++      <button type="button" className="au-iconbtn au-iconbtn--ghost" onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
+         aria-label="Acciones" aria-haspopup="menu" aria-expanded={open} data-testid="row-actions-trigger">
+         <MoreHorizontal size={18} />
+       </button>
+@@ -37,7 +38,7 @@ function RowMenu({ actions, row }) {
+ }
+ 
+ export function DataTable({
+-  columns = [], data = [], loading = false, error = false,
++  columns = [], data = [], loading = false, error = false, onRetry,
+   getRowId = (r) => r.id,
+   searchable = true, searchPlaceholder = "Buscar...", searchKeys,
+   filters = [], toolbarExtra,
+@@ -126,17 +127,17 @@ export function DataTable({
+       )}
+ 
+       {error ? (
+-        <ErrorState />
++        <ErrorState action={onRetry ? <SecondaryButton onClick={onRetry}>Reintentar</SecondaryButton> : undefined} />
+       ) : filtered.length === 0 ? (
+-        <EmptyState Icon={emptyIcon} title={emptyTitle || "Sin resultados"} description={emptyDesc || "Ajustá la búsqueda o los filtros."} />
++        <EmptyState Icon={emptyIcon} title={emptyTitle || "Sin resultados"} description={emptyDesc || "Ajusta la búsqueda o los filtros."} />
+       ) : (
+         <>
+           <div className="au-tscroll">
+             <table className="au-table">
+               <thead>
+                 <tr>
+                   {selectable && (
+-                    <th style={{ width: 40 }}>
++                    <th scope="col" style={{ width: 40 }}>
+                       <input type="checkbox" className="au-checkbox" checked={allOnPageSelected} onChange={toggleAll} aria-label="Seleccionar todo" />
+                     </th>
+                   )}
+@@ -154,7 +155,7 @@ export function DataTable({
+                       ) : <span>{c.header}</span>}
+                     </th>
+                   ))}
+-                  {rowActions && <th style={{ width: 56 }} />}
++                  {rowActions && <th scope="col" aria-label="Acciones" style={{ width: 56 }} />}
+                 </tr>
+               </thead>
+               <tbody>
+@@ -166,7 +167,7 @@ export function DataTable({
+                       tabIndex={onRowClick ? 0 : undefined} style={{ cursor: onRowClick ? "pointer" : "default" }} data-testid={`${testId}-row`}>
+                       {selectable && (
+                         <td onClick={(e) => e.stopPropagation()}>
+-                          <input type="checkbox" className="au-checkbox" checked={selected.has(id)} onChange={() => toggleRow(id)} aria-label="Seleccionar fila" />
++                          <input type="checkbox" className="au-checkbox" checked={selected.has(id)} onChange={() => toggleRow(id)} aria-label={`Seleccionar fila ${id}`} />
+                         </td>
+                       )}
+                       {columns.map((c) => (
+diff --git a/frontend/src/components/admin/ui/EmptyState.jsx b/frontend/src/components/admin/ui/EmptyState.jsx
+--- a/frontend/src/components/admin/ui/EmptyState.jsx
++++ b/frontend/src/components/admin/ui/EmptyState.jsx
+@@ -12,6 +12,6 @@ export function EmptyState({ Icon = Inbox, title = "Sin resultados", description
+   )
+ }
+ 
+-export function ErrorState({ title = "Ocurrió un error", description = "No pudimos cargar la información. Intentá de nuevo.", action, testId }) {
+-  return <EmptyState title={title} description={description} action={action} testId={testId || "error-state"} />
++export function ErrorState({ title = "Ocurrió un error", description = "No pudimos cargar la información. Intenta nuevamente.", action, testId }) {
++  return <div role="alert"><EmptyState title={title} description={description} action={action} testId={testId || "error-state"} /></div>
+ }
+diff --git a/frontend/src/components/admin/ui/FormModal.jsx b/frontend/src/components/admin/ui/FormModal.jsx
+--- a/frontend/src/components/admin/ui/FormModal.jsx
++++ b/frontend/src/components/admin/ui/FormModal.jsx
+@@ -5,7 +5,7 @@
+ // (12 páginas con el mismo bloque de "position: fixed" copiado y pegado).
+ // Ahora el layout vive en un solo lugar; el contenido del formulario sigue
+ // siendo específico de cada página (children).
+-import { useEffect, useId, useRef } from "react"
++import { cloneElement, isValidElement, useEffect, useId, useRef } from "react"
+ import { PrimaryButton, SecondaryButton } from "./Buttons"
+ 
+ export function FormModal({
+@@ -101,12 +101,37 @@ export const formInputStyle = {
+   fontSize: "13px", outline: "none",
+ }
+ 
+-export function FormField({ label, children }) {
++export function FormField({ label, children, id, description, error }) {
++  const generatedId = useId()
++  const directControl = isValidElement(children)
++    && typeof children.type === "string"
++    && ["input", "select", "textarea"].includes(children.type)
++  const controlId = directControl ? (children.props.id || id || generatedId) : undefined
++  const hintId = `${generatedId}-hint`
++  const style = { display: "block", fontSize: "12px", fontWeight: 600,
++    color: "var(--admin-text-secondary, var(--text-2))", marginBottom: "7px" }
++  const rendered = directControl
++    ? cloneElement(children, {
++        id: controlId,
++        ...(description || error ? {
++          "aria-describedby": [children.props["aria-describedby"], hintId].filter(Boolean).join(" "),
++        } : {}),
++        ...(error ? { "aria-invalid": true } : {}),
++      })
++    : children
++
+   return (
+-    <div>
+-      <label style={{ display: "block", fontSize: "12px", fontWeight: 500,
+-        color: "var(--text-2)", marginBottom: "7px" }}>{label}</label>
+-      {children}
++    <div className="au-formfield">
++      {directControl
++        ? <label htmlFor={controlId} style={style}>{label}</label>
++        : <span style={style}>{label}</span>}
++      {rendered}
++      {(description || error) && (
++        <p id={hintId} role={error ? "alert" : undefined}
++          className={error ? "au-formfield__error" : "au-formfield__help"}>
++          {error || description}
++        </p>
++      )}
+     </div>
+   )
+ }
+diff --git a/frontend/src/components/admin/ui/Pagination.jsx b/frontend/src/components/admin/ui/Pagination.jsx
+--- a/frontend/src/components/admin/ui/Pagination.jsx
++++ b/frontend/src/components/admin/ui/Pagination.jsx
+@@ -11,18 +11,18 @@ export function Pagination({ page, pageCount, onChange, testId }) {
+     else if (pages[pages.length - 1] !== "…") push("…")
+   }
+   return (
+-    <div className="au-pagination" data-testid={testId || "pagination"}>
+-      <button disabled={page <= 1} onClick={() => onChange(page - 1)} aria-label="Anterior">
++    <nav className="au-pagination" aria-label="Paginación" data-testid={testId || "pagination"}>
++      <button type="button" disabled={page <= 1} onClick={() => onChange(page - 1)} aria-label="Anterior">
+         <ChevronLeft size={15} />
+       </button>
+       {pages.map((p, i) =>
+         p === "…"
+           ? <span key={`e${i}`} style={{ padding: "0 4px", color: "var(--admin-text-muted)" }}>…</span>
+-          : <button key={p} className={p === page ? "is-active" : ""} onClick={() => onChange(p)}>{p}</button>
++          : <button type="button" key={p} className={p === page ? "is-active" : ""} aria-current={p === page ? "page" : undefined} aria-label={`Página ${p}`} onClick={() => onChange(p)}>{p}</button>
+       )}
+-      <button disabled={page >= pageCount} onClick={() => onChange(page + 1)} aria-label="Siguiente">
++      <button type="button" disabled={page >= pageCount} onClick={() => onChange(page + 1)} aria-label="Siguiente">
+         <ChevronRight size={15} />
+       </button>
+-    </div>
++    </nav>
+   )
+ }
+diff --git a/frontend/src/pages/admin/AdminRewards.jsx b/frontend/src/pages/admin/AdminRewards.jsx
+--- a/frontend/src/pages/admin/AdminRewards.jsx
++++ b/frontend/src/pages/admin/AdminRewards.jsx
+@@ -4,7 +4,7 @@ import { Link } from "react-router-dom"
+ import { useQuery } from "@tanstack/react-query"
+ import { Gift, Ticket, Users, DollarSign } from "lucide-react"
+ import { adminGetRewardsDashboard } from "../../api/rewards.api"
+-import { StatCard, AdminPageHeader, SectionCard, SecondaryButton, StatusBadge } from "../../components/admin/ui"
++import { StatCard, AdminPageHeader, SectionCard, SecondaryButton, StatusBadge, ErrorState } from "../../components/admin/ui"
+ import { useSiteSettings } from "../../hooks/useSiteSettings"
+ 
+ function KpiCard({ label, value, subtitle, variant = "light", testId, Icon }) {
+@@ -28,15 +28,24 @@ function useCountdownDisplay(seconds) {
+ 
+ export default function AdminRewards() {
+   const { siteName } = useSiteSettings()
+-  const { data, isLoading } = useQuery({
++  const { data, isLoading, isError, refetch } = useQuery({
+     queryKey: ["admin-rewards-dashboard"],
+     queryFn:  adminGetRewardsDashboard,
+     refetchInterval: 15_000,
+   })
+ 
+   const remainingLabel = useCountdownDisplay(data?.current_campaign?.seconds_remaining)
+ 
+-  if (isLoading || !data || !data.totals) return (
++  if (isError || (!isLoading && (!data || !data.totals))) return (
++    <div className="au-page" data-testid="admin-rewards-error">
++      <AdminPageHeader title="Dashboard de campañas" description="LevelPro Rewards" />
++      <ErrorState title="No pudimos cargar las campañas"
++        description="No mostraremos cifras de campañas sin datos confirmados."
++        action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
++    </div>
++  )
++
++  if (isLoading) return (
+     <div className="au-page">
+       <div className="lp-grid-kpi">
+         {[...Array(4)].map((_, i) => (
+diff --git a/frontend/src/pages/admin/AdminServices.jsx b/frontend/src/pages/admin/AdminServices.jsx
+--- a/frontend/src/pages/admin/AdminServices.jsx
++++ b/frontend/src/pages/admin/AdminServices.jsx
+@@ -1,5 +1,5 @@
+ // pages/admin/AdminServices.jsx
+-import { useState } from "react"
++import { useId, useState } from "react"
+ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+ import {
+   getAdminServiceRequests,
+@@ -43,6 +43,7 @@ function StatusBadge({ status, map }) {
+ }
+ 
+ function RequestCard({ req, reqMutation }) {
++  const responseId = useId()
+   const [note, setNote] = useState(req.admin_notes || "")
+   const dirty = note !== (req.admin_notes || "")
+ 
+@@ -101,12 +102,12 @@ function RequestCard({ req, reqMutation }) {
+ 
+       {/* Respuesta visible para el cliente */}
+       <div>
+-        <label style={{ display: "block", fontSize: "11px", fontWeight: 700,
++        <label htmlFor={responseId} style={{ display: "block", fontSize: "11px", fontWeight: 700,
+           color: "var(--admin-text-muted)", letterSpacing: "0.06em", textTransform: "uppercase",
+           marginBottom: "6px" }}>
+           Respuesta (el cliente la ve en &quot;Mis servicios&quot;)
+         </label>
+-        <textarea value={note} onChange={e => setNote(e.target.value)} rows={2}
++        <textarea id={responseId} value={note} onChange={e => setNote(e.target.value)} rows={2}
+           placeholder="Ej: Te contactamos por email con la cotización..."
+           style={{ ...inputSt, resize: "vertical", fontSize: "13px" }} />
+         {dirty && (
+diff --git a/frontend/src/pages/admin/AdminSettings.jsx b/frontend/src/pages/admin/AdminSettings.jsx
+--- a/frontend/src/pages/admin/AdminSettings.jsx
++++ b/frontend/src/pages/admin/AdminSettings.jsx
+@@ -3,7 +3,8 @@ import { useState, useEffect } from "react"
+ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+ import { getAdminSiteSettings, updateSiteSettings } from "../../api/siteSettings.api"
+ import { mediaUrl } from "../../utils/mediaUrl"
+-import { AdminPageHeader, PrimaryButton } from "../../components/admin/ui"
++import { AdminPageHeader, PrimaryButton, SecondaryButton, ErrorState, FormField } from "../../components/admin/ui"
++import { showToast } from "../../components/ui/ToastNotification"
+ 
+ const TABS = [
+   { id: "hero",     label: "Hero"        },
+@@ -26,23 +27,10 @@ const inputSt = {
+   transition: "border-color 150ms",
+ }
+ 
+-const labelSt = {
+-  display: "block", fontSize: "11px", color: "var(--text-3)",
+-  textTransform: "uppercase", letterSpacing: "0.1em",
+-  marginBottom: "8px", fontWeight: 600,
+-}
+-
+ function Field({ label, children, helper }) {
+-  return (
+-    <div style={{ marginBottom: "20px" }}>
+-      <label style={labelSt}>{label}</label>
+-      {children}
+-      {helper && (
+-        <p style={{ fontSize: "11px", color: "var(--text-3)",
+-          marginTop: "6px", lineHeight: 1.5 }}>{helper}</p>
+-      )}
+-    </div>
+-  )
++  return <div style={{ marginBottom: "20px" }}>
++    <FormField label={label} description={helper}>{children}</FormField>
++  </div>
+ }
+ 
+ function Toggle({ label, checked, onChange }) {
+@@ -123,7 +111,7 @@ export default function AdminSettings() {
+   const [form, setForm]   = useState(null)
+   const [files, setFiles] = useState({})
+ 
+-  const { data } = useQuery({ queryKey: ["site-settings-admin"], queryFn: getAdminSiteSettings })
++  const { data, isError, refetch } = useQuery({ queryKey: ["site-settings-admin"], queryFn: getAdminSiteSettings })
+   useEffect(() => {
+     if (data && !form) setForm({ ...data })
+   }, [data, form])
+@@ -137,12 +125,10 @@ export default function AdminSettings() {
+       setFiles({})
+     },
+     onError: (err) => {
+-      const status = err?.response?.status
+-      if (status === 413) {
+-        alert("La imagen es demasiado grande. Reducila a menos de 25 MB e intentalo de nuevo.\n\nTip: si es una foto de Adobe Stock 4K, exportala como JPEG de 1920×1080 (queda debajo de 500 KB).")
+-      } else {
+-        alert("Error al guardar. Revisá la conexión e intentalo de nuevo.")
+-      }
++      const msg = err?.response?.status === 413
++        ? "La imagen supera el tamaño permitido. Reduce su peso e inténtalo nuevamente."
++        : "No pudimos guardar los cambios. Revisa la conexión e inténtalo nuevamente."
++      showToast(msg, "error")
+     },
+   })
+ 
+@@ -160,6 +146,15 @@ export default function AdminSettings() {
+   function set(k, v) { setForm(prev => ({ ...prev, [k]: v })) }
+   function setFile(k, f) { setFiles(prev => ({ ...prev, [k]: f })) }
+ 
++  if (isError && !form) {
++    return <div className="au-page" data-testid="admin-settings-error">
++      <AdminPageHeader title="Configuración del sitio" description="LevelPro Audio" />
++      <ErrorState title="No pudimos cargar la configuración"
++        description="Los ajustes actuales permanecen guardados en el servidor."
++        action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
++    </div>
++  }
++
+   if (!form) {
+     return (
+       <div className="au-page" data-testid="admin-settings">
+@@ -186,6 +181,11 @@ export default function AdminSettings() {
+         }
+       />
+ 
++      {isError && <div role="alert" className="lp-callout lp-callout--warning">
++        No se pudo actualizar la configuración. Los datos visibles pueden estar desactualizados.
++        <SecondaryButton onClick={() => refetch()} size="sm">Actualizar</SecondaryButton>
++      </div>}
++
+       {/* Tabs */}
+       <div className="lp-seg-tabs">
+         {TABS.map(t => (
+diff --git a/frontend/src/pages/dashboard/MyBookings.jsx b/frontend/src/pages/dashboard/MyBookings.jsx
+--- a/frontend/src/pages/dashboard/MyBookings.jsx
++++ b/frontend/src/pages/dashboard/MyBookings.jsx
+@@ -11,6 +11,7 @@ import {
+   HelpCircle,
+ } from "lucide-react"
+ import { getBookings, cancelBooking } from "../../api/services.api"
++import { queryDisplayState, listFromResponse } from "../../utils/queryDisplayState"
+ import {
+   AdminPageHeader,
+   StatCard,
+@@ -19,6 +20,7 @@ import {
+   SecondaryButton,
+   DangerButton,
+   ConfirmationModal,
++  ErrorState,
+ } from "../../components/admin/ui"
+ import { showToast } from "../../components/ui/ToastNotification"
+ 
+@@ -31,13 +33,13 @@ const STATUS_MAP = {
+ 
+ export default function MyBookings() {
+   const queryClient = useQueryClient()
+-  const { data, isLoading } = useQuery({
++  const { data, isLoading, isError, refetch } = useQuery({
+     queryKey: ["my-bookings"],
+     queryFn:  getBookings,
+   })
+ 
+-  const raw = data?.results || data || []
+-  const bookings = Array.isArray(raw) ? raw : []
++  const ready = queryDisplayState({ data, isPending: isLoading, isError }) === "ready"
++  const bookings = listFromResponse(data)
+   const [toCancel, setToCancel] = useState(null)
+ 
+   const cancelMutation = useMutation({
+@@ -48,7 +50,7 @@ export default function MyBookings() {
+       showToast("Reserva cancelada correctamente")
+     },
+     onError: (e) => {
+-      showToast(e?.response?.data?.detail || "No se pudo cancelar la reserva. Intentá de nuevo.", "error")
++      showToast(e?.response?.data?.detail || "No se pudo cancelar la reserva. Intenta nuevamente.", "error")
+       setToCancel(null)
+     },
+   })
+@@ -90,8 +92,8 @@ export default function MyBookings() {
+         }
+       />
+ 
+-      {/* KPI Strip */}
+-      <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
++      {/* KPIs únicamente con datos confirmados. */}
++      {ready && <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
+         <StatCard
+           title="Total reservas"
+           value={bookings.length}
+@@ -112,7 +114,7 @@ export default function MyBookings() {
+           description="Por confirmar horario"
+           variant={pendingCount > 0 ? "amber" : "default"}
+         />
+-      </div>
++      </div>}
+ 
+       {/* Bookings list */}
+       {isLoading ? (
+@@ -121,6 +123,10 @@ export default function MyBookings() {
+             <div key={i} className="au-skeleton" style={{ height: "88px", borderRadius: "var(--admin-radius-lg)" }} />
+           ))}
+         </div>
++      ) : isError ? (
++        <ErrorState title="No pudimos cargar tus reservas"
++          description="Tus reservas no se han modificado. Intenta actualizar la información."
++          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
+       ) : bookings.length === 0 ? (
+         <div
+           className="au-card"
+diff --git a/frontend/src/pages/dashboard/MyCourses.jsx b/frontend/src/pages/dashboard/MyCourses.jsx
+--- a/frontend/src/pages/dashboard/MyCourses.jsx
++++ b/frontend/src/pages/dashboard/MyCourses.jsx
+@@ -3,13 +3,15 @@ import { useQuery } from "@tanstack/react-query"
+ import { useNavigate } from "react-router-dom"
+ import { GraduationCap, Film, Download, BookOpen, CheckCircle2, ArrowRight } from "lucide-react"
+ import { getEnrollments, downloadCertificate } from "../../api/academy.api"
++import { queryDisplayState, listFromResponse } from "../../utils/queryDisplayState"
+ import { mediaUrl } from "../../utils/mediaUrl"
+ import { showToast } from "../../components/ui/ToastNotification"
+ import {
+   AdminPageHeader,
+   StatCard,
+   PrimaryButton,
+   SecondaryButton,
++  ErrorState,
+ } from "../../components/admin/ui"
+ 
+ async function handleDownloadCertificate(e, enrollmentId, courseSlug) {
+@@ -32,13 +34,13 @@ async function handleDownloadCertificate(e, enrollmentId, courseSlug) {
+ 
+ export default function MyCourses() {
+   const navigate = useNavigate()
+-  const { data, isLoading } = useQuery({
++  const { data, isLoading, isError, refetch } = useQuery({
+     queryKey: ["enrollments"],
+     queryFn: getEnrollments,
+   })
+ 
+-  const rawEnrollments = data?.results ?? data
+-  const enrollments = Array.isArray(rawEnrollments) ? rawEnrollments : []
++  const ready = queryDisplayState({ data, isPending: isLoading, isError }) === "ready"
++  const enrollments = listFromResponse(data)
+ 
+   const totalEnrollments = enrollments.length
+   const completedCount = enrollments.filter(e => (Number(e.progress_percentage) || 0) >= 100).length
+@@ -52,7 +54,7 @@ export default function MyCourses() {
+       <AdminPageHeader
+         eyebrow="LEVELPRO / ACADEMIA"
+         title="Mis cursos"
+-        description={`${totalEnrollments} curso${totalEnrollments !== 1 ? "s" : ""} registrado${totalEnrollments !== 1 ? "s" : ""} en tu aula virtual`}
++        description={isLoading || isError ? "Tu biblioteca de aprendizaje" : `${totalEnrollments} curso${totalEnrollments !== 1 ? "s" : ""} registrado${totalEnrollments !== 1 ? "s" : ""} en tu aula virtual`}
+         breadcrumbs={[
+           { label: "Inicio", to: "/dashboard" },
+           { label: "Mis cursos" },
+@@ -64,8 +66,8 @@ export default function MyCourses() {
+         }
+       />
+ 
+-      {/* KPI Strip */}
+-      <div className="lp-grid-kpi">
++      {/* KPIs sobre información confirmada por la API. */}
++      {ready && <div className="lp-grid-kpi">
+         <StatCard
+           variant="ink"
+           Icon={GraduationCap}
+@@ -87,7 +89,13 @@ export default function MyCourses() {
+           value={completedCount}
+           sub={`${completedCount} certificado${completedCount !== 1 ? "s" : ""} disponible${completedCount !== 1 ? "s" : ""}`}
+         />
+-      </div>
++      </div>}
++
++      {!isLoading && isError && (
++        <ErrorState title="No pudimos cargar tus cursos"
++          description="Tus inscripciones siguen guardadas. Intenta consultar nuevamente."
++          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
++      )}
+ 
+       {isLoading && (
+         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+@@ -97,7 +105,7 @@ export default function MyCourses() {
+         </div>
+       )}
+ 
+-      {!isLoading && enrollments.length === 0 && (
++      {ready && enrollments.length === 0 && (
+         <div className="au-card" style={{ padding: "64px 24px", textAlign: "center" }}>
+           <div
+             style={{
+@@ -127,7 +135,7 @@ export default function MyCourses() {
+         </div>
+       )}
+ 
+-      {!isLoading && enrollments.length > 0 && (
++      {ready && enrollments.length > 0 && (
+         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+           {enrollments.map(enrollment => {
+             const course = enrollment.course || {}
+@@ -141,7 +149,8 @@ export default function MyCourses() {
+                 role="button"
+                 tabIndex={0}
+                 onClick={() => navigate(`/academy/${course.slug || ""}`)}
+-                onKeyDown={e => { if (e.key === "Enter") navigate(`/academy/${course.slug || ""}`) }}
++                onKeyDown={e => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); navigate(`/academy/${course.slug || ""}`) } }}
++                aria-label={`Abrir curso ${course.title || "inscrito"}`}
+                 className="au-card"
+                 style={{
+                   padding: "18px 22px",
+diff --git a/frontend/src/pages/dashboard/MyEntries.jsx b/frontend/src/pages/dashboard/MyEntries.jsx
+--- a/frontend/src/pages/dashboard/MyEntries.jsx
++++ b/frontend/src/pages/dashboard/MyEntries.jsx
+@@ -19,6 +19,7 @@ import {
+   StatusBadge,
+   PrimaryButton,
+   SecondaryButton,
++  ErrorState,
+ } from "../../components/admin/ui"
+ 
+ function TicketCard({ code, image }) {
+@@ -291,7 +292,7 @@ function CampaignCard({ campaign }) {
+ }
+ 
+ export default function MyEntries() {
+-  const { data = [], isLoading } = useQuery({
++  const { data = [], isLoading, isError, refetch } = useQuery({
+     queryKey: ["my-reward-entries"],
+     queryFn:  getMyEntries,
+   })
+@@ -318,8 +319,8 @@ export default function MyEntries() {
+         }
+       />
+ 
+-      {/* KPI Strip */}
+-      <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
++      {/* KPI disponibles únicamente después de una respuesta válida. */}
++      {!isLoading && !isError && <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
+         <StatCard
+           title="Campañas participadas"
+           value={campaigns.length}
+@@ -340,7 +341,7 @@ export default function MyEntries() {
+           description="Por realizarse próximamente"
+           variant={activeCampaigns > 0 ? "amber" : "default"}
+         />
+-      </div>
++      </div>}
+ 
+       {/* Content */}
+       {isLoading ? (
+@@ -349,6 +350,10 @@ export default function MyEntries() {
+             <div key={i} className="au-skeleton" style={{ height: "140px", borderRadius: "var(--admin-radius-lg)" }} />
+           ))}
+         </div>
++      ) : isError ? (
++        <ErrorState title="No pudimos cargar tus participaciones"
++          description="Tus tickets permanecen registrados. Vuelve a consultar la información."
++          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
+       ) : campaigns.length === 0 ? (
+         <div
+           className="au-card"
+diff --git a/frontend/src/pages/dashboard/MyFavorites.jsx b/frontend/src/pages/dashboard/MyFavorites.jsx
+--- a/frontend/src/pages/dashboard/MyFavorites.jsx
++++ b/frontend/src/pages/dashboard/MyFavorites.jsx
+@@ -3,29 +3,32 @@ import { useQuery } from "@tanstack/react-query"
+ import { useEffect } from "react"
+ import { Heart, Package, Zap, Tag } from "lucide-react"
+ import { getFavorites } from "../../api/favorites.api"
++import { queryDisplayState, listFromResponse } from "../../utils/queryDisplayState"
+ import ProductCard from "../../components/product/ProductCard"
+ import { useFavoritesStore } from "../../store/favoritesStore"
+ import {
+   AdminPageHeader,
+   StatCard,
+   PrimaryButton,
++  SecondaryButton,
++  ErrorState,
+ } from "../../components/admin/ui"
+ 
+ export default function MyFavorites() {
+   const loadFavs = useFavoritesStore(s => s.load)
+   const favIds   = useFavoritesStore(s => s.ids || [])
+   useEffect(() => { loadFavs() }, [loadFavs])
+ 
+-  const { data, isLoading, refetch } = useQuery({
++  const { data, isLoading, isError, refetch } = useQuery({
+     queryKey: ["my-favorites"],
+     queryFn: getFavorites,
+   })
+ 
+   // Al cambiar favoritos (quitar desde la card), refrescar la lista
+   useEffect(() => { refetch() }, [favIds.length, refetch])
+ 
+-  const rawProducts = data?.results ?? data
+-  const allProducts = Array.isArray(rawProducts) ? rawProducts : []
++  const ready = queryDisplayState({ data, isPending: isLoading, isError }) === "ready"
++  const allProducts = listFromResponse(data)
+   const products = allProducts.filter(p => favIds.includes(p.id))
+ 
+   const inStockCount = products.filter(p => (Number(p.stock) || 0) > 0).length
+@@ -40,7 +43,7 @@ export default function MyFavorites() {
+       <AdminPageHeader
+         eyebrow="LEVELPRO / MI CUENTA"
+         title="Mis favoritos"
+-        description={`${products.length} producto${products.length !== 1 ? "s" : ""} guardado${products.length !== 1 ? "s" : ""} en tu lista de deseos`}
++        description={isLoading || isError ? "Tu selección personal de productos" : `${products.length} producto${products.length !== 1 ? "s" : ""} guardado${products.length !== 1 ? "s" : ""} en tu lista de deseos`}
+         breadcrumbs={[
+           { label: "Inicio", to: "/dashboard" },
+           { label: "Favoritos" },
+@@ -52,8 +55,8 @@ export default function MyFavorites() {
+         }
+       />
+ 
+-      {/* KPI Strip */}
+-      <div className="lp-grid-kpi">
++      {/* Totales solo cuando la consulta se completó. */}
++      {ready && <div className="lp-grid-kpi">
+         <StatCard
+           variant="ink"
+           Icon={Heart}
+@@ -66,7 +69,7 @@ export default function MyFavorites() {
+           Icon={Package}
+           label="Stock disponible"
+           value={inStockCount}
+-          sub="Listos para despacho"
++          sub="Con unidades disponibles"
+         />
+         <StatCard
+           variant="light"
+@@ -75,7 +78,13 @@ export default function MyFavorites() {
+           value={discountedCount}
+           sub="Con precio especial"
+         />
+-      </div>
++      </div>}
++
++      {!isLoading && isError && (
++        <ErrorState title="No pudimos cargar tus favoritos"
++          description="Tu lista sigue guardada. Puedes reintentar la consulta."
++          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
++      )}
+ 
+       {isLoading && (
+         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "20px" }}>
+@@ -85,7 +94,7 @@ export default function MyFavorites() {
+         </div>
+       )}
+ 
+-      {!isLoading && products.length === 0 && (
++      {ready && products.length === 0 && (
+         <div className="au-card" style={{ padding: "64px 24px", textAlign: "center" }}>
+           <div
+             style={{
+@@ -115,7 +124,7 @@ export default function MyFavorites() {
+         </div>
+       )}
+ 
+-      {!isLoading && products.length > 0 && (
++      {ready && products.length > 0 && (
+         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "20px" }}>
+           {products.map(p => {
+             const priceDropped = p.price_when_added && Number(p.price) < Number(p.price_when_added)
+diff --git a/frontend/src/pages/dashboard/MyLoyalty.jsx b/frontend/src/pages/dashboard/MyLoyalty.jsx
+--- a/frontend/src/pages/dashboard/MyLoyalty.jsx
++++ b/frontend/src/pages/dashboard/MyLoyalty.jsx
+@@ -15,11 +15,13 @@ import {
+   Gift,
+ } from "lucide-react"
+ import { getMyLoyalty, getLoyaltyTransactions } from "../../api/loyalty.api"
++import { showToast } from "../../components/ui/ToastNotification"
+ import {
+   AdminPageHeader,
+   StatCard,
+   PrimaryButton,
+   SecondaryButton,
++  ErrorState,
+ } from "../../components/admin/ui"
+ 
+ const NIVELES = {
+@@ -37,7 +39,7 @@ const TIPO_STYLE = {
+ }
+ 
+ export default function MyLoyalty() {
+-  const { data, isLoading } = useQuery({
++  const { data, isLoading, isError, refetch } = useQuery({
+     queryKey: ["my-loyalty-full"],
+     queryFn:  getMyLoyalty,
+   })
+@@ -53,12 +55,27 @@ export default function MyLoyalty() {
+       const page = await getLoyaltyTransactions(nextPage)
+       setExtraTx((prev) => (prev ? [...prev, ...page.results] : page.results))
+       setNextPage(page.next)
++    } catch {
++      showToast("No pudimos cargar más movimientos. Vuelve a intentarlo.", "error")
+     } finally {
+       setLoadingMore(false)
+     }
+   }
+ 
+-  if (isLoading || !data) {
++  if (isError || (!isLoading && !data)) {
++    return (
++      <div className="au-page" data-testid="dashboard-loyalty-error">
++        <AdminPageHeader title="Mis puntos y fidelización"
++          description="Consulta los beneficios y movimientos de tu cuenta"
++          breadcrumbs={[{ label: "Mi cuenta", to: "/dashboard" }, { label: "Puntos" }]} />
++        <ErrorState title="No pudimos consultar tus puntos"
++          description="No mostraremos saldos estimados. Tus datos se mantienen guardados."
++          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
++      </div>
++    )
++  }
++
++  if (isLoading) {
+     return (
+       <div className="au-page" data-testid="dashboard-loyalty-loading">
+         <AdminPageHeader
+@@ -423,21 +440,19 @@ export default function MyLoyalty() {
+       </div>
+ 
+       {/* Accordion: How it works */}
+-      <div
+-        className="au-card"
+-        style={{
+-          padding: "20px 24px",
+-          cursor: "pointer",
+-        }}
+-        onClick={() => setFaqOpen(!faqOpen)}
+-      >
+-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+-          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
++      <section className="au-card" style={{ padding: "20px 24px" }}>
++        <button type="button"
++          className="au-accordion-trigger"
++          aria-expanded={faqOpen}
++          aria-controls="loyalty-program-details"
++          onClick={() => setFaqOpen(open => !open)}>
++          <span style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
++            <span style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+             <ShieldCheck size={18} style={{ color: "#16a34a" }} />
+             <span style={{ fontSize: "14px", fontWeight: 700, color: "var(--admin-primary-text)" }}>
+               ¿Cómo funciona el programa de fidelización LevelPro?
+             </span>
+-          </div>
++            </span>
+           <ChevronDown
+             size={18}
+             style={{
+@@ -446,10 +461,11 @@ export default function MyLoyalty() {
+               transition: "transform 0.2s ease",
+             }}
+           />
+-        </div>
++          </span>
++        </button>
+ 
+         {faqOpen && (
+-          <div
++          <div id="loyalty-program-details"
+             style={{
+               marginTop: "16px",
+               paddingTop: "14px",
+@@ -462,13 +478,13 @@ export default function MyLoyalty() {
+             <ul style={{ margin: 0, paddingLeft: "20px" }}>
+               <li><strong>Acumulación automática:</strong> Cada compra suma puntos cuando tu pago es validado y facturado.</li>
+               <li><strong>Canje directo:</strong> Aplica tus puntos acumulados como descuento en el checkout antes de pagar.</li>
+-              <li><strong>Mínimo de canje:</strong> Requieres al menos {data.minimo_canje || 100} puntos para solicitar descuento.</li>
+-              <li><strong>Niveles de fidelidad:</strong> Subes de nivel con base en tus compras históricas, desbloqueando promociones preferenciales y multiplicadores.</li>
+-              <li><strong>Vigencia:</strong> Los puntos tienen una vigencia anual activa con cada nueva orden realizada.</li>
++              <li><strong>Mínimo de canje:</strong> {data.minimo_canje == null ? "Consulta el mínimo vigente antes de canjear." : `Se requieren ${data.minimo_canje} puntos.`}</li>
++              <li><strong>Niveles de fidelidad:</strong> El nivel refleja las reglas de fidelización vigentes en tu cuenta.</li>
++              <li><strong>Vigencia:</strong> La disponibilidad y la vigencia de los puntos se rigen por las condiciones vigentes del programa.</li>
+             </ul>
+           </div>
+         )}
+-      </div>
++      </section>
+     </div>
+   )
+ }
+diff --git a/frontend/src/pages/dashboard/MyServices.jsx b/frontend/src/pages/dashboard/MyServices.jsx
+--- a/frontend/src/pages/dashboard/MyServices.jsx
++++ b/frontend/src/pages/dashboard/MyServices.jsx
+@@ -1,5 +1,5 @@
+ // pages/dashboard/MyServices.jsx
+-import { useState } from "react"
++import { useEffect, useId, useRef, useState } from "react"
+ import { useQuery } from "@tanstack/react-query"
+ import { Link } from "react-router-dom"
+ import {
+@@ -20,6 +20,7 @@ import {
+   StatusBadge,
+   PrimaryButton,
+   SecondaryButton,
++  ErrorState,
+ } from "../../components/admin/ui"
+ 
+ const STATUS_MAP = {
+@@ -31,6 +32,29 @@ const STATUS_MAP = {
+ }
+ 
+ function RequestDetailModal({ req, onClose }) {
++  const titleId = useId()
++  const dialogRef = useRef(null)
++  const closeRef = useRef(onClose)
++  useEffect(() => { closeRef.current = onClose }, [onClose])
++  useEffect(() => {
++    if (!req) return
++    const previous = document.activeElement
++    dialogRef.current?.focus()
++    const onKey = event => {
++      if (event.key === "Escape") { closeRef.current?.(); return }
++      if (event.key !== "Tab") return
++      const buttons = [...(dialogRef.current?.querySelectorAll('button:not([disabled]), a[href]') || [])]
++      if (!buttons.length) { event.preventDefault(); return }
++      const first = buttons[0], last = buttons[buttons.length - 1]
++      if (event.shiftKey && (document.activeElement === first || document.activeElement === dialogRef.current)) {
++        event.preventDefault(); last.focus()
++      } else if (!event.shiftKey && document.activeElement === last) {
++        event.preventDefault(); first.focus()
++      }
++    }
++    document.addEventListener("keydown", onKey)
++    return () => { document.removeEventListener("keydown", onKey); previous?.focus?.() }
++  }, [req])
+   if (!req) return null
+   const statusMeta = STATUS_MAP[req.status] || { label: req.status_display || req.status || "Desconocido", status: "gray" }
+ 
+@@ -66,6 +90,8 @@ function RequestDetailModal({ req, onClose }) {
+     >
+       <div
+         className="au-card"
++        ref={dialogRef} tabIndex={-1}
++        role="dialog" aria-modal="true" aria-labelledby={titleId}
+         onClick={(e) => e.stopPropagation()}
+         style={{
+           width: "100%",
+@@ -86,14 +112,14 @@ function RequestDetailModal({ req, onClose }) {
+           }}
+         >
+           <div style={{ minWidth: 0 }}>
+-            <p style={{ fontSize: "16px", fontWeight: 700, color: "var(--admin-primary-text)", margin: 0 }}>
++            <p id={titleId} style={{ fontSize: "16px", fontWeight: 700, color: "var(--admin-primary-text)", margin: 0 }}>
+               {req.service_name || "Solicitud de servicio"}
+             </p>
+             <p style={{ fontSize: "12px", color: "var(--admin-muted-text)", margin: "2px 0 0" }}>
+               Enviada el {formatDate(req.created_at)}
+             </p>
+           </div>
+-          <button
++          <button type="button"
+             onClick={onClose}
+             className="au-iconbtn"
+             title="Cerrar"
+@@ -207,7 +233,7 @@ function RequestDetailModal({ req, onClose }) {
+ }
+ 
+ export default function MyServices() {
+-  const { data, isLoading } = useQuery({
++  const { data, isLoading, isError, refetch } = useQuery({
+     queryKey: ["service-requests"],
+     queryFn:  getServiceRequests,
+   })
+@@ -245,8 +271,8 @@ export default function MyServices() {
+         }
+       />
+ 
+-      {/* KPI Strip */}
+-      <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
++      {/* Mostrar indicadores solo tras consulta válida. */}
++      {!isLoading && !isError && <div className="au-kpi-strip" style={{ marginBottom: "24px" }}>
+         <StatCard
+           title="Total solicitudes"
+           value={requests.length}
+@@ -267,7 +293,7 @@ export default function MyServices() {
+           description="Procesadas con éxito"
+           variant={completedCount > 0 ? "emerald" : "default"}
+         />
+-      </div>
++      </div>}
+ 
+       {/* Content list */}
+       {isLoading ? (
+@@ -276,6 +302,10 @@ export default function MyServices() {
+             <div key={i} className="au-skeleton" style={{ height: "88px", borderRadius: "var(--admin-radius-lg)" }} />
+           ))}
+         </div>
++      ) : isError ? (
++        <ErrorState title="No pudimos cargar tus solicitudes"
++          description="Tus solicitudes de servicio no se han modificado."
++          action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
+       ) : requests.length === 0 ? (
+         <div
+           className="au-card"
+diff --git a/frontend/src/pages/dashboard/Orders.jsx b/frontend/src/pages/dashboard/Orders.jsx
+--- a/frontend/src/pages/dashboard/Orders.jsx
++++ b/frontend/src/pages/dashboard/Orders.jsx
+@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
+ import { useNavigate } from "react-router-dom"
+ import { ShoppingBag, Package, Clock, CheckCircle2, DollarSign } from "lucide-react"
+ import { getOrders } from "../../api/orders.api"
++import { queryDisplayState, listFromResponse } from "../../utils/queryDisplayState"
+ import { formatCurrency } from "../../utils/accountingCurrency"
+ import {
+   AdminPageHeader,
+@@ -22,10 +23,10 @@ const STATUS_MAP = {
+ 
+ export default function Orders() {
+   const navigate = useNavigate()
+-  const { data, isLoading } = useQuery({ queryKey: ["orders"], queryFn: getOrders })
++  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["orders"], queryFn: getOrders })
+ 
+-  const rawOrders = data?.results ?? data
+-  const orders = (Array.isArray(rawOrders) ? rawOrders : []).map(o => ({
++  const ready = queryDisplayState({ data, isPending: isLoading, isError }) === "ready"
++  const orders = listFromResponse(data).map(o => ({
+     ...o,
+     short_id: (o.id || "").slice(0, 8).toUpperCase(),
+   }))
+@@ -125,7 +126,7 @@ export default function Orders() {
+       <AdminPageHeader
+         eyebrow="LEVELPRO / MI CUENTA"
+         title="Mis pedidos"
+-        description={`${totalOrders} pedido${totalOrders !== 1 ? "s" : ""} registrado${totalOrders !== 1 ? "s" : ""} en tu cuenta`}
++        description={isLoading || isError ? "Consulta tus compras y su seguimiento" : `${totalOrders} pedido${totalOrders !== 1 ? "s" : ""} registrado${totalOrders !== 1 ? "s" : ""} en tu cuenta`}
+         breadcrumbs={[
+           { label: "Inicio", to: "/dashboard" },
+           { label: "Mis pedidos" },
+@@ -137,8 +138,8 @@ export default function Orders() {
+         }
+       />
+ 
+-      {/* KPI Strip */}
+-      <div className="lp-grid-kpi">
++      {/* No presentar cero como total comercial durante errores de consulta. */}
++      {ready && <div className="lp-grid-kpi">
+         <StatCard
+           variant="ink"
+           Icon={Package}
+@@ -167,12 +168,14 @@ export default function Orders() {
+           value={<span style={{ fontSize: 16, lineHeight: 1.4 }}>{spentLabels.length ? spentLabels.join(" · ") : "—"}</span>}
+           sub="Compras pagadas, separadas por moneda"
+         />
+-      </div>
++      </div>}
+ 
+       <DataTable
+         columns={columns}
+         data={orders}
+         loading={isLoading}
++        error={isError}
++        onRetry={() => refetch()}
+         getRowId={o => o.id}
+         searchable
+         searchKeys={["short_id"]}
+diff --git a/frontend/src/styles/admin-ui.css b/frontend/src/styles/admin-ui.css
+--- a/frontend/src/styles/admin-ui.css
++++ b/frontend/src/styles/admin-ui.css
+@@ -1485,3 +1485,115 @@
+     animation-duration: .01ms !important;
+   }
+ }
++
++
++/* -----------------------------------------------------------------------
++   LevelPro V3.2.1 / Interior Workspaces
++   Design refinement scoped to authenticated Admin + Customer dashboards.
++   No storefront, checkout or public website layout changes.
++   ----------------------------------------------------------------------- */
++.admin-root .au-page {
++  width: 100%;
++  min-width: 0;
++  max-width: 1600px;
++  margin-inline: auto;
++  gap: clamp(16px, 1.8vw, 24px);
++}
++.admin-root .au-card {
++  border-color: rgba(16, 20, 24, .08);
++  box-shadow: 0 5px 24px -15px rgba(16, 20, 24, .13);
++}
++.admin-root .au-panel { padding: clamp(18px, 2vw, 26px); }
++.admin-root .au-panel__head { gap: 14px; align-items: flex-start; }
++.admin-root .au-panel__head > div:first-child { min-width: 0; }
++.admin-root .au-panel__title {
++  font-family: var(--font-display, var(--font-sans));
++  font-weight: 750;
++  letter-spacing: -.025em;
++  line-height: 1.2;
++}
++.admin-root .au-header { align-items: center; row-gap: 12px; }
++.admin-root .au-header > div:first-child { min-width: 0; }
++.admin-root .au-title { font-weight: 780; line-height: 1.12; }
++.admin-root .au-desc { max-width: 62ch; line-height: 1.5; }
++.admin-root .au-header__crumbs {
++  flex-wrap: wrap;
++  row-gap: 4px;
++  font-size: 12px;
++}
++.admin-root .au-header__crumbs [aria-current="page"] { color: var(--admin-text); font-weight: 700; }
++.admin-root .au-formfield { min-width: 0; }
++.admin-root .au-formfield__help,
++.admin-root .au-formfield__error {
++  font-size: 12px;
++  line-height: 1.5;
++  margin-top: 6px;
++}
++.admin-root .au-formfield__help { color: var(--admin-text-muted); }
++.admin-root .au-formfield__error { color: var(--admin-danger); }
++.admin-root .au-formfield :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
++  max-width: 100%;
++  font-family: var(--font-sans, sans-serif);
++}
++.admin-root .au-formfield :is(input, select, textarea):disabled {
++  cursor: not-allowed;
++  opacity: .62;
++}
++.admin-root .au-btn__spinner {
++  display: inline-block;
++  width: 13px;
++  height: 13px;
++  border: 2px solid currentColor;
++  border-right-color: transparent;
++  border-radius: 100%;
++  animation: lp-ux-spin .75s linear infinite;
++}
++@keyframes lp-ux-spin { to { transform: rotate(360deg); } }
++.admin-root .au-accordion-trigger {
++  display: block;
++  width: 100%;
++  border: 0;
++  padding: 0;
++  background: transparent;
++  text-align: left;
++  font: inherit;
++  color: inherit;
++  cursor: pointer;
++}
++.admin-root .au-accordion-trigger:hover { color: var(--admin-primary-text); }
++.admin-root .au-pagination button[aria-current="page"] {
++  background: var(--admin-primary);
++  color: #00160b;
++  font-weight: 800;
++  border-color: transparent;
++}
++.admin-root .au-table tbody tr:focus-within { background: var(--admin-primary-soft); }
++.admin-root .au-table tbody td,
++.admin-root .au-table thead th {
++  font-variant-numeric: tabular-nums;
++}
++.admin-root .au-empty {
++  min-height: 220px;
++  gap: 10px;
++  padding-block: clamp(30px, 5vw, 54px);
++}
++.admin-root .au-empty__title { font-weight: 760; letter-spacing: -.015em; }
++.admin-root .au-empty__desc { line-height: 1.55; max-width: 44ch; }
++.admin-root .au-modal { max-height: min(92dvh, 850px); overflow-y: auto; }
++@media (max-width: 900px) {
++  .admin-root .au-header { align-items: flex-start; }
++  .admin-root .au-header__actions { max-width: 100%; }
++  .admin-root .au-header__actions > * { max-width: 100%; }
++}
++@media (max-width: 620px) {
++  .admin-root .au-page { gap: 16px; }
++  .admin-root .au-panel { padding: 18px 16px; }
++  .admin-root .au-header__actions { width: 100%; }
++  .admin-root .au-header__crumbs { font-size: 11px; }
++  .admin-root .au-toolbar__left,
++  .admin-root .au-toolbar__right { min-width: 0; }
++  .admin-root .au-modal { max-height: 95dvh; }
++}
++@media (prefers-reduced-motion: reduce) {
++  .admin-root .au-btn__spinner { animation: none; border-color: currentColor; }
++}
+diff --git a/frontend/src/utils/queryDisplayState.js b/frontend/src/utils/queryDisplayState.js
+new file mode 100644
+--- /dev/null
++++ b/frontend/src/utils/queryDisplayState.js
+@@ -0,0 +1,11 @@
++// Display states for authenticated account resources.
++// API errors must never be presented as "zero results".
++export function queryDisplayState({ isPending = false, isError = false, data } = {}) {
++  if (isError) return "error"
++  if (isPending || data === undefined) return "loading"
++  return "ready"
++}
++
++export function listFromResponse(data) {
++  return Array.isArray(data) ? data : Array.isArray(data?.results) ? data.results : []
++}
+diff --git a/frontend/tests/v3-2-1-query-states.test.mjs b/frontend/tests/v3-2-1-query-states.test.mjs
+new file mode 100644
+--- /dev/null
++++ b/frontend/tests/v3-2-1-query-states.test.mjs
+@@ -0,0 +1,22 @@
++import test from "node:test"
++import assert from "node:assert/strict"
++import { queryDisplayState, listFromResponse } from "../src/utils/queryDisplayState.js"
++
++test("an API error is never reported as an empty successful response", () => {
++  assert.equal(queryDisplayState({ isError: true, isPending: true }), "error")
++  assert.equal(queryDisplayState({ isError: true, data: [] }), "error")
++})
++test("distinguishes loading and successful empty accounts", () => {
++  assert.equal(queryDisplayState({ isPending: true }), "loading")
++  assert.equal(queryDisplayState(), "loading")
++  assert.equal(queryDisplayState({ data: [] }), "ready")
++  assert.deepEqual(listFromResponse([]), [])
++  assert.deepEqual(listFromResponse({ results: [{ id: 1 }] }), [{ id: 1 }])
++  assert.deepEqual(listFromResponse({ results: null }), [])
++})
++test("keeps valid successful account data intact", () => {
++  const data = [{ id: "LP-1" }, { id: "LP-2" }]
++  assert.equal(queryDisplayState({ data }), "ready")
++  assert.deepEqual(listFromResponse(data), data)
++  assert.equal(queryDisplayState({ data: { puntos_disponibles: 0 } }), "ready")
++})
