@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { adminListWinners, adminUpdateWinner, adminListCampaigns } from "../../api/rewards.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../utils/toast"
-import { AdminPageHeader, SecondaryButton, PrimaryButton } from "../../components/admin/ui"
+import { AdminPageHeader, SecondaryButton, PrimaryButton, ErrorState } from "../../components/admin/ui"
 
 function WinnerCard({ w }) {
   const qc = useQueryClient()
@@ -59,7 +59,7 @@ function WinnerCard({ w }) {
         )}
       </div>
 
-      <textarea placeholder="Observaciones (contacto realizado, dirección de envío…)"
+      <textarea aria-label="Observaciones de entrega" placeholder="Observaciones (contacto realizado, dirección de envío…)"
         value={notes} onChange={e => setNotes(e.target.value)} rows={2}
         style={{
           width:"100%", padding:"10px 12px",
@@ -73,9 +73,9 @@ function WinnerCard({ w }) {
         alignItems:"center", marginTop:"12px", gap:"10px", flexWrap: "wrap" }}>
         <label style={{ fontSize:"12px", fontWeight: 600, color:"var(--admin-text-secondary)", cursor:"pointer" }}>
           📷 {file ? file.name : "Adjuntar evidencia"}
-          <input type="file" accept="image/*"
+          <input type="file" accept="image/*" aria-label="Adjuntar evidencia de entrega"
             onChange={e => setFile(e.target.files?.[0] || null)}
-            style={{ display:"none" }} />
+            style={{ display:"block", maxWidth:"100%", marginTop:"8px", fontSize:"12px" }} />
         </label>
         <PrimaryButton size="sm" onClick={() => save.mutate()} disabled={save.isPending} loading={save.isPending}>
           {save.isPending ? "Guardando…" : "Guardar"}
@@ -88,11 +88,11 @@ function WinnerCard({ w }) {
 export default function AdminRewardsWinners() {
   const [campaignFilter, setCampaignFilter] = useState("")
 
-  const { data: rawWinners, isLoading } = useQuery({
+  const { data: rawWinners, isLoading, isError: winnersError, refetch: retryWinners } = useQuery({
     queryKey: ["admin-winners", campaignFilter],
     queryFn:  () => adminListWinners(campaignFilter),
   })
-  const { data: rawCampaigns } = useQuery({
+  const { data: rawCampaigns, isError: campaignsError, refetch: retryCampaigns } = useQuery({
     queryKey: ["admin-campaigns"],
     queryFn:  adminListCampaigns,
   })
@@ -104,7 +104,7 @@ export default function AdminRewardsWinners() {
       <AdminPageHeader
         eyebrow="LEVELPRO / REWARDS"
         title="Ganadores"
-        description={`${winners.length} ganadores y suplentes sorteados`}
+        description={winnersError ? "No fue posible cargar ganadores" : `${winners.length} ganadores y suplentes visibles`}
         breadcrumbs={[
           { label: "Rewards", to: "/admin/rewards" },
           { label: "Ganadores" },
@@ -113,6 +113,7 @@ export default function AdminRewardsWinners() {
           <>
             <SecondaryButton to="/admin/rewards" size="sm">← Dashboard</SecondaryButton>
             <select value={campaignFilter}
+              aria-label="Filtrar ganadores por campaña"
               onChange={e => setCampaignFilter(e.target.value)}
               className="au-select">
               <option value="">Todas las campañas</option>
@@ -126,7 +127,12 @@ export default function AdminRewardsWinners() {
 
       {isLoading && <p style={{ color:"var(--admin-text-muted)" }}>Cargando…</p>}
 
-      {!isLoading && winners.length === 0 && (
+      {campaignsError && <ErrorState title="No se pudo cargar el filtro de campañas"
+        action={<SecondaryButton onClick={() => retryCampaigns()}>Reintentar campañas</SecondaryButton>} />}
+      {winnersError && <ErrorState title="No se pudieron cargar los ganadores"
+        action={<SecondaryButton onClick={() => retryWinners()}>Reintentar</SecondaryButton>} />}
+
+      {!isLoading && !winnersError && winners.length === 0 && (
         <div className="au-card au-panel" style={{ padding:"44px", textAlign:"center", color:"var(--admin-text-secondary)" }}>
           Todavía no hay ganadores. Ejecutá el sorteo de una campaña
           para que aparezcan acá.
@@ -138,7 +144,7 @@ export default function AdminRewardsWinners() {
         gridTemplateColumns:"repeat(auto-fill, minmax(340px, 1fr))",
         gap:"14px",
       }}>
-        {winners.map(w => <WinnerCard key={w.id} w={w} />)}
+        {!winnersError && winners.map(w => <WinnerCard key={w.id} w={w} />)}
       </div>
     </div>
   )

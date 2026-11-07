@@ -98,7 +98,10 @@ export default function Checkout() {
   const { user }                            = useAuthStore()
   const { currency, format }                = usePrice()
   const navigate                            = useNavigate()
-  const total                               = getTotalIn(currency)
+  const confirmedPrices = currency === "CLP" || items.every(
+    i => i.product?.prices?.[currency] != null && Number.isFinite(Number(i.product.prices[currency]))
+  )
+  const total = confirmedPrices ? getTotalIn(currency) : null
 
   // Métodos de pago activos para la moneda elegida (configurables desde
   // el admin). Un argentino en USD ve Payoneer; un chileno en CLP ve
@@ -140,6 +143,10 @@ export default function Checkout() {
 
   const onSubmit = async (data) => {
     if (!items.length) return
+    if (!confirmedPrices) {
+      setServerError("No pudimos verificar los precios para esta moneda. Actualiza los productos del carrito antes de pagar.")
+      return
+    }
     if (methodsLoading || methodsError || !selectedMethodAvailable) {
       setServerError("Selecciona un método de pago disponible para la moneda actual.")
       return
@@ -153,7 +160,7 @@ export default function Checkout() {
         notes:            data.notes || "",
         total,
         currency,
-        loyalty_points_redeemed: pointsToRedeem || 0,
+        loyalty_points_redeemed: currency === "CLP" ? (pointsToRedeem || 0) : 0,
         items: items.map(i => ({
           product:      i.product.id,
           product_name: i.product.name,
@@ -372,7 +379,9 @@ export default function Checkout() {
                     </span>
                     <span style={{ flexShrink: 0, color: "var(--text-2)", fontWeight: 600,
                       fontVariantNumeric: "tabular-nums" }}>
-                      {format((Number(item.product.prices?.[currency] ?? item.product.price)) * item.quantity)}
+                      {item.product.prices?.[currency] == null && currency !== "CLP"
+                        ? "—"
+                        : format(Number(item.product.prices?.[currency] ?? item.product.price) * item.quantity)}
                     </span>
                   </div>
                 ))}
@@ -385,10 +394,19 @@ export default function Checkout() {
                 <span data-testid="checkout-total" style={{ fontFamily: "var(--font-display)",
                   fontSize: "2rem", fontWeight: 800, letterSpacing: "-0.03em",
                   color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>
-                  {format(total || 0)} <span style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-3)" }}>{currency}</span>
+                  {total === null ? "—" : format(total)} <span style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-3)" }}>{currency}</span>
                 </span>
               </div>
 
+              {!confirmedPrices && <p role="alert" style={{ color:"var(--danger)", fontSize:"12px", marginBottom:"12px" }}>
+                Hay productos sin precio confirmado en {currency}. No se puede continuar con un importe estimado.
+              </p>}
+              {currency !== "CLP" && pointsToRedeem > 0 && <p role="status" style={{ fontSize:"12px", color:"var(--text-2)", marginBottom:"12px" }}>
+                Los puntos guardados en el carrito solo se usan en compras CLP; no se descontarán de esta orden.
+              </p>}
+              {currency === "CLP" && pointsToRedeem > 0 && <p role="status" style={{ fontSize:"12px", color:"var(--text-2)", marginBottom:"12px" }}>
+                El subtotal mostrado no incluye el canje de puntos. El descuento CLP se confirma al crear la orden.
+              </p>}
               {selectedMethod && (
                 <div style={{ display: "flex", alignItems: "center", gap: "10px",
                   padding: "12px 14px", borderRadius: "var(--r-lg)",
@@ -410,7 +428,7 @@ export default function Checkout() {
                 </div>
               )}
 
-              <Button type="submit" disabled={!selectedMethodAvailable || methodsLoading || methodsError || isLoading}
+              <Button type="submit" disabled={!confirmedPrices || !selectedMethodAvailable || methodsLoading || methodsError || isLoading}
                 loading={isLoading} testId="checkout-submit"
                 variant="green" size="md" arrow
                 style={{ width: "100%", justifyContent: "space-between" }}>

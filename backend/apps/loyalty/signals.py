@@ -15,6 +15,12 @@ def award_points_on_purchase(sender, instance, **kwargs):
     if not instance.user:
         return
 
+    # Puntos por peso son CLP; acreditar importes USD/ARS como pesos daría
+    # valores matemáticamente falsos. Requiere una política FX explícita
+    # y tasa histórica por orden; nunca convertir silenciosamente.
+    if instance.currency != "CLP":
+        return
+
     from apps.loyalty.models import LoyaltyAccount, LoyaltyConfig, LoyaltyTransaction
 
     # Evitar dar puntos dos veces por la misma orden
