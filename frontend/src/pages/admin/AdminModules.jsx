@@ -163,7 +163,7 @@ export default function AdminModules() {
           ))}
         </div>
       ) : (
-        <div className="au-card au-table-wrap">
+        <div className="au-card au-table-wrap qa-academy-mobile-table">
           <div className="au-tscroll">
             <table className="au-table">
               <thead>
@@ -177,23 +177,23 @@ export default function AdminModules() {
               </thead>
               <tbody>
                 {modules.length === 0 ? (
-                  <tr>
+                  <tr data-qa-empty="true">
                     <td colSpan={5} style={{ padding: "42px", textAlign: "center", color: "var(--admin-text-secondary)" }}>
                       Sin módulos. Crea el primero arriba.
                     </td>
                   </tr>
                 ) : modules.map((mod) => (
                   <tr key={mod.id}>
-                    <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text-muted)" }}>
+                    <td data-label="Orden" style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text-muted)" }}>
                       {mod.order}
                     </td>
-                    <td>
+                    <td data-label="Título">
                       <p style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--admin-text)" }}>{mod.title}</p>
                     </td>
-                    <td style={{ color: "var(--admin-text-secondary)" }}>
+                    <td data-label="Curso" style={{ color: "var(--admin-text-secondary)" }}>
                       {mod.course_title || courses.find(c => c.id === mod.course)?.title || "—"}
                     </td>
-                    <td>
+                    <td data-label="Lecciones">
                       <Link
                         to={`/admin/academy/lessons?module=${mod.id}`}
                         data-testid={`module-lessons-link-${mod.id}`}
@@ -203,7 +203,7 @@ export default function AdminModules() {
                         {mod.lessons_count ?? 0} lecciones →
                       </Link>
                     </td>
-                    <td style={{ textAlign: "right" }}>
+                    <td data-label="Acciones" style={{ textAlign: "right" }}>
                       <div style={{ display: "inline-flex", gap: "6px" }}>
                         <IconButton icon={Pencil} label={`Editar módulo ${mod.title}`} disabled={!canEdit} onClick={() => setModal(mod)} />
                         <IconButton icon={Trash2} label={`Eliminar módulo ${mod.title}`} danger onClick={() => setToDelete(mod)} />

@@ -1667,6 +1667,77 @@
     box-shadow: 0 16px 34px -20px rgba(16, 20, 24, .25);
   }
 }
+/* QA V3.2 FIX04: lectura de Módulos/Lecciones sin columnas comprimidas en móviles.
+   La tabla de escritorio conserva su estructura, datos y acciones originales. */
+@media (max-width: 620px) {
+  .admin-root .qa-academy-mobile-table.au-table-wrap {
+    overflow: visible;
+    background: transparent;
+    border: 0;
+    padding: 0;
+    box-shadow: none;
+  }
+  .admin-root .qa-academy-mobile-table .au-tscroll,
+  .admin-root .qa-academy-mobile-table .au-table,
+  .admin-root .qa-academy-mobile-table .au-table tbody {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+  }
+  .admin-root .qa-academy-mobile-table .au-table thead { display: none; }
+  .admin-root .qa-academy-mobile-table .au-table tbody tr {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    min-width: 0;
+    padding: 16px;
+    margin-bottom: 12px;
+    border: 1px solid var(--admin-border);
+    border-radius: 18px;
+    background: var(--admin-surface);
+    box-shadow: 0 6px 18px rgba(16,20,24,.04);
+  }
+  .admin-root .qa-academy-mobile-table .au-table tbody td {
+    display: block;
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+    padding: 0;
+    border: 0;
+    overflow-wrap: break-word;
+    text-align: left !important;
+  }
+  .admin-root .qa-academy-mobile-table .au-table tbody td[data-label]::before {
+    content: attr(data-label);
+    display: block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--admin-text-muted);
+    margin-bottom: 4px;
+  }
+  .admin-root .qa-academy-mobile-table .au-table tbody td p {
+    overflow-wrap: break-word;
+  }
+  .admin-root .qa-academy-mobile-table .au-table tbody td[data-label="Acciones"] {
+    border-top: 1px solid var(--admin-border);
+    padding-top: 12px;
+  }
+  .admin-root .qa-academy-mobile-table .au-table tbody td[data-label="Acciones"] > div {
+    display: flex !important;
+    justify-content: flex-start;
+  }
+  .admin-root .qa-academy-mobile-table .au-table tbody tr[data-qa-empty] {
+    box-shadow: none;
+  }
+  .admin-root .qa-academy-mobile-table .au-table tbody tr[data-qa-empty] td {
+    padding: 14px !important;
+    text-align: center !important;
+  }
+}
 @media (max-width: 620px) {
   .admin-root .au-pcard,
   .admin-root .au-acard { border-radius: 20px; }

@@ -634,8 +634,9 @@ export default function CourseDetail() {
       <style>{`
         @media (max-width: 900px) {
           .course-grid {
-            grid-template-columns: 1fr !important;
+            grid-template-columns: minmax(0, 1fr) !important;
           }
+          .course-grid > * { min-width: 0; }
           .course-grid > div:last-child {
             position: static !important;
           }

@@ -206,7 +206,7 @@ export default function Profile() {
 
   const mutation = useMutation({
     mutationFn: async () => {
-      const { data } = await api.patch("/users/me/", form)
+      const { data } = await api.patch("/auth/profile/", form)
       return data
     },
     onSuccess: (data) => {

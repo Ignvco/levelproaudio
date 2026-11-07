@@ -271,7 +271,7 @@ export default function AdminFinance() {
     queryFn:  () => getFinanceSummary(currency),
     refetchInterval: 60000,
   })
-  const { data:categories = [], isError: categoriesError, refetch: retryCategories } = useQuery({
+  const { data:categories = [], isSuccess: categoriesLoaded, isError: categoriesError, refetch: retryCategories } = useQuery({
     queryKey: ["admin-finance-categories"],
     queryFn:  getFinanceCategories,
   })
@@ -441,6 +441,28 @@ export default function AdminFinance() {
       {/* ── RESUMEN ── */}
       {tab==="overview" && (
         <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
+
+          {/* Estado vacío solo tras consultas válidas: no ocultar errores ni importes reales. */}
+          {!withdrawalsLoading && !withdrawalsError &&
+            (currency !== "CLP" || (categoriesLoaded && !categoriesError)) &&
+            (currency !== "CLP" || summaryCategories.length === 0) && withdrawals.length === 0 && (
+            <div className="au-card" data-testid="finance-overview-empty" role="status"
+              style={{ padding:"clamp(22px, 4vw, 34px)", border:"1px solid var(--admin-border)",
+                display:"flex", flexDirection:"column", alignItems:"flex-start", gap:"12px" }}>
+              <p style={{ fontSize:"11px", fontWeight:800, color:"var(--admin-text-muted)",
+                textTransform:"uppercase", letterSpacing:".08em" }}>RESUMEN · {currency}</p>
+              <h2 style={{ margin:0, fontFamily:"var(--font-display)", fontSize:"clamp(18px,3vw,24px)",
+                color:"var(--admin-text)" }}>
+                {currency === "CLP" ? (categories.length === 0 ? "Sin categorías ni retiros en esta vista" : "Sin distribución ni retiros en esta vista") : "Sin retiros registrados en esta moneda"}
+              </h2>
+              <p style={{ margin:0, fontSize:"13px", lineHeight:1.65, color:"var(--admin-text-muted)" }}>
+                Los saldos superiores provienen de la API. Este espacio se completará con movimientos o categorías disponibles; no representa un error ni modifica ningún importe.
+              </p>
+              {currency === "CLP" && <SecondaryButton size="sm" onClick={() => setTab("categories")}>
+                Revisar categorías
+              </SecondaryButton>}
+            </div>
+          )}
 
           {/* Cards por categoría */}
           <div style={{ display:"grid",

@@ -379,7 +379,7 @@ export default function AdminLessons() {
           ))}
         </div>
       ) : (
-        <div className="au-card au-table-wrap">
+        <div className="au-card au-table-wrap qa-academy-mobile-table">
           <div className="au-tscroll">
             <table className="au-table">
               <thead>
@@ -394,17 +394,17 @@ export default function AdminLessons() {
               </thead>
               <tbody>
                 {lessons.length === 0 ? (
-                  <tr>
+                  <tr data-qa-empty="true">
                     <td colSpan={6} style={{ padding: "42px", textAlign: "center", color: "var(--admin-text-secondary)" }}>
                       Sin lecciones. Crea la primera arriba.
                     </td>
                   </tr>
                 ) : lessons.map((lesson) => (
                   <tr key={lesson.id}>
-                    <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text-muted)" }}>
+                    <td data-label="Orden" style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text-muted)" }}>
                       {lesson.order}
                     </td>
-                    <td>
+                    <td data-label="Título">
                       <p style={{ fontSize: "13.5px", fontWeight: 700, color: "var(--admin-text)" }}>
                         {lesson.title}
                       </p>
@@ -414,18 +414,18 @@ export default function AdminLessons() {
                         </p>
                       )}
                     </td>
-                    <td style={{ color: "var(--admin-text-secondary)" }}>
+                    <td data-label="Módulo" style={{ color: "var(--admin-text-secondary)" }}>
                       {lesson.module_title || modules.find(m => m.id === lesson.module)?.title || "—"}
                     </td>
-                    <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text-muted)" }}>
+                    <td data-label="Duración" style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text-muted)" }}>
                       {lesson.duration_minutes > 0 ? `${lesson.duration_minutes} min` : "—"}
                     </td>
-                    <td>
+                    <td data-label="Tipo">
                       <StatusBadge tone={lesson.is_free ? "success" : "neutral"}>
                         {lesson.is_free ? "Free" : "Pro"}
                       </StatusBadge>
                     </td>
-                    <td style={{ textAlign: "right" }}>
+                    <td data-label="Acciones" style={{ textAlign: "right" }}>
                       <div style={{ display: "inline-flex", gap: "6px" }}>
                         <IconButton icon={Pencil} label={`Editar lección ${lesson.title}`} disabled={!canEdit} onClick={() => setModal(lesson)} />
                         <IconButton icon={Trash2} label={`Eliminar lección ${lesson.title}`} danger onClick={() => setToDelete(lesson)} />

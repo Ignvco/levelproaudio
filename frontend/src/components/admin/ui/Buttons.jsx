@@ -1,5 +1,6 @@
 // components/admin/ui/Buttons.jsx
 import { Link } from "react-router-dom"
+import { isValidElement } from "react"
 
 function base(variant, size, className) {
   return `au-btn au-btn--${variant} ${size === "sm" ? "au-btn--sm" : ""} ${className || ""}`.trim()
@@ -7,7 +8,7 @@ function base(variant, size, className) {
 
 function Btn({ variant, size, className, to, href, children, testId, loading, disabled, icon: Icon, ...rest }) {
   const cls = base(variant, size, className)
-  const content = <>{Icon && <Icon size={16} aria-hidden="true" />}{children}</>
+  const content = <>{Icon && (isValidElement(Icon) ? Icon : <Icon size={16} aria-hidden="true" />)}{children}</>
   if ((to || href) && (disabled || loading)) {
     return <span className={cls} aria-disabled="true" data-testid={testId}>{content}</span>
   }
