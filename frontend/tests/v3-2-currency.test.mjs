@@ -51,5 +51,7 @@ test("Rewards consulta y formatea importes en la moneda seleccionada sin suma FX
   assert.match(rewards, /formatCurrency\(data\.totals\.related_revenue, currency\)/)
   assert.match(rewards, /data\?\.currency === currency/)
   const entries = read("pages/admin/AdminRewardsEntries.jsx")
-  assert.match(entries, /adminExportEntriesCsvUrl\(filters\)/)
+  // La consulta y la exportación deben usar el mismo conjunto de filtros efectivos.
+  assert.match(entries, /adminListEntries\(activeFilters\)/)
+  assert.match(entries, /adminExportEntriesCsvUrl\(activeFilters\)/)
 })
