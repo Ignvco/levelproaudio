@@ -124,6 +124,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             requested_points = int(data.get("loyalty_points_redeemed", 0) or 0)
         except (TypeError, ValueError):
             return Response({"error": "Cantidad de puntos inválida."}, status=400)
+        if requested_points < 0:
+            return Response({"error": "La cantidad de puntos no puede ser negativa."}, status=400)
         if currency != "CLP" and requested_points > 0:
             return Response({
                 "error": "El canje de puntos está disponible solo para órdenes CLP."

@@ -54,6 +54,17 @@ class LoyaltyCurrencyGuardTest(TestCase):
         self.account.refresh_from_db()
         self.assertEqual(self.account.puntos_canjeados, 0)
 
+    def test_negative_or_invalid_redemption_never_creates_an_order(self):
+        for points in (-500, "no-es-numero"):
+            with self.subTest(points=points):
+                response = self.client.post("/api/v1/orders/", {
+                    "items": [{"product": str(self.product.id), "quantity": 1}],
+                    "shipping_address": "Test", "currency": "CLP",
+                    "loyalty_points_redeemed": points,
+                }, format="json")
+                self.assertEqual(response.status_code, 400, getattr(response, "data", None))
+        self.assertEqual(Order.objects.count(), 0)
+
     def test_foreign_checkout_without_redemption_remains_available(self):
         response = self.client.post("/api/v1/orders/", {
             "items": [{"product": str(self.product.id), "quantity": 1}],
