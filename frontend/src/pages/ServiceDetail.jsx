@@ -551,7 +551,7 @@ export default function ServiceDetail() {
                       onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
                       style={{ ...inputSt, resize: "vertical" }} onFocus={onFocus} onBlur={onBlur} />
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                  <div className="service-quote-fields-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
                     <div>
                       <label style={labelSt}>Presupuesto</label>
                       <input type="text" value={form.budget} placeholder="Ej: 500000"
@@ -688,8 +688,14 @@ export default function ServiceDetail() {
 
       <style>{`
         @media (max-width: 900px) {
-          .service-grid { grid-template-columns: 1fr !important; }
-          .service-form { position: static !important; }
+          .service-grid { grid-template-columns: minmax(0, 1fr) !important; }
+          .service-grid > * { min-width: 0; }
+          .service-form { position: static !important; min-width: 0; }
+        }
+        @media (max-width: 420px) {
+          .service-quote-fields-grid { grid-template-columns: minmax(0, 1fr) !important; }
+          .service-quote-fields-grid > * { min-width: 0; }
+          .services-page-grid { grid-template-columns: minmax(0, 1fr) !important; }
         }
       `}</style>
     </div>

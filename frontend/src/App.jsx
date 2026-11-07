@@ -42,7 +42,7 @@ const PoliticaEnvios = lazy(() => import("./pages/legal/PoliticaEnvios"))
 // Páginas protegidas
 const Dashboard = lazy(() => import("./pages/Dashboard"))
 const Checkout = lazy(() => import("./pages/Checkout"))
-const OrderConfirmation = lazy(() => import("./pages/OrderConfirmation"))
+const OrderConfirmation = lazy(() => import("./pages/OrderConfirmationVerified"))
 
 
 //aCADEMY
