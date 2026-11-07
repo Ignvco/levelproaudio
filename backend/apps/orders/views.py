@@ -118,6 +118,17 @@ class OrderViewSet(viewsets.ModelViewSet):
         if currency not in ("CLP", "USD", "ARS"):
             currency = "CLP"
 
+        # Cada punto tiene valor en pesos CLP. No aplicar descuento CLP a
+        # importes USD/ARS ni asumir una tasa cambiaria inexistente.
+        try:
+            requested_points = int(data.get("loyalty_points_redeemed", 0) or 0)
+        except (TypeError, ValueError):
+            return Response({"error": "Cantidad de puntos inválida."}, status=400)
+        if currency != "CLP" and requested_points > 0:
+            return Response({
+                "error": "El canje de puntos está disponible solo para órdenes CLP."
+            }, status=400)
+
         # Tasas para calcular precios en la moneda pedida cuando el
         # producto no tiene el precio manual cargado.
         from apps.site_settings.models import SiteSettings
@@ -138,7 +149,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
 
         # ── Canje de puntos de fidelización (opcional) ──
-        loyalty_points_redeemed = int(data.get("loyalty_points_redeemed", 0) or 0)
+        loyalty_points_redeemed = requested_points
         loyalty_discount        = 0
         account = None
         if loyalty_points_redeemed > 0:

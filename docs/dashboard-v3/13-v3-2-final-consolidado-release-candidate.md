@@ -33,3 +33,11 @@ Base obligatoria en `main`: `02bea9019d92befb5d4546b7113978fdd4819812` (LOTE4-A_
 
 ## Limitaciones de alcance
 No se ha ejecutado QA autenticada ni integración real con terceros desde esta sesión. Una auditoría estática no puede demostrar acabado visual 1:1 de todas las rutas ni ausencia completa de defectos. La versión es candidata a liberación y su aprobación final exige las verificaciones anteriores.
+
+
+## Invariante crítica de fidelización y divisas
+La revisión encontró que `LoyaltyConfig.puntos_por_peso` y `peso_por_punto` están definidos en pesos CLP, mientras que órdenes USD/ARS se guardan en su moneda original. Antes, el backend acreditaba puntos por el número extranjero sin FX, y podía aplicar descuentos CLP numéricamente sobre subtotal USD/ARS.
+
+La corrección falla de forma segura: **solo órdenes CLP ganan puntos automáticamente y solo órdenes CLP pueden canjearlos**. Las órdenes USD/ARS siguen siendo comprables sin puntos. Carrito y Checkout muestran las monedas seleccionadas, no inventan precios faltantes y no trasladan saldos CLP a operaciones extranjeras.
+
+**Esta restricción requiere aprobación comercial**: habilitar fidelización extranjera de nuevo exige política explícita y tasa histórica identificable por operación. Históricos ya acreditados en USD/ARS deben auditarse con documentos; el patch no los reescribe. Tests backend de cobertura nueva en `backend/tests/test_loyalty_currency_guard.py`.

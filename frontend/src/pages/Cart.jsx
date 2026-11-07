@@ -10,6 +10,8 @@ import { useAuthStore } from "../store/authStore"
 import { getOrders } from "../api/orders.api"
 import { previewCartEntries } from "../api/rewards.api"
 import { getMyLoyalty } from "../api/loyalty.api"
+import { usePrice } from "../hooks/usePrice"
+import { formatOrderAmount } from "../utils/accountingCurrency"
 import { mediaUrl } from "../utils/mediaUrl"
 import Seo from "../components/Seo"
 import Button from "../components/ui/Button"
@@ -32,10 +34,10 @@ function Eyebrow({ children, color = "var(--accent)" }) {
 // ─────────────────────────────────────────────────────────────
 // CTA principal — ahora usa el sistema de botones global (Button)
 // ─────────────────────────────────────────────────────────────
-function AccentCTA({ children, testid, onClick, to, full = false }) {
+function AccentCTA({ children, testid, onClick, to, full = false, disabled = false }) {
   return (
     <Button
-      to={to} onClick={onClick} testId={testid}
+      to={to} onClick={onClick} testId={testid} disabled={disabled}
       variant="green" size="md" arrow
       style={full ? { width: "100%", justifyContent: "space-between" } : undefined}>
       {children}
@@ -49,6 +51,8 @@ function AccentCTA({ children, testid, onClick, to, full = false }) {
 function CartItem({ item }) {
   const { updateQuantity, removeItem } = useCartStore()
   const { product, quantity }          = item
+  const { currency, format }           = usePrice()
+  const unitPrice = product.prices?.[currency] ?? (currency === "CLP" ? product.price : null)
 
   const primaryImg = product.images?.find(i => i.is_primary) || product.images?.[0]
   const img        = primaryImg ? mediaUrl(primaryImg.image) : null
@@ -142,7 +146,7 @@ function CartItem({ item }) {
             <p style={{ fontFamily: "var(--font-display)", fontSize: "1.15rem",
               fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em",
               fontVariantNumeric: "tabular-nums" }}>
-              ${(Number(product.price) * quantity).toLocaleString("es-CL")}
+              {unitPrice == null ? "—" : format(Number(unitPrice) * quantity)}
             </p>
             <button
               data-testid={`cart-remove-${product.slug}`}
@@ -165,10 +169,14 @@ function CartItem({ item }) {
 }
 
 export default function Cart() {
-  const { items, clearCart, getTotal } = useCartStore()
+  const { items, clearCart, getTotalIn } = useCartStore()
+  const { currency, format }            = usePrice()
   const { isAuthenticated }            = useAuthStore()
   const navigate                       = useNavigate()
-  const total                          = getTotal()
+  const confirmedPrices = currency === "CLP" || items.every(
+    i => i.product?.prices?.[currency] != null && Number.isFinite(Number(i.product.prices[currency]))
+  )
+  const total = confirmedPrices ? getTotalIn(currency) : null
 
   const { data: ordersData } = useQuery({
     queryKey: ["orders"],
@@ -199,17 +207,17 @@ export default function Cart() {
   })
   const { pointsToRedeem, setPointsToRedeem } = useCartStore()
 
-  const canRedeem      = loyalty && loyalty.puntos_disponibles >= (loyalty.minimo_canje || 0)
+  const canRedeem      = currency === "CLP" && loyalty && loyalty.puntos_disponibles >= (loyalty.minimo_canje || 0)
   const pesoPorPunto   = loyalty ? (loyalty.valor_disponible / Math.max(1, loyalty.puntos_disponibles)) : 0
   const maxPointsForCart = loyalty
     ? Math.min(loyalty.puntos_disponibles,
                Math.floor((total || 0) / Math.max(0.01, pesoPorPunto)))
     : 0
-  const loyaltyDiscount = Math.min(
+  const loyaltyDiscount = currency === "CLP" ? Math.min(
     total || 0,
     Math.floor(pointsToRedeem * pesoPorPunto)
-  )
-  const finalTotal = Math.max(0, (total || 0) - loyaltyDiscount)
+  ) : 0
+  const finalTotal = total === null ? null : Math.max(0, total - loyaltyDiscount)
 
   const pendingOrder = (ordersData?.results || ordersData || [])
     .find(o => o.status === "pending")
@@ -255,7 +263,7 @@ export default function Cart() {
             </p>
             <p style={{ fontFamily: "var(--font-display)", fontSize: "2.2rem",
               fontWeight: 800, letterSpacing: "-0.03em", color: "var(--text)" }}>
-              ${Number(pendingOrder.total).toLocaleString("es-CL")}
+              {formatOrderAmount(pendingOrder)}
             </p>
           </div>
           <div style={{ display: "flex", flexDirection: "column",
@@ -376,7 +384,9 @@ export default function Cart() {
                   </span>
                   <span style={{ flexShrink: 0, color: "var(--text-2)",
                     fontVariantNumeric: "tabular-nums" }}>
-                    ${(Number(item.product.price) * item.quantity).toLocaleString("es-CL")}
+                    {item.product.prices?.[currency] == null && currency !== "CLP"
+                      ? "—"
+                      : format(Number(item.product.prices?.[currency] ?? item.product.price) * item.quantity)}
                   </span>
                 </div>
               ))}
@@ -389,7 +399,7 @@ export default function Cart() {
                 fontSize: "13px", color: "var(--text-3)" }}>
                 <span>Subtotal</span>
                 <span style={{ fontVariantNumeric: "tabular-nums" }}>
-                  ${Number(total || 0).toLocaleString("es-CL")}
+                  {total === null ? "—" : format(total)}
                 </span>
               </div>
               {loyaltyDiscount > 0 && (
@@ -397,7 +407,7 @@ export default function Cart() {
                   fontSize: "13px", color: "var(--accent)" }}>
                   <span>Descuento por puntos ({pointsToRedeem} pts)</span>
                   <span style={{ fontVariantNumeric: "tabular-nums" }}>
-                    − ${loyaltyDiscount.toLocaleString("es-CL")}
+                    − {format(loyaltyDiscount)}
                   </span>
                 </div>
               )}
@@ -408,13 +418,13 @@ export default function Cart() {
                 <span data-testid="cart-total" style={{ fontFamily: "var(--font-display)",
                   fontSize: "2rem", fontWeight: 800, letterSpacing: "-0.03em",
                   color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>
-                  ${finalTotal.toLocaleString("es-CL")}
+                  {finalTotal === null ? "—" : format(finalTotal)}
                 </span>
               </div>
             </div>
 
             {/* Loyalty — canjear puntos */}
-            {isAuthenticated && canRedeem && maxPointsForCart > 0 && (
+            {isAuthenticated && canRedeem && maxPointsForCart >= loyalty.minimo_canje && (
               <div data-testid="cart-loyalty-redeem" style={{
                 marginBottom: "20px", padding: "16px",
                 background: "rgba(96,165,250,0.06)",
@@ -464,7 +474,7 @@ export default function Cart() {
                       {pointsToRedeem.toLocaleString("es-CL")} pts
                     </p>
                     <p style={{ fontSize: "11px", color: "var(--text-3)" }}>
-                      = ${loyaltyDiscount.toLocaleString("es-CL")}
+                      = {format(loyaltyDiscount)}
                     </p>
                   </div>
                 </div>
@@ -503,9 +513,21 @@ export default function Cart() {
               </div>
             )}
 
+            {!confirmedPrices && (
+              <p role="alert" style={{ color:"var(--danger)", fontSize:"12px", marginBottom:"14px" }}>
+                Falta confirmar el precio de uno o más productos en {currency}. Vuelve a agregarlos desde la tienda antes de pagar.
+              </p>
+            )}
+            {currency !== "CLP" && pointsToRedeem > 0 && (
+              <p role="status" style={{ color:"var(--text-2)", fontSize:"12px", marginBottom:"14px" }}>
+                El canje de puntos está disponible solo en CLP. No se aplicará en {currency}.
+              </p>
+            )}
+
             <AccentCTA
               testid="cart-checkout"
               full
+              disabled={!confirmedPrices}
               onClick={() => isAuthenticated
                 ? navigate("/checkout")
                 : navigate("/login?next=/checkout")}>

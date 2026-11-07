@@ -42,3 +42,11 @@ test("Integridad UX final: estado de error, selector accesible y saldo con divis
   assert.match(read("pages/admin/AdminRewardsEntries.jsx"), /aria-label="Fecha desde"/)
   assert.match(read("pages/admin/AdminFinance.jsx"), /fmt\(selectedCat\.balance, currency\)/)
 })
+
+test("Checkout y carrito no aplican puntos CLP a compras USD/ARS", () => {
+  const root = new URL("../src/", import.meta.url)
+  const read = file => readFileSync(new URL(file, root), "utf8")
+  assert.match(read("pages/Checkout.jsx"), /currency === "CLP" \? \(pointsToRedeem \|\| 0\) : 0/)
+  assert.match(read("pages/Cart.jsx"), /currency === "CLP" \? Math.min/)
+  assert.match(read("pages/Cart.jsx"), /disabled=\{!confirmedPrices\}/)
+})
