@@ -43,8 +43,8 @@ export const getPublicWinners = async () => {
 }
 
 // ── Admin ────────────────────────────────────────────────
-export const adminGetRewardsDashboard = async () => {
-  const { data } = await api.get("/admin/rewards/dashboard/")
+export const adminGetRewardsDashboard = async (currency = "CLP") => {
+  const { data } = await api.get("/admin/rewards/dashboard/", { params: { currency } })
   return data
 }
 
@@ -116,8 +116,15 @@ export const adminListEntries = async (filters = {}) => {
   return data.results || data
 }
 
-export const adminExportEntriesCsvUrl = (campaignId) =>
-  `/api/v1/admin/rewards/entries/export/${campaignId ? `?campaign=${campaignId}` : ""}`
+export const adminExportEntriesCsvUrl = (filters = {}) => {
+  const criteria = typeof filters === "string" ? { campaign: filters } : filters
+  const params = new URLSearchParams()
+  for (const key of ["campaign", "search", "date_from", "date_to"]) {
+    if (criteria?.[key]) params.set(key, criteria[key])
+  }
+  const query = params.toString()
+  return `/api/v1/admin/rewards/entries/export/${query ? `?${query}` : ""}`
+}
 
 export const adminListWinners = async (campaignId) => {
   const url = campaignId

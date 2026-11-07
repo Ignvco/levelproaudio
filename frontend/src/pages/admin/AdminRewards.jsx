@@ -6,6 +6,8 @@ import { Gift, Ticket, Users, DollarSign } from "lucide-react"
 import { adminGetRewardsDashboard } from "../../api/rewards.api"
 import { StatCard, AdminPageHeader, SectionCard, SecondaryButton, StatusBadge, ErrorState } from "../../components/admin/ui"
 import { useSiteSettings } from "../../hooks/useSiteSettings"
+import AccountingCurrencySelect from "../../components/admin/ui/AccountingCurrencySelect"
+import { formatCurrency } from "../../utils/accountingCurrency"
 
 function KpiCard({ label, value, subtitle, variant = "light", testId, Icon }) {
   return <StatCard variant={variant} Icon={Icon} label={label} value={value} sub={subtitle} testId={testId} />
@@ -28,13 +30,15 @@ function useCountdownDisplay(seconds) {
 
 export default function AdminRewards() {
   const { siteName } = useSiteSettings()
+  const [currency, setCurrency] = useState("CLP")
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["admin-rewards-dashboard"],
-    queryFn:  adminGetRewardsDashboard,
+    queryKey: ["admin-rewards-dashboard", currency],
+    queryFn:  () => adminGetRewardsDashboard(currency),
     refetchInterval: 15_000,
   })
 
   const remainingLabel = useCountdownDisplay(data?.current_campaign?.seconds_remaining)
+  const reliableRevenue = data?.currency === currency && Number.isFinite(Number(data?.totals?.related_revenue)) && data?.totals?.related_revenue != null
 
   if (isError || (!isLoading && (!data || !data.totals))) return (
     <div className="au-page" data-testid="admin-rewards-error">
@@ -64,6 +68,7 @@ export default function AdminRewards() {
         description="Seguimiento de sorteos, participaciones y conversión en tienda"
         actions={
           <>
+            <AccountingCurrencySelect value={currency} onChange={setCurrency} id="rewards-reporting-currency" />
             <SecondaryButton to="/admin/rewards/entries" size="sm">Participaciones</SecondaryButton>
             <SecondaryButton to="/admin/rewards/winners" size="sm">Ganadores</SecondaryButton>
             <Link to="/admin/rewards/campaigns" data-testid="btn-manage-campaigns"
@@ -79,9 +84,9 @@ export default function AdminRewards() {
         <KpiCard testId="kpi-campaigns" variant="ink" label="Campañas totales" value={data.totals.campaigns} subtitle="Histórico en sistema" Icon={Gift} />
         <KpiCard testId="kpi-entries" variant="primary" label="Participaciones" value={data.totals.entries} subtitle="Tickets generados" Icon={Ticket} />
         <KpiCard testId="kpi-participants" variant="light" label="Participantes únicos" value={data.totals.participants} subtitle="Clientes participando" Icon={Users} />
-        <KpiCard testId="kpi-revenue" variant="light" label="Ingresos relacionados"
-          value={`$${Number(data.totals.related_revenue).toLocaleString("es-CL")}`}
-          subtitle="Órdenes que generaron tickets" Icon={DollarSign} />
+        <KpiCard testId="kpi-revenue" variant="light" label={`Ingresos relacionados · ${currency}`}
+          value={reliableRevenue ? formatCurrency(data.totals.related_revenue, currency) : "—"}
+          subtitle={reliableRevenue ? "Órdenes relacionadas, sin conversión" : "Importe no verificable en la moneda seleccionada"} Icon={DollarSign} />
       </div>
 
       {/* Campaña actual */}
