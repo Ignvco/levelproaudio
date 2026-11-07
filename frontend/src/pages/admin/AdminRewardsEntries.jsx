@@ -53,7 +53,7 @@ export default function AdminRewardsEntries() {
         actions={
           <>
             <SecondaryButton to="/admin/rewards" size="sm">← Dashboard</SecondaryButton>
-            <a href={adminExportEntriesCsvUrl(filters)}
+            <a href={adminExportEntriesCsvUrl(activeFilters)}
               data-testid="btn-export-csv"
               className="au-btn au-btn--secondary au-btn--sm"
               style={{ textDecoration:"none" }}>
@@ -67,6 +67,7 @@ export default function AdminRewardsEntries() {
       <div className="au-card" style={{ padding: "14px 18px", display:"flex", gap:"10px",
         flexWrap:"wrap", alignItems: "center" }}>
         <select value={filters.campaign}
+          aria-label="Filtrar por campaña"
           data-testid="filter-campaign"
           onChange={e => setFilters(f => ({...f, campaign:e.target.value}))}
           className="au-select">
@@ -75,15 +76,15 @@ export default function AdminRewardsEntries() {
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
-        <input placeholder="Buscar por email o código"
+        <input aria-label="Buscar por email o código" placeholder="Buscar por email o código"
           value={filters.search}
           onChange={e => setFilters(f => ({...f, search:e.target.value}))}
           className="au-input"
           style={{ maxWidth:"280px" }} />
-        <input type="date" value={filters.date_from}
+        <input type="date" aria-label="Fecha desde" value={filters.date_from}
           onChange={e => setFilters(f => ({...f, date_from:e.target.value}))}
           className="au-select" />
-        <input type="date" value={filters.date_to}
+        <input type="date" aria-label="Fecha hasta" value={filters.date_to}
           onChange={e => setFilters(f => ({...f, date_to:e.target.value}))}
           className="au-select" />
       </div>

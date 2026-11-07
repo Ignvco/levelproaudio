@@ -10,7 +10,7 @@ import {
 import { getServiceCategories } from "../../api/services.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../utils/toast"
-import { AdminPageHeader, PrimaryButton, StatCard, FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, FormField, formInputStyle, ConfirmationModal, ErrorState } from "../../components/admin/ui"
 import { Wrench, Inbox, CalendarCheck } from "lucide-react"
 
 const inputSt = formInputStyle
@@ -134,13 +134,13 @@ export default function AdminServices() {
   const queryClient           = useQueryClient()
   const TABS                  = ["Solicitudes", "Servicios", "Reservas"]
 
-  const { data: servicesData, isLoading: loadingServices } = useQuery({
+  const { data: servicesData, isLoading: loadingServices, isError: servicesError, refetch: retryServices } = useQuery({
     queryKey: ["admin-services-crud"], queryFn: listAdminServicesCrud,
   })
-  const { data: requestsData, isLoading: loadingReqs } = useQuery({
+  const { data: requestsData, isLoading: loadingReqs, isError: requestsError, refetch: retryRequests } = useQuery({
     queryKey: ["admin-requests"], queryFn: getAdminServiceRequests,
   })
-  const { data: bookingsData, isLoading: loadingBookings } = useQuery({
+  const { data: bookingsData, isLoading: loadingBookings, isError: bookingsError, refetch: retryBookings } = useQuery({
     queryKey: ["admin-bookings"], queryFn: getAdminBookings, enabled: tab === 2,
   })
 
@@ -169,11 +169,17 @@ export default function AdminServices() {
     },
   })
 
-  const services = servicesData?.results || servicesData || []
-  const requests = requestsData?.results || requestsData || []
-  const bookings = bookingsData?.results || bookingsData || []
-  const pendingReqs = requests.filter(r => r.status === "pending").length
-  const activeServices = services.filter(s => s.is_active !== false).length
+  const servicesRaw = servicesData?.results ?? servicesData
+  const requestsRaw = requestsData?.results ?? requestsData
+  const bookingsRaw = bookingsData?.results ?? bookingsData
+  const services = Array.isArray(servicesRaw) ? servicesRaw : []
+  const requests = Array.isArray(requestsRaw) ? requestsRaw : []
+  const bookings = Array.isArray(bookingsRaw) ? bookingsRaw : []
+  const servicesReliable = !servicesError && Array.isArray(servicesRaw)
+  const requestsReliable = !requestsError && Array.isArray(requestsRaw)
+  const bookingsReliable = !bookingsError && Array.isArray(bookingsRaw)
+  const pendingReqs = requestsReliable ? requests.filter(r => r.status === "pending").length : 0
+  const activeServices = servicesReliable ? services.filter(s => s.is_active !== false).length : 0
 
   return (
     <div className="au-page">
@@ -181,9 +187,9 @@ export default function AdminServices() {
       <AdminPageHeader
         eyebrow="LEVELPRO / SERVICIOS"
         title="Servicios"
-        description={`${requests.length} solicitudes recibidas · ${services.length} servicios publicados`}
+        description="Gestión de solicitudes, catálogo y reservas de servicios"
         actions={
-          <PrimaryButton onClick={() => setModal("new")} data-testid="btn-new-service">
+          <PrimaryButton onClick={() => setModal("new")} disabled={!servicesReliable} data-testid="btn-new-service">
             + Nuevo servicio
           </PrimaryButton>
         }
@@ -195,22 +201,22 @@ export default function AdminServices() {
           variant="ink"
           Icon={Inbox}
           label="Solicitudes recibidas"
-          value={requests.length}
-          sub={pendingReqs > 0 ? `${pendingReqs} pendientes de respuesta` : "Al día"}
+          value={requestsReliable ? requests.length : "—"}
+          sub={!requestsReliable ? "Por cargar" : pendingReqs > 0 ? `${pendingReqs} pendientes de respuesta` : "Sin solicitudes pendientes"}
         />
         <StatCard
           variant="primary"
           Icon={Wrench}
           label="Servicios activos"
-          value={activeServices}
-          sub={`${services.length} registrados en total`}
+          value={servicesReliable ? activeServices : "—"}
+          sub={servicesReliable ? `${services.length} visibles en esta vista` : "Por cargar"}
         />
         <StatCard
           variant="light"
           Icon={CalendarCheck}
           label="Reservas agendadas"
-          value={bookings.length}
-          sub="Sesiones y asesorías"
+          value={bookingsReliable ? bookings.length : "—"}
+          sub={bookingsReliable ? "Reservas visibles" : "Abrir la pestaña Reservas"}
         />
       </div>
 
@@ -254,6 +260,9 @@ export default function AdminServices() {
               <div key={i} className="skeleton" style={{ height: "72px", borderRadius: "16px" }} />
             ))}
           </div>
+        ) : requestsError || !requestsReliable ? (
+          <ErrorState title="No se pudieron cargar las solicitudes"
+            action={<SecondaryButton onClick={() => retryRequests()}>Reintentar</SecondaryButton>} />
         ) : requests.length === 0 ? (
           <div className="au-card au-panel" style={{ textAlign: "center", padding: "56px", color: "var(--admin-text-secondary)" }}>
             <p style={{ fontSize: "36px", marginBottom: "10px" }}>🔧</p>
@@ -274,9 +283,9 @@ export default function AdminServices() {
           <div style={{ display:"flex", justifyContent:"space-between",
             alignItems:"center", gap: "12px", flexWrap: "wrap" }}>
             <p style={{ fontSize:"13px", color:"var(--admin-text-secondary)", fontWeight: 600 }}>
-              {services.length} servicios registrados
+              {servicesReliable ? `${services.length} servicios visibles` : "Servicios no disponibles"}
             </p>
-            <PrimaryButton onClick={() => setModal("new")} size="sm">
+            <PrimaryButton onClick={() => setModal("new")} disabled={!servicesReliable} size="sm">
               + Nuevo servicio
             </PrimaryButton>
           </div>
@@ -288,6 +297,9 @@ export default function AdminServices() {
                 <div key={i} className="skeleton" style={{ height: "160px", borderRadius: "20px" }} />
               ))}
             </div>
+          ) : servicesError || !servicesReliable ? (
+            <ErrorState title="No se pudo cargar el catálogo de servicios"
+              action={<SecondaryButton onClick={() => retryServices()}>Reintentar</SecondaryButton>} />
           ) : (
             <div style={{ display: "grid",
               gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "14px" }}>
@@ -339,6 +351,9 @@ export default function AdminServices() {
               <div key={i} className="skeleton" style={{ height: "72px", borderRadius: "16px" }} />
             ))}
           </div>
+        ) : bookingsError || !bookingsReliable ? (
+          <ErrorState title="No se pudieron cargar las reservas"
+            action={<SecondaryButton onClick={() => retryBookings()}>Reintentar</SecondaryButton>} />
         ) : bookings.length === 0 ? (
           <div className="au-card au-panel" style={{ textAlign: "center", padding: "56px", color: "var(--admin-text-secondary)" }}>
             <p style={{ fontSize: "36px", marginBottom: "10px" }}>📅</p>
@@ -448,11 +463,12 @@ function ServiceModal({ service, onClose, onSaved }) {
     service?.thumbnail ? mediaUrl(service.thumbnail) : null
   )
 
-  const { data: catData } = useQuery({
+  const { data: catData, isLoading: loadingCategories, isError: categoriesError, refetch: retryCategories } = useQuery({
     queryKey: ["service-categories"],
     queryFn:  getServiceCategories,
   })
-  const categories = catData?.results || catData || []
+  const categoriesRaw = catData?.results ?? catData
+  const categories = Array.isArray(categoriesRaw) ? categoriesRaw : []
 
   const onFile = (e) => {
     const file = e.target.files?.[0]
@@ -504,6 +520,7 @@ function ServiceModal({ service, onClose, onSaved }) {
       onClose={onClose}
       onSave={() => save.mutate()}
       saving={save.isPending}
+      saveDisabled={loadingCategories || categoriesError || !Array.isArray(categoriesRaw)}
       saveLabel={isEdit ? "Guardar cambios" : "Crear servicio"}
       maxWidth="520px"
       scrollableBody
@@ -552,10 +569,13 @@ function ServiceModal({ service, onClose, onSaved }) {
           </div>
 
           {/* Categoría */}
+          {categoriesError && <ErrorState title="No se pudieron cargar las categorías"
+            action={<SecondaryButton onClick={() => retryCategories()}>Reintentar</SecondaryButton>} />}
           <div>
             <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
               letterSpacing:"0.08em", textTransform:"uppercase" }}>Categoría</label>
             <select value={form.category}
+              disabled={loadingCategories || categoriesError}
               data-testid="select-service-category"
               onChange={e => setForm(p => ({ ...p, category:e.target.value }))}
               style={{ ...inputSt, marginTop:"6px" }}>

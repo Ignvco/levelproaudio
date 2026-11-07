@@ -286,15 +286,17 @@ const stepBtn = {
 // ─────────────────────────────────────────────────────────────
 export default function Rewards() {
   const [modalCampaign, setModalCampaign] = useState(null)
-  const { data: campaigns = [], isLoading } = useQuery({
+  const { data: campaignsRaw, isLoading, isError: campaignsError, refetch: retryCampaigns } = useQuery({
     queryKey: ["rewards", "campaigns"],
     queryFn:  getActiveCampaigns,
   })
-  const { data: winners = [] } = useQuery({
+  const { data: winnersRaw, isError: winnersError, refetch: retryWinners } = useQuery({
     queryKey: ["rewards", "winners"],
     queryFn:  getPublicWinners,
   })
 
+  const campaigns = Array.isArray(campaignsRaw) ? campaignsRaw : []
+  const winners = Array.isArray(winnersRaw) ? winnersRaw : []
   const featured = campaigns[0]
 
   if (isLoading) {
@@ -304,6 +306,15 @@ export default function Rewards() {
       </div>
     )
   }
+
+  if (campaignsError || !Array.isArray(campaignsRaw)) return (
+    <div data-testid="rewards-error" role="alert" style={{ minHeight:"65vh", padding:"160px 24px 80px", textAlign:"center", color:"var(--text)" }}>
+      <Seo title="Rewards" description="Campañas de LevelPro Audio" />
+      <h1 style={{ fontSize:"clamp(1.6rem, 4vw, 2.6rem)", marginBottom:"14px" }}>Campañas no disponibles</h1>
+      <p style={{ color:"var(--text-2)", marginBottom:"24px" }}>No pudimos consultar las campañas. No mostraremos un catálogo vacío como resultado válido.</p>
+      <button type="button" onClick={() => retryCampaigns()} className="au-btn au-btn--primary">Reintentar</button>
+    </div>
+  )
 
   return (
     <div
@@ -627,7 +638,11 @@ export default function Rewards() {
         )}
 
         {/* ═══════════ GANADORES HISTÓRICOS ═══════════ */}
-        {winners.length > 0 && (
+        {winnersError && <div role="alert" style={{ padding:"18px 20px", border:"1px solid var(--border)", borderRadius:"var(--r-lg)" }}>
+          <span style={{ color:"var(--text-2)" }}>No fue posible cargar los ganadores anteriores.</span>{" "}
+          <button type="button" onClick={() => retryWinners()} style={{ border:0, background:"none", color:"var(--accent)", cursor:"pointer" }}>Reintentar</button>
+        </div>}
+        {!winnersError && winners.length > 0 && (
           <section data-testid="rewards-winners" style={{ padding:0 }}>
             <div style={{ marginBottom:"var(--content-gap)" }}>
               <SectionEyebrow>· Historial</SectionEyebrow>
@@ -639,7 +654,7 @@ export default function Rewards() {
                 Ganadores anteriores
               </h3>
               <p style={{ fontSize:"14px", color:"var(--text-3)" }}>
-                Personas reales, premios reales. Sorteados frente a escribano digital.
+                Registro público de ganadores de campañas finalizadas.
               </p>
             </div>
             <div style={{
