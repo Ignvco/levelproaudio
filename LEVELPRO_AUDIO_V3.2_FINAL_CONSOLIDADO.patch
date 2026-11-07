@@ -1,0 +1,1372 @@
+diff --git a/backend/apps/loyalty/signals.py b/backend/apps/loyalty/signals.py
+index d6ba94a..6a00c20 100644
+--- a/backend/apps/loyalty/signals.py
++++ b/backend/apps/loyalty/signals.py
+@@ -15,6 +15,12 @@ def award_points_on_purchase(sender, instance, **kwargs):
+     if not instance.user:
+         return
+ 
++    # Puntos por peso son CLP; acreditar importes USD/ARS como pesos daría
++    # valores matemáticamente falsos. Requiere una política FX explícita
++    # y tasa histórica por orden; nunca convertir silenciosamente.
++    if instance.currency != "CLP":
++        return
++
+     from apps.loyalty.models import LoyaltyAccount, LoyaltyConfig, LoyaltyTransaction
+ 
+     # Evitar dar puntos dos veces por la misma orden
+diff --git a/backend/apps/orders/views.py b/backend/apps/orders/views.py
+index 077deef..a230f2a 100644
+--- a/backend/apps/orders/views.py
++++ b/backend/apps/orders/views.py
+@@ -118,6 +118,19 @@ def create(self, request):
+         if currency not in ("CLP", "USD", "ARS"):
+             currency = "CLP"
+ 
++        # Cada punto tiene valor en pesos CLP. No aplicar descuento CLP a
++        # importes USD/ARS ni asumir una tasa cambiaria inexistente.
++        try:
++            requested_points = int(data.get("loyalty_points_redeemed", 0) or 0)
++        except (TypeError, ValueError):
++            return Response({"error": "Cantidad de puntos inválida."}, status=400)
++        if requested_points < 0:
++            return Response({"error": "La cantidad de puntos no puede ser negativa."}, status=400)
++        if currency != "CLP" and requested_points > 0:
++            return Response({
++                "error": "El canje de puntos está disponible solo para órdenes CLP."
++            }, status=400)
++
+         # Tasas para calcular precios en la moneda pedida cuando el
+         # producto no tiene el precio manual cargado.
+         from apps.site_settings.models import SiteSettings
+@@ -138,7 +151,7 @@ def create(self, request):
+         )
+ 
+         # ── Canje de puntos de fidelización (opcional) ──
+-        loyalty_points_redeemed = int(data.get("loyalty_points_redeemed", 0) or 0)
++        loyalty_points_redeemed = requested_points
+         loyalty_discount        = 0
+         account = None
+         if loyalty_points_redeemed > 0:
+diff --git a/backend/tests/test_loyalty_currency_guard.py b/backend/tests/test_loyalty_currency_guard.py
+new file mode 100644
+index 0000000..1dd0844
+--- /dev/null
++++ b/backend/tests/test_loyalty_currency_guard.py
+@@ -0,0 +1,80 @@
++"""Regresiones: puntos CLP nunca se acreditan ni se canjean como USD/ARS."""
++from decimal import Decimal
++from django.test import TestCase
++from rest_framework.test import APIClient
++
++from apps.users.models import User
++from apps.orders.models import Order, OrderStatus
++from apps.products.models import Category, Product
++from apps.loyalty.models import LoyaltyAccount, LoyaltyTransaction
++
++
++class LoyaltyCurrencyGuardTest(TestCase):
++    def setUp(self):
++        self.user = User.objects.create_user(
++            email="loyalty-currency@example.test", username="loyalty-currency", password="x"
++        )
++        category = Category.objects.create(name="Guard CLP", slug="guard-clp")
++        self.product = Product.objects.create(
++            name="Producto CLP", slug="producto-guard-clp",
++            category=category, price=Decimal("50000"),
++            price_usd=Decimal("50"), price_ars=Decimal("70000"),
++            stock=10, is_active=True,
++        )
++        self.account = LoyaltyAccount.objects.create(
++            user=self.user, puntos_totales=2000
++        )
++        self.client = APIClient()
++        self.client.force_authenticate(user=self.user)
++
++    def test_foreign_paid_orders_never_accrue_peso_based_points(self):
++        for currency, total in [("USD", "100"), ("ARS", "70000")]:
++            with self.subTest(currency=currency):
++                order = Order.objects.create(
++                    user=self.user, currency=currency, total=Decimal(total),
++                    status=OrderStatus.PENDING, email=self.user.email,
++                    shipping_address="Prueba",
++                )
++                order.status = OrderStatus.PAID
++                order.save(update_fields=["status"])
++        self.account.refresh_from_db()
++        self.assertEqual(self.account.puntos_totales, 2000)
++        self.assertFalse(LoyaltyTransaction.objects.filter(tipo="earn").exists())
++
++    def test_foreign_checkout_rejects_clp_points_before_writing_order(self):
++        for currency in ("USD", "ARS"):
++            with self.subTest(currency=currency):
++                response = self.client.post("/api/v1/orders/", {
++                    "items": [{"product": str(self.product.id), "quantity": 1}],
++                    "shipping_address": "Test", "currency": currency,
++                    "loyalty_points_redeemed": 500,
++                }, format="json")
++                self.assertEqual(response.status_code, 400, response.data)
++        self.assertEqual(Order.objects.count(), 0)
++        self.account.refresh_from_db()
++        self.assertEqual(self.account.puntos_canjeados, 0)
++
++    def test_negative_or_invalid_redemption_never_creates_an_order(self):
++        for points in (-500, "no-es-numero"):
++            with self.subTest(points=points):
++                response = self.client.post("/api/v1/orders/", {
++                    "items": [{"product": str(self.product.id), "quantity": 1}],
++                    "shipping_address": "Test", "currency": "CLP",
++                    "loyalty_points_redeemed": points,
++                }, format="json")
++                self.assertEqual(response.status_code, 400, getattr(response, "data", None))
++        self.assertEqual(Order.objects.count(), 0)
++
++    def test_foreign_checkout_without_redemption_remains_available(self):
++        response = self.client.post("/api/v1/orders/", {
++            "items": [{"product": str(self.product.id), "quantity": 1}],
++            "shipping_address": "Test", "currency": "USD",
++            "loyalty_points_redeemed": 0,
++        }, format="json")
++        self.assertEqual(response.status_code, 201, getattr(response, "data", None))
++        order = Order.objects.get()
++        self.assertEqual(order.currency, "USD")
++        self.assertEqual(order.total, Decimal("50"))
++        self.assertEqual(order.loyalty_discount, 0)
++        self.account.refresh_from_db()
++        self.assertEqual(self.account.puntos_canjeados, 0)
+diff --git a/docs/dashboard-v3/13-v3-2-final-consolidado-release-candidate.md b/docs/dashboard-v3/13-v3-2-final-consolidado-release-candidate.md
+new file mode 100644
+index 0000000..f890974
+--- /dev/null
++++ b/docs/dashboard-v3/13-v3-2-final-consolidado-release-candidate.md
+@@ -0,0 +1,43 @@
++# LEVELPRO AUDIO — V3.2 · Patch final consolidado (Release candidate)
++
++Base obligatoria en `main`: `02bea9019d92befb5d4546b7113978fdd4819812` (LOTE4-A_COMPAT). Este documento y el patch son **una sola entrega acumulativa**, sin necesidad de instalar el anterior LOTE4-B.
++
++## Alcance consolidado
++1. Servicios: API/error/empty/retry en catálogo y área de administración. KPIs no confunden datos no consultados con ceros. Formularios no guardan con catálogos auxiliares fallidos.
++2. Loyalty administrativo: estados y errores con reintento; validación de ajustes enteros y de configuración; mensajes de error de guardado sin atribuir éxito.
++3. Rewards administrativo: listas de campañas y ganadores con control de errores; accesibilidad de evidencia; detalle de campaña con fallos de carga recuperables; input de tickets por unidad validado.
++4. Rewards público: separación entre error y catálogo vacío; recuperación del historial de ganadores sin ocultar fallos y eliminación de una afirmación de certificación externa no verificable.
++5. Registro de participaciones: filtros con etiquetas accesibles, exportación ligada a criterios efectivos.
++6. Finanzas: mensaje de saldo insuficiente en la moneda efectivamente seleccionada.
++7. Pruebas automatizadas de contrato UI y validaciones de formularios integradas a `npm run test:unit`.
++
++## Alcance NO modificado
++- Patch 14: **totalmente pausado**, no se implementa ni modifica la orquestación de pagos.
++- No se cambian modelos, migraciones, pasarelas, impuestos, lógica de sorteo ni reglas económicas.
++- La separación comercial CLP/USD/ARS de V3.2 y Rewards LOTE4-A se conserva, sin FX implícito.
++- Movimientos históricos con moneda desconocida siguen requiriendo conciliación documental. No se inventa divisa ni importe.
++- La rentabilidad USD/ARS no se declara certificada sin costo equivalente o FX explícito.
++- Los datos de listas paginadas representan **vista parcial**, no totales generales.
++
++## Requisitos de aceptación antes de afirmar "listo para producción"
++**No son opcionales y no se pueden comprobar desde un patch.**
++
++1. Verificar árbol limpio y base SHA exacta.
++2. `git apply --check LEVELPRO_AUDIO_V3.2_FINAL_CONSOLIDADO.patch`, aplicar y `git diff --check`.
++3. Cloud Build de QA: `gcloud builds submit . --config cloudbuild.v3-2-qa.yaml` (sin despliegue).
++4. `cd frontend && npm ci && npx playwright install chromium && npm run test:browser`.
++5. QA real autenticada por perfiles y rutas, en desktop/móvil: 1440/1280/1024/768/390/320 px, red con pérdida y reintento, formularios, permisos, cambios de estado, persistencia y reingreso.
++6. Operaciones controladas: órdenes CLP/USD/ARS, despacho/stock, PayPal USD pagado desde orden CLP, documentación SII, Rewards, certificaciones, videos, correo y archivos en entorno de pruebas/sandbox.
++7. Revisar y conciliar histórico monetario NULL y documentos extranjeros anteriores donde proceda. Guardar backup restaurable de DB, definir rollback de Cloud Run y medir errores post-release.
++8. Después de QA con evidencia y autorización, usar el procedimiento normal de despliegue. **Nunca confundir Cloud Build QA SUCCESS con implementación certificada.**
++
++## Limitaciones de alcance
++No se ha ejecutado QA autenticada ni integración real con terceros desde esta sesión. Una auditoría estática no puede demostrar acabado visual 1:1 de todas las rutas ni ausencia completa de defectos. La versión es candidata a liberación y su aprobación final exige las verificaciones anteriores.
++
++
++## Invariante crítica de fidelización y divisas
++La revisión encontró que `LoyaltyConfig.puntos_por_peso` y `peso_por_punto` están definidos en pesos CLP, mientras que órdenes USD/ARS se guardan en su moneda original. Antes, el backend acreditaba puntos por el número extranjero sin FX, y podía aplicar descuentos CLP numéricamente sobre subtotal USD/ARS.
++
++La corrección falla de forma segura: **solo órdenes CLP ganan puntos automáticamente y solo órdenes CLP pueden canjearlos**. Las órdenes USD/ARS siguen siendo comprables sin puntos. Carrito y Checkout muestran las monedas seleccionadas, no inventan precios faltantes y no trasladan saldos CLP a operaciones extranjeras.
++
++**Esta restricción requiere aprobación comercial**: habilitar fidelización extranjera de nuevo exige política explícita y tasa histórica identificable por operación. Históricos ya acreditados en USD/ARS deben auditarse con documentos; el patch no los reescribe. Tests backend de cobertura nueva en `backend/tests/test_loyalty_currency_guard.py`.
+diff --git a/frontend/package.json b/frontend/package.json
+index d346e57..1028960 100644
+--- a/frontend/package.json
++++ b/frontend/package.json
+@@ -16,7 +16,7 @@
+     "test:payment:browser": "node --test tests/payment-return.browser.mjs",
+     "lint": "eslint . --max-warnings=0",
+     "preview": "vite preview",
+-    "test:unit": "node --test tests/payment-return.test.mjs tests/jsonld.test.mjs tests/seo.test.mjs tests/dashboard-payment-methods.test.mjs tests/dashboard-v3-data.test.mjs tests/v3-2-currency.test.mjs tests/v3-2-1-query-states.test.mjs tests/v3-2-1-inventory.test.mjs tests/v3-2-1-billing.test.mjs tests/v3-2-1-admin-data.test.mjs",
++    "test:unit": "node --test tests/payment-return.test.mjs tests/jsonld.test.mjs tests/seo.test.mjs tests/dashboard-payment-methods.test.mjs tests/dashboard-v3-data.test.mjs tests/v3-2-currency.test.mjs tests/v3-2-1-query-states.test.mjs tests/v3-2-1-inventory.test.mjs tests/v3-2-1-billing.test.mjs tests/v3-2-1-admin-data.test.mjs tests/v3-2-final-ux.test.mjs",
+     "test:browser": "node --test tests/payment-return.browser.mjs tests/transfer-instructions.browser.mjs tests/jsonld.browser.mjs tests/seo.browser.mjs tests/routes.browser.mjs tests/v3-2-1-academy.browser.mjs",
+     "test:nginx": "node --test tests/seo-nginx.test.mjs",
+     "check:bundle": "node scripts/check-bundle.mjs"
+diff --git a/frontend/src/pages/Cart.jsx b/frontend/src/pages/Cart.jsx
+index cbfbb50..5abd1b0 100644
+--- a/frontend/src/pages/Cart.jsx
++++ b/frontend/src/pages/Cart.jsx
+@@ -10,6 +10,8 @@ import { useAuthStore } from "../store/authStore"
+ import { getOrders } from "../api/orders.api"
+ import { previewCartEntries } from "../api/rewards.api"
+ import { getMyLoyalty } from "../api/loyalty.api"
++import { usePrice } from "../hooks/usePrice"
++import { formatOrderAmount } from "../utils/accountingCurrency"
+ import { mediaUrl } from "../utils/mediaUrl"
+ import Seo from "../components/Seo"
+ import Button from "../components/ui/Button"
+@@ -32,10 +34,10 @@ function Eyebrow({ children, color = "var(--accent)" }) {
+ // ─────────────────────────────────────────────────────────────
+ // CTA principal — ahora usa el sistema de botones global (Button)
+ // ─────────────────────────────────────────────────────────────
+-function AccentCTA({ children, testid, onClick, to, full = false }) {
++function AccentCTA({ children, testid, onClick, to, full = false, disabled = false }) {
+   return (
+     <Button
+-      to={to} onClick={onClick} testId={testid}
++      to={to} onClick={onClick} testId={testid} disabled={disabled}
+       variant="green" size="md" arrow
+       style={full ? { width: "100%", justifyContent: "space-between" } : undefined}>
+       {children}
+@@ -49,6 +51,8 @@ function AccentCTA({ children, testid, onClick, to, full = false }) {
+ function CartItem({ item }) {
+   const { updateQuantity, removeItem } = useCartStore()
+   const { product, quantity }          = item
++  const { currency, format }           = usePrice()
++  const unitPrice = product.prices?.[currency] ?? (currency === "CLP" ? product.price : null)
+ 
+   const primaryImg = product.images?.find(i => i.is_primary) || product.images?.[0]
+   const img        = primaryImg ? mediaUrl(primaryImg.image) : null
+@@ -142,7 +146,7 @@ function CartItem({ item }) {
+             <p style={{ fontFamily: "var(--font-display)", fontSize: "1.15rem",
+               fontWeight: 800, color: "var(--text)", letterSpacing: "-0.02em",
+               fontVariantNumeric: "tabular-nums" }}>
+-              ${(Number(product.price) * quantity).toLocaleString("es-CL")}
++              {unitPrice == null ? "—" : format(Number(unitPrice) * quantity)}
+             </p>
+             <button
+               data-testid={`cart-remove-${product.slug}`}
+@@ -165,10 +169,14 @@ function CartItem({ item }) {
+ }
+ 
+ export default function Cart() {
+-  const { items, clearCart, getTotal } = useCartStore()
++  const { items, clearCart, getTotalIn } = useCartStore()
++  const { currency, format }            = usePrice()
+   const { isAuthenticated }            = useAuthStore()
+   const navigate                       = useNavigate()
+-  const total                          = getTotal()
++  const confirmedPrices = currency === "CLP" || items.every(
++    i => i.product?.prices?.[currency] != null && Number.isFinite(Number(i.product.prices[currency]))
++  )
++  const total = confirmedPrices ? getTotalIn(currency) : null
+ 
+   const { data: ordersData } = useQuery({
+     queryKey: ["orders"],
+@@ -199,17 +207,17 @@ export default function Cart() {
+   })
+   const { pointsToRedeem, setPointsToRedeem } = useCartStore()
+ 
+-  const canRedeem      = loyalty && loyalty.puntos_disponibles >= (loyalty.minimo_canje || 0)
++  const canRedeem      = currency === "CLP" && loyalty && loyalty.puntos_disponibles >= (loyalty.minimo_canje || 0)
+   const pesoPorPunto   = loyalty ? (loyalty.valor_disponible / Math.max(1, loyalty.puntos_disponibles)) : 0
+   const maxPointsForCart = loyalty
+     ? Math.min(loyalty.puntos_disponibles,
+                Math.floor((total || 0) / Math.max(0.01, pesoPorPunto)))
+     : 0
+-  const loyaltyDiscount = Math.min(
++  const loyaltyDiscount = currency === "CLP" ? Math.min(
+     total || 0,
+     Math.floor(pointsToRedeem * pesoPorPunto)
+-  )
+-  const finalTotal = Math.max(0, (total || 0) - loyaltyDiscount)
++  ) : 0
++  const finalTotal = total === null ? null : Math.max(0, total - loyaltyDiscount)
+ 
+   const pendingOrder = (ordersData?.results || ordersData || [])
+     .find(o => o.status === "pending")
+@@ -255,7 +263,7 @@ export default function Cart() {
+             </p>
+             <p style={{ fontFamily: "var(--font-display)", fontSize: "2.2rem",
+               fontWeight: 800, letterSpacing: "-0.03em", color: "var(--text)" }}>
+-              ${Number(pendingOrder.total).toLocaleString("es-CL")}
++              {formatOrderAmount(pendingOrder)}
+             </p>
+           </div>
+           <div style={{ display: "flex", flexDirection: "column",
+@@ -376,7 +384,9 @@ export default function Cart() {
+                   </span>
+                   <span style={{ flexShrink: 0, color: "var(--text-2)",
+                     fontVariantNumeric: "tabular-nums" }}>
+-                    ${(Number(item.product.price) * item.quantity).toLocaleString("es-CL")}
++                    {item.product.prices?.[currency] == null && currency !== "CLP"
++                      ? "—"
++                      : format(Number(item.product.prices?.[currency] ?? item.product.price) * item.quantity)}
+                   </span>
+                 </div>
+               ))}
+@@ -389,7 +399,7 @@ export default function Cart() {
+                 fontSize: "13px", color: "var(--text-3)" }}>
+                 <span>Subtotal</span>
+                 <span style={{ fontVariantNumeric: "tabular-nums" }}>
+-                  ${Number(total || 0).toLocaleString("es-CL")}
++                  {total === null ? "—" : format(total)}
+                 </span>
+               </div>
+               {loyaltyDiscount > 0 && (
+@@ -397,7 +407,7 @@ export default function Cart() {
+                   fontSize: "13px", color: "var(--accent)" }}>
+                   <span>Descuento por puntos ({pointsToRedeem} pts)</span>
+                   <span style={{ fontVariantNumeric: "tabular-nums" }}>
+-                    − ${loyaltyDiscount.toLocaleString("es-CL")}
++                    − {format(loyaltyDiscount)}
+                   </span>
+                 </div>
+               )}
+@@ -408,13 +418,13 @@ export default function Cart() {
+                 <span data-testid="cart-total" style={{ fontFamily: "var(--font-display)",
+                   fontSize: "2rem", fontWeight: 800, letterSpacing: "-0.03em",
+                   color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>
+-                  ${finalTotal.toLocaleString("es-CL")}
++                  {finalTotal === null ? "—" : format(finalTotal)}
+                 </span>
+               </div>
+             </div>
+ 
+             {/* Loyalty — canjear puntos */}
+-            {isAuthenticated && canRedeem && maxPointsForCart > 0 && (
++            {isAuthenticated && canRedeem && maxPointsForCart >= loyalty.minimo_canje && (
+               <div data-testid="cart-loyalty-redeem" style={{
+                 marginBottom: "20px", padding: "16px",
+                 background: "rgba(96,165,250,0.06)",
+@@ -464,7 +474,7 @@ export default function Cart() {
+                       {pointsToRedeem.toLocaleString("es-CL")} pts
+                     </p>
+                     <p style={{ fontSize: "11px", color: "var(--text-3)" }}>
+-                      = ${loyaltyDiscount.toLocaleString("es-CL")}
++                      = {format(loyaltyDiscount)}
+                     </p>
+                   </div>
+                 </div>
+@@ -503,9 +513,21 @@ export default function Cart() {
+               </div>
+             )}
+ 
++            {!confirmedPrices && (
++              <p role="alert" style={{ color:"var(--danger)", fontSize:"12px", marginBottom:"14px" }}>
++                Falta confirmar el precio de uno o más productos en {currency}. Vuelve a agregarlos desde la tienda antes de pagar.
++              </p>
++            )}
++            {currency !== "CLP" && pointsToRedeem > 0 && (
++              <p role="status" style={{ color:"var(--text-2)", fontSize:"12px", marginBottom:"14px" }}>
++                El canje de puntos está disponible solo en CLP. No se aplicará en {currency}.
++              </p>
++            )}
++
+             <AccentCTA
+               testid="cart-checkout"
+               full
++              disabled={!confirmedPrices}
+               onClick={() => isAuthenticated
+                 ? navigate("/checkout")
+                 : navigate("/login?next=/checkout")}>
+diff --git a/frontend/src/pages/Checkout.jsx b/frontend/src/pages/Checkout.jsx
+index eb9de9b..c9342c2 100644
+--- a/frontend/src/pages/Checkout.jsx
++++ b/frontend/src/pages/Checkout.jsx
+@@ -98,7 +98,10 @@ export default function Checkout() {
+   const { user }                            = useAuthStore()
+   const { currency, format }                = usePrice()
+   const navigate                            = useNavigate()
+-  const total                               = getTotalIn(currency)
++  const confirmedPrices = currency === "CLP" || items.every(
++    i => i.product?.prices?.[currency] != null && Number.isFinite(Number(i.product.prices[currency]))
++  )
++  const total = confirmedPrices ? getTotalIn(currency) : null
+ 
+   // Métodos de pago activos para la moneda elegida (configurables desde
+   // el admin). Un argentino en USD ve Payoneer; un chileno en CLP ve
+@@ -140,6 +143,10 @@ export default function Checkout() {
+ 
+   const onSubmit = async (data) => {
+     if (!items.length) return
++    if (!confirmedPrices) {
++      setServerError("No pudimos verificar los precios para esta moneda. Actualiza los productos del carrito antes de pagar.")
++      return
++    }
+     if (methodsLoading || methodsError || !selectedMethodAvailable) {
+       setServerError("Selecciona un método de pago disponible para la moneda actual.")
+       return
+@@ -153,7 +160,7 @@ export default function Checkout() {
+         notes:            data.notes || "",
+         total,
+         currency,
+-        loyalty_points_redeemed: pointsToRedeem || 0,
++        loyalty_points_redeemed: currency === "CLP" ? (pointsToRedeem || 0) : 0,
+         items: items.map(i => ({
+           product:      i.product.id,
+           product_name: i.product.name,
+@@ -372,7 +379,9 @@ export default function Checkout() {
+                     </span>
+                     <span style={{ flexShrink: 0, color: "var(--text-2)", fontWeight: 600,
+                       fontVariantNumeric: "tabular-nums" }}>
+-                      {format((Number(item.product.prices?.[currency] ?? item.product.price)) * item.quantity)}
++                      {item.product.prices?.[currency] == null && currency !== "CLP"
++                        ? "—"
++                        : format(Number(item.product.prices?.[currency] ?? item.product.price) * item.quantity)}
+                     </span>
+                   </div>
+                 ))}
+@@ -385,10 +394,19 @@ export default function Checkout() {
+                 <span data-testid="checkout-total" style={{ fontFamily: "var(--font-display)",
+                   fontSize: "2rem", fontWeight: 800, letterSpacing: "-0.03em",
+                   color: "var(--text)", fontVariantNumeric: "tabular-nums" }}>
+-                  {format(total || 0)} <span style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-3)" }}>{currency}</span>
++                  {total === null ? "—" : format(total)} <span style={{ fontSize: "0.9rem", fontWeight: 600, color: "var(--text-3)" }}>{currency}</span>
+                 </span>
+               </div>
+ 
++              {!confirmedPrices && <p role="alert" style={{ color:"var(--danger)", fontSize:"12px", marginBottom:"12px" }}>
++                Hay productos sin precio confirmado en {currency}. No se puede continuar con un importe estimado.
++              </p>}
++              {currency !== "CLP" && pointsToRedeem > 0 && <p role="status" style={{ fontSize:"12px", color:"var(--text-2)", marginBottom:"12px" }}>
++                Los puntos guardados en el carrito solo se usan en compras CLP; no se descontarán de esta orden.
++              </p>}
++              {currency === "CLP" && pointsToRedeem > 0 && <p role="status" style={{ fontSize:"12px", color:"var(--text-2)", marginBottom:"12px" }}>
++                El subtotal mostrado no incluye el canje de puntos. El descuento CLP se confirma al crear la orden.
++              </p>}
+               {selectedMethod && (
+                 <div style={{ display: "flex", alignItems: "center", gap: "10px",
+                   padding: "12px 14px", borderRadius: "var(--r-lg)",
+@@ -410,7 +428,7 @@ export default function Checkout() {
+                 </div>
+               )}
+ 
+-              <Button type="submit" disabled={!selectedMethodAvailable || methodsLoading || methodsError || isLoading}
++              <Button type="submit" disabled={!confirmedPrices || !selectedMethodAvailable || methodsLoading || methodsError || isLoading}
+                 loading={isLoading} testId="checkout-submit"
+                 variant="green" size="md" arrow
+                 style={{ width: "100%", justifyContent: "space-between" }}>
+diff --git a/frontend/src/pages/Rewards.jsx b/frontend/src/pages/Rewards.jsx
+index 39e3416..a4de06b 100644
+--- a/frontend/src/pages/Rewards.jsx
++++ b/frontend/src/pages/Rewards.jsx
+@@ -286,15 +286,17 @@ const stepBtn = {
+ // ─────────────────────────────────────────────────────────────
+ export default function Rewards() {
+   const [modalCampaign, setModalCampaign] = useState(null)
+-  const { data: campaigns = [], isLoading } = useQuery({
++  const { data: campaignsRaw, isLoading, isError: campaignsError, refetch: retryCampaigns } = useQuery({
+     queryKey: ["rewards", "campaigns"],
+     queryFn:  getActiveCampaigns,
+   })
+-  const { data: winners = [] } = useQuery({
++  const { data: winnersRaw, isError: winnersError, refetch: retryWinners } = useQuery({
+     queryKey: ["rewards", "winners"],
+     queryFn:  getPublicWinners,
+   })
+ 
++  const campaigns = Array.isArray(campaignsRaw) ? campaignsRaw : []
++  const winners = Array.isArray(winnersRaw) ? winnersRaw : []
+   const featured = campaigns[0]
+ 
+   if (isLoading) {
+@@ -305,6 +307,15 @@ export default function Rewards() {
+     )
+   }
+ 
++  if (campaignsError || !Array.isArray(campaignsRaw)) return (
++    <div data-testid="rewards-error" role="alert" style={{ minHeight:"65vh", padding:"160px 24px 80px", textAlign:"center", color:"var(--text)" }}>
++      <Seo title="Rewards" description="Campañas de LevelPro Audio" />
++      <h1 style={{ fontSize:"clamp(1.6rem, 4vw, 2.6rem)", marginBottom:"14px" }}>Campañas no disponibles</h1>
++      <p style={{ color:"var(--text-2)", marginBottom:"24px" }}>No pudimos consultar las campañas. No mostraremos un catálogo vacío como resultado válido.</p>
++      <button type="button" onClick={() => retryCampaigns()} className="au-btn au-btn--primary">Reintentar</button>
++    </div>
++  )
++
+   return (
+     <div
+       data-testid="rewards-page"
+@@ -627,7 +638,11 @@ export default function Rewards() {
+         )}
+ 
+         {/* ═══════════ GANADORES HISTÓRICOS ═══════════ */}
+-        {winners.length > 0 && (
++        {winnersError && <div role="alert" style={{ padding:"18px 20px", border:"1px solid var(--border)", borderRadius:"var(--r-lg)" }}>
++          <span style={{ color:"var(--text-2)" }}>No fue posible cargar los ganadores anteriores.</span>{" "}
++          <button type="button" onClick={() => retryWinners()} style={{ border:0, background:"none", color:"var(--accent)", cursor:"pointer" }}>Reintentar</button>
++        </div>}
++        {!winnersError && winners.length > 0 && (
+           <section data-testid="rewards-winners" style={{ padding:0 }}>
+             <div style={{ marginBottom:"var(--content-gap)" }}>
+               <SectionEyebrow>· Historial</SectionEyebrow>
+@@ -639,7 +654,7 @@ export default function Rewards() {
+                 Ganadores anteriores
+               </h3>
+               <p style={{ fontSize:"14px", color:"var(--text-3)" }}>
+-                Personas reales, premios reales. Sorteados frente a escribano digital.
++                Registro público de ganadores de campañas finalizadas.
+               </p>
+             </div>
+             <div style={{
+diff --git a/frontend/src/pages/Services.jsx b/frontend/src/pages/Services.jsx
+index 53c0c6f..9b09a33 100644
+--- a/frontend/src/pages/Services.jsx
++++ b/frontend/src/pages/Services.jsx
+@@ -16,23 +16,27 @@ export default function Services() {
+   const ctaRef    = useScrollReveal({ delay: 0, scaleIn: true })
+   const [category, setCategory] = useState("")
+ 
+-  const { data, isLoading } = useQuery({
++  const { data, isLoading, isError: servicesError, refetch: retryServices } = useQuery({
+     queryKey: ["services", { category }],
+     queryFn:  () => getServices({ category__slug: category || undefined }),
+   })
+-  const services = data?.results || data || []
++  const servicesRaw = data?.results ?? data
++  const services = Array.isArray(servicesRaw) ? servicesRaw : []
+ 
+-  const { data: allData } = useQuery({
++  const { data: allData, isError: totalError, refetch: retryTotal } = useQuery({
+     queryKey: ["services", { category: "" }],
+     queryFn:  () => getServices(),
+   })
+-  const totalCount = (allData?.results || allData || []).length
++  const totalRaw = allData?.results ?? allData
++  const totalCount = totalError ? null : Number.isInteger(allData?.count)
++    ? allData.count : Array.isArray(totalRaw) ? totalRaw.length : null
+ 
+-  const { data: catData } = useQuery({
++  const { data: catData, isError: categoriesError, refetch: retryCategories } = useQuery({
+     queryKey: ["service-categories"],
+     queryFn:  getServiceCategories,
+   })
+-  const categories = catData?.results || catData || []
++  const categoryRaw = catData?.results ?? catData
++  const categories = Array.isArray(categoryRaw) ? categoryRaw : []
+ 
+   const pill = (active) => ({
+     display: "inline-flex", alignItems: "center", gap: "8px",
+@@ -88,15 +92,21 @@ export default function Services() {
+           </p>
+ 
+           {/* Filtros por categoría con contador */}
++          {categoriesError && <div role="alert" style={{ fontSize:"13px", color:"var(--text-2)", marginTop:"24px" }}>
++            No se pudieron cargar las categorías. <button type="button" onClick={() => retryCategories()} style={{ color:"var(--accent)", background:"none", border:0, cursor:"pointer" }}>Reintentar</button>
++          </div>}
++          {totalError && <div role="alert" style={{ fontSize:"13px", color:"var(--text-2)", marginTop:"12px" }}>
++            El total de servicios no está disponible. <button type="button" onClick={() => retryTotal()} style={{ color:"var(--accent)", background:"none", border:0, cursor:"pointer" }}>Reintentar</button>
++          </div>}
+           {categories.length > 0 && (
+             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "32px" }}
+               data-testid="service-category-filters">
+-              <button onClick={() => setCategory("")} data-testid="service-filter-all"
++              <button type="button" aria-pressed={category === ""} onClick={() => setCategory("")} data-testid="service-filter-all"
+                 style={pill(category === "")}>
+-                Todos <span style={countBadge(category === "")}>{totalCount}</span>
++                Todos <span style={countBadge(category === "")}>{totalCount ?? "—"}</span>
+               </button>
+               {categories.map((cat) => (
+-                <button key={cat.id} onClick={() => setCategory(cat.slug)}
++                <button type="button" aria-pressed={category === cat.slug} key={cat.id} onClick={() => setCategory(cat.slug)}
+                   data-testid={`service-filter-${cat.slug}`} style={pill(category === cat.slug)}>
+                   {cat.name}
+                   {cat.services_count != null && (
+@@ -118,6 +128,10 @@ export default function Services() {
+               <div key={i} className="skeleton" style={{ height: "440px", borderRadius: "26px" }} />
+             ))}
+           </div>
++        ) : servicesError || !Array.isArray(servicesRaw) ? (
++          <div role="alert" data-testid="services-error" style={{ textAlign:"center", padding:"80px 0", color:"var(--text-2)" }}>
++            No pudimos cargar los servicios. <button type="button" onClick={() => retryServices()} style={{ color:"var(--accent)", background:"none", border:0, cursor:"pointer" }}>Reintentar</button>
++          </div>
+         ) : services.length === 0 ? (
+           <div data-testid="services-empty" style={{ textAlign: "center", padding: "80px 0",
+             color: "var(--text-3)", fontSize: "15px" }}>
+diff --git a/frontend/src/pages/admin/AdminFinance.jsx b/frontend/src/pages/admin/AdminFinance.jsx
+index df65f08..161e024 100644
+--- a/frontend/src/pages/admin/AdminFinance.jsx
++++ b/frontend/src/pages/admin/AdminFinance.jsx
+@@ -187,7 +187,7 @@ function WithdrawalModal({ categories, onClose, onSave, currency = "CLP" }) {
+     }
+     if (selectedCat?.reconciliation_required) { setError("Esta categoría requiere conciliación antes de registrar retiros."); return }
+     if (selectedCat && parseFloat(form.amount) > selectedCat.balance) {
+-      setError(`Saldo insuficiente en ${selectedCat.name}. Disponible: ${fmt(selectedCat.balance)}`)
++      setError(`Saldo insuficiente en ${selectedCat.name}. Disponible: ${fmt(selectedCat.balance, currency)}`)
+       return
+     }
+     setSaving(true); setError("")
+diff --git a/frontend/src/pages/admin/AdminLoyalty.jsx b/frontend/src/pages/admin/AdminLoyalty.jsx
+index 547e823..9d5640c 100644
+--- a/frontend/src/pages/admin/AdminLoyalty.jsx
++++ b/frontend/src/pages/admin/AdminLoyalty.jsx
+@@ -6,7 +6,8 @@ import {
+   updateLoyaltyConfig, adjustLoyaltyPoints,
+ } from "../../api/admin.api"
+ import { Users, Star, Sparkles, Gift, Medal, Award, Gem } from "lucide-react"
+-import { StatCard, AdminPageHeader, SectionCard, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle } from "../../components/admin/ui"
++import { StatCard, AdminPageHeader, SectionCard, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle, ErrorState } from "../../components/admin/ui"
++import { parseLoyaltyAdjustment, validLoyaltyConfigDraft } from "../../utils/loyaltyForm"
+ 
+ const TABS   = ["Resumen","Top clientes","Configuración"]
+ const NIVELES = {
+@@ -30,22 +31,32 @@ function AdjustModal({ account, onClose }) {
+   const mutation = useMutation({
+     mutationFn: () => adjustLoyaltyPoints({
+       user_id: account.user_id,
+-      points:  parseInt(form.points),
++      points:  parseLoyaltyAdjustment(form.points),
+       reason:  form.reason,
+     }),
+     onSuccess: () => {
+       queryClient.invalidateQueries({ queryKey: ["admin-loyalty-summary"] })
+       onClose()
+     },
+-    onError: (e) => setError(e?.response?.data?.detail || "Error al ajustar."),
++    onError: (e) => setError(e?.response?.data?.detail || e?.response?.data?.error || "Error al ajustar."),
+   })
+ 
++  const adjustment = parseLoyaltyAdjustment(form.points)
++  const applyAdjustment = () => {
++    if (adjustment === null) {
++      setError("Ingresa un número entero distinto de cero para ajustar los puntos.")
++      return
++    }
++    setError("")
++    mutation.mutate()
++  }
++
+   return (
+     <FormModal
+       open
+       title="Ajustar puntos"
+       onClose={onClose}
+-      onSave={() => mutation.mutate()}
++      onSave={applyAdjustment}
+       saving={mutation.isPending}
+       saveLabel="Aplicar"
+       error={error}
+@@ -56,7 +67,7 @@ function AdjustModal({ account, onClose }) {
+         {account.user_email}
+       </p>
+       <FormField label="Puntos (positivo = agregar, negativo = quitar)">
+-        <input type="number" value={form.points}
++        <input type="number" step="1" value={form.points}
+           onChange={e => setForm(p => ({ ...p, points:e.target.value }))}
+           style={formInputStyle} placeholder="Ej: 500 o -200" />
+       </FormField>
+@@ -73,12 +84,12 @@ function AdjustModal({ account, onClose }) {
+             {account.puntos_disponibles?.toLocaleString("es-CL")}
+           </span>
+         </div>
+-        {form.points && !isNaN(form.points) && (
++        {adjustment !== null && Number.isFinite(Number(account.puntos_disponibles)) && (
+           <div style={{ display:"flex", justifyContent:"space-between" }}>
+             <span style={{ color:"var(--text-3)" }}>Después del ajuste</span>
+             <span style={{ fontWeight:600,
+-              color: parseInt(form.points) >= 0 ? "var(--accent-text)" : "#EF4444" }}>
+-              {(account.puntos_disponibles + parseInt(form.points)).toLocaleString("es-CL")}
++              color: adjustment >= 0 ? "var(--accent-text)" : "#EF4444" }}>
++              {(Number(account.puntos_disponibles) + adjustment).toLocaleString("es-CL")}
+             </span>
+           </div>
+         )}
+@@ -92,10 +103,10 @@ export default function AdminLoyalty() {
+   const [modal, setModal] = useState(null)
+   const queryClient       = useQueryClient()
+ 
+-  const { data:summary, isLoading } = useQuery({
++  const { data:summary, isLoading, isError: summaryError, refetch: retrySummary } = useQuery({
+     queryKey:["admin-loyalty-summary"], queryFn:getLoyaltySummary,
+   })
+-  const { data:config } = useQuery({
++  const { data:config, isLoading: configLoading, isError: configError, refetch: retryConfig } = useQuery({
+     queryKey:["admin-loyalty-config"], queryFn:getLoyaltyConfig,
+     enabled: tab===2,
+   })
+@@ -103,19 +114,32 @@ export default function AdminLoyalty() {
+   const [cfgForm, setCfgForm]     = useState(null)
+   const [savingCfg, setSavingCfg] = useState(false)
+   const [cfgOk, setCfgOk]         = useState(false)
++  const [cfgError, setCfgError]   = useState("")
+ 
+   const saveConfig = async () => {
+     if (!cfgForm) return
++    setCfgError("")
++    setCfgOk(false)
++    if (!validLoyaltyConfigDraft(cfgForm)) {
++      setCfgError("Revisa los valores: se requieren números válidos y días/puntos enteros no negativos.")
++      return
++    }
+     setSavingCfg(true)
+     try {
+-      await updateLoyaltyConfig(cfgForm)
+-      queryClient.invalidateQueries({ queryKey: ["admin-loyalty-config"] })
+-      setCfgOk(true); setTimeout(() => setCfgOk(false), 3000)
++      const saved = await updateLoyaltyConfig(cfgForm)
++      queryClient.setQueryData(["admin-loyalty-config"], saved)
++      await queryClient.invalidateQueries({ queryKey: ["admin-loyalty-config"] })
++      setCfgForm(null)
++      setCfgOk(true)
++      setTimeout(() => setCfgOk(false), 3000)
++    } catch (e) {
++      setCfgError(e?.response?.data?.detail || e?.response?.data?.error || "No se pudo guardar la configuración. Revisa los datos e inténtalo nuevamente.")
+     } finally { setSavingCfg(false) }
+   }
+ 
+   const accounts = summary?.accounts || []
+   const kpis     = summary?.kpis     || {}
++  const summaryUnavailable = summaryError || (!isLoading && (!summary?.kpis || !Array.isArray(summary?.accounts)))
+ 
+   return (
+     <div className="au-page">
+@@ -148,6 +172,10 @@ export default function AdminLoyalty() {
+           <div className="lp-grid-kpi">
+             {[...Array(4)].map((_,i) => <div key={i} className="skeleton" style={{ height:"130px", borderRadius: "20px" }} />)}
+           </div>
++        ) : summaryUnavailable ? (
++          <ErrorState title="No se pudo cargar el resumen de fidelización"
++            description="No mostraremos cifras sin datos confirmados."
++            action={<SecondaryButton onClick={() => retrySummary()}>Reintentar</SecondaryButton>} />
+         ) : (
+           <>
+             <div className="lp-grid-kpi">
+@@ -192,6 +220,9 @@ export default function AdminLoyalty() {
+           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
+             {[...Array(5)].map((_,i) => <div key={i} className="skeleton" style={{ height:"64px", borderRadius: "14px" }} />)}
+           </div>
++        ) : summaryUnavailable ? (
++          <ErrorState title="No se pudo cargar el listado de clientes"
++            action={<SecondaryButton onClick={() => retrySummary()}>Reintentar</SecondaryButton>} />
+         ) : accounts.length===0 ? (
+           <div className="au-card au-panel" style={{ padding:"56px", textAlign:"center", color:"var(--admin-text-secondary)" }}>
+             <p style={{ fontSize:"38px", marginBottom:"10px" }}>⭐</p>
+@@ -255,7 +286,10 @@ export default function AdminLoyalty() {
+ 
+       {/* ── CONFIGURACIÓN ── */}
+       {tab===2 && (
+-        !config ? (
++        configError || (!configLoading && !config) ? (
++          <ErrorState title="No se pudo cargar la configuración de fidelización"
++            action={<SecondaryButton onClick={() => retryConfig()}>Reintentar</SecondaryButton>} />
++        ) : configLoading ? (
+           <div style={{ display:"flex", flexDirection:"column", gap:"12px", maxWidth:"560px" }}>
+             {[...Array(3)].map((_,i) => <div key={i} className="skeleton" style={{ height:"60px", borderRadius: "14px" }} />)}
+           </div>
+@@ -264,10 +298,11 @@ export default function AdminLoyalty() {
+             <SectionCard eyebrow="REGLAS DE CONVERSIÓN" title="Parámetros del programa">
+               <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
+                 {cfgOk && (
+-                  <div className="lp-callout lp-callout--success">
++                  <div className="lp-callout lp-callout--success" role="status">
+                     ✓ Configuración guardada correctamente
+                   </div>
+                 )}
++                {cfgError && <div role="alert" className="lp-callout">{cfgError}</div>}
+                 {[
+                   { key:"puntos_por_peso",  label:"Puntos por cada $1 gastado",           hint:"Ej: 0.01 = 1 punto por cada $100", step:"0.001" },
+                   { key:"peso_por_punto",   label:"Valor de cada punto en $",              hint:"Ej: 1 = cada punto vale $1 de descuento", step:"0.01" },
+@@ -275,12 +310,14 @@ export default function AdminLoyalty() {
+                   { key:"expiracion_dias",  label:"Días para vencimiento (0 = no vencen)" },
+                 ].map(({ key, label, hint, step }) => (
+                   <div key={key}>
+-                    <label style={{ display:"block", fontSize:"12px", fontWeight:700,
++                    <label htmlFor={`loyalty-config-${key}`} style={{ display:"block", fontSize:"12px", fontWeight:700,
+                       color:"var(--admin-text-secondary)", marginBottom:"7px" }}>{label}</label>
+-                    <input type="number" step={step || "1"} defaultValue={config[key]}
+-                      onChange={e => setCfgForm(p => ({
+-                        ...(p||config), [key]: parseFloat(e.target.value)
+-                      }))}
++                    <input id={`loyalty-config-${key}`} type="number" step={step || "1"} value={cfgForm ? cfgForm[key] : config[key]}
++                      onChange={e => {
++                        setCfgError("")
++                        setCfgOk(false)
++                        setCfgForm(p => ({ ...(p || config), [key]: e.target.value === "" ? "" : Number(e.target.value) }))
++                      }}
+                       style={inputSt} />
+                     {hint && <p style={{ fontSize:"11px", color:"var(--admin-text-muted)", marginTop:"4px" }}>{hint}</p>}
+                   </div>
+diff --git a/frontend/src/pages/admin/AdminRewardsCampaignDetail.jsx b/frontend/src/pages/admin/AdminRewardsCampaignDetail.jsx
+index d793433..11576e4 100644
+--- a/frontend/src/pages/admin/AdminRewardsCampaignDetail.jsx
++++ b/frontend/src/pages/admin/AdminRewardsCampaignDetail.jsx
+@@ -12,7 +12,8 @@ import {
+ import { getProducts } from "../../api/products.api"
+ import { mediaUrl } from "../../utils/mediaUrl"
+ import { showToast } from "../../utils/toast"
+-import { AdminPageHeader, StatCard, SectionCard, SecondaryButton, StatusBadge } from "../../components/admin/ui"
++import { AdminPageHeader, StatCard, SectionCard, SecondaryButton, StatusBadge, ErrorState } from "../../components/admin/ui"
++import { formatCurrency } from "../../utils/accountingCurrency"
+ import { Ticket, Users, Package, Award } from "lucide-react"
+ 
+ export default function AdminRewardsCampaignDetail() {
+@@ -20,20 +21,21 @@ export default function AdminRewardsCampaignDetail() {
+   const qc     = useQueryClient()
+   const [showProductPicker, setShowProductPicker] = useState(false)
+ 
+-  const { data: c, isLoading } = useQuery({
++  const { data: c, isLoading, isError: campaignError, refetch: retryCampaign } = useQuery({
+     queryKey: ["admin-campaign", id],
+     queryFn:  () => adminGetCampaign(id),
+   })
+-  const { data: winners = [] } = useQuery({
++  const { data: winners = [], isError: winnersError, refetch: retryWinners } = useQuery({
+     queryKey: ["admin-campaign-winners", id],
+     queryFn:  () => adminListWinners(id),
+   })
+-  const { data: productsData } = useQuery({
++  const { data: productsData, isLoading: productsLoading, isError: productsError, refetch: retryProducts } = useQuery({
+     queryKey: ["shop-products"],
+     queryFn:  () => getProducts({ page_size: 200 }),
+     enabled:  showProductPicker,
+   })
+-  const productList = productsData?.results || productsData || []
++  const productListRaw = productsData?.results ?? productsData
++  const productList = Array.isArray(productListRaw) ? productListRaw : []
+ 
+   const update = useMutation({
+     mutationFn: (patch) => {
+@@ -81,9 +83,18 @@ export default function AdminRewardsCampaignDetail() {
+     onError:    (e) => showToast(e?.response?.data?.detail || "No se pudo finalizar la campaña. Verificá antes de asumir que se cerró.", "error"),
+   })
+ 
+-  if (isLoading || !c || !Array.isArray(c.reward_products)) return (
++  if (isLoading) return (
+     <div className="au-page">
+-      <p style={{ color:"var(--admin-text-muted)" }}>Cargando…</p>
++      <p style={{ color:"var(--admin-text-muted)" }} role="status">Cargando campaña…</p>
++    </div>
++  )
++
++  if (campaignError || !c || !Array.isArray(c.reward_products)) return (
++    <div className="au-page">
++      <AdminPageHeader title="Campaña no disponible" description="No pudimos confirmar los datos de esta campaña." />
++      <ErrorState title="No se pudo cargar la campaña"
++        action={<SecondaryButton onClick={() => retryCampaign()}>Reintentar</SecondaryButton>} />
++      <SecondaryButton to="/admin/rewards/campaigns">Volver a campañas</SecondaryButton>
+     </div>
+   )
+ 
+@@ -145,9 +156,9 @@ export default function AdminRewardsCampaignDetail() {
+                     draw.mutate()
+                   }
+                 }}
+-                disabled={draw.isPending || c.total_entries === 0}
++                disabled={draw.isPending || finish.isPending || update.isPending || !Number.isFinite(Number(c.total_entries)) || Number(c.total_entries) <= 0}
+                 className="au-btn au-btn--primary"
+-                style={{ opacity: c.total_entries === 0 ? 0.45 : 1 }}>
++                style={{ opacity: Number(c.total_entries) <= 0 ? 0.45 : 1 }}>
+                 {draw.isPending ? "Sorteando…" : "🎲 Ejecutar sorteo"}
+               </button>
+             )}
+@@ -283,20 +294,26 @@ export default function AdminRewardsCampaignDetail() {
+           }}>
+             <p style={{ fontSize:"12px", color:"var(--admin-text-secondary)",
+               marginBottom:"12px" }}>
+-              Seleccioná un producto del catálogo para agregar. Podés configurar
+-              cuántas participaciones da cada unidad.
++              Seleccioná un producto de la lista visible (hasta 200 por consulta).
++              Podés configurar cuántas participaciones da cada unidad.
+             </p>
+-            {productList.filter(p => !alreadyAdded.has(p.id)).map(p => (
++            {productsLoading && <p role="status">Cargando productos…</p>}
++            {(productsError || (!productsLoading && !Array.isArray(productListRaw))) && (
++              <ErrorState title="No se pudieron cargar los productos"
++                action={<SecondaryButton onClick={() => retryProducts()}>Reintentar</SecondaryButton>} />
++            )}
++            {!productsError && productList.filter(p => !alreadyAdded.has(p.id)).map(p => (
+               <div key={p.id} style={{
+                 display:"flex", justifyContent:"space-between",
+                 alignItems:"center", padding:"8px 0",
+                 borderBottom:"1px solid var(--admin-border)", gap: "10px",
+               }}>
+                 <span style={{ fontSize:"13px", fontWeight: 600, color:"var(--admin-text)" }}>
+-                  {p.name} — ${Number(p.price).toLocaleString("es-CL")}
++                  {p.name} — {formatCurrency(p.price, "CLP")}
+                 </span>
+                 <button data-testid={`btn-add-${p.id}`}
+                   type="button"
++                  disabled={addProduct.isPending}
+                   onClick={() => addProduct.mutate({
+                     product: p.id,
+                     entries_per_purchase: 5,
+@@ -327,15 +344,18 @@ export default function AdminRewardsCampaignDetail() {
+                   {rp.product_name}
+                 </p>
+                 <p style={{ fontSize:"12px", color:"var(--admin-text-muted)", fontFamily: "var(--font-mono)" }}>
+-                  ${Number(rp.product_price).toLocaleString("es-CL")}
++                  {formatCurrency(rp.product_price, "CLP")}
+                 </p>
+               </div>
+               <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
+-                <input type="number" min="1" defaultValue={rp.entries_per_purchase}
+-                  onBlur={e => patchProduct.mutate({
+-                    rpid: rp.id,
+-                    payload: { entries_per_purchase: Number(e.target.value) },
+-                  })}
++                <input type="number" min="1" step="1" aria-label={`Participaciones por unidad para ${rp.product_name}`} defaultValue={rp.entries_per_purchase}
++                  disabled={patchProduct.isPending}
++                  onBlur={e => {
++                    const value = Number(e.target.value)
++                    if (Number.isInteger(value) && value > 0 && value !== rp.entries_per_purchase) {
++                      patchProduct.mutate({ rpid: rp.id, payload: { entries_per_purchase: value } })
++                    }
++                  }}
+                   style={{
+                     width:"70px", padding:"6px 10px",
+                     background:"var(--admin-surface)",
+@@ -363,7 +383,11 @@ export default function AdminRewardsCampaignDetail() {
+       </SectionCard>
+ 
+       {/* Ganadores */}
+-      {winners.length > 0 && (
++      {winnersError && (
++        <ErrorState title="No se pudo consultar el resultado del sorteo"
++          action={<SecondaryButton onClick={() => retryWinners()}>Reintentar</SecondaryButton>} />
++      )}
++      {!winnersError && winners.length > 0 && (
+         <SectionCard eyebrow="RESULTADO DEL SORTEO" title="🏆 Ganadores">
+           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
+             {winners.map(w => (
+diff --git a/frontend/src/pages/admin/AdminRewardsCampaigns.jsx b/frontend/src/pages/admin/AdminRewardsCampaigns.jsx
+index 0c12e02..c19a5f4 100644
+--- a/frontend/src/pages/admin/AdminRewardsCampaigns.jsx
++++ b/frontend/src/pages/admin/AdminRewardsCampaigns.jsx
+@@ -11,7 +11,7 @@ import {
+ import { showToast } from "../../utils/toast"
+ import { getProducts } from "../../api/products.api"
+ import { mediaUrl } from "../../utils/mediaUrl"
+-import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
++import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, formInputStyle, ConfirmationModal, ErrorState } from "../../components/admin/ui"
+ import { Gift, Sparkles, Ticket } from "lucide-react"
+ 
+ const STATUS_STYLES = {
+@@ -304,7 +304,7 @@ export default function AdminRewardsCampaigns() {
+   const [modalOpen, setModalOpen] = useState(false)
+   const [toDelete, setToDelete]   = useState(null)
+ 
+-  const { data: rawCampaigns, isLoading } = useQuery({
++  const { data: rawCampaigns, isLoading, isError, refetch } = useQuery({
+     queryKey: ["admin-campaigns"],
+     queryFn:  adminListCampaigns,
+   })
+@@ -339,7 +339,7 @@ export default function AdminRewardsCampaigns() {
+       <AdminPageHeader
+         eyebrow="LEVELPRO / REWARDS"
+         title="Campañas"
+-        description={`${campaigns.length} campañas configuradas · ${activeCount} activas`}
++        description={isError ? "No se pudo cargar el listado de campañas" : isLoading ? "Cargando campañas…" : `${campaigns.length} campañas visibles · ${activeCount} activas en esta vista`}
+         breadcrumbs={[
+           { label: "Rewards", to: "/admin/rewards" },
+           { label: "Campañas" },
+@@ -358,14 +358,17 @@ export default function AdminRewardsCampaigns() {
+       />
+ 
+       <div className="lp-kpi-strip">
+-        <StatCard variant="ink" Icon={Gift} label="Campañas totales" value={campaigns.length} sub="Registradas en sistema" />
+-        <StatCard variant="primary" Icon={Sparkles} label="Campañas activas" value={activeCount} sub="En curso actualmente" />
+-        <StatCard variant="light" Icon={Ticket} label="Participaciones" value={totalEntries} sub="Tickets acumulados" />
++        <StatCard variant="ink" Icon={Gift} label="Campañas visibles" value={isError || isLoading ? "—" : campaigns.length} sub="En esta vista" />
++        <StatCard variant="primary" Icon={Sparkles} label="Campañas activas" value={isError || isLoading ? "—" : activeCount} sub="En esta vista" />
++        <StatCard variant="light" Icon={Ticket} label="Participaciones" value={isError || isLoading ? "—" : totalEntries} sub="De las campañas visibles" />
+       </div>
+ 
+       {isLoading && <p style={{ color:"var(--admin-text-muted)" }}>Cargando…</p>}
+ 
+-      {!isLoading && campaigns.length === 0 && (
++      {isError && <ErrorState title="No se pudieron cargar las campañas"
++        action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />}
++
++      {!isLoading && !isError && campaigns.length === 0 && (
+         <div className="au-card au-panel" style={{ padding:"48px 32px", textAlign:"center" }}>
+           <p style={{ fontSize:"42px", marginBottom:"10px" }}>🎁</p>
+           <p style={{ fontSize:"15px", fontWeight: 700, color:"var(--admin-text)", marginBottom:"6px" }}>
+@@ -378,7 +381,7 @@ export default function AdminRewardsCampaigns() {
+       )}
+ 
+       <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
+-        {campaigns.map(c => (
++        {!isError && campaigns.map(c => (
+           <CampaignRow key={c.id} c={c}
+             onDuplicate={id => dup.mutate(id)}
+             onDelete={id => setToDelete(id)} />
+diff --git a/frontend/src/pages/admin/AdminRewardsEntries.jsx b/frontend/src/pages/admin/AdminRewardsEntries.jsx
+index 1d5fc5c..694aa6c 100644
+--- a/frontend/src/pages/admin/AdminRewardsEntries.jsx
++++ b/frontend/src/pages/admin/AdminRewardsEntries.jsx
+@@ -53,7 +53,7 @@ export default function AdminRewardsEntries() {
+         actions={
+           <>
+             <SecondaryButton to="/admin/rewards" size="sm">← Dashboard</SecondaryButton>
+-            <a href={adminExportEntriesCsvUrl(filters)}
++            <a href={adminExportEntriesCsvUrl(activeFilters)}
+               data-testid="btn-export-csv"
+               className="au-btn au-btn--secondary au-btn--sm"
+               style={{ textDecoration:"none" }}>
+@@ -67,6 +67,7 @@ export default function AdminRewardsEntries() {
+       <div className="au-card" style={{ padding: "14px 18px", display:"flex", gap:"10px",
+         flexWrap:"wrap", alignItems: "center" }}>
+         <select value={filters.campaign}
++          aria-label="Filtrar por campaña"
+           data-testid="filter-campaign"
+           onChange={e => setFilters(f => ({...f, campaign:e.target.value}))}
+           className="au-select">
+@@ -75,15 +76,15 @@ export default function AdminRewardsEntries() {
+             <option key={c.id} value={c.id}>{c.name}</option>
+           ))}
+         </select>
+-        <input placeholder="Buscar por email o código"
++        <input aria-label="Buscar por email o código" placeholder="Buscar por email o código"
+           value={filters.search}
+           onChange={e => setFilters(f => ({...f, search:e.target.value}))}
+           className="au-input"
+           style={{ maxWidth:"280px" }} />
+-        <input type="date" value={filters.date_from}
++        <input type="date" aria-label="Fecha desde" value={filters.date_from}
+           onChange={e => setFilters(f => ({...f, date_from:e.target.value}))}
+           className="au-select" />
+-        <input type="date" value={filters.date_to}
++        <input type="date" aria-label="Fecha hasta" value={filters.date_to}
+           onChange={e => setFilters(f => ({...f, date_to:e.target.value}))}
+           className="au-select" />
+       </div>
+diff --git a/frontend/src/pages/admin/AdminRewardsWinners.jsx b/frontend/src/pages/admin/AdminRewardsWinners.jsx
+index 2193f80..ac489ec 100644
+--- a/frontend/src/pages/admin/AdminRewardsWinners.jsx
++++ b/frontend/src/pages/admin/AdminRewardsWinners.jsx
+@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
+ import { adminListWinners, adminUpdateWinner, adminListCampaigns } from "../../api/rewards.api"
+ import { mediaUrl } from "../../utils/mediaUrl"
+ import { showToast } from "../../utils/toast"
+-import { AdminPageHeader, SecondaryButton, PrimaryButton } from "../../components/admin/ui"
++import { AdminPageHeader, SecondaryButton, PrimaryButton, ErrorState } from "../../components/admin/ui"
+ 
+ function WinnerCard({ w }) {
+   const qc = useQueryClient()
+@@ -59,7 +59,7 @@ function WinnerCard({ w }) {
+         )}
+       </div>
+ 
+-      <textarea placeholder="Observaciones (contacto realizado, dirección de envío…)"
++      <textarea aria-label="Observaciones de entrega" placeholder="Observaciones (contacto realizado, dirección de envío…)"
+         value={notes} onChange={e => setNotes(e.target.value)} rows={2}
+         style={{
+           width:"100%", padding:"10px 12px",
+@@ -73,9 +73,9 @@ function WinnerCard({ w }) {
+         alignItems:"center", marginTop:"12px", gap:"10px", flexWrap: "wrap" }}>
+         <label style={{ fontSize:"12px", fontWeight: 600, color:"var(--admin-text-secondary)", cursor:"pointer" }}>
+           📷 {file ? file.name : "Adjuntar evidencia"}
+-          <input type="file" accept="image/*"
++          <input type="file" accept="image/*" aria-label="Adjuntar evidencia de entrega"
+             onChange={e => setFile(e.target.files?.[0] || null)}
+-            style={{ display:"none" }} />
++            style={{ display:"block", maxWidth:"100%", marginTop:"8px", fontSize:"12px" }} />
+         </label>
+         <PrimaryButton size="sm" onClick={() => save.mutate()} disabled={save.isPending} loading={save.isPending}>
+           {save.isPending ? "Guardando…" : "Guardar"}
+@@ -88,11 +88,11 @@ function WinnerCard({ w }) {
+ export default function AdminRewardsWinners() {
+   const [campaignFilter, setCampaignFilter] = useState("")
+ 
+-  const { data: rawWinners, isLoading } = useQuery({
++  const { data: rawWinners, isLoading, isError: winnersError, refetch: retryWinners } = useQuery({
+     queryKey: ["admin-winners", campaignFilter],
+     queryFn:  () => adminListWinners(campaignFilter),
+   })
+-  const { data: rawCampaigns } = useQuery({
++  const { data: rawCampaigns, isError: campaignsError, refetch: retryCampaigns } = useQuery({
+     queryKey: ["admin-campaigns"],
+     queryFn:  adminListCampaigns,
+   })
+@@ -104,7 +104,7 @@ export default function AdminRewardsWinners() {
+       <AdminPageHeader
+         eyebrow="LEVELPRO / REWARDS"
+         title="Ganadores"
+-        description={`${winners.length} ganadores y suplentes sorteados`}
++        description={winnersError ? "No fue posible cargar ganadores" : `${winners.length} ganadores y suplentes visibles`}
+         breadcrumbs={[
+           { label: "Rewards", to: "/admin/rewards" },
+           { label: "Ganadores" },
+@@ -113,6 +113,7 @@ export default function AdminRewardsWinners() {
+           <>
+             <SecondaryButton to="/admin/rewards" size="sm">← Dashboard</SecondaryButton>
+             <select value={campaignFilter}
++              aria-label="Filtrar ganadores por campaña"
+               onChange={e => setCampaignFilter(e.target.value)}
+               className="au-select">
+               <option value="">Todas las campañas</option>
+@@ -126,7 +127,12 @@ export default function AdminRewardsWinners() {
+ 
+       {isLoading && <p style={{ color:"var(--admin-text-muted)" }}>Cargando…</p>}
+ 
+-      {!isLoading && winners.length === 0 && (
++      {campaignsError && <ErrorState title="No se pudo cargar el filtro de campañas"
++        action={<SecondaryButton onClick={() => retryCampaigns()}>Reintentar campañas</SecondaryButton>} />}
++      {winnersError && <ErrorState title="No se pudieron cargar los ganadores"
++        action={<SecondaryButton onClick={() => retryWinners()}>Reintentar</SecondaryButton>} />}
++
++      {!isLoading && !winnersError && winners.length === 0 && (
+         <div className="au-card au-panel" style={{ padding:"44px", textAlign:"center", color:"var(--admin-text-secondary)" }}>
+           Todavía no hay ganadores. Ejecutá el sorteo de una campaña
+           para que aparezcan acá.
+@@ -138,7 +144,7 @@ export default function AdminRewardsWinners() {
+         gridTemplateColumns:"repeat(auto-fill, minmax(340px, 1fr))",
+         gap:"14px",
+       }}>
+-        {winners.map(w => <WinnerCard key={w.id} w={w} />)}
++        {!winnersError && winners.map(w => <WinnerCard key={w.id} w={w} />)}
+       </div>
+     </div>
+   )
+diff --git a/frontend/src/pages/admin/AdminServices.jsx b/frontend/src/pages/admin/AdminServices.jsx
+index cd31132..acc1ca5 100644
+--- a/frontend/src/pages/admin/AdminServices.jsx
++++ b/frontend/src/pages/admin/AdminServices.jsx
+@@ -10,7 +10,7 @@ import {
+ import { getServiceCategories } from "../../api/services.api"
+ import { mediaUrl } from "../../utils/mediaUrl"
+ import { showToast } from "../../utils/toast"
+-import { AdminPageHeader, PrimaryButton, StatCard, FormModal, FormField, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
++import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, FormField, formInputStyle, ConfirmationModal, ErrorState } from "../../components/admin/ui"
+ import { Wrench, Inbox, CalendarCheck } from "lucide-react"
+ 
+ const inputSt = formInputStyle
+@@ -134,13 +134,13 @@ export default function AdminServices() {
+   const queryClient           = useQueryClient()
+   const TABS                  = ["Solicitudes", "Servicios", "Reservas"]
+ 
+-  const { data: servicesData, isLoading: loadingServices } = useQuery({
++  const { data: servicesData, isLoading: loadingServices, isError: servicesError, refetch: retryServices } = useQuery({
+     queryKey: ["admin-services-crud"], queryFn: listAdminServicesCrud,
+   })
+-  const { data: requestsData, isLoading: loadingReqs } = useQuery({
++  const { data: requestsData, isLoading: loadingReqs, isError: requestsError, refetch: retryRequests } = useQuery({
+     queryKey: ["admin-requests"], queryFn: getAdminServiceRequests,
+   })
+-  const { data: bookingsData, isLoading: loadingBookings } = useQuery({
++  const { data: bookingsData, isLoading: loadingBookings, isError: bookingsError, refetch: retryBookings } = useQuery({
+     queryKey: ["admin-bookings"], queryFn: getAdminBookings, enabled: tab === 2,
+   })
+ 
+@@ -169,11 +169,17 @@ export default function AdminServices() {
+     },
+   })
+ 
+-  const services = servicesData?.results || servicesData || []
+-  const requests = requestsData?.results || requestsData || []
+-  const bookings = bookingsData?.results || bookingsData || []
+-  const pendingReqs = requests.filter(r => r.status === "pending").length
+-  const activeServices = services.filter(s => s.is_active !== false).length
++  const servicesRaw = servicesData?.results ?? servicesData
++  const requestsRaw = requestsData?.results ?? requestsData
++  const bookingsRaw = bookingsData?.results ?? bookingsData
++  const services = Array.isArray(servicesRaw) ? servicesRaw : []
++  const requests = Array.isArray(requestsRaw) ? requestsRaw : []
++  const bookings = Array.isArray(bookingsRaw) ? bookingsRaw : []
++  const servicesReliable = !servicesError && Array.isArray(servicesRaw)
++  const requestsReliable = !requestsError && Array.isArray(requestsRaw)
++  const bookingsReliable = !bookingsError && Array.isArray(bookingsRaw)
++  const pendingReqs = requestsReliable ? requests.filter(r => r.status === "pending").length : 0
++  const activeServices = servicesReliable ? services.filter(s => s.is_active !== false).length : 0
+ 
+   return (
+     <div className="au-page">
+@@ -181,9 +187,9 @@ export default function AdminServices() {
+       <AdminPageHeader
+         eyebrow="LEVELPRO / SERVICIOS"
+         title="Servicios"
+-        description={`${requests.length} solicitudes recibidas · ${services.length} servicios publicados`}
++        description="Gestión de solicitudes, catálogo y reservas de servicios"
+         actions={
+-          <PrimaryButton onClick={() => setModal("new")} data-testid="btn-new-service">
++          <PrimaryButton onClick={() => setModal("new")} disabled={!servicesReliable} data-testid="btn-new-service">
+             + Nuevo servicio
+           </PrimaryButton>
+         }
+@@ -195,22 +201,22 @@ export default function AdminServices() {
+           variant="ink"
+           Icon={Inbox}
+           label="Solicitudes recibidas"
+-          value={requests.length}
+-          sub={pendingReqs > 0 ? `${pendingReqs} pendientes de respuesta` : "Al día"}
++          value={requestsReliable ? requests.length : "—"}
++          sub={!requestsReliable ? "Por cargar" : pendingReqs > 0 ? `${pendingReqs} pendientes de respuesta` : "Sin solicitudes pendientes"}
+         />
+         <StatCard
+           variant="primary"
+           Icon={Wrench}
+           label="Servicios activos"
+-          value={activeServices}
+-          sub={`${services.length} registrados en total`}
++          value={servicesReliable ? activeServices : "—"}
++          sub={servicesReliable ? `${services.length} visibles en esta vista` : "Por cargar"}
+         />
+         <StatCard
+           variant="light"
+           Icon={CalendarCheck}
+           label="Reservas agendadas"
+-          value={bookings.length}
+-          sub="Sesiones y asesorías"
++          value={bookingsReliable ? bookings.length : "—"}
++          sub={bookingsReliable ? "Reservas visibles" : "Abrir la pestaña Reservas"}
+         />
+       </div>
+ 
+@@ -254,6 +260,9 @@ export default function AdminServices() {
+               <div key={i} className="skeleton" style={{ height: "72px", borderRadius: "16px" }} />
+             ))}
+           </div>
++        ) : requestsError || !requestsReliable ? (
++          <ErrorState title="No se pudieron cargar las solicitudes"
++            action={<SecondaryButton onClick={() => retryRequests()}>Reintentar</SecondaryButton>} />
+         ) : requests.length === 0 ? (
+           <div className="au-card au-panel" style={{ textAlign: "center", padding: "56px", color: "var(--admin-text-secondary)" }}>
+             <p style={{ fontSize: "36px", marginBottom: "10px" }}>🔧</p>
+@@ -274,9 +283,9 @@ export default function AdminServices() {
+           <div style={{ display:"flex", justifyContent:"space-between",
+             alignItems:"center", gap: "12px", flexWrap: "wrap" }}>
+             <p style={{ fontSize:"13px", color:"var(--admin-text-secondary)", fontWeight: 600 }}>
+-              {services.length} servicios registrados
++              {servicesReliable ? `${services.length} servicios visibles` : "Servicios no disponibles"}
+             </p>
+-            <PrimaryButton onClick={() => setModal("new")} size="sm">
++            <PrimaryButton onClick={() => setModal("new")} disabled={!servicesReliable} size="sm">
+               + Nuevo servicio
+             </PrimaryButton>
+           </div>
+@@ -288,6 +297,9 @@ export default function AdminServices() {
+                 <div key={i} className="skeleton" style={{ height: "160px", borderRadius: "20px" }} />
+               ))}
+             </div>
++          ) : servicesError || !servicesReliable ? (
++            <ErrorState title="No se pudo cargar el catálogo de servicios"
++              action={<SecondaryButton onClick={() => retryServices()}>Reintentar</SecondaryButton>} />
+           ) : (
+             <div style={{ display: "grid",
+               gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: "14px" }}>
+@@ -339,6 +351,9 @@ export default function AdminServices() {
+               <div key={i} className="skeleton" style={{ height: "72px", borderRadius: "16px" }} />
+             ))}
+           </div>
++        ) : bookingsError || !bookingsReliable ? (
++          <ErrorState title="No se pudieron cargar las reservas"
++            action={<SecondaryButton onClick={() => retryBookings()}>Reintentar</SecondaryButton>} />
+         ) : bookings.length === 0 ? (
+           <div className="au-card au-panel" style={{ textAlign: "center", padding: "56px", color: "var(--admin-text-secondary)" }}>
+             <p style={{ fontSize: "36px", marginBottom: "10px" }}>📅</p>
+@@ -448,11 +463,12 @@ function ServiceModal({ service, onClose, onSaved }) {
+     service?.thumbnail ? mediaUrl(service.thumbnail) : null
+   )
+ 
+-  const { data: catData } = useQuery({
++  const { data: catData, isLoading: loadingCategories, isError: categoriesError, refetch: retryCategories } = useQuery({
+     queryKey: ["service-categories"],
+     queryFn:  getServiceCategories,
+   })
+-  const categories = catData?.results || catData || []
++  const categoriesRaw = catData?.results ?? catData
++  const categories = Array.isArray(categoriesRaw) ? categoriesRaw : []
+ 
+   const onFile = (e) => {
+     const file = e.target.files?.[0]
+@@ -504,6 +520,7 @@ function ServiceModal({ service, onClose, onSaved }) {
+       onClose={onClose}
+       onSave={() => save.mutate()}
+       saving={save.isPending}
++      saveDisabled={loadingCategories || categoriesError || !Array.isArray(categoriesRaw)}
+       saveLabel={isEdit ? "Guardar cambios" : "Crear servicio"}
+       maxWidth="520px"
+       scrollableBody
+@@ -552,10 +569,13 @@ function ServiceModal({ service, onClose, onSaved }) {
+           </div>
+ 
+           {/* Categoría */}
++          {categoriesError && <ErrorState title="No se pudieron cargar las categorías"
++            action={<SecondaryButton onClick={() => retryCategories()}>Reintentar</SecondaryButton>} />}
+           <div>
+             <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
+               letterSpacing:"0.08em", textTransform:"uppercase" }}>Categoría</label>
+             <select value={form.category}
++              disabled={loadingCategories || categoriesError}
+               data-testid="select-service-category"
+               onChange={e => setForm(p => ({ ...p, category:e.target.value }))}
+               style={{ ...inputSt, marginTop:"6px" }}>
+diff --git a/frontend/src/utils/loyaltyForm.js b/frontend/src/utils/loyaltyForm.js
+new file mode 100644
+index 0000000..ae247ba
+--- /dev/null
++++ b/frontend/src/utils/loyaltyForm.js
+@@ -0,0 +1,21 @@
++// Validación de formularios administrativos; no define tasas, saldos ni reglas de negocio.
++const CONFIG_NUMBERS = ["puntos_por_peso", "peso_por_punto", "minimo_canje", "expiracion_dias"]
++
++export function validLoyaltyConfigDraft(draft) {
++  if (!draft || typeof draft !== "object") return false
++  return CONFIG_NUMBERS.every(key => {
++    const raw = draft[key]
++    if (raw === undefined || raw === null || raw === "" || typeof raw === "boolean") return false
++    const value = Number(raw)
++    if (!Number.isFinite(value) || value < 0) return false
++    return ["minimo_canje", "expiracion_dias"].includes(key) ? Number.isInteger(value) : true
++  })
++}
++
++export function parseLoyaltyAdjustment(raw) {
++  if (typeof raw !== "string" && typeof raw !== "number") return null
++  const str = String(raw).trim()
++  if (!/^[+-]?\d+$/.test(str)) return null
++  const value = Number(str)
++  return Number.isInteger(value) && value !== 0 && Math.abs(value) <= 2147483647 ? value : null
++}
+diff --git a/frontend/tests/v3-2-final-ux.test.mjs b/frontend/tests/v3-2-final-ux.test.mjs
+new file mode 100644
+index 0000000..5229fa6
+--- /dev/null
++++ b/frontend/tests/v3-2-final-ux.test.mjs
+@@ -0,0 +1,52 @@
++import test from "node:test"
++import assert from "node:assert/strict"
++import { readFileSync } from "node:fs"
++import { validLoyaltyConfigDraft, parseLoyaltyAdjustment } from "../src/utils/loyaltyForm.js"
++
++test("ajustes de fidelización requieren entero distinto de cero dentro del límite del backend", () => {
++  assert.equal(parseLoyaltyAdjustment("500"), 500)
++  assert.equal(parseLoyaltyAdjustment("-200"), -200)
++  for (const value of ["", "-", "0", "1.5", "abc", "2147483648", null, undefined]) {
++    assert.equal(parseLoyaltyAdjustment(value), null, String(value))
++  }
++})
++
++test("configuración no envía NaN, campos vacíos ni días fraccionarios", () => {
++  const good = { puntos_por_peso: 0.01, peso_por_punto: 1, minimo_canje: 500, expiracion_dias: 0 }
++  assert.equal(validLoyaltyConfigDraft(good), true)
++  for (const [key, value] of [["minimo_canje", ""], ["expiracion_dias", 1.2], ["puntos_por_peso", NaN], ["peso_por_punto", -1]]) {
++    assert.equal(validLoyaltyConfigDraft({ ...good, [key]: value }), false)
++  }
++})
++
++test("Servicios y Rewards distinguen error de lista vacía sin fingir ceros", () => {
++  const root = new URL("../src/", import.meta.url)
++  const read = file => readFileSync(new URL(file, root), "utf8")
++  assert.match(read("pages/Services.jsx"), /data-testid="services-error"/)
++  assert.match(read("pages/admin/AdminServices.jsx"), /bookingsReliable \? bookings\.length : "—"/)
++  assert.match(read("pages/admin/AdminLoyalty.jsx"), /validLoyaltyConfigDraft\(cfgForm\)/)
++  assert.match(read("pages/admin/AdminRewardsCampaigns.jsx"), /isError && <ErrorState/)
++  assert.match(read("pages/admin/AdminRewardsWinners.jsx"), /winnersError && <ErrorState/)
++})
++
++test("Integridad UX final: estado de error, selector accesible y saldo con divisa correcta", () => {
++  const root = new URL("../src/", import.meta.url)
++  const read = file => readFileSync(new URL(file, root), "utf8")
++  const detail = read("pages/admin/AdminRewardsCampaignDetail.jsx")
++  assert.match(detail, /campaignError \|\| !c/)
++  assert.match(detail, /productsError/)
++  assert.match(detail, /winnersError/)
++  const rewards = read("pages/Rewards.jsx")
++  assert.match(rewards, /data-testid="rewards-error"/)
++  assert.match(rewards, /winnersError &&/)
++  assert.match(read("pages/admin/AdminRewardsEntries.jsx"), /aria-label="Fecha desde"/)
++  assert.match(read("pages/admin/AdminFinance.jsx"), /fmt\(selectedCat\.balance, currency\)/)
++})
++
++test("Checkout y carrito no aplican puntos CLP a compras USD/ARS", () => {
++  const root = new URL("../src/", import.meta.url)
++  const read = file => readFileSync(new URL(file, root), "utf8")
++  assert.match(read("pages/Checkout.jsx"), /currency === "CLP" \? \(pointsToRedeem \|\| 0\) : 0/)
++  assert.match(read("pages/Cart.jsx"), /currency === "CLP" \? Math.min/)
++  assert.match(read("pages/Cart.jsx"), /disabled=\{!confirmedPrices\}/)
++})
