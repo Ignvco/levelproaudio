@@ -304,7 +304,7 @@ export default function ProductDetail() {
 
           {/* Cantidad + Agregar */}
           {(product.stock > 0 || product.product_type !== "stock") && (
-            <div style={{ display: "flex", gap: "12px" }}>
+            <div className="pd-purchase-actions" style={{ display: "flex", gap: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.05)",
                 border: "1px solid rgba(255,255,255,0.1)", borderRadius: "var(--r-full)",
                 overflow: "hidden", flexShrink: 0 }}>
@@ -444,8 +444,13 @@ export default function ProductDetail() {
 
       <style>{`
         @media (max-width: 900px) {
-          .product-detail-grid { grid-template-columns: 1fr !important; }
+          .product-detail-grid { grid-template-columns: minmax(0, 1fr) !important; }
+          .product-detail-grid > * { min-width: 0; }
           .pd-images { position: static !important; }
+        }
+        @media (max-width: 420px) {
+          .pd-purchase-actions { flex-wrap: wrap; }
+          .pd-purchase-actions > .lp-btn { flex: 1 1 100% !important; min-width: 0; }
         }
       `}</style>
     </div>

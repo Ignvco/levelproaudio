@@ -1,6 +1,7 @@
 // pages/OrderConfirmation.jsx
 
-import { Link, useParams } from "react-router-dom"
+import { useParams } from "react-router-dom"
+import Button from "../components/ui/Button"
 
 export default function OrderConfirmation() {
   const { id } = useParams()
