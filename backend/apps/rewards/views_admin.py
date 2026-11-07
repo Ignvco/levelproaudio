@@ -12,7 +12,8 @@ Rutas bajo /api/v1/admin/rewards/
 """
 import csv
 from django.http import HttpResponse
-from django.db.models import Sum, Count, Q
+from django.db.models import Count, Q
+from apps.analytics.currency import requested_currency, currency_error, summarize_by_currency
 from django.utils import timezone
 
 from rest_framework import viewsets, status, filters
@@ -151,7 +152,7 @@ class AdminEntryViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=["get"], url_path="export")
     def export_csv(self, request):
         """GET /admin/rewards/entries/export/?campaign=<id> → CSV"""
-        qs = self.get_queryset()
+        qs = self.filter_queryset(self.get_queryset())
         resp = HttpResponse(content_type="text/csv")
         resp["Content-Disposition"] = 'attachment; filename="participaciones.csv"'
         writer = csv.writer(resp)
@@ -199,6 +200,10 @@ def rewards_dashboard(request):
     GET /api/v1/admin/rewards/dashboard/
     KPIs generales del módulo Rewards.
     """
+    currency = requested_currency(request)
+    if currency is None:
+        return currency_error()
+
     now = timezone.now()
     active = Campaign.objects.filter(status=CampaignStatus.ACTIVE)
     current = active.filter(end_date__gte=now).order_by("draw_date").first()
@@ -211,12 +216,12 @@ def rewards_dashboard(request):
     related_orders = (
         Entry.objects.values("order").distinct()
     )
-    related_revenue = (
-        Order.objects
-        .filter(id__in=related_orders.values("order"),
-                status__in=["paid", "shipped", "completed"])
-        .aggregate(t=Sum("total"))["t"] or 0
+    qualifying_orders = Order.objects.filter(
+        id__in=related_orders.values("order"),
+        status__in=["paid", "shipped", "completed"],
     )
+    related_revenue_by_currency = summarize_by_currency(qualifying_orders)
+    related_revenue = related_revenue_by_currency[currency]
 
     current_data = None
     if current:
@@ -248,6 +253,8 @@ def rewards_dashboard(request):
         current_data["seconds_remaining"] = max(0, int(remaining.total_seconds()))
 
     return Response({
+        "currency": currency,
+        "related_revenue_by_currency": related_revenue_by_currency,
         "totals": {
             "campaigns":        total_campaigns,
             "entries":          total_entries,

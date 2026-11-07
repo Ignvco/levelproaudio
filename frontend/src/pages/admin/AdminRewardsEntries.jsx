@@ -7,7 +7,7 @@ import {
   adminListCampaigns,
   adminExportEntriesCsvUrl,
 } from "../../api/rewards.api"
-import { AdminPageHeader, SecondaryButton } from "../../components/admin/ui"
+import { AdminPageHeader, SecondaryButton, ErrorState } from "../../components/admin/ui"
 
 export default function AdminRewardsEntries() {
   const [searchParams] = useSearchParams()
@@ -29,11 +29,11 @@ export default function AdminRewardsEntries() {
     return f
   }, [filters])
 
-  const { data: rawEntries, isLoading } = useQuery({
+  const { data: rawEntries, isLoading, isError: entriesError, refetch: refetchEntries } = useQuery({
     queryKey: ["admin-entries", activeFilters],
     queryFn:  () => adminListEntries(activeFilters),
   })
-  const { data: rawCampaigns } = useQuery({
+  const { data: rawCampaigns, isError: campaignsError, refetch: refetchCampaigns } = useQuery({
     queryKey: ["admin-campaigns"],
     queryFn:  adminListCampaigns,
   })
@@ -45,7 +45,7 @@ export default function AdminRewardsEntries() {
       <AdminPageHeader
         eyebrow="LEVELPRO / REWARDS"
         title="Participaciones"
-        description={`${entries.length} tickets registrados según los filtros activos`}
+        description={entriesError ? "No fue posible cargar las participaciones" : `${entries.length} participaciones visibles con los filtros activos`}
         breadcrumbs={[
           { label: "Rewards", to: "/admin/rewards" },
           { label: "Participaciones" },
@@ -53,11 +53,11 @@ export default function AdminRewardsEntries() {
         actions={
           <>
             <SecondaryButton to="/admin/rewards" size="sm">← Dashboard</SecondaryButton>
-            <a href={adminExportEntriesCsvUrl(filters.campaign)}
+            <a href={adminExportEntriesCsvUrl(filters)}
               data-testid="btn-export-csv"
               className="au-btn au-btn--secondary au-btn--sm"
               style={{ textDecoration:"none" }}>
-              Exportar CSV ↓
+              Exportar CSV filtrado ↓
             </a>
           </>
         }
@@ -67,6 +67,7 @@ export default function AdminRewardsEntries() {
       <div className="au-card" style={{ padding: "14px 18px", display:"flex", gap:"10px",
         flexWrap:"wrap", alignItems: "center" }}>
         <select value={filters.campaign}
+          aria-label="Filtrar por campaña"
           data-testid="filter-campaign"
           onChange={e => setFilters(f => ({...f, campaign:e.target.value}))}
           className="au-select">
@@ -75,28 +76,33 @@ export default function AdminRewardsEntries() {
             <option key={c.id} value={c.id}>{c.name}</option>
           ))}
         </select>
-        <input placeholder="Buscar por email o código"
+        <input aria-label="Buscar por email o código" placeholder="Buscar por email o código"
           value={filters.search}
           onChange={e => setFilters(f => ({...f, search:e.target.value}))}
           className="au-input"
           style={{ maxWidth:"280px" }} />
-        <input type="date" value={filters.date_from}
+        <input type="date" aria-label="Fecha desde" value={filters.date_from}
           onChange={e => setFilters(f => ({...f, date_from:e.target.value}))}
           className="au-select" />
-        <input type="date" value={filters.date_to}
+        <input type="date" aria-label="Fecha hasta" value={filters.date_to}
           onChange={e => setFilters(f => ({...f, date_to:e.target.value}))}
           className="au-select" />
       </div>
 
+      {campaignsError && <ErrorState title="No se pudo cargar el filtro de campañas"
+        action={<SecondaryButton onClick={() => refetchCampaigns()}>Reintentar campañas</SecondaryButton>} />}
+
       {/* Tabla */}
       {isLoading && <p style={{ color:"var(--admin-text-muted)" }}>Cargando…</p>}
-      {!isLoading && entries.length === 0 && (
+      {entriesError && <ErrorState title="No se pudieron cargar las participaciones"
+        action={<SecondaryButton onClick={() => refetchEntries()}>Reintentar</SecondaryButton>} />}
+      {!isLoading && !entriesError && entries.length === 0 && (
         <div className="au-card au-panel" style={{ padding:"44px", textAlign:"center", color:"var(--admin-text-secondary)" }}>
           No hay participaciones con los filtros aplicados.
         </div>
       )}
 
-      {entries.length > 0 && (
+      {!entriesError && entries.length > 0 && (
         <div className="au-card au-table-wrap">
           <div className="au-tscroll">
             <table className="au-table">

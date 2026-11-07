@@ -40,3 +40,16 @@ test("dashboards financieros y pagos consultan la divisa seleccionada", () => {
   assert.match(read("pages/admin/AdminFinance.jsx"), /getFinanceSummary\(currency\)/)
   assert.doesNotMatch(read("pages/dashboard/Orders.jsx"), /reduce\(\(acc, o\) => acc \+ \(Number\(o\.total\)/)
 })
+
+
+test("Rewards consulta y formatea importes en la moneda seleccionada sin suma FX", () => {
+  const root = new URL("../src/", import.meta.url)
+  const read = name => readFileSync(new URL(name, root), "utf8")
+  assert.match(read("api/rewards.api.js"), /params: \{ currency \}/)
+  const rewards = read("pages/admin/AdminRewards.jsx")
+  assert.match(rewards, /adminGetRewardsDashboard\(currency\)/)
+  assert.match(rewards, /formatCurrency\(data\.totals\.related_revenue, currency\)/)
+  assert.match(rewards, /data\?\.currency === currency/)
+  const entries = read("pages/admin/AdminRewardsEntries.jsx")
+  assert.match(entries, /adminExportEntriesCsvUrl\(filters\)/)
+})
