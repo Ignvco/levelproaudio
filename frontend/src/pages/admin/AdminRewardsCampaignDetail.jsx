@@ -12,7 +12,8 @@ import {
 import { getProducts } from "../../api/products.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../utils/toast"
-import { AdminPageHeader, StatCard, SectionCard, SecondaryButton, StatusBadge } from "../../components/admin/ui"
+import { AdminPageHeader, StatCard, SectionCard, SecondaryButton, StatusBadge, ErrorState } from "../../components/admin/ui"
+import { formatCurrency } from "../../utils/accountingCurrency"
 import { Ticket, Users, Package, Award } from "lucide-react"
 
 export default function AdminRewardsCampaignDetail() {
@@ -20,20 +21,21 @@ export default function AdminRewardsCampaignDetail() {
   const qc     = useQueryClient()
   const [showProductPicker, setShowProductPicker] = useState(false)
 
-  const { data: c, isLoading } = useQuery({
+  const { data: c, isLoading, isError: campaignError, refetch: retryCampaign } = useQuery({
     queryKey: ["admin-campaign", id],
     queryFn:  () => adminGetCampaign(id),
   })
-  const { data: winners = [] } = useQuery({
+  const { data: winners = [], isError: winnersError, refetch: retryWinners } = useQuery({
     queryKey: ["admin-campaign-winners", id],
     queryFn:  () => adminListWinners(id),
   })
-  const { data: productsData } = useQuery({
+  const { data: productsData, isLoading: productsLoading, isError: productsError, refetch: retryProducts } = useQuery({
     queryKey: ["shop-products"],
     queryFn:  () => getProducts({ page_size: 200 }),
     enabled:  showProductPicker,
   })
-  const productList = productsData?.results || productsData || []
+  const productListRaw = productsData?.results ?? productsData
+  const productList = Array.isArray(productListRaw) ? productListRaw : []
 
   const update = useMutation({
     mutationFn: (patch) => {
@@ -81,9 +83,18 @@ export default function AdminRewardsCampaignDetail() {
     onError:    (e) => showToast(e?.response?.data?.detail || "No se pudo finalizar la campaña. Verificá antes de asumir que se cerró.", "error"),
   })
 
-  if (isLoading || !c || !Array.isArray(c.reward_products)) return (
+  if (isLoading) return (
     <div className="au-page">
-      <p style={{ color:"var(--admin-text-muted)" }}>Cargando…</p>
+      <p style={{ color:"var(--admin-text-muted)" }} role="status">Cargando campaña…</p>
+    </div>
+  )
+
+  if (campaignError || !c || !Array.isArray(c.reward_products)) return (
+    <div className="au-page">
+      <AdminPageHeader title="Campaña no disponible" description="No pudimos confirmar los datos de esta campaña." />
+      <ErrorState title="No se pudo cargar la campaña"
+        action={<SecondaryButton onClick={() => retryCampaign()}>Reintentar</SecondaryButton>} />
+      <SecondaryButton to="/admin/rewards/campaigns">Volver a campañas</SecondaryButton>
     </div>
   )
 
@@ -145,9 +156,9 @@ export default function AdminRewardsCampaignDetail() {
                     draw.mutate()
                   }
                 }}
-                disabled={draw.isPending || c.total_entries === 0}
+                disabled={draw.isPending || finish.isPending || update.isPending || !Number.isFinite(Number(c.total_entries)) || Number(c.total_entries) <= 0}
                 className="au-btn au-btn--primary"
-                style={{ opacity: c.total_entries === 0 ? 0.45 : 1 }}>
+                style={{ opacity: Number(c.total_entries) <= 0 ? 0.45 : 1 }}>
                 {draw.isPending ? "Sorteando…" : "🎲 Ejecutar sorteo"}
               </button>
             )}
@@ -283,20 +294,26 @@ export default function AdminRewardsCampaignDetail() {
           }}>
             <p style={{ fontSize:"12px", color:"var(--admin-text-secondary)",
               marginBottom:"12px" }}>
-              Seleccioná un producto del catálogo para agregar. Podés configurar
-              cuántas participaciones da cada unidad.
+              Seleccioná un producto de la lista visible (hasta 200 por consulta).
+              Podés configurar cuántas participaciones da cada unidad.
             </p>
-            {productList.filter(p => !alreadyAdded.has(p.id)).map(p => (
+            {productsLoading && <p role="status">Cargando productos…</p>}
+            {(productsError || (!productsLoading && !Array.isArray(productListRaw))) && (
+              <ErrorState title="No se pudieron cargar los productos"
+                action={<SecondaryButton onClick={() => retryProducts()}>Reintentar</SecondaryButton>} />
+            )}
+            {!productsError && productList.filter(p => !alreadyAdded.has(p.id)).map(p => (
               <div key={p.id} style={{
                 display:"flex", justifyContent:"space-between",
                 alignItems:"center", padding:"8px 0",
                 borderBottom:"1px solid var(--admin-border)", gap: "10px",
               }}>
                 <span style={{ fontSize:"13px", fontWeight: 600, color:"var(--admin-text)" }}>
-                  {p.name} — ${Number(p.price).toLocaleString("es-CL")}
+                  {p.name} — {formatCurrency(p.price, "CLP")}
                 </span>
                 <button data-testid={`btn-add-${p.id}`}
                   type="button"
+                  disabled={addProduct.isPending}
                   onClick={() => addProduct.mutate({
                     product: p.id,
                     entries_per_purchase: 5,
@@ -327,15 +344,18 @@ export default function AdminRewardsCampaignDetail() {
                   {rp.product_name}
                 </p>
                 <p style={{ fontSize:"12px", color:"var(--admin-text-muted)", fontFamily: "var(--font-mono)" }}>
-                  ${Number(rp.product_price).toLocaleString("es-CL")}
+                  {formatCurrency(rp.product_price, "CLP")}
                 </p>
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:"6px" }}>
-                <input type="number" min="1" defaultValue={rp.entries_per_purchase}
-                  onBlur={e => patchProduct.mutate({
-                    rpid: rp.id,
-                    payload: { entries_per_purchase: Number(e.target.value) },
-                  })}
+                <input type="number" min="1" step="1" aria-label={`Participaciones por unidad para ${rp.product_name}`} defaultValue={rp.entries_per_purchase}
+                  disabled={patchProduct.isPending}
+                  onBlur={e => {
+                    const value = Number(e.target.value)
+                    if (Number.isInteger(value) && value > 0 && value !== rp.entries_per_purchase) {
+                      patchProduct.mutate({ rpid: rp.id, payload: { entries_per_purchase: value } })
+                    }
+                  }}
                   style={{
                     width:"70px", padding:"6px 10px",
                     background:"var(--admin-surface)",
@@ -363,7 +383,11 @@ export default function AdminRewardsCampaignDetail() {
       </SectionCard>
 
       {/* Ganadores */}
-      {winners.length > 0 && (
+      {winnersError && (
+        <ErrorState title="No se pudo consultar el resultado del sorteo"
+          action={<SecondaryButton onClick={() => retryWinners()}>Reintentar</SecondaryButton>} />
+      )}
+      {!winnersError && winners.length > 0 && (
         <SectionCard eyebrow="RESULTADO DEL SORTEO" title="🏆 Ganadores">
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
             {winners.map(w => (

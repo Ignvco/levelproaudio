@@ -187,7 +187,7 @@ function WithdrawalModal({ categories, onClose, onSave, currency = "CLP" }) {
     }
     if (selectedCat?.reconciliation_required) { setError("Esta categoría requiere conciliación antes de registrar retiros."); return }
     if (selectedCat && parseFloat(form.amount) > selectedCat.balance) {
-      setError(`Saldo insuficiente en ${selectedCat.name}. Disponible: ${fmt(selectedCat.balance)}`)
+      setError(`Saldo insuficiente en ${selectedCat.name}. Disponible: ${fmt(selectedCat.balance, currency)}`)
       return
     }
     setSaving(true); setError("")
