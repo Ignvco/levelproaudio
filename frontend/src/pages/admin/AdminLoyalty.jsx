@@ -6,7 +6,8 @@ import {
   updateLoyaltyConfig, adjustLoyaltyPoints,
 } from "../../api/admin.api"
 import { Users, Star, Sparkles, Gift, Medal, Award, Gem } from "lucide-react"
-import { StatCard, AdminPageHeader, SectionCard, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle } from "../../components/admin/ui"
+import { StatCard, AdminPageHeader, SectionCard, PrimaryButton, SecondaryButton, FormModal, FormField, formInputStyle, ErrorState } from "../../components/admin/ui"
+import { parseLoyaltyAdjustment, validLoyaltyConfigDraft } from "../../utils/loyaltyForm"
 
 const TABS   = ["Resumen","Top clientes","Configuración"]
 const NIVELES = {
@@ -30,22 +31,32 @@ function AdjustModal({ account, onClose }) {
   const mutation = useMutation({
     mutationFn: () => adjustLoyaltyPoints({
       user_id: account.user_id,
-      points:  parseInt(form.points),
+      points:  parseLoyaltyAdjustment(form.points),
       reason:  form.reason,
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["admin-loyalty-summary"] })
       onClose()
     },
-    onError: (e) => setError(e?.response?.data?.detail || "Error al ajustar."),
+    onError: (e) => setError(e?.response?.data?.detail || e?.response?.data?.error || "Error al ajustar."),
   })
+
+  const adjustment = parseLoyaltyAdjustment(form.points)
+  const applyAdjustment = () => {
+    if (adjustment === null) {
+      setError("Ingresa un número entero distinto de cero para ajustar los puntos.")
+      return
+    }
+    setError("")
+    mutation.mutate()
+  }
 
   return (
     <FormModal
       open
       title="Ajustar puntos"
       onClose={onClose}
-      onSave={() => mutation.mutate()}
+      onSave={applyAdjustment}
       saving={mutation.isPending}
       saveLabel="Aplicar"
       error={error}
@@ -56,7 +67,7 @@ function AdjustModal({ account, onClose }) {
         {account.user_email}
       </p>
       <FormField label="Puntos (positivo = agregar, negativo = quitar)">
-        <input type="number" value={form.points}
+        <input type="number" step="1" value={form.points}
           onChange={e => setForm(p => ({ ...p, points:e.target.value }))}
           style={formInputStyle} placeholder="Ej: 500 o -200" />
       </FormField>
@@ -73,12 +84,12 @@ function AdjustModal({ account, onClose }) {
             {account.puntos_disponibles?.toLocaleString("es-CL")}
           </span>
         </div>
-        {form.points && !isNaN(form.points) && (
+        {adjustment !== null && Number.isFinite(Number(account.puntos_disponibles)) && (
           <div style={{ display:"flex", justifyContent:"space-between" }}>
             <span style={{ color:"var(--text-3)" }}>Después del ajuste</span>
             <span style={{ fontWeight:600,
-              color: parseInt(form.points) >= 0 ? "var(--accent-text)" : "#EF4444" }}>
-              {(account.puntos_disponibles + parseInt(form.points)).toLocaleString("es-CL")}
+              color: adjustment >= 0 ? "var(--accent-text)" : "#EF4444" }}>
+              {(Number(account.puntos_disponibles) + adjustment).toLocaleString("es-CL")}
             </span>
           </div>
         )}
@@ -92,10 +103,10 @@ export default function AdminLoyalty() {
   const [modal, setModal] = useState(null)
   const queryClient       = useQueryClient()
 
-  const { data:summary, isLoading } = useQuery({
+  const { data:summary, isLoading, isError: summaryError, refetch: retrySummary } = useQuery({
     queryKey:["admin-loyalty-summary"], queryFn:getLoyaltySummary,
   })
-  const { data:config } = useQuery({
+  const { data:config, isLoading: configLoading, isError: configError, refetch: retryConfig } = useQuery({
     queryKey:["admin-loyalty-config"], queryFn:getLoyaltyConfig,
     enabled: tab===2,
   })
@@ -103,19 +114,32 @@ export default function AdminLoyalty() {
   const [cfgForm, setCfgForm]     = useState(null)
   const [savingCfg, setSavingCfg] = useState(false)
   const [cfgOk, setCfgOk]         = useState(false)
+  const [cfgError, setCfgError]   = useState("")
 
   const saveConfig = async () => {
     if (!cfgForm) return
+    setCfgError("")
+    setCfgOk(false)
+    if (!validLoyaltyConfigDraft(cfgForm)) {
+      setCfgError("Revisa los valores: se requieren números válidos y días/puntos enteros no negativos.")
+      return
+    }
     setSavingCfg(true)
     try {
-      await updateLoyaltyConfig(cfgForm)
-      queryClient.invalidateQueries({ queryKey: ["admin-loyalty-config"] })
-      setCfgOk(true); setTimeout(() => setCfgOk(false), 3000)
+      const saved = await updateLoyaltyConfig(cfgForm)
+      queryClient.setQueryData(["admin-loyalty-config"], saved)
+      await queryClient.invalidateQueries({ queryKey: ["admin-loyalty-config"] })
+      setCfgForm(null)
+      setCfgOk(true)
+      setTimeout(() => setCfgOk(false), 3000)
+    } catch (e) {
+      setCfgError(e?.response?.data?.detail || e?.response?.data?.error || "No se pudo guardar la configuración. Revisa los datos e inténtalo nuevamente.")
     } finally { setSavingCfg(false) }
   }
 
   const accounts = summary?.accounts || []
   const kpis     = summary?.kpis     || {}
+  const summaryUnavailable = summaryError || (!isLoading && (!summary?.kpis || !Array.isArray(summary?.accounts)))
 
   return (
     <div className="au-page">
@@ -148,6 +172,10 @@ export default function AdminLoyalty() {
           <div className="lp-grid-kpi">
             {[...Array(4)].map((_,i) => <div key={i} className="skeleton" style={{ height:"130px", borderRadius: "20px" }} />)}
           </div>
+        ) : summaryUnavailable ? (
+          <ErrorState title="No se pudo cargar el resumen de fidelización"
+            description="No mostraremos cifras sin datos confirmados."
+            action={<SecondaryButton onClick={() => retrySummary()}>Reintentar</SecondaryButton>} />
         ) : (
           <>
             <div className="lp-grid-kpi">
@@ -192,6 +220,9 @@ export default function AdminLoyalty() {
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
             {[...Array(5)].map((_,i) => <div key={i} className="skeleton" style={{ height:"64px", borderRadius: "14px" }} />)}
           </div>
+        ) : summaryUnavailable ? (
+          <ErrorState title="No se pudo cargar el listado de clientes"
+            action={<SecondaryButton onClick={() => retrySummary()}>Reintentar</SecondaryButton>} />
         ) : accounts.length===0 ? (
           <div className="au-card au-panel" style={{ padding:"56px", textAlign:"center", color:"var(--admin-text-secondary)" }}>
             <p style={{ fontSize:"38px", marginBottom:"10px" }}>⭐</p>
@@ -255,7 +286,10 @@ export default function AdminLoyalty() {
 
       {/* ── CONFIGURACIÓN ── */}
       {tab===2 && (
-        !config ? (
+        configError || (!configLoading && !config) ? (
+          <ErrorState title="No se pudo cargar la configuración de fidelización"
+            action={<SecondaryButton onClick={() => retryConfig()}>Reintentar</SecondaryButton>} />
+        ) : configLoading ? (
           <div style={{ display:"flex", flexDirection:"column", gap:"12px", maxWidth:"560px" }}>
             {[...Array(3)].map((_,i) => <div key={i} className="skeleton" style={{ height:"60px", borderRadius: "14px" }} />)}
           </div>
@@ -264,10 +298,11 @@ export default function AdminLoyalty() {
             <SectionCard eyebrow="REGLAS DE CONVERSIÓN" title="Parámetros del programa">
               <div style={{ display:"flex", flexDirection:"column", gap:"16px" }}>
                 {cfgOk && (
-                  <div className="lp-callout lp-callout--success">
+                  <div className="lp-callout lp-callout--success" role="status">
                     ✓ Configuración guardada correctamente
                   </div>
                 )}
+                {cfgError && <div role="alert" className="lp-callout">{cfgError}</div>}
                 {[
                   { key:"puntos_por_peso",  label:"Puntos por cada $1 gastado",           hint:"Ej: 0.01 = 1 punto por cada $100", step:"0.001" },
                   { key:"peso_por_punto",   label:"Valor de cada punto en $",              hint:"Ej: 1 = cada punto vale $1 de descuento", step:"0.01" },
@@ -275,12 +310,14 @@ export default function AdminLoyalty() {
                   { key:"expiracion_dias",  label:"Días para vencimiento (0 = no vencen)" },
                 ].map(({ key, label, hint, step }) => (
                   <div key={key}>
-                    <label style={{ display:"block", fontSize:"12px", fontWeight:700,
+                    <label htmlFor={`loyalty-config-${key}`} style={{ display:"block", fontSize:"12px", fontWeight:700,
                       color:"var(--admin-text-secondary)", marginBottom:"7px" }}>{label}</label>
-                    <input type="number" step={step || "1"} defaultValue={config[key]}
-                      onChange={e => setCfgForm(p => ({
-                        ...(p||config), [key]: parseFloat(e.target.value)
-                      }))}
+                    <input id={`loyalty-config-${key}`} type="number" step={step || "1"} value={cfgForm ? cfgForm[key] : config[key]}
+                      onChange={e => {
+                        setCfgError("")
+                        setCfgOk(false)
+                        setCfgForm(p => ({ ...(p || config), [key]: e.target.value === "" ? "" : Number(e.target.value) }))
+                      }}
                       style={inputSt} />
                     {hint && <p style={{ fontSize:"11px", color:"var(--admin-text-muted)", marginTop:"4px" }}>{hint}</p>}
                   </div>

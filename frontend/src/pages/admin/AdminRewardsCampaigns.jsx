@@ -11,7 +11,7 @@ import {
 import { showToast } from "../../utils/toast"
 import { getProducts } from "../../api/products.api"
 import { mediaUrl } from "../../utils/mediaUrl"
-import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, formInputStyle, ConfirmationModal } from "../../components/admin/ui"
+import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, formInputStyle, ConfirmationModal, ErrorState } from "../../components/admin/ui"
 import { Gift, Sparkles, Ticket } from "lucide-react"
 
 const STATUS_STYLES = {
@@ -304,7 +304,7 @@ export default function AdminRewardsCampaigns() {
   const [modalOpen, setModalOpen] = useState(false)
   const [toDelete, setToDelete]   = useState(null)
 
-  const { data: rawCampaigns, isLoading } = useQuery({
+  const { data: rawCampaigns, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-campaigns"],
     queryFn:  adminListCampaigns,
   })
@@ -339,7 +339,7 @@ export default function AdminRewardsCampaigns() {
       <AdminPageHeader
         eyebrow="LEVELPRO / REWARDS"
         title="Campañas"
-        description={`${campaigns.length} campañas configuradas · ${activeCount} activas`}
+        description={isError ? "No se pudo cargar el listado de campañas" : isLoading ? "Cargando campañas…" : `${campaigns.length} campañas visibles · ${activeCount} activas en esta vista`}
         breadcrumbs={[
           { label: "Rewards", to: "/admin/rewards" },
           { label: "Campañas" },
@@ -358,14 +358,17 @@ export default function AdminRewardsCampaigns() {
       />
 
       <div className="lp-kpi-strip">
-        <StatCard variant="ink" Icon={Gift} label="Campañas totales" value={campaigns.length} sub="Registradas en sistema" />
-        <StatCard variant="primary" Icon={Sparkles} label="Campañas activas" value={activeCount} sub="En curso actualmente" />
-        <StatCard variant="light" Icon={Ticket} label="Participaciones" value={totalEntries} sub="Tickets acumulados" />
+        <StatCard variant="ink" Icon={Gift} label="Campañas visibles" value={isError || isLoading ? "—" : campaigns.length} sub="En esta vista" />
+        <StatCard variant="primary" Icon={Sparkles} label="Campañas activas" value={isError || isLoading ? "—" : activeCount} sub="En esta vista" />
+        <StatCard variant="light" Icon={Ticket} label="Participaciones" value={isError || isLoading ? "—" : totalEntries} sub="De las campañas visibles" />
       </div>
 
       {isLoading && <p style={{ color:"var(--admin-text-muted)" }}>Cargando…</p>}
 
-      {!isLoading && campaigns.length === 0 && (
+      {isError && <ErrorState title="No se pudieron cargar las campañas"
+        action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />}
+
+      {!isLoading && !isError && campaigns.length === 0 && (
         <div className="au-card au-panel" style={{ padding:"48px 32px", textAlign:"center" }}>
           <p style={{ fontSize:"42px", marginBottom:"10px" }}>🎁</p>
           <p style={{ fontSize:"15px", fontWeight: 700, color:"var(--admin-text)", marginBottom:"6px" }}>
@@ -378,7 +381,7 @@ export default function AdminRewardsCampaigns() {
       )}
 
       <div style={{ display:"flex", flexDirection:"column", gap:"10px" }}>
-        {campaigns.map(c => (
+        {!isError && campaigns.map(c => (
           <CampaignRow key={c.id} c={c}
             onDuplicate={id => dup.mutate(id)}
             onDelete={id => setToDelete(id)} />

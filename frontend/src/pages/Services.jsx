@@ -16,23 +16,27 @@ export default function Services() {
   const ctaRef    = useScrollReveal({ delay: 0, scaleIn: true })
   const [category, setCategory] = useState("")
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError: servicesError, refetch: retryServices } = useQuery({
     queryKey: ["services", { category }],
     queryFn:  () => getServices({ category__slug: category || undefined }),
   })
-  const services = data?.results || data || []
+  const servicesRaw = data?.results ?? data
+  const services = Array.isArray(servicesRaw) ? servicesRaw : []
 
-  const { data: allData } = useQuery({
+  const { data: allData, isError: totalError, refetch: retryTotal } = useQuery({
     queryKey: ["services", { category: "" }],
     queryFn:  () => getServices(),
   })
-  const totalCount = (allData?.results || allData || []).length
+  const totalRaw = allData?.results ?? allData
+  const totalCount = totalError ? null : Number.isInteger(allData?.count)
+    ? allData.count : Array.isArray(totalRaw) ? totalRaw.length : null
 
-  const { data: catData } = useQuery({
+  const { data: catData, isError: categoriesError, refetch: retryCategories } = useQuery({
     queryKey: ["service-categories"],
     queryFn:  getServiceCategories,
   })
-  const categories = catData?.results || catData || []
+  const categoryRaw = catData?.results ?? catData
+  const categories = Array.isArray(categoryRaw) ? categoryRaw : []
 
   const pill = (active) => ({
     display: "inline-flex", alignItems: "center", gap: "8px",
@@ -88,15 +92,21 @@ export default function Services() {
           </p>
 
           {/* Filtros por categoría con contador */}
+          {categoriesError && <div role="alert" style={{ fontSize:"13px", color:"var(--text-2)", marginTop:"24px" }}>
+            No se pudieron cargar las categorías. <button type="button" onClick={() => retryCategories()} style={{ color:"var(--accent)", background:"none", border:0, cursor:"pointer" }}>Reintentar</button>
+          </div>}
+          {totalError && <div role="alert" style={{ fontSize:"13px", color:"var(--text-2)", marginTop:"12px" }}>
+            El total de servicios no está disponible. <button type="button" onClick={() => retryTotal()} style={{ color:"var(--accent)", background:"none", border:0, cursor:"pointer" }}>Reintentar</button>
+          </div>}
           {categories.length > 0 && (
             <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginTop: "32px" }}
               data-testid="service-category-filters">
-              <button onClick={() => setCategory("")} data-testid="service-filter-all"
+              <button type="button" aria-pressed={category === ""} onClick={() => setCategory("")} data-testid="service-filter-all"
                 style={pill(category === "")}>
-                Todos <span style={countBadge(category === "")}>{totalCount}</span>
+                Todos <span style={countBadge(category === "")}>{totalCount ?? "—"}</span>
               </button>
               {categories.map((cat) => (
-                <button key={cat.id} onClick={() => setCategory(cat.slug)}
+                <button type="button" aria-pressed={category === cat.slug} key={cat.id} onClick={() => setCategory(cat.slug)}
                   data-testid={`service-filter-${cat.slug}`} style={pill(category === cat.slug)}>
                   {cat.name}
                   {cat.services_count != null && (
@@ -117,6 +127,10 @@ export default function Services() {
             {[...Array(4)].map((_, i) => (
               <div key={i} className="skeleton" style={{ height: "440px", borderRadius: "26px" }} />
             ))}
+          </div>
+        ) : servicesError || !Array.isArray(servicesRaw) ? (
+          <div role="alert" data-testid="services-error" style={{ textAlign:"center", padding:"80px 0", color:"var(--text-2)" }}>
+            No pudimos cargar los servicios. <button type="button" onClick={() => retryServices()} style={{ color:"var(--accent)", background:"none", border:0, cursor:"pointer" }}>Reintentar</button>
           </div>
         ) : services.length === 0 ? (
           <div data-testid="services-empty" style={{ textAlign: "center", padding: "80px 0",
