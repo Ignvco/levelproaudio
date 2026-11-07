@@ -7,7 +7,7 @@ import {
   adminListCampaigns,
   adminExportEntriesCsvUrl,
 } from "../../api/rewards.api"
-import { AdminPageHeader, SecondaryButton } from "../../components/admin/ui"
+import { AdminPageHeader, SecondaryButton, ErrorState } from "../../components/admin/ui"
 
 export default function AdminRewardsEntries() {
   const [searchParams] = useSearchParams()
@@ -29,11 +29,11 @@ export default function AdminRewardsEntries() {
     return f
   }, [filters])
 
-  const { data: rawEntries, isLoading } = useQuery({
+  const { data: rawEntries, isLoading, isError: entriesError, refetch: refetchEntries } = useQuery({
     queryKey: ["admin-entries", activeFilters],
     queryFn:  () => adminListEntries(activeFilters),
   })
-  const { data: rawCampaigns } = useQuery({
+  const { data: rawCampaigns, isError: campaignsError, refetch: refetchCampaigns } = useQuery({
     queryKey: ["admin-campaigns"],
     queryFn:  adminListCampaigns,
   })
@@ -45,7 +45,7 @@ export default function AdminRewardsEntries() {
       <AdminPageHeader
         eyebrow="LEVELPRO / REWARDS"
         title="Participaciones"
-        description={`${entries.length} tickets registrados según los filtros activos`}
+        description={entriesError ? "No fue posible cargar las participaciones" : `${entries.length} participaciones visibles con los filtros activos`}
         breadcrumbs={[
           { label: "Rewards", to: "/admin/rewards" },
           { label: "Participaciones" },
@@ -53,11 +53,11 @@ export default function AdminRewardsEntries() {
         actions={
           <>
             <SecondaryButton to="/admin/rewards" size="sm">← Dashboard</SecondaryButton>
-            <a href={adminExportEntriesCsvUrl(filters.campaign)}
+            <a href={adminExportEntriesCsvUrl(filters)}
               data-testid="btn-export-csv"
               className="au-btn au-btn--secondary au-btn--sm"
               style={{ textDecoration:"none" }}>
-              Exportar CSV ↓
+              Exportar CSV filtrado ↓
             </a>
           </>
         }
@@ -88,15 +88,20 @@ export default function AdminRewardsEntries() {
           className="au-select" />
       </div>
 
+      {campaignsError && <ErrorState title="No se pudo cargar el filtro de campañas"
+        action={<SecondaryButton onClick={() => refetchCampaigns()}>Reintentar campañas</SecondaryButton>} />}
+
       {/* Tabla */}
       {isLoading && <p style={{ color:"var(--admin-text-muted)" }}>Cargando…</p>}
-      {!isLoading && entries.length === 0 && (
+      {entriesError && <ErrorState title="No se pudieron cargar las participaciones"
+        action={<SecondaryButton onClick={() => refetchEntries()}>Reintentar</SecondaryButton>} />}
+      {!isLoading && !entriesError && entries.length === 0 && (
         <div className="au-card au-panel" style={{ padding:"44px", textAlign:"center", color:"var(--admin-text-secondary)" }}>
           No hay participaciones con los filtros aplicados.
         </div>
       )}
 
-      {entries.length > 0 && (
+      {!entriesError && entries.length > 0 && (
         <div className="au-card au-table-wrap">
           <div className="au-tscroll">
             <table className="au-table">
