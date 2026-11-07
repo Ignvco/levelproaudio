@@ -1,0 +1,17 @@
+LEVELPRO AUDIO V3.2 — CERTIFICACION FINAL
+
+1) Copia los 4 archivos del parche de QA a tu repo; no afecta codigo de negocio.
+2) cd frontend && npm ci && npx playwright install chromium
+3) export QA_BASE_URL='https://TU-STAGING'
+4) node scripts/qa-v32-capture-session.mjs --role=admin
+5) node scripts/qa-v32-capture-session.mjs --role=customer
+6) QA_WIDTHS='1440,1280,1024,768,430,390,320' node scripts/qa-v32-visual.mjs
+7) node scripts/qa-v32-operational-readonly.mjs
+8) npm run test:browser
+9) cd ../backend && python manage.py audit_currency_history --output "$HOME/.levelpro-v32-qa/currency-history.json"
+
+Abrir ~/.levelpro-v32-qa/visual-evidence/index.html
+Revisar el reporte operacional y el reporte monetario en ese directorio.
+No compartir cookies, sesiones ni capturas con datos personales.
+No ejecutar pruebas de compra reales en produccion.
+Patch14: PAUSADO.

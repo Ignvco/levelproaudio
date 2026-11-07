@@ -1,0 +1,68 @@
+# LEVELPRO V3.2: disposable, local-only QA. Never use `docker-compose.yml` or production .env here.
+name: levelpro-v32-qa
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: levelpro_v32_qa
+      POSTGRES_USER: levelpro_qa
+      POSTGRES_PASSWORD: local-qa-password-only
+    volumes:
+      - v32_qa_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U levelpro_qa -d levelpro_v32_qa"]
+      interval: 5s
+      timeout: 4s
+      retries: 20
+    networks: [qa_isolated]
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    environment:
+      QA_LOCAL_ONLY: "1"
+      DJANGO_SETTINGS_MODULE: config.settings.local_qa
+      DJANGO_SECRET_KEY: qa-local-very-long-dummy-key-do-not-use-in-production-2026
+      DB_HOST: db
+      DB_NAME: levelpro_v32_qa
+      DB_USER: levelpro_qa
+      DB_PASSWORD: local-qa-password-only
+      PAYPAL_MODE: sandbox
+      PAYPAL_CLIENT_ID: ""
+      PAYPAL_CLIENT_SECRET: ""
+      MP_CL_ACCESS_TOKEN: ""
+      MP_AR_ACCESS_TOKEN: ""
+      MP_CL_WEBHOOK_SECRET: ""
+      MP_AR_WEBHOOK_SECRET: ""
+      RESEND_API_KEY: ""
+      GOOGLE_CLIENT_ID: ""
+    command: ["sh", "-c", "python manage.py migrate --noinput && exec python manage.py runserver 0.0.0.0:8000"]
+    depends_on:
+      db: {condition: service_healthy}
+    networks: [qa_isolated]
+    volumes:
+      - v32_qa_media:/app/media
+      - ./scripts:/scripts:ro
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    # QA visual ejecuta el build de producción: no inyecta /@vite/client ni su WebSocket.
+    # Sigue siendo 100% local: /api y /media se proxifican al backend QA por Vite preview.
+    command: ["sh", "-c", "npm run build && exec npm run preview -- --config vite.qa-v32.config.js --host 0.0.0.0 --port 3000 --strictPort"]
+    environment:
+      VITE_GA_ID: ""
+      VITE_GOOGLE_CLIENT_ID: ""
+      VITE_SITE_URL: "http://127.0.0.1:3000"
+    ports:
+      - "127.0.0.1:3000:3000"
+    depends_on:
+      - backend
+    networks: [qa_isolated, qa_front]
+networks:
+  qa_isolated:
+    internal: true
+  qa_front: {}
+volumes:
+  v32_qa_postgres: {}
+  v32_qa_media: {}
