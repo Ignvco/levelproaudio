@@ -882,8 +882,26 @@ def admin_users(request):
             Q(last_name__icontains=search)
         )
 
+    total_count = users.count()
+    page = request.query_params.get("page")
+    page_size_param = request.query_params.get("page_size")
+    try:
+        page_size = min(int(page_size_param), 200) if page_size_param else 100
+    except (ValueError, TypeError):
+        page_size = 100
+
+    if page:
+        try:
+            page_num = max(int(page), 1)
+        except (ValueError, TypeError):
+            page_num = 1
+        offset = (page_num - 1) * page_size
+        users_slice = users[offset:offset + page_size]
+    else:
+        users_slice = users[:page_size]
+
     data = []
-    for u in users[:100]:
+    for u in users_slice:
         orders_count = Order.objects.filter(user=u).count()
         paid_by_user = Order.objects.filter(
             user=u, status__in=["paid", "shipped", "completed"]
@@ -904,7 +922,7 @@ def admin_users(request):
             "spend_by_currency": spend_by_currency,
         })
 
-    return Response({"results": data, "count": users.count()})
+    return Response({"results": data, "count": total_count, "page_size": page_size})
 
 @api_view(["PATCH", "DELETE"])
 @permission_classes([IsAdminOrStaff])
@@ -989,6 +1007,24 @@ def admin_payments(request):
     if status_filter:
         payments = payments.filter(status=status_filter)
 
+    total_count = payments.count()
+    page = request.query_params.get("page")
+    page_size_param = request.query_params.get("page_size")
+    try:
+        page_size = min(int(page_size_param), 200) if page_size_param else 200
+    except (ValueError, TypeError):
+        page_size = 200
+
+    if page:
+        try:
+            page_num = max(int(page), 1)
+        except (ValueError, TypeError):
+            page_num = 1
+        offset = (page_num - 1) * page_size
+        payments_slice = payments[offset:offset + page_size]
+    else:
+        payments_slice = payments[:page_size]
+
     data = [{
         "id":          str(p.id),
         "order_id":    str(p.order.id),
@@ -999,14 +1035,20 @@ def admin_payments(request):
         "currency":    p.currency,
         "paid_at":     p.paid_at.strftime("%Y-%m-%d %H:%M") if p.paid_at else None,
         "created_at":  p.created_at.strftime("%Y-%m-%d %H:%M"),
-    } for p in payments[:200]]
+    } for p in payments_slice]
 
     total_approved = payments.filter(
         status="approved"
     ).aggregate(t=Sum("amount"))["t"] or 0
 
-    return Response({"results": data, "currency": currency, "total_approved": float(total_approved),
-                     "approved_by_currency": summarize_by_currency(Payment.objects.filter(status="approved"), "amount")})
+    return Response({
+        "results": data,
+        "count": total_count,
+        "page_size": page_size,
+        "currency": currency,
+        "total_approved": float(total_approved),
+        "approved_by_currency": summarize_by_currency(Payment.objects.filter(status="approved"), "amount")
+    })
 
 @api_view(["PATCH"])
 @permission_classes([IsAdminOrStaff])
@@ -1450,9 +1492,25 @@ def admin_create_enrollment(request):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_enrollments(request):
-    enrollments = Enrollment.objects.select_related(
-        "user", "course"
-    ).order_by("-created_at")[:200]
+    qs = Enrollment.objects.select_related("user", "course").order_by("-created_at")
+    total_count = qs.count()
+
+    page = request.query_params.get("page")
+    page_size_param = request.query_params.get("page_size")
+    try:
+        page_size = min(int(page_size_param), 200) if page_size_param else 200
+    except (ValueError, TypeError):
+        page_size = 200
+
+    if page:
+        try:
+            page_num = max(int(page), 1)
+        except (ValueError, TypeError):
+            page_num = 1
+        offset = (page_num - 1) * page_size
+        enrollments_slice = qs[offset:offset + page_size]
+    else:
+        enrollments_slice = qs[:page_size]
 
     return Response({
         "results": [{
@@ -1463,7 +1521,9 @@ def admin_enrollments(request):
             "course_id":    str(e.course.id),
             "progress":     e.progress_percentage,
             "created_at":   e.created_at.strftime("%Y-%m-%d"),
-        } for e in enrollments]
+        } for e in enrollments_slice],
+        "count": total_count,
+        "page_size": page_size,
     })
 
 
