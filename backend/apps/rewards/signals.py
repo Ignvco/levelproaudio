@@ -21,3 +21,17 @@ def generate_reward_entries(sender, instance, **kwargs):
     # Import diferido para evitar ciclos
     from .services import generate_entries_for_order
     generate_entries_for_order(instance)
+
+
+@receiver(post_save, sender="orders.Order")
+def cancel_reward_entries_on_cancellation(sender, instance, **kwargs):
+    """
+    Si una orden es cancelada, elimina las participaciones asociadas para
+    evitar que boletos de órdenes anuladas participen en el sorteo.
+    """
+    if instance.status != "cancelled":
+        return
+
+    from .models import Entry
+    Entry.objects.filter(order=instance).delete()
+

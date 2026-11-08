@@ -166,6 +166,30 @@ class LoyaltyAccount(TimeStampedModel):
             )
         self.refresh_from_db()
 
+    def reembolsar_puntos_canjeados(self, puntos, descripcion="", orden=None):
+        """
+        Devuelve puntos canjeados al cliente reduciendo puntos_canjeados
+        cuando la orden donde se canjearon es cancelada. Bloquea la fila
+        para evitar condiciones de carrera.
+        """
+        if puntos <= 0:
+            return
+        with transaction.atomic():
+            locked = LoyaltyAccount.objects.select_for_update().get(pk=self.pk)
+            a_devolver = min(puntos, locked.puntos_canjeados)
+            if a_devolver <= 0:
+                return
+            locked.puntos_canjeados -= a_devolver
+            locked.save(update_fields=["puntos_canjeados"])
+            LoyaltyTransaction.objects.create(
+                account     = locked,
+                tipo        = "adjust",
+                puntos      = a_devolver,
+                descripcion = descripcion,
+                orden       = orden,
+            )
+        self.refresh_from_db()
+
     def proxima_expiracion(self):
         """
         Calcula qué puntos son los próximos en vencer y cuándo, con el mismo
