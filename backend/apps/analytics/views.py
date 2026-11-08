@@ -1177,26 +1177,75 @@ def admin_services(request):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_service_requests(request):
-    """GET /api/v1/admin/service-requests/ → lista paginada de solicitudes."""
+    """GET /api/v1/admin/service-requests/ → lista paginada y filtrable de solicitudes."""
     qs = ServiceRequest.objects.select_related(
         "user", "service"
     ).order_by("-created_at")
-    return Response({
-        "results": [{
-            "id":           str(r.id),
-            "name":         r.name or (r.user.get_full_name() if r.user else ""),
-            "email":        r.email or (r.user.email if r.user else ""),
-            "phone":        r.phone,
-            "service_name": r.service.name if r.service else "General",
-            "service_id":   str(r.service.id) if r.service else None,
-            "message":      r.message,
-            "budget":       float(r.budget) if r.budget else None,
-            "preferred_date": r.preferred_date.isoformat() if r.preferred_date else None,
-            "status":       r.status,
-            "admin_notes":  r.admin_notes,
-            "created_at":   r.created_at.isoformat(),
-        } for r in qs]
-    })
+
+    status_filter = request.query_params.get("status")
+    if status_filter:
+        qs = qs.filter(status=status_filter)
+
+    search = request.query_params.get("search", "").strip()
+    if search:
+        qs = qs.filter(
+            Q(name__icontains=search) |
+            Q(email__icontains=search) |
+            Q(message__icontains=search) |
+            Q(user__email__icontains=search)
+        )
+
+    total_count = qs.count()
+    page_param = request.query_params.get("page")
+    if page_param is not None:
+        try:
+            page = max(1, int(page_param))
+        except (ValueError, TypeError):
+            page = 1
+        try:
+            page_size = int(request.query_params.get("page_size", 50))
+            page_size = max(1, min(page_size, 200))
+        except (ValueError, TypeError):
+            page_size = 50
+
+        total_pages = max(1, (total_count + page_size - 1) // page_size)
+        start = (page - 1) * page_size
+        end = start + page_size
+        items_slice = qs[start:end]
+        paginated = True
+    else:
+        page = 1
+        page_size = 100
+        total_pages = max(1, (total_count + page_size - 1) // page_size)
+        items_slice = qs[:100]
+        paginated = False
+
+    rows = [{
+        "id":           str(r.id),
+        "name":         r.name or (r.user.get_full_name() if r.user else ""),
+        "email":        r.email or (r.user.email if r.user else ""),
+        "phone":        r.phone,
+        "service_name": r.service.name if r.service else "General",
+        "service_id":   str(r.service.id) if r.service else None,
+        "message":      r.message,
+        "budget":       float(r.budget) if r.budget else None,
+        "preferred_date": r.preferred_date.isoformat() if r.preferred_date else None,
+        "status":       r.status,
+        "admin_notes":  r.admin_notes,
+        "created_at":   r.created_at.isoformat(),
+    } for r in items_slice]
+
+    res = {
+        "results": rows,
+        "count": total_count,
+    }
+    if paginated:
+        res.update({
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+        })
+    return Response(res)
 
 
 def _svc_bool(val):
@@ -1348,23 +1397,58 @@ def admin_bookings_list(request):
     el admin no podía usarlo para ver las de otros).
     """
     from django.utils import timezone as tz
-    bookings = Booking.objects.select_related("user", "service").order_by("-created_at")
+    qs = Booking.objects.select_related("user", "service").order_by("-created_at")
     status_filter = request.query_params.get("status")
     if status_filter:
-        bookings = bookings.filter(status=status_filter)
+        qs = qs.filter(status=status_filter)
 
-    return Response({
-        "results": [{
-            "id":              str(b.id),
-            "user_email":      b.user.email,
-            "service_name":    b.service.name if b.service else "—",
-            "scheduled_date":  b.scheduled_date.isoformat(),
-            "notes":           b.notes,
-            "status":          b.status,
-            "status_display":  b.get_status_display(),
-            "created_at":      b.created_at.isoformat(),
-        } for b in bookings]
-    })
+    total_count = qs.count()
+    page_param = request.query_params.get("page")
+    if page_param is not None:
+        try:
+            page = max(1, int(page_param))
+        except (ValueError, TypeError):
+            page = 1
+        try:
+            page_size = int(request.query_params.get("page_size", 50))
+            page_size = max(1, min(page_size, 200))
+        except (ValueError, TypeError):
+            page_size = 50
+
+        total_pages = max(1, (total_count + page_size - 1) // page_size)
+        start = (page - 1) * page_size
+        end = start + page_size
+        items_slice = qs[start:end]
+        paginated = True
+    else:
+        page = 1
+        page_size = 100
+        total_pages = max(1, (total_count + page_size - 1) // page_size)
+        items_slice = qs[:100]
+        paginated = False
+
+    rows = [{
+        "id":              str(b.id),
+        "user_email":      b.user.email,
+        "service_name":    b.service.name if b.service else "—",
+        "scheduled_date":  b.scheduled_date.isoformat(),
+        "notes":           b.notes,
+        "status":          b.status,
+        "status_display":  b.get_status_display(),
+        "created_at":      b.created_at.isoformat(),
+    } for b in items_slice]
+
+    res = {
+        "results": rows,
+        "count": total_count,
+    }
+    if paginated:
+        res.update({
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+        })
+    return Response(res)
 
 
 @api_view(["PATCH"])
