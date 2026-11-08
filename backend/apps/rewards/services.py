@@ -133,7 +133,11 @@ def run_draw(campaign: Campaign, admin_user):
     if campaign.is_drawn:
         raise DrawError("Esta campaña ya fue sorteada.")
 
-    entries = list(campaign.entries.select_related("user"))
+    entries = list(
+        campaign.entries.filter(
+            order__status__in=["paid", "shipped", "completed"]
+        ).select_related("user")
+    )
     if not entries:
         raise DrawError("La campaña no tiene participaciones.")
 

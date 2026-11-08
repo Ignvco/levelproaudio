@@ -141,6 +141,7 @@ class BuyStickersView(views.APIView):
             stock_deductions={},  # Compra digital/servicio: no reserva inventario físico.
             user             = request.user,
             status           = "pending",
+            currency         = "CLP",
             total            = total,
             email            = request.user.email,
             shipping_address = "Stickers digitales — LevelPro Rewards",

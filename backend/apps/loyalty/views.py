@@ -238,14 +238,16 @@ def admin_adjust_points(request):
         if puntos > 0:
             account.agregar_puntos(puntos, descripcion)
         else:
-            account.puntos_canjeados += abs(puntos)
-            account.save(update_fields=["puntos_canjeados"])
+            locked = LoyaltyAccount.objects.select_for_update().get(pk=account.pk)
+            locked.puntos_canjeados += abs(puntos)
+            locked.save(update_fields=["puntos_canjeados"])
             LoyaltyTransaction.objects.create(
-                account     = account,
+                account     = locked,
                 tipo        = "adjust",
                 puntos      = puntos,
                 descripcion = descripcion,
             )
+            account.refresh_from_db()
         return Response({"puntos_disponibles": account.puntos_disponibles})
     except User.DoesNotExist:
         return Response({"error": "Usuario no encontrado"}, status=404)
