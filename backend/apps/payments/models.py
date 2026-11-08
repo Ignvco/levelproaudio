@@ -174,3 +174,46 @@ class BankAccount(TimeStampedModel):
 
     def __str__(self):
         return f"{self.label} ({self.currency})"
+
+
+class WebhookEventStatus(models.TextChoices):
+    RECEIVED   = "received",   "Recibido"
+    PROCESSING = "processing", "Procesando"
+    PROCESSED  = "processed",  "Procesado"
+    IGNORED    = "ignored",    "Ignorado"
+    ERROR      = "error",      "Error"
+
+
+class PaymentWebhookEvent(TimeStampedModel):
+    """
+    Registro transaccional de cada notificación recibida de una pasarela.
+    Garantiza deduplicación e idempotencia a nivel de base de datos PostgreSQL,
+    evitando carreras y procesamiento múltiple de un mismo evento.
+    """
+    provider     = models.CharField(max_length=30, choices=PaymentProvider.choices)
+    event_id     = models.CharField(max_length=255, db_index=True)
+    resource_id  = models.CharField(max_length=255, db_index=True)
+    topic        = models.CharField(max_length=50, blank=True)
+    status       = models.CharField(
+        max_length=20,
+        choices=WebhookEventStatus.choices,
+        default=WebhookEventStatus.RECEIVED
+    )
+    payload_hash = models.CharField(max_length=64, blank=True)
+    raw_payload  = models.JSONField(null=True, blank=True)
+    error_message = models.TextField(blank=True)
+    processed_at  = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Evento de Webhook"
+        verbose_name_plural = "Eventos de Webhooks"
+        unique_together = ("provider", "event_id")
+        indexes = [
+            models.Index(fields=["provider", "resource_id"], name="payments_we_provide_idx"),
+            models.Index(fields=["status", "created_at"], name="payments_we_status_idx"),
+        ]
+
+    def __str__(self):
+        return f"WebhookEvent {self.provider} — {self.event_id} ({self.status})"
+

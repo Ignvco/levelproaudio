@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from django.views.decorators.csrf import csrf_exempt
 
 from apps.orders.models import Order
-from .models import PaymentProvider
+from .models import Payment, PaymentProvider, PaymentStatus, PaymentWebhookEvent, WebhookEventStatus
 from .serializers import CreatePaymentRequestSerializer, CapturePayPalRequestSerializer
 from .transfer_instructions import bank_accounts_for, instructions_for
 from .payment_availability import method_can_checkout, method_has_payment_instructions
@@ -81,25 +81,44 @@ def create_payment(request):
             )
 
         if provider in [PaymentProvider.MERCADOPAGO_CL, PaymentProvider.MERCADOPAGO_AR]:
-            data = create_mercadopago_preference(order, provider)
+            existing_payment = Payment.objects.filter(
+                order=order, provider=provider, status=PaymentStatus.PENDING,
+            ).exclude(payment_url="").order_by("-created_at").first()
+
+            if existing_payment and existing_payment.payment_url and existing_payment.preference_id:
+                data = {
+                    "preference_id": existing_payment.preference_id,
+                    "init_point": existing_payment.payment_url,
+                }
+            else:
+                data = create_mercadopago_preference(order, provider)
 
         elif provider == PaymentProvider.PAYPAL:
-            data = create_paypal_order(order)
+            existing_payment = Payment.objects.filter(
+                order=order, provider=PaymentProvider.PAYPAL, status=PaymentStatus.PENDING,
+            ).exclude(preference_id="").order_by("-created_at").first()
+
+            if existing_payment and existing_payment.preference_id and existing_payment.payment_url:
+                data = {
+                    "paypal_order_id": existing_payment.preference_id,
+                    "approve_url": existing_payment.payment_url,
+                }
+            else:
+                data = create_paypal_order(order)
 
         elif provider == PaymentProvider.GLOBAL66:
             data = get_global66_info(order)
 
         elif provider in (PaymentProvider.TRANSFER, PaymentProvider.PAYONEER):
-            # Transferencia (local o Payoneer/internacional USD): no hay
-            # pasarela externa que confirme sola. Se registra el pago como
-            # pendiente; el admin lo aprueba a mano cuando recibe el
-            # comprobante (mismo flujo que los pagos manuales).
-            from .models import Payment
-            Payment.objects.create(
-                order=order, provider=provider, amount=order.total,
-                currency=getattr(order, "currency", "CLP") or "CLP",
-                status="pending",
-            )
+            existing_payment = Payment.objects.filter(
+                order=order, provider=provider, status=PaymentStatus.PENDING,
+            ).first()
+            if not existing_payment:
+                Payment.objects.create(
+                    order=order, provider=provider, amount=order.total,
+                    currency=getattr(order, "currency", "CLP") or "CLP",
+                    status="pending",
+                )
             data = {"status": "pending", "reference": f"LEVELPRO-{str(order.id)[:8].upper()}"}
 
         return Response({"provider": provider, **data})
@@ -162,11 +181,47 @@ def _webhook_mercadopago(request, provider):
         data = normalize_mp_webhook(request)
     except ValueError:
         return Response({"status": "invalid payload"}, status=400)
+
+    from django.utils import timezone
+
+    resource_id = str(data.get("data", {}).get("id") or data.get("id") or "")
+    request_id = request.headers.get("x-request-id", "")
+    event_id = f"{resource_id}:{request_id}" if request_id else resource_id
+    topic = str(data.get("type") or data.get("topic") or "")
+
+    # Deduplicación atómica: si ya fue procesado, responder OK inmediatamente sin reejecutar
+    if PaymentWebhookEvent.objects.filter(
+        provider=provider, event_id=event_id, status=WebhookEventStatus.PROCESSED
+    ).exists():
+        logger.info("Webhook %s ignorado por deduplicación (event_id=%s).", provider, event_id)
+        return Response({"status": "ok"})
+
+    webhook_event, _ = PaymentWebhookEvent.objects.get_or_create(
+        provider=provider,
+        event_id=event_id,
+        defaults={
+            "resource_id": resource_id,
+            "topic": topic,
+            "status": WebhookEventStatus.PROCESSING,
+            "raw_payload": data,
+        }
+    )
+
+    if webhook_event.status == WebhookEventStatus.PROCESSED:
+        return Response({"status": "ok"})
+
     try:
         process_mercadopago_webhook(data, provider)
-    except Exception:
+        webhook_event.status = WebhookEventStatus.PROCESSED
+        webhook_event.processed_at = timezone.now()
+        webhook_event.save(update_fields=["status", "processed_at", "updated_at"])
+    except Exception as exc:
+        webhook_event.status = WebhookEventStatus.ERROR
+        webhook_event.error_message = str(exc)
+        webhook_event.save(update_fields=["status", "error_message", "updated_at"])
         logger.exception("Error procesando webhook %s.", provider)
         return Response({"status": "error"}, status=503)
+
     return Response({"status": "ok"})
 
 
