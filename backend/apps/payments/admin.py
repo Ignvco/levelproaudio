@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Payment, PaymentMethodConfig, BankAccount
+from .models import Payment, PaymentMethodConfig, BankAccount, PaymentWebhookEvent
 
 
 @admin.register(PaymentMethodConfig)
@@ -58,3 +58,16 @@ class PaymentAdmin(admin.ModelAdmin):
             '<strong>${:,.0f}</strong>', obj.amount
         )
     amount_display.short_description = "Monto"
+
+
+@admin.register(PaymentWebhookEvent)
+class PaymentWebhookEventAdmin(admin.ModelAdmin):
+    list_display = ["provider", "event_id", "resource_id", "status", "processed_at", "created_at"]
+    list_filter = ["status", "provider", "created_at"]
+    search_fields = ["event_id", "resource_id", "topic"]
+    readonly_fields = [
+        "id", "provider", "event_id", "resource_id", "topic",
+        "status", "payload_hash", "raw_payload", "error_message",
+        "processed_at", "created_at", "updated_at"
+    ]
+
