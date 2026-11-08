@@ -45,18 +45,64 @@ def tax_dashboard(request):
     Devuelve las órdenes pagadas y el registro tributario de cada una
     (o null si todavía no se registró nada). Este es el tablero central
     de seguimiento del admin.
+    Soporta paginación (?page=1&page_size=50) y filtros por ?currency=, ?doc_estado=, ?tipo=, ?status=.
     """
     if not _is_admin(request.user):
         return Response(status=403)
 
     from apps.orders.models import Order
 
-    orders = (
+    qs = (
         Order.objects.filter(status__in=["paid", "shipped", "completed"])
         .select_related("user")
         .prefetch_related("tributary_document")
-        .order_by("-created_at")[:200]
+        .order_by("-created_at")
     )
+
+    currency = request.query_params.get("currency")
+    if currency and currency.upper() in ("CLP", "USD", "ARS"):
+        qs = qs.filter(currency=currency.upper())
+
+    order_status = request.query_params.get("status")
+    if order_status:
+        qs = qs.filter(status=order_status)
+
+    doc_estado = request.query_params.get("doc_estado")
+    if doc_estado:
+        if doc_estado == "sin_documento":
+            qs = qs.filter(tributary_document__isnull=True)
+        else:
+            qs = qs.filter(tributary_document__estado=doc_estado)
+
+    doc_tipo = request.query_params.get("tipo")
+    if doc_tipo:
+        qs = qs.filter(tributary_document__tipo=doc_tipo)
+
+    total_count = qs.count()
+
+    page_param = request.query_params.get("page")
+    if page_param is not None:
+        try:
+            page = max(1, int(page_param))
+        except (ValueError, TypeError):
+            page = 1
+        try:
+            page_size = int(request.query_params.get("page_size", 50))
+            page_size = max(1, min(page_size, 200))
+        except (ValueError, TypeError):
+            page_size = 50
+
+        total_pages = max(1, (total_count + page_size - 1) // page_size)
+        start = (page - 1) * page_size
+        end = start + page_size
+        orders = qs[start:end]
+        paginated = True
+    else:
+        page = 1
+        page_size = 200
+        total_pages = max(1, (total_count + page_size - 1) // page_size)
+        orders = qs[:200]
+        paginated = False
 
     rows = []
     for o in orders:
@@ -72,7 +118,17 @@ def tax_dashboard(request):
             "pago_estado":  o.status,
             "documento":    _serialize(doc) if doc else None,
         })
-    return Response({"results": rows})
+    response_data = {
+        "results": rows,
+        "count": total_count,
+    }
+    if paginated:
+        response_data.update({
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+        })
+    return Response(response_data)
 
 
 # ── Registrar / actualizar el documento de una orden ──────────────
@@ -125,7 +181,10 @@ def upsert_document(request):
             doc.monto = None
         else:
             try:
-                doc.monto = Decimal(str(raw))
+                m = Decimal(str(raw))
+                if m < 0:
+                    return Response({"error": "El monto no puede ser negativo."}, status=400)
+                doc.monto = m
             except (InvalidOperation, ValueError):
                 return Response({"error": "Monto inválido."}, status=400)
 

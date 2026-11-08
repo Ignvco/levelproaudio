@@ -20,6 +20,13 @@ COLUMN_MAP = {
     "stock":                "stock",
     "stock_minimo":         "stock_min",
     "stock_min":            "stock_min",
+    "costo":                "cost_price",
+    "precio_costo":         "cost_price",
+    "cost_price":           "cost_price",
+    "precio_usd":           "price_usd",
+    "price_usd":            "price_usd",
+    "precio_ars":           "price_ars",
+    "price_ars":            "price_ars",
     "sku":                  "sku",
     "categoria":            "category",
     "marca":                "brand",
@@ -51,8 +58,33 @@ def parse_bool(val) -> bool:
 
 def parse_decimal(val) -> Decimal:
     try:
-        cleaned = str(val).replace("$","").replace(".","").replace(",",".").strip()
-        return Decimal(cleaned)
+        if isinstance(val, (int, float, Decimal)):
+            return Decimal(str(val))
+        s = str(val).replace("$", "").strip()
+        if not s:
+            return Decimal("0")
+        if "." in s and "," in s:
+            dot_idx = s.rfind(".")
+            comma_idx = s.rfind(",")
+            if dot_idx < comma_idx:
+                # 1.000,50 -> 1000.50
+                s = s.replace(".", "").replace(",", ".")
+            else:
+                # 1,000.50 -> 1000.50
+                s = s.replace(",", "")
+        elif "," in s:
+            # 260,50 -> 260.50
+            s = s.replace(",", ".")
+        elif "." in s:
+            parts = s.split(".")
+            if len(parts) > 2:
+                # 1.000.000 -> miles CLP
+                s = s.replace(".", "")
+            elif len(parts) == 2 and len(parts[1]) == 3 and parts[0].isdigit() and int(parts[0]) > 0:
+                # 50.000 o 100.000 -> miles CLP
+                s = s.replace(".", "")
+            # caso contrario, e.g. 260.50 o 99.9 se preserva como decimal estándar
+        return Decimal(s)
     except (InvalidOperation, ValueError):
         return Decimal("0")
 
@@ -116,7 +148,41 @@ def parse_rows(rows: list[dict]) -> dict:
                 errors.append({"row": i, "name": name, "error": "Precio inválido o 0."})
                 continue
 
-            stock = int(float(str(row.get("stock", 0)).replace(",", ".")))
+            try:
+                stock = int(float(str(row.get("stock", 0)).replace(",", ".")))
+            except (ValueError, TypeError):
+                errors.append({"row": i, "name": name, "error": "Stock inválido."})
+                continue
+
+            if stock < 0:
+                errors.append({"row": i, "name": name, "error": "El stock no puede ser negativo."})
+                continue
+
+            sku = str(row.get("sku", "")).strip() or None
+            if sku and Product.objects.filter(sku=sku).exclude(name__iexact=name).exists():
+                errors.append({"row": i, "name": name, "error": f"El SKU '{sku}' ya pertenece a otro producto."})
+                continue
+
+            cost_price = None
+            if row.get("cost_price") not in (None, "", "None"):
+                cost_price = parse_decimal(row.get("cost_price"))
+                if cost_price < 0:
+                    errors.append({"row": i, "name": name, "error": "El precio de costo no puede ser negativo."})
+                    continue
+
+            price_usd = None
+            if row.get("price_usd") not in (None, "", "None"):
+                price_usd = parse_decimal(row.get("price_usd"))
+                if price_usd < 0:
+                    errors.append({"row": i, "name": name, "error": "El precio USD no puede ser negativo."})
+                    continue
+
+            price_ars = None
+            if row.get("price_ars") not in (None, "", "None"):
+                price_ars = parse_decimal(row.get("price_ars"))
+                if price_ars < 0:
+                    errors.append({"row": i, "name": name, "error": "El precio ARS no puede ser negativo."})
+                    continue
 
             # Slug único
             base_slug = slugify(name)
@@ -165,7 +231,10 @@ def parse_rows(rows: list[dict]) -> dict:
                     "compare_price":     compare_price,
                     "stock":             stock,
                     **({"stock_min": stock_min} if stock_min is not None else {}),
-                    "sku":               str(row.get("sku", "")).strip() or None,
+                    **({"cost_price": cost_price} if cost_price is not None else {}),
+                    **({"price_usd": price_usd} if price_usd is not None else {}),
+                    **({"price_ars": price_ars} if price_ars is not None else {}),
+                    "sku":               sku,
                     "category":          category,
                     "brand":             brand,
                     "weight":            weight,
