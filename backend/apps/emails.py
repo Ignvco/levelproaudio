@@ -141,12 +141,18 @@ def send_email(to, subject, html, attachments=None):
 def send_order_confirmation(order):
     accent = _brand()["accent"]
     ref = str(order.id)[:8].upper()
+    curr = getattr(order, "currency", "CLP") or "CLP"
+    is_usd = curr == "USD"
     rows = ""
     for it in order.items.all():
+        line_total = float(it.price) * it.quantity
+        formatted_line = f"${line_total:,.2f} USD" if is_usd else f"${line_total:,.0f} {curr}"
         rows += f"""<tr>
           <td style="padding:8px 0;color:#e8e8e8;font-size:14px;">{escape(it.product_name)} × {it.quantity}</td>
-          <td style="padding:8px 0;color:#e8e8e8;font-size:14px;text-align:right;">${float(it.price)*it.quantity:,.0f}</td>
+          <td style="padding:8px 0;color:#e8e8e8;font-size:14px;text-align:right;">{formatted_line}</td>
         </tr>"""
+    total_val = float(order.total)
+    formatted_total = f"${total_val:,.2f} USD" if is_usd else f"${total_val:,.0f} {curr}"
     body = f"""
       <p style="margin:0 0 16px;">¡Gracias por tu compra! Confirmamos el pago de tu orden
         <strong style="color:#fff;">#{ref}</strong>.</p>
@@ -154,7 +160,7 @@ def send_order_confirmation(order):
         {rows}
         <tr><td style="padding:12px 0 0;border-top:1px solid #1c1c1c;color:#fff;font-weight:700;">Total</td>
         <td style="padding:12px 0 0;border-top:1px solid #1c1c1c;color:{accent};font-weight:800;text-align:right;">
-          ${float(order.total):,.0f}</td></tr>
+          {formatted_total}</td></tr>
       </table>
       <p style="margin:16px 0 0;">Nos pondremos en contacto para coordinar la entrega.</p>
     """
@@ -258,7 +264,7 @@ def send_price_drop_email(user, product):
         <tr>
           <td style="padding:8px 0;color:#fff;font-size:15px;font-weight:600;">{escape(product.name)}</td>
           <td style="padding:8px 0;color:{accent};font-size:18px;font-weight:800;text-align:right;">
-            ${float(product.price):,.0f}</td>
+            ${float(product.price):,.0f} CLP</td>
         </tr>
       </table>
     """

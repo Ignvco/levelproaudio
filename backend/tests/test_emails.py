@@ -130,6 +130,48 @@ class EmailBrandingDynamicTest(TestCase):
         subject = mock_send.call_args.args[1]
         self.assertIn("LevelPro Audio", subject)
 
+    @patch("apps.emails.send_email")
+    def test_order_confirmation_displays_clp_explicitly(self, mock_send):
+        from apps.emails import send_order_confirmation
+        from apps.orders.models import Order, OrderItem, OrderStatus
+        order = Order.objects.create(
+            status=OrderStatus.PAID, total=Decimal("150000"), currency="CLP",
+            email="clp@test.com", shipping_address="Santiago"
+        )
+        OrderItem.objects.create(order=order, product_name="Parlante", price=Decimal("150000"), quantity=1)
+        send_order_confirmation(order)
+
+        html_sent = mock_send.call_args.args[2]
+        self.assertIn("150,000 CLP", html_sent)
+
+    @patch("apps.emails.send_email")
+    def test_order_confirmation_displays_usd_with_decimals(self, mock_send):
+        from apps.emails import send_order_confirmation
+        from apps.orders.models import Order, OrderItem, OrderStatus
+        order = Order.objects.create(
+            status=OrderStatus.PAID, total=Decimal("125.50"), currency="USD",
+            email="usd@test.com", shipping_address="Miami"
+        )
+        OrderItem.objects.create(order=order, product_name="Mic USB", price=Decimal("125.50"), quantity=1)
+        send_order_confirmation(order)
+
+        html_sent = mock_send.call_args.args[2]
+        self.assertIn("125.50 USD", html_sent)
+
+    @patch("apps.emails.send_email")
+    def test_order_confirmation_displays_ars_explicitly(self, mock_send):
+        from apps.emails import send_order_confirmation
+        from apps.orders.models import Order, OrderItem, OrderStatus
+        order = Order.objects.create(
+            status=OrderStatus.PAID, total=Decimal("180000"), currency="ARS",
+            email="ars@test.com", shipping_address="Buenos Aires"
+        )
+        OrderItem.objects.create(order=order, product_name="Cable", price=Decimal("180000"), quantity=1)
+        send_order_confirmation(order)
+
+        html_sent = mock_send.call_args.args[2]
+        self.assertIn("180,000 ARS", html_sent)
+
 
 class NoEmojisInEmailsTest(TestCase):
     """
