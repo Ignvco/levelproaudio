@@ -106,3 +106,72 @@ def render_head(metadata):
         tag("twitter:card", "summary_large_image"),
         *[tag("twitter:" + key, metadata[key]) for key in ("title", "description", "image")],
     ])
+
+
+def generate_product_schema_ld(product, currency="CLP"):
+    """Genera datos estructurados Schema.org JSON-LD para Google Search y Google Shopping (V3.3 Módulo 4)."""
+    base = (getattr(settings, "SITE_URL", "") or "https://levelproaudio.com").rstrip("/")
+    site = SiteSettings.objects.first() or SiteSettings()
+
+    images = [
+        base + quote(media_url(img.image), safe="/")
+        for img in product.images.order_by("-is_primary", "order", "id")
+        if img.image
+    ]
+    if not images:
+        images = [base + (media_url(site.og_image) or "/og-image.png")]
+
+    from apps.site_settings.models import SiteSettings as SS
+    _s = SS.objects.first()
+    rate_clp = _s.usd_to_clp if _s else None
+    rate_ars = _s.usd_to_ars if _s else None
+    prices = product.prices_by_currency(rate_clp, rate_ars)
+
+    availability = "https://schema.org/InStock" if product.stock > 0 else "https://schema.org/PreOrder"
+
+    offers_list = []
+    for curr_code in ("CLP", "USD", "ARS"):
+        p_val = prices.get(curr_code)
+        if p_val is not None:
+            offers_list.append({
+                "@type": "Offer",
+                "priceCurrency": curr_code,
+                "price": str(p_val),
+                "availability": availability,
+                "itemCondition": "https://schema.org/NewCondition",
+                "url": f"{base}/shop/{product.slug}",
+            })
+
+    category_name = product.category.name if product.category else "Audio Profesional"
+
+    schema = {
+        "@context": "https://schema.org/",
+        "@type": "Product",
+        "name": product.name,
+        "image": images,
+        "description": plain(product.description or product.short_description or product.name, 300),
+        "sku": product.sku or str(product.id)[:8].upper(),
+        "offers": {
+            "@type": "AggregateOffer",
+            "priceCurrency": currency,
+            "lowPrice": str(prices.get(currency) or product.price),
+            "highPrice": str(prices.get(currency) or product.price),
+            "offerCount": len(offers_list),
+            "offers": offers_list,
+        },
+        "breadcrumb": {
+            "@type": "BreadcrumbList",
+            "itemListElement": [
+                {"@type": "ListItem", "position": 1, "name": "Inicio", "item": base},
+                {"@type": "ListItem", "position": 2, "name": "Tienda", "item": f"{base}/shop"},
+                {"@type": "ListItem", "position": 3, "name": category_name, "item": f"{base}/shop?category={product.category.slug if product.category else 'all'}"},
+                {"@type": "ListItem", "position": 4, "name": product.name, "item": f"{base}/shop/{product.slug}"},
+            ]
+        }
+    }
+
+    if product.brand:
+        schema["brand"] = {"@type": "Brand", "name": product.brand.name}
+
+    return schema
+

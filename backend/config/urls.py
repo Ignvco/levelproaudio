@@ -10,6 +10,8 @@ from drf_spectacular.views import (
 )
 from core.views import MediaProxyView
 from core.admin_permissions import IsAdminOrStaff
+from apps.users.sso_soundmap import soundmap_webhook_view, soundmap_audio_assets_view
+from apps.billing.shipping_and_tax import estimate_shipping_rates
 
 urlpatterns = [
     # Panel admin Django
@@ -47,6 +49,13 @@ urlpatterns = [
     # LevelPro Rewards — módulo de sorteos/campañas
     path("api/v1/rewards/",       include("apps.rewards.urls_public")),
     path("api/v1/admin/rewards/", include("apps.rewards.urls_admin")),
+
+    # Integraciones (SoundMap & Ecosystem V3.3 Módulo 5)
+    path("api/v1/integrations/soundmap/webhook/", soundmap_webhook_view, name="soundmap-webhook"),
+    path("api/v1/integrations/soundmap/audio-assets/", soundmap_audio_assets_view, name="soundmap-audio-assets"),
+
+    # Logística y Despacho (V3.3 Módulo 3)
+    path("api/v1/shipping/estimate/", estimate_shipping_rates, name="shipping-estimate-root"),
 
     # API docs
     path("api/schema/", SpectacularAPIView.as_view(permission_classes=[IsAdminOrStaff]), name="schema"),

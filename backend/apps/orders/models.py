@@ -1,5 +1,5 @@
 # apps/orders/models.py
-
+from decimal import Decimal
 from django.db import models, router, transaction
 from django.core.exceptions import ValidationError
 from django.conf import settings
@@ -239,3 +239,63 @@ class OrderItem(TimeStampedModel):
     @property
     def subtotal(self):
         return self.price * self.quantity
+
+
+# ═══════════════════════════════════════════════════════════════
+# B2B QUOTES & WHOLESALE (V3.3 Módulo 2)
+# ═══════════════════════════════════════════════════════════════
+
+class B2BQuoteStatus(models.TextChoices):
+    PENDING   = "pending",   "Pendiente de revisión"
+    REVIEWED  = "reviewed",  "En evaluación técnica"
+    APPROVED  = "approved",  "Aprobada"
+    REJECTED  = "rejected",  "Rechazada"
+    CONVERTED = "converted", "Convertida en pedido"
+    EXPIRED   = "expired",   "Vencida"
+
+
+class B2BQuote(TimeStampedModel):
+    """Cotización B2B para estudios, productoras e instituciones (V3.3 Módulo 2)."""
+    user             = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="b2b_quotes")
+    company_name     = models.CharField(max_length=200, verbose_name="Razón Social / Empresa")
+    tax_id           = models.CharField(max_length=50, help_text="RUT (Chile) o CUIT (Argentina)")
+    contact_name     = models.CharField(max_length=150, verbose_name="Nombre de Contacto")
+    email            = models.EmailField(verbose_name="Email de Contacto")
+    phone            = models.CharField(max_length=50, blank=True, verbose_name="Teléfono")
+    currency         = models.CharField(max_length=10, default="CLP")
+    subtotal         = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    discount_amount  = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
+    tax_amount       = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    total            = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
+    valid_until      = models.DateField(null=True, blank=True)
+    status           = models.CharField(max_length=20, choices=B2BQuoteStatus.choices, default=B2BQuoteStatus.PENDING)
+    client_notes     = models.TextField(blank=True, verbose_name="Notas del Cliente")
+    admin_notes      = models.TextField(blank=True, verbose_name="Notas de Ventas")
+    converted_order  = models.OneToOneField("Order", null=True, blank=True, on_delete=models.SET_NULL, related_name="originating_b2b_quote")
+
+    class Meta:
+        verbose_name = "Cotización B2B"
+        verbose_name_plural = "Cotizaciones B2B"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"Cotización #{str(self.id)[:8].upper()} — {self.company_name}"
+
+
+class B2BQuoteItem(TimeStampedModel):
+    quote        = models.ForeignKey(B2BQuote, on_delete=models.CASCADE, related_name="items")
+    product      = models.ForeignKey("products.Product", on_delete=models.SET_NULL, null=True, blank=True)
+    product_name = models.CharField(max_length=300)
+    unit_price   = models.DecimalField(max_digits=12, decimal_places=2)
+    quantity     = models.PositiveIntegerField(default=1)
+    subtotal     = models.DecimalField(max_digits=12, decimal_places=2)
+
+    class Meta:
+        verbose_name = "Item de Cotización B2B"
+        verbose_name_plural = "Items de Cotización B2B"
+        ordering = ["created_at"]
+
+    def __str__(self):
+        return f"{self.product_name} x {self.quantity}"
+

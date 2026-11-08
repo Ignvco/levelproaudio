@@ -97,3 +97,31 @@ def head_view(request):
     response["Cache-Control"] = "no-store"
     response["X-Robots-Tag"] = "noindex"
     return response
+
+
+from django.http import JsonResponse
+from .metadata import generate_product_schema_ld
+
+
+@require_GET
+def product_schema_view(request, slug):
+    """
+    GET /api/v1/seo/schema/product/<slug>/
+    Entrega el bloque JSON-LD estructurado Schema.org para indexadores y bots (V3.3 Módulo 4).
+    """
+    try:
+        product = Product.objects.select_related("category", "brand").prefetch_related("images").get(
+            slug=slug, is_active=True
+        )
+    except Product.DoesNotExist:
+        return JsonResponse({"error": "Producto no encontrado."}, status=404)
+
+    currency = (request.GET.get("currency") or "CLP").upper()
+    if currency not in ("CLP", "USD", "ARS"):
+        currency = "CLP"
+
+    schema = generate_product_schema_ld(product, currency=currency)
+    response = JsonResponse(schema)
+    response["Cache-Control"] = "public, max-age=3600"
+    return response
+
