@@ -47,6 +47,7 @@ def assert_csrf_rejected(response):
     assert response.data["code"] == "csrf_failed"
 
 
+@override_settings(CSRF_COOKIE_SECURE=True)
 def test_bootstrap_sets_readable_cookie_without_auth_and_is_not_cacheable(client):
     # Una sesión vencida no debe impedir recuperar el token CSRF.
     client.cookies[settings.AUTH_COOKIE_ACCESS] = "expired-access"
@@ -146,13 +147,17 @@ def test_untrusted_origin_rejected_even_with_correct_token(client, user):
 
 @pytest.mark.parametrize("origin", ["https://levelproaudio.com", "https://www.levelproaudio.com"])
 def test_production_origins_work_through_internal_proxy_host(client, user, monkeypatch, origin):
-    for name in ["DJANGO_ALLOWED_HOSTS", "GCS_BUCKET_NAME", "GCS_PROJECT_ID"]:
+    for name in ["GCS_BUCKET_NAME", "GCS_PROJECT_ID"]:
         monkeypatch.setenv(name, "test-value")
+    monkeypatch.setenv("DJANGO_ALLOWED_HOSTS", "levelproaudio-backend.internal,test-value")
     monkeypatch.delenv("CSRF_TRUSTED_ORIGINS", raising=False)
     production = importlib.reload(importlib.import_module("config.settings.production"))
     cookie_session(client, user)
     headers = csrf_headers(client)
-    with override_settings(CSRF_TRUSTED_ORIGINS=production.CSRF_TRUSTED_ORIGINS):
+    with override_settings(
+        CSRF_TRUSTED_ORIGINS=production.CSRF_TRUSTED_ORIGINS,
+        ALLOWED_HOSTS=production.ALLOWED_HOSTS,
+    ):
         response = client.patch(reverse("auth-profile"), {"first_name": "Proxy"},
                                 format="json", secure=True,
                                 HTTP_HOST="levelproaudio-backend.internal",

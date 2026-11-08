@@ -1,6 +1,6 @@
 # apps/products/views.py
-from rest_framework import viewsets, filters
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework import viewsets, filters, status
+from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from django.db.models import Count, Q
@@ -82,6 +82,135 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
                 qs = qs.none()
 
         return qs
+
+    @action(detail=False, methods=["post"], url_path="compare", permission_classes=[AllowAny])
+    def compare(self, request):
+        """
+        POST /api/v1/products/compare/
+        Comparador técnico de equipamiento de audio profesional (V3.3 Módulo 1).
+        Acepta lista de 2 a 4 product_ids o slugs y opcionalmente currency.
+        Devuelve matriz comparativa, ventajas competitivas y accesorios compatibles en stock.
+        """
+        product_ids = request.data.get("product_ids") or []
+        slugs = request.data.get("slugs") or []
+        currency = (request.data.get("currency") or "CLP").upper()
+        if currency not in ("CLP", "USD", "ARS"):
+            currency = "CLP"
+
+        if not product_ids and not slugs:
+            return Response(
+                {"error": "Debes proporcionar 'product_ids' o 'slugs' para comparar."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        identifiers = product_ids if product_ids else slugs
+        if len(identifiers) < 2:
+            return Response(
+                {"error": "Debes seleccionar al menos 2 productos para comparar."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if len(identifiers) > 4:
+            return Response(
+                {"error": "Máximo 4 productos permitidos en el comparador."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if product_ids:
+            products = list(
+                Product.objects.filter(id__in=product_ids, is_active=True)
+                .select_related("category", "brand")
+                .prefetch_related("images")
+            )
+        else:
+            products = list(
+                Product.objects.filter(slug__in=slugs, is_active=True)
+                .select_related("category", "brand")
+                .prefetch_related("images")
+            )
+
+        if len(products) < 2:
+            return Response(
+                {"error": "Al menos 2 de los productos seleccionados deben estar activos y disponibles."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from apps.site_settings.models import SiteSettings
+        _s = SiteSettings.objects.first()
+        _rate_clp = _s.usd_to_clp if _s else None
+        _rate_ars = _s.usd_to_ars if _s else None
+
+        products_data = []
+        for p in products:
+            prices = p.prices_by_currency(_rate_clp, _rate_ars)
+            selected_price = prices.get(currency)
+            primary_img = p.images.filter(is_primary=True).first() or p.images.first()
+
+            desc_lower = ((p.description or "") + " " + (p.short_description or "")).lower()
+            specs = {
+                "weight_kg": float(p.weight) if p.weight else None,
+                "product_type": p.get_product_type_display(),
+                "sku": p.sku or "—",
+                "category": p.category.name if p.category else "—",
+                "brand": p.brand.name if p.brand else "—",
+                "frequency_response": "20 Hz – 20 kHz" if ("20 hz" in desc_lower or "20khz" in desc_lower) else "Rango Pro",
+                "connectivity": "XLR balanceado" if "xlr" in desc_lower else ("USB-C / Digital" if "usb" in desc_lower else "Analógico"),
+            }
+
+            products_data.append({
+                "id": str(p.id),
+                "name": p.name,
+                "slug": p.slug,
+                "brand": p.brand.name if p.brand else None,
+                "category": p.category.name if p.category else None,
+                "price": float(selected_price) if selected_price is not None else float(p.price),
+                "currency": currency,
+                "stock": p.stock,
+                "in_stock": p.stock > 0,
+                "stock_status": "in_stock" if p.stock > p.stock_min else ("low_stock" if p.stock > 0 else "out_of_stock"),
+                "image_url": primary_img.image.url if primary_img and primary_img.image else None,
+                "specs": specs,
+            })
+
+        min_price_prod = min(products_data, key=lambda x: x["price"])
+        max_stock_prod = max(products_data, key=lambda x: x["stock"])
+        advantages = {
+            "best_price": {
+                "product_id": min_price_prod["id"],
+                "name": min_price_prod["name"],
+                "price": min_price_prod["price"],
+            },
+            "highest_availability": {
+                "product_id": max_stock_prod["id"],
+                "name": max_stock_prod["name"],
+                "stock": max_stock_prod["stock"],
+            },
+        }
+
+        cat_ids = [p.category_id for p in products if p.category_id]
+        compatible_accessories = [
+            {
+                "id": str(acc["id"]),
+                "name": acc["name"],
+                "slug": acc["slug"],
+                "price": float(acc["price"]),
+                "stock": acc["stock"],
+            }
+            for acc in Product.objects.filter(is_active=True, stock__gt=0)
+            .exclude(id__in=[p.id for p in products])
+            .filter(category_id__in=cat_ids)[:4]
+            .values("id", "name", "slug", "price", "stock")
+        ]
+
+        return Response({
+            "currency": currency,
+            "count": len(products_data),
+            "products": products_data,
+            "advantages": advantages,
+            "compatible_accessories": [
+                {**acc, "id": str(acc["id"]), "price": float(acc["price"])}
+                for acc in compatible_accessories
+            ],
+        })
 
 
 # ── Favoritos ─────────────────────────────────────────────────
