@@ -2304,13 +2304,18 @@ def admin_finance_by_product(request):
 
     results = []
     for item in items:
-        # Product.cost_price is in CLP. For USD/ARS orders, cost and
-        # margin are intentionally unavailable until an FX/cost ledger exists.
-        cost_price    = item["product__cost_price"] or Decimal("0")
-        total_cost    = cost_price * item["units_sold"] if currency == "CLP" else None
-        profit        = item["total_revenue"] - total_cost if total_cost is not None else None
-        margin        = (round(float(profit) / float(item["total_revenue"]) * 100, 1)
-                         if profit is not None and item["total_revenue"] else None)
+        # Product.cost_price is in CLP. For USD/ARS orders or products without
+        # a documented cost_price, cost and margin are intentionally unavailable.
+        raw_cost = item["product__cost_price"]
+        if currency == "CLP" and raw_cost is not None:
+            total_cost = raw_cost * item["units_sold"]
+            profit = item["total_revenue"] - total_cost
+            margin = (round(float(profit) / float(item["total_revenue"]) * 100, 1)
+                      if profit is not None and item["total_revenue"] else None)
+        else:
+            total_cost = None
+            profit = None
+            margin = None
 
         results.append({
             "product_name":  item["product__name"],
