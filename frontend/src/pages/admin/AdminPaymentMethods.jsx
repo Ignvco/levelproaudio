@@ -18,9 +18,10 @@ const METHOD_OPTIONS = [
   { value: "transfer",       label: "Transferencia bancaria" },
   { value: "dlocal",         label: "dLocal Go (próximamente)", disabled: true },
   { value: "payoneer",       label: "Payoneer (USD)" },
-  { value: "mercadopago_cl", label: "MercadoPago Chile" },
-  { value: "mercadopago_ar", label: "MercadoPago Argentina" },
-  { value: "paypal",         label: "PayPal" },
+  { value: "mercadopago_cl", label: "MercadoPago Chile (CLP)" },
+  { value: "uala",           label: "Ualá (Argentina — ARS)" },
+  { value: "mercadopago_ar", label: "MercadoPago Argentina (deshabilitado)", disabled: true },
+  { value: "paypal",         label: "PayPal (USD)" },
   { value: "global66",       label: "Global66 (CLP)" },
 ]
 

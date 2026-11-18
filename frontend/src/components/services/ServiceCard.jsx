@@ -4,10 +4,18 @@ import { Link } from "react-router-dom"
 import { BadgeCheck, Clock, Tag, Plus } from "lucide-react"
 import { serviceCover } from "../../utils/serviceCover"
 import { useScrollReveal } from "../../hooks/useScrollReveal"
+import { usePrice } from "../../hooks/usePrice"
 
 export default function ServiceCard({ service, index = 0, priority = false }) {
   const ref = useScrollReveal({ delay: index * 80 })
+  const { price } = usePrice()
   const cover = serviceCover(service)
+
+  const displayPrice = (() => {
+    if (service.price_type === "fixed" && service.price) return price(service)
+    if (service.price_type === "hourly" && service.price) return `${price(service)}/hr`
+    return service.price_display || "A cotizar"
+  })()
 
   return (
     <Link ref={ref} to={`/services/${service.slug}`}
@@ -49,7 +57,7 @@ export default function ServiceCard({ service, index = 0, priority = false }) {
             )}
             {(service.price_display || service.price) && (
               <span className="profile-card__stat" data-testid={`service-price-${service.slug}`}>
-                <Tag size={15} /> {service.price_display || "A cotizar"}
+                <Tag size={15} /> {displayPrice}
               </span>
             )}
           </div>

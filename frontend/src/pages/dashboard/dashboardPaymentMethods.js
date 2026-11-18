@@ -1,6 +1,6 @@
 // dashboardPaymentMethods.js — lógica pura del panel de pedidos.
 const EXECUTABLE_METHODS = new Set([
-  "mercadopago_cl", "mercadopago_ar", "paypal",
+  "mercadopago_cl", "mercadopago_ar", "uala", "paypal",
   "transfer", "payoneer", "global66",
 ])
 
@@ -18,6 +18,12 @@ export function selectedOrderPaymentMethod(requested, methods) {
 export function paymentNextStep(provider, response, orderId) {
   if (provider === "mercadopago_cl" || provider === "mercadopago_ar") {
     const url = response?.init_point || response?.sandbox_url
+    return typeof url === "string" && url.startsWith("https://")
+      ? { type: "external", url }
+      : null
+  }
+  if (provider === "uala") {
+    const url = response?.checkout_url || response?.init_point
     return typeof url === "string" && url.startsWith("https://")
       ? { type: "external", url }
       : null

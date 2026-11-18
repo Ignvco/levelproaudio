@@ -8,8 +8,9 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useNavigate }     from "react-router-dom"
-import { ArrowUpRight }    from "lucide-react"
+import { ArrowUpRight, Scale } from "lucide-react"
 import { useCartStore }    from "../../store/cartStore"
+import { useCompareStore } from "../../store/compareStore"
 import { usePrice }        from "../../hooks/usePrice"
 import { mediaUrl }        from "../../utils/mediaUrl"
 import { showToast }       from "../../utils/toast"
@@ -18,6 +19,9 @@ import { getProductBadge } from "../../utils/productBadge"
 
 export default function ProductCard({ product, priority = false }) {
   const { addItem } = useCartStore()
+  const compareItems = useCompareStore(s => s.items)
+  const toggleCompare = useCompareStore(s => s.toggleItem)
+  const isCompared = compareItems.some(p => p.id === product.id)
   const { price }   = usePrice()
   const navigate    = useNavigate()
 
@@ -107,10 +111,37 @@ export default function ProductCard({ product, priority = false }) {
           </div>
         )}
 
-        {/* Fila superior-izquierda: corazón + badge */}
+        {/* Fila superior-izquierda: corazón + comparar + badge */}
         <div style={{ position:"absolute", top:"14px", left:"14px", zIndex:2,
           display:"flex", alignItems:"center", gap:"8px" }}>
           <FavoriteButton productId={product.id} slug={product.slug} size={38} />
+          <button
+            type="button"
+            data-testid={`compare-toggle-${product.slug}`}
+            aria-label={isCompared ? `Quitar ${product.name} del comparador` : `Comparar ${product.name}`}
+            aria-pressed={isCompared}
+            title={isCompared ? "En comparador" : "Comparar equipo"}
+            onClick={(e) => {
+              e.stopPropagation()
+              const res = toggleCompare(product)
+              if (res.limitReached) {
+                showToast("Máximo 4 equipos simultáneos en el comparador.", "error")
+              } else if (res.added) {
+                showToast(`${product.name} añadido al comparador`)
+              }
+            }}
+            style={{
+              width: "38px", height: "38px", borderRadius: "50%",
+              border: isCompared ? "1px solid rgba(26,255,110,0.6)" : "1px solid rgba(255,255,255,0.14)",
+              background: isCompared ? "rgba(26,255,110,0.22)" : "rgba(20,20,20,0.72)",
+              backdropFilter: "blur(8px)",
+              color: isCompared ? "var(--accent)" : "#fff",
+              display: "inline-flex", alignItems: "center", justifyContent: "center",
+              cursor: "pointer", transition: "all 180ms ease",
+            }}
+          >
+            <Scale size={15} />
+          </button>
           {badge && (
             <span
               data-testid={`product-badge-${product.slug}`}

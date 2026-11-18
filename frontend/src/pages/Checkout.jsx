@@ -9,10 +9,11 @@ import Seo from "../components/Seo"
 import Button from "../components/ui/Button"
 import {
   ArrowLeft, ArrowRight, User, MapPin, CreditCard,
-  Globe, Landmark, ShieldCheck, ShoppingBag,
+  Globe, Landmark, ShieldCheck, ShoppingBag, Truck,
 } from "lucide-react"
 import api from "../api/client"
 import { createPayment, getPaymentMethods } from "../api/payments.api"
+import { estimateShipping, validateTaxId } from "../api/shipping.api"
 import { usePrice } from "../hooks/usePrice"
 import { cancelOrder } from "../api/orders.api"
 import { useCartStore } from "../store/cartStore"
@@ -35,6 +36,7 @@ const schema = z.object({
 const METHOD_ICON = {
   mercadopago_cl: CreditCard,
   mercadopago_ar: CreditCard,
+  uala:           CreditCard,
   paypal:         Globe,
   payoneer:       Globe,
   dlocal:         CreditCard,
@@ -98,6 +100,51 @@ export default function Checkout() {
   const { user }                            = useAuthStore()
   const { currency, format }                = usePrice()
   const navigate                            = useNavigate()
+
+  // Logística regional (CL / AR) y validación fiscal opcional RUT/CUIT (V3.3)
+  const [shippingCountry, setShippingCountry] = useState(currency === "ARS" ? "AR" : "CL")
+  const [selectedCarrier, setSelectedCarrier] = useState("")
+  const [taxId, setTaxId]                     = useState("")
+  const [taxValidation, setTaxValidation]     = useState(null)
+
+  const totalWeightKg = useMemo(() => {
+    const sum = items.reduce((acc, i) => acc + (Number(i.product?.weight) || 0.8) * (Number(i.quantity) || 1), 0)
+    return Math.max(0.5, Number(sum.toFixed(2)))
+  }, [items])
+
+  const shippingCurrency = shippingCountry === "CL"
+    ? (currency === "USD" ? "USD" : "CLP")
+    : (currency === "USD" ? "USD" : "ARS")
+
+  const { data: shippingData, isPending: shippingLoading } = useQuery({
+    queryKey: ["shipping-estimate", shippingCountry, totalWeightKg, shippingCurrency],
+    queryFn: () => estimateShipping({
+      country: shippingCountry,
+      city: shippingCountry === "CL" ? "Santiago" : "Buenos Aires",
+      weight_kg: totalWeightKg,
+      currency: shippingCurrency,
+    }),
+    enabled: items.length > 0,
+  })
+  const shippingRates = useMemo(() => shippingData?.rates || [], [shippingData])
+
+  useEffect(() => {
+    if (shippingRates.length && !shippingRates.some(r => r.service_name === selectedCarrier)) {
+      setSelectedCarrier(shippingRates[0].service_name)
+    }
+  }, [shippingRates, selectedCarrier])
+
+  const handleValidateTaxId = async () => {
+    const raw = taxId.trim()
+    if (!raw) { setTaxValidation(null); return }
+    try {
+      const res = await validateTaxId({ country: shippingCountry, tax_id: raw })
+      setTaxValidation(res)
+      if (res.is_valid && res.formatted) setTaxId(res.formatted)
+    } catch {
+      setTaxValidation(null)
+    }
+  }
   const confirmedPrices = currency === "CLP" || items.every(
     i => i.product?.prices?.[currency] != null && Number.isFinite(Number(i.product.prices[currency]))
   )
@@ -154,10 +201,16 @@ export default function Checkout() {
     setIsLoading(true)
     setServerError("")
     try {
+      const extraNotes = [
+        selectedCarrier ? `Transportista preferido (${shippingCountry}): ${selectedCarrier}` : "",
+        taxId.trim() ? `Doc. fiscal (${shippingCountry === "CL" ? "RUT" : "CUIT"}): ${taxId.trim()}` : "",
+        data.notes || "",
+      ].filter(Boolean).join(" · ")
+
       const { data: order } = await api.post("/orders/", {
         email:            data.email,
-        shipping_address: `${data.address_street}, ${data.address_city}, ${data.address_province}`,
-        notes:            data.notes || "",
+        shipping_address: `${data.address_street}, ${data.address_city}, ${data.address_province} (${shippingCountry})`,
+        notes:            extraNotes,
         total,
         currency,
         loyalty_points_redeemed: currency === "CLP" ? (pointsToRedeem || 0) : 0,
@@ -195,6 +248,9 @@ export default function Checkout() {
       } else if (selectedMethod === "mercadopago_cl" || selectedMethod === "mercadopago_ar") {
         rememberCheckout(order.id, { items, pointsToRedeem })
         window.location.href = paymentData.init_point || paymentData.sandbox_url
+      } else if (selectedMethod === "uala") {
+        rememberCheckout(order.id, { items, pointsToRedeem })
+        window.location.href = paymentData.checkout_url || paymentData.init_point
       } else if (selectedMethod === "paypal") {
         rememberCheckout(order.id, { items, pointsToRedeem })
         window.location.href = paymentData.approve_url
@@ -306,6 +362,75 @@ export default function Checkout() {
                       style={{ resize: "none" }} placeholder="Instrucciones especiales de entrega..." />
                   </Field>
                 </div>
+              </Section>
+
+              <Section title="Despacho regional y facturación" icon={Truck}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px", marginBottom: "14px" }}>
+                  <Field label="País de destino">
+                    <select
+                      data-testid="checkout-shipping-country"
+                      className="input"
+                      value={shippingCountry}
+                      onChange={e => { setShippingCountry(e.target.value); setTaxValidation(null) }}
+                    >
+                      <option value="CL">Chile (Chilexpress / Starken)</option>
+                      <option value="AR">Argentina (Andreani / Correo Arg.)</option>
+                    </select>
+                  </Field>
+                  <Field label={shippingCountry === "CL" ? "RUT para boleta/factura (opcional)" : "CUIT para Factura A/B (opcional)"}>
+                    <input
+                      data-testid="checkout-tax-id"
+                      className="input"
+                      value={taxId}
+                      onChange={e => { setTaxId(e.target.value); setTaxValidation(null) }}
+                      onBlur={handleValidateTaxId}
+                      placeholder={shippingCountry === "CL" ? "76.123.456-0" : "30-71890123-1"}
+                    />
+                    {taxValidation && (
+                      <p style={{ fontSize: "11px", marginTop: "5px", color: taxValidation.is_valid ? "var(--accent)" : "var(--danger)" }}>
+                        {taxValidation.is_valid ? `✓ ${taxValidation.type} válido (${taxValidation.formatted})` : `${taxValidation.type} inválido`}
+                      </p>
+                    )}
+                  </Field>
+                </div>
+
+                <p style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--text-2)", marginBottom: "8px" }}>
+                  Opciones estimadas de envío ({totalWeightKg} kg · tarifas referenciales {shippingCurrency}):
+                </p>
+                {shippingLoading ? (
+                  <p style={{ fontSize: "12.5px", color: "var(--text-3)" }}>Calculando tarifas de transportistas...</p>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {shippingRates.map(rate => {
+                      const active = selectedCarrier === rate.service_name
+                      return (
+                        <button
+                          key={rate.service_name}
+                          type="button"
+                          data-testid={`shipping-rate-${rate.carrier_code}`}
+                          onClick={() => setSelectedCarrier(rate.service_name)}
+                          style={{
+                            display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px",
+                            padding: "12px 14px", borderRadius: "var(--r-xl)", cursor: "pointer",
+                            textAlign: "left", width: "100%",
+                            background: active ? "rgba(26,255,110,0.06)" : "rgba(255,255,255,0.03)",
+                            border: `1px solid ${active ? "rgba(26,255,110,0.35)" : "rgba(255,255,255,0.08)"}`,
+                          }}
+                        >
+                          <div>
+                            <p style={{ fontSize: "13.5px", fontWeight: 600, color: "var(--text)" }}>{rate.service_name}</p>
+                            <p style={{ fontSize: "11.5px", color: "var(--text-3)" }}>
+                              Entrega estimada: {rate.delivery_window} · Con tracking
+                            </p>
+                          </div>
+                          <span style={{ fontFamily: "var(--font-mono)", fontSize: "13px", fontWeight: 700, color: active ? "var(--accent)" : "var(--text)" }}>
+                            {format(rate.price, rate.currency)}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </Section>
 
               <Section title="Método de pago" icon={CreditCard}>

@@ -39,6 +39,7 @@ const STATUS_CONFIG = {
 const PAYMENT_ICONS = {
   mercadopago_cl: CreditCard,
   mercadopago_ar: CreditCard,
+  uala: CreditCard,
   paypal: Globe,
   transfer: Landmark,
   payoneer: Globe,

@@ -29,6 +29,7 @@ const Login = lazy(() => import("./pages/Login"))
 const Academy = lazy(() => import("./pages/Academy"))
 const Services = lazy(() => import("./pages/Services"))
 const SpecialOrder = lazy(() => import("./pages/SpecialOrder"))
+const B2BQuote = lazy(() => import("./pages/B2BQuote"))
 const Cart = lazy(() => import("./pages/Cart"))
 const Register = lazy(() => import("./pages/Register"))
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"))
@@ -68,6 +69,7 @@ const AdminLayout                  = lazy(() => import("./layouts/AdminLayout"))
 const AdminDashboard               = lazy(() => import("./pages/admin/AdminDashboard"))
 const AdminOrders                  = lazy(() => import("./pages/admin/AdminOrders"))
 const AdminSpecialOrders            = lazy(() => import("./pages/admin/AdminSpecialOrders"))
+const AdminB2BQuotes               = lazy(() => import("./pages/admin/AdminB2BQuotes"))
 const AdminProducts                = lazy(() => import("./pages/admin/AdminProducts"))
 const AdminUsers                   = lazy(() => import("./pages/admin/AdminUsers"))
 const AdminPayments                = lazy(() => import("./pages/admin/AdminPayments"))
@@ -155,6 +157,7 @@ function App() {
         <Route path="/academy/:slug" element={<MainLayout><CourseDetail /></MainLayout>} />
         <Route path="/services" element={<MainLayout><Services /></MainLayout>} />
         <Route path="/bajo-pedido" element={<MainLayout><SpecialOrder /></MainLayout>} />
+        <Route path="/b2b" element={<MainLayout><B2BQuote /></MainLayout>} />
         <Route path="/services/:slug" element={<MainLayout><ServiceDetail /></MainLayout>} />
 
         {/* Rewards público */}
@@ -176,6 +179,7 @@ function App() {
           <Route path="/admin/loyalty" element={<Suspense fallback={<AdminLoading />}><AdminLoyalty /></Suspense>} />
           <Route path="orders" element={<Suspense fallback={<AdminLoading />}><AdminOrders /></Suspense>} />
           <Route path="special-orders" element={<Suspense fallback={<AdminLoading />}><AdminSpecialOrders /></Suspense>} />
+          <Route path="b2b" element={<Suspense fallback={<AdminLoading />}><AdminB2BQuotes /></Suspense>} />
           <Route path="products" element={<Suspense fallback={<AdminLoading />}><AdminProducts /></Suspense>} />
           <Route path="products/import" element={<Suspense fallback={<AdminLoading />}><AdminProductImport /></Suspense>} />
           <Route path="/admin/inventory" element={<Suspense fallback={<AdminLoading />}><AdminInventory /></Suspense>} />

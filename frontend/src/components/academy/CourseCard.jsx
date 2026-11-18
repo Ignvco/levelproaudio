@@ -3,6 +3,7 @@
 import { Link } from "react-router-dom"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { useScrollReveal } from "../../hooks/useScrollReveal"
+import { usePrice } from "../../hooks/usePrice"
 
 const LEVELS = {
   beginner:     "Principiante",
@@ -12,6 +13,7 @@ const LEVELS = {
 
 export default function CourseCard({ course, index = 0, priority = false }) {
   const ref = useScrollReveal({ delay: index * 80 })
+  const { price } = usePrice()
 
   const levelLabel = course.level_display || LEVELS[course.level] || course.level || "Curso"
   const lessons    = course.total_lessons || 0
@@ -56,7 +58,7 @@ export default function CourseCard({ course, index = 0, priority = false }) {
           <p
             className={`folder-card__price${course.is_free ? " folder-card__price--free" : ""}`}
             data-testid={`course-price-${course.slug}`}>
-            {course.is_free ? "Gratis" : `$${Number(course.price).toLocaleString("es-CL")}`}
+            {course.is_free ? "Gratis" : price(course)}
           </p>
         </div>
       </div>

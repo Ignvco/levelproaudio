@@ -40,3 +40,13 @@ test("transferencias, Payoneer y Global66 usan instrucciones de la orden existen
   }
   assert.equal(paymentNextStep("dlocal", {}, "ord123"), null)
 })
+
+test("Ualá Argentina (ARS) está habilitado y redirige solo con enlace HTTPS válido", () => {
+  const methods = availableOrderPaymentMethods({ methods: [{ id: "uala" }, { id: "transfer" }] })
+  assert.deepEqual(methods.map(m => m.id), ["uala", "transfer"])
+  assert.deepEqual(
+    paymentNextStep("uala", { checkout_url: "https://checkout.prod.ua.la/pay/123" }, "ord1"),
+    { type: "external", url: "https://checkout.prod.ua.la/pay/123" },
+  )
+  assert.equal(paymentNextStep("uala", { checkout_url: "http://insecure.ua.la" }, "ord1"), null)
+})

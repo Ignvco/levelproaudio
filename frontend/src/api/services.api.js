@@ -44,7 +44,7 @@ export const createServiceRequest = async (payload) => {
   return response.data
 }
 
-export const checkoutService = async (slug) => {
-  const response = await api.post(`/services/${slug}/checkout/`)
+export const checkoutService = async (slug, currency = "CLP") => {
+  const response = await api.post(`/services/${slug}/checkout/`, { currency })
   return response.data
 }
