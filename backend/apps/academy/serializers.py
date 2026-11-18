@@ -67,6 +67,17 @@ class ModuleSerializer(serializers.ModelSerializer):
         return obj.lessons.count()
 
 
+def _get_exchange_rates(context):
+    if "_rates" not in context:
+        from apps.site_settings.models import SiteSettings
+        s = SiteSettings.objects.first()
+        context["_rates"] = {
+            "usd_to_clp": s.usd_to_clp if s else None,
+            "usd_to_ars": s.usd_to_ars if s else None,
+        }
+    return context["_rates"]
+
+
 class CourseListSerializer(serializers.ModelSerializer):
     total_lessons  = serializers.IntegerField(read_only=True)
     total_duration = serializers.IntegerField(read_only=True)
@@ -74,17 +85,24 @@ class CourseListSerializer(serializers.ModelSerializer):
     level_display  = serializers.CharField(source="get_level_display", read_only=True)
     is_enrolled    = serializers.SerializerMethodField()
     thumbnail      = serializers.SerializerMethodField()
+    prices         = serializers.SerializerMethodField()
 
     class Meta:
         model  = Course
-        fields = ["id", "title", "slug", "short_description", "thumbnail", "price",
+        fields = ["id", "title", "slug", "short_description", "thumbnail",
+                  "price", "price_usd", "price_ars", "prices",
                   "level", "level_display", "is_free", "total_lessons", "total_duration",
                   "enrolled_count", "is_enrolled"]
 
-    def get_thumbnail(self, obj):
+    def get_thumbnail(self, obj) -> str | None:
         return _media_url(obj.thumbnail)
 
-    def get_is_enrolled(self, obj):
+    def get_prices(self, obj) -> dict[str, str]:
+        rates = _get_exchange_rates(self.context)
+        p = obj.prices_by_currency(rates["usd_to_clp"], rates["usd_to_ars"])
+        return {k: str(v) for k, v in p.items()}
+
+    def get_is_enrolled(self, obj) -> bool:
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return False
@@ -100,18 +118,25 @@ class CourseDetailSerializer(serializers.ModelSerializer):
     is_enrolled    = serializers.SerializerMethodField()
     progress       = serializers.SerializerMethodField()
     thumbnail      = serializers.SerializerMethodField()
+    prices         = serializers.SerializerMethodField()
 
     class Meta:
         model  = Course
         fields = ["id", "title", "slug", "description", "short_description", "thumbnail",
-                  "preview_url", "price", "level", "level_display", "is_free",
+                  "preview_url", "price", "price_usd", "price_ars", "prices",
+                  "level", "level_display", "is_free",
                   "total_lessons", "total_duration", "enrolled_count", "is_enrolled",
                   "progress", "modules"]
 
-    def get_thumbnail(self, obj):
+    def get_thumbnail(self, obj) -> str | None:
         return _media_url(obj.thumbnail)
 
-    def get_is_enrolled(self, obj):
+    def get_prices(self, obj) -> dict[str, str]:
+        rates = _get_exchange_rates(self.context)
+        p = obj.prices_by_currency(rates["usd_to_clp"], rates["usd_to_ars"])
+        return {k: str(v) for k, v in p.items()}
+
+    def get_is_enrolled(self, obj) -> bool:
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return False

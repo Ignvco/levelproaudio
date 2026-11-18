@@ -15,9 +15,21 @@ class ServiceCategorySerializer(serializers.ModelSerializer):
         return obj.services.filter(is_active=True).count()
 
 
+def _get_exchange_rates(context):
+    if "_rates" not in context:
+        from apps.site_settings.models import SiteSettings
+        s = SiteSettings.objects.first()
+        context["_rates"] = {
+            "usd_to_clp": s.usd_to_clp if s else None,
+            "usd_to_ars": s.usd_to_ars if s else None,
+        }
+    return context["_rates"]
+
+
 class ServiceListSerializer(serializers.ModelSerializer):
     category_name      = serializers.CharField(source="category.name", read_only=True)
     thumbnail          = serializers.SerializerMethodField()
+    prices             = serializers.SerializerMethodField()
     price_display      = serializers.CharField(read_only=True)
     price_type_display = serializers.CharField(
         source="get_price_type_display", read_only=True
@@ -28,18 +40,24 @@ class ServiceListSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "slug",
             "category_name", "short_description",
-            "thumbnail", "price", "price_type",
-            "price_type_display", "price_display",
+            "thumbnail", "price", "price_usd", "price_ars", "prices",
+            "price_type", "price_type_display", "price_display",
             "duration_hours", "is_featured",
         ]
 
-    def get_thumbnail(self, obj):
+    def get_thumbnail(self, obj) -> str | None:
         return _media_url(obj.thumbnail)
+
+    def get_prices(self, obj) -> dict[str, str | None]:
+        rates = _get_exchange_rates(self.context)
+        p = obj.prices_by_currency(rates["usd_to_clp"], rates["usd_to_ars"])
+        return {k: (str(v) if v is not None else None) for k, v in p.items()}
 
 
 class ServiceDetailSerializer(serializers.ModelSerializer):
     category           = ServiceCategorySerializer(read_only=True)
     thumbnail          = serializers.SerializerMethodField()
+    prices             = serializers.SerializerMethodField()
     price_display      = serializers.CharField(read_only=True)
     deliverables_list  = serializers.ListField(read_only=True)
     price_type_display = serializers.CharField(
@@ -51,13 +69,19 @@ class ServiceDetailSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "slug", "category",
             "description", "short_description", "thumbnail",
-            "price", "price_type", "price_type_display", "price_display",
+            "price", "price_usd", "price_ars", "prices",
+            "price_type", "price_type_display", "price_display",
             "duration_hours", "deliverables", "deliverables_list",
             "is_featured",
         ]
 
-    def get_thumbnail(self, obj):
+    def get_thumbnail(self, obj) -> str | None:
         return _media_url(obj.thumbnail)
+
+    def get_prices(self, obj) -> dict[str, str | None]:
+        rates = _get_exchange_rates(self.context)
+        p = obj.prices_by_currency(rates["usd_to_clp"], rates["usd_to_ars"])
+        return {k: (str(v) if v is not None else None) for k, v in p.items()}
 
 
 class BookingSerializer(serializers.ModelSerializer):

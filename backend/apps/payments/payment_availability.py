@@ -11,6 +11,7 @@ from .models import BankAccount, PaymentMethodConfig, PaymentProvider
 SUPPORTED_CURRENCIES = {
     PaymentProvider.MERCADOPAGO_CL: frozenset({"CLP"}),
     PaymentProvider.MERCADOPAGO_AR: frozenset({"ARS"}),
+    PaymentProvider.UALA: frozenset({"ARS"}),
     PaymentProvider.PAYPAL: frozenset({"CLP", "USD"}),
     PaymentProvider.TRANSFER: frozenset({"CLP", "USD", "ARS"}),
     PaymentProvider.PAYONEER: frozenset({"USD"}),

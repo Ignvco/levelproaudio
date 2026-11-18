@@ -7,7 +7,8 @@ from apps.orders.models import Order, OrderStatus
 
 class PaymentProvider(models.TextChoices):
     MERCADOPAGO_CL = "mercadopago_cl", "MercadoPago Chile"
-    MERCADOPAGO_AR = "mercadopago_ar", "MercadoPago Argentina"
+    MERCADOPAGO_AR = "mercadopago_ar", "MercadoPago Argentina (deshabilitado)"
+    UALA           = "uala",           "Ualá (Argentina)"
     PAYPAL         = "paypal",         "PayPal"
     GLOBAL66       = "global66",       "Transferencia Global66"
     TRANSFER       = "transfer",       "Transferencia bancaria"
@@ -98,13 +99,14 @@ class PaymentMethodConfig(TimeStampedModel):
     Payoneer cuando estén confirmados. El checkout lee de acá qué mostrar.
     """
     class Method(models.TextChoices):
-        TRANSFER   = "transfer",    "Transferencia bancaria"
-        DLOCAL     = "dlocal",      "dLocal Go"
-        PAYONEER   = "payoneer",    "Payoneer (USD)"
+        TRANSFER       = "transfer",       "Transferencia bancaria"
+        DLOCAL         = "dlocal",         "dLocal Go"
+        PAYONEER       = "payoneer",       "Payoneer (USD)"
         MERCADOPAGO_CL = "mercadopago_cl", "MercadoPago Chile"
-        MERCADOPAGO_AR = "mercadopago_ar", "MercadoPago Argentina"
-        PAYPAL     = "paypal",      "PayPal"
-        GLOBAL66   = "global66",    "Transferencia Global66"
+        MERCADOPAGO_AR = "mercadopago_ar", "MercadoPago Argentina (deshabilitado)"
+        UALA           = "uala",           "Ualá (Argentina)"
+        PAYPAL         = "paypal",         "PayPal"
+        GLOBAL66       = "global66",       "Transferencia Global66"
 
     method   = models.CharField(max_length=30, choices=Method.choices, unique=True)
     is_active = models.BooleanField(default=False, verbose_name="Activo en el checkout")

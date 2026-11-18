@@ -89,6 +89,26 @@ class CourseViewSet(viewsets.ReadOnlyModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        currency = (request.data.get("currency") or "CLP").strip().upper()
+        if currency not in ("CLP", "USD", "ARS"):
+            return Response(
+                {"error": "Moneda no soportada. Usa CLP, USD o ARS."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        from apps.site_settings.models import SiteSettings
+        site = SiteSettings.objects.first()
+        prices = course.prices_by_currency(
+            site.usd_to_clp if site else None,
+            site.usd_to_ars if site else None,
+        )
+        unit_price = prices.get(currency)
+        if unit_price is None or unit_price <= 0:
+            return Response(
+                {"error": f"No hay un precio válido configurado para {currency}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Busca el producto vinculado al curso si existe
         product = getattr(course, "product", None)
 
@@ -97,21 +117,23 @@ class CourseViewSet(viewsets.ReadOnlyModelViewSet):
             user=request.user,
             email=request.user.email,
             shipping_address="Curso digital — sin envío",
-            total=course.price,
+            total=unit_price,
+            currency=currency,
         )
 
         OrderItem.objects.create(
             order        = order,
             product      = product,       # ← usa el producto real si existe
             product_name = f"Curso: {course.title}",
-            price        = course.price,
+            price        = unit_price,
             quantity     = 1,
         )
 
         return Response({
             "order_id":    str(order.id),
             "course_slug": course.slug,
-            "amount":      float(course.price),
+            "amount":      float(unit_price),
+            "currency":    currency,
         }, status=status.HTTP_201_CREATED)
 
 
@@ -120,6 +142,8 @@ class EnrollmentViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Enrollment.objects.none()
         return Enrollment.objects.filter(
             user=self.request.user
         ).select_related("course").order_by("-created_at")

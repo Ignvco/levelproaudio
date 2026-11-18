@@ -352,6 +352,229 @@ def capture_paypal_payment(paypal_payment_id: str, payer_id: str, user) -> bool:
     return True
 
 
+# ── Ualá Bis (Argentina — ARS) ───────────────────────────────
+
+def _uala_base_urls() -> tuple[str, str]:
+    if getattr(settings, "UALA_SANDBOX", False):
+        return ("https://auth.stage.ua.la", "https://checkout.stage.ua.la")
+    return ("https://auth.prod.ua.la", "https://checkout.prod.ua.la")
+
+
+def uala_credentials_configured() -> bool:
+    return all(
+        bool((getattr(settings, name, "") or "").strip())
+        for name in ("UALA_USERNAME", "UALA_CLIENT_ID", "UALA_CLIENT_SECRET")
+    )
+
+
+def get_uala_access_token() -> str:
+    """Obtiene token OAuth2 Bearer desde Ualá Bis Auth API v2."""
+    import requests
+
+    if not uala_credentials_configured():
+        raise ValueError("Credenciales de Ualá Bis no configuradas en el servidor.")
+
+    auth_base, _ = _uala_base_urls()
+    response = requests.post(
+        f"{auth_base}/1/auth/token",
+        json={
+            "user_name": settings.UALA_USERNAME.strip(),
+            "client_id": settings.UALA_CLIENT_ID.strip(),
+            "client_secret_id": settings.UALA_CLIENT_SECRET.strip(),
+            "grant_type": "client_credentials",
+        },
+        timeout=15,
+    )
+    if response.status_code != 200:
+        raise ValueError(f"Error autenticando con Ualá Bis (HTTP {response.status_code}).")
+    data = response.json()
+    token = data.get("access_token")
+    if not token:
+        raise ValueError("Ualá Bis no devolvió access_token.")
+    return token
+
+
+def create_uala_checkout(order: Order) -> dict:
+    """
+    Crea una orden de pago en Ualá Bis Checkout API v2 (exclusivo ARS).
+    Devuelve checkout_url / init_point para redirigir al comprador.
+    """
+    import requests
+    from decimal import ROUND_HALF_UP
+
+    currency = (getattr(order, "currency", "ARS") or "ARS").upper()
+    if currency != "ARS":
+        raise ValueError("Ualá Bis admite pagos exclusivamente en pesos argentinos (ARS).")
+
+    token = get_uala_access_token()
+    _, checkout_base = _uala_base_urls()
+    amount = Decimal(str(order.total)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+    payload = {
+        "amount": f"{amount:.2f}",
+        "description": f"LevelPro Audio — Orden #{str(order.id)[:8].upper()}",
+        "userName": settings.UALA_USERNAME.strip(),
+        "callback_fail": f"{settings.FRONTEND_URL}/payment/failure?order={order.id}",
+        "callback_success": f"{settings.FRONTEND_URL}/payment/success?order={order.id}",
+        "notification_url": f"{settings.BACKEND_URL}/api/v1/payments/webhook/uala/",
+        "external_reference": str(order.id),
+    }
+
+    response = requests.post(
+        f"{checkout_base}/1/checkout",
+        json=payload,
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=15,
+    )
+    if response.status_code not in (200, 201):
+        raise ValueError(f"Error creando orden en Ualá Bis (HTTP {response.status_code}).")
+
+    data = response.json()
+    uala_uuid = str(data.get("uuid") or "").strip()
+    links = data.get("links") or {}
+    checkout_link = str(links.get("checkoutLink") or links.get("checkout_link") or "").strip()
+    if not uala_uuid or not checkout_link.startswith("https://"):
+        raise ValueError("Respuesta incompleta de Ualá Bis (uuid o checkoutLink ausente).")
+
+    Payment.objects.create(
+        order=order,
+        provider=PaymentProvider.UALA,
+        status=PaymentStatus.PENDING,
+        amount=amount,
+        currency="ARS",
+        preference_id=uala_uuid,
+        payment_url=checkout_link,
+        raw_response=data,
+    )
+
+    return {
+        "uala_order_id": uala_uuid,
+        "checkout_url": checkout_link,
+        "init_point": checkout_link,
+    }
+
+
+def fetch_uala_order(uala_uuid: str) -> dict:
+    """Consulta el estado autoritativo de una orden en Ualá Bis API v2."""
+    import requests
+
+    token = get_uala_access_token()
+    _, checkout_base = _uala_base_urls()
+    response = requests.get(
+        f"{checkout_base}/1/order/{uala_uuid}",
+        headers={"Authorization": f"Bearer {token}"},
+        timeout=15,
+    )
+    if response.status_code != 200:
+        raise ValueError(f"No se pudo verificar la orden Ualá {uala_uuid} (HTTP {response.status_code}).")
+    return response.json()
+
+
+def verify_uala_webhook_signature(request) -> bool:
+    """
+    Si UALA_WEBHOOK_SECRET está configurado, exige firma HMAC-SHA256 válida
+    en el header X-Uala-Signature sobre el cuerpo crudo.
+    """
+    import hashlib
+    import hmac
+
+    secret = (getattr(settings, "UALA_WEBHOOK_SECRET", "") or "").strip()
+    if not secret:
+        return True
+    signature = (request.headers.get("X-Uala-Signature") or "").strip()
+    if not signature:
+        return False
+    expected = hmac.new(secret.encode("utf-8"), request.body, hashlib.sha256).hexdigest()
+    return hmac.compare_digest(expected.lower(), signature.lower())
+
+
+def process_uala_webhook(data: dict) -> None:
+    """
+    Procesa notificación de Ualá Bis verificando el estado autoritativo vía API.
+    Aplica bloqueo select_for_update y verificación de monto/referencia.
+    """
+    import logging
+    from django.utils import timezone
+
+    logger = logging.getLogger(__name__)
+    uala_uuid = str(data.get("uuid") or data.get("order_id") or "").strip()
+    if not uala_uuid:
+        raise ValueError("Webhook de Ualá sin uuid de orden.")
+
+    remote_order = fetch_uala_order(uala_uuid)
+    remote_status = str(remote_order.get("status") or "").strip().upper()
+    remote_ref = str(remote_order.get("external_reference") or "").strip()
+
+    confirmation_order = None
+    with transaction.atomic():
+        payment = (
+            Payment.objects.select_for_update()
+            .select_related("order")
+            .filter(provider=PaymentProvider.UALA, preference_id=uala_uuid)
+            .first()
+        )
+        if payment is None and remote_ref:
+            payment = (
+                Payment.objects.select_for_update()
+                .select_related("order")
+                .filter(provider=PaymentProvider.UALA, order_id=remote_ref)
+                .order_by("-created_at")
+                .first()
+            )
+        if payment is None:
+            logger.warning("Webhook Ualá: pago no encontrado para uuid=%s", uala_uuid)
+            return
+
+        if remote_ref and remote_ref != str(payment.order_id):
+            logger.error(
+                "Webhook Ualá: external_reference %s no coincide con orden %s.",
+                remote_ref, payment.order_id,
+            )
+            return
+
+        payment.raw_response = remote_order
+        payment.external_id = uala_uuid
+
+        if remote_status in ("APPROVED", "PROCESSED"):
+            try:
+                captured = Decimal(str(remote_order.get("amount")))
+                expected = Decimal(str(payment.amount))
+            except (InvalidOperation, TypeError):
+                captured = Decimal("-1")
+                expected = Decimal(str(payment.amount))
+
+            tolerance = max(expected * Decimal("0.01"), Decimal("0.01"))
+            if not captured.is_finite() or captured <= 0 or abs(captured - expected) > tolerance:
+                payment.status = PaymentStatus.IN_REVIEW
+                payment.paid_at = None
+                payment.save()
+                logger.error(
+                    "Webhook Ualá: monto %s no coincide con esperado %s para orden %s.",
+                    captured, expected, payment.order_id,
+                )
+                return
+
+            if payment.status != PaymentStatus.APPROVED:
+                payment.status = PaymentStatus.APPROVED
+                payment.paid_at = timezone.now()
+                payment.save()
+                if payment.status == PaymentStatus.APPROVED:
+                    confirmation_order = payment.order
+
+        elif remote_status == "REJECTED":
+            if payment.status == PaymentStatus.PENDING:
+                payment.status = PaymentStatus.REJECTED
+                payment.save()
+
+        elif remote_status in ("CANCELLED", "EXPIRED"):
+            if payment.status == PaymentStatus.PENDING:
+                payment.status = PaymentStatus.CANCELLED
+                payment.save()
+
+    if confirmation_order is not None:
+        send_payment_confirmation_email(confirmation_order)
+
+
 # ── Global66 ─────────────────────────────────────────────────
 
 def get_global66_info(order: Order) -> dict:

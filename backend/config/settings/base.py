@@ -224,6 +224,15 @@ MP_AR_PUBLIC_KEY    = env("MP_AR_PUBLIC_KEY",    default="")
 MP_CL_WEBHOOK_SECRET = env("MP_CL_WEBHOOK_SECRET", default="")
 MP_AR_WEBHOOK_SECRET = env("MP_AR_WEBHOOK_SECRET", default="")
 
+# ── Ualá Bis (Argentina — ARS) ───────────────────────────────
+# Reemplaza a MercadoPago Argentina como pasarela oficial de ARS.
+# Credenciales obtenidas en Portal Ualá Bis > Integraciones API.
+UALA_USERNAME       = env("UALA_USERNAME",       default="")
+UALA_CLIENT_ID      = env("UALA_CLIENT_ID",      default="")
+UALA_CLIENT_SECRET  = env("UALA_CLIENT_SECRET",  default="")
+UALA_WEBHOOK_SECRET = env("UALA_WEBHOOK_SECRET", default="")
+UALA_SANDBOX        = env.bool("UALA_SANDBOX",   default=False)
+
 PAYPAL_CLIENT_ID     = env("PAYPAL_CLIENT_ID",     default="")
 PAYPAL_CLIENT_SECRET = env("PAYPAL_CLIENT_SECRET", default="")
 PAYPAL_MODE          = env("PAYPAL_MODE",          default="sandbox")

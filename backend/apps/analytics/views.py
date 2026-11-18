@@ -143,7 +143,8 @@ class CourseAdminSerializer(drf_serializers.ModelSerializer):
         fields = [
             "id", "title", "slug", "short_description", "description",
             "thumbnail", "thumbnail_url", "preview_url",
-            "price", "level", "is_free", "is_published", "order",
+            "price", "price_usd", "price_ars",
+            "level", "is_free", "is_published", "order",
             "enrollment_count", "total_lessons",
         ]
         extra_kwargs = {
@@ -1285,6 +1286,8 @@ def admin_services_crud(request):
                 "short_description": s.short_description,
                 "description":      s.description,
                 "price":            str(s.price) if s.price is not None else "",
+                "price_usd":        str(s.price_usd) if s.price_usd is not None else "",
+                "price_ars":        str(s.price_ars) if s.price_ars is not None else "",
                 "price_display":    s.price_display,
                 "price_type":       s.price_type,
                 "duration_hours":   s.duration_hours,
@@ -1324,6 +1327,8 @@ def admin_services_crud(request):
         description      = data.get("description", ""),
         price_type       = price_type,
         price            = data.get("price") or None,
+        price_usd        = data.get("price_usd") or None,
+        price_ars        = data.get("price_ars") or None,
         is_active        = _svc_bool(data.get("is_active", True)),
         is_featured      = _svc_bool(data.get("is_featured", False)),
         order            = data.get("order") or 0,
@@ -1349,7 +1354,7 @@ def admin_service_detail(request, service_id):
         return Response({"deleted": True})
 
     allowed = ["name", "short_description", "description", "price_type",
-               "price", "order"]
+               "price", "price_usd", "price_ars", "order"]
     for field in allowed:
         if field in request.data:
             val = request.data[field]
@@ -1360,7 +1365,7 @@ def admin_service_detail(request, service_id):
                         "error": f'"{val}" no es un tipo de precio válido. '
                                  f'Opciones: {", ".join(valid_price_types.keys())}.'
                     }, status=400)
-            if field == "price" and (val is None or str(val).strip() == ""):
+            if field in ("price", "price_usd", "price_ars") and (val is None or str(val).strip() == ""):
                 val = None
             if field == "order" and (val is None or str(val).strip() == ""):
                 val = 0

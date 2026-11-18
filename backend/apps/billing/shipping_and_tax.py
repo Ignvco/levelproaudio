@@ -8,6 +8,7 @@ Chile (CL) & Argentina (AR):
 """
 import re
 from decimal import Decimal
+from drf_spectacular.utils import extend_schema, OpenApiTypes
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -174,6 +175,7 @@ def generate_afip_invoice_payload(order, cuit: str, recipient_name: str, invoice
 # 3. ENDPOINTS API: ESTIMADOR LOGÍSTICO Y VALIDADOR FISCAL
 # ═══════════════════════════════════════════════════════════════
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def estimate_shipping_rates(request):
@@ -265,6 +267,7 @@ def estimate_shipping_rates(request):
     })
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def validate_tax_id_view(request):

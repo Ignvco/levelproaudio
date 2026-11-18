@@ -7,6 +7,7 @@ from .views import (
     capture_paypal,
     webhook_mercadopago_cl,
     webhook_mercadopago_ar,
+    webhook_uala,
     payment_status,
     payment_methods,
     transfer_instructions,
@@ -25,6 +26,7 @@ urlpatterns = [
     path("payments/paypal/capture/",            capture_paypal,          name="paypal-capture"),
     path("payments/webhook/mercadopago/cl/",    webhook_mercadopago_cl,  name="webhook-mp-cl"),
     path("payments/webhook/mercadopago/ar/",    webhook_mercadopago_ar,  name="webhook-mp-ar"),
+    path("payments/webhook/uala/",              webhook_uala,            name="webhook-uala"),
     path("payments/status/<uuid:order_id>/",    payment_status,          name="payment-status"),
     path("payments/", include(router.urls)),
 ]
