@@ -58,7 +58,7 @@ export default function Login() {
       title="Iniciá sesión"
       subtitle="Ingresá a tu cuenta para seguir comprando, aprender y participar."
       footer={<>¿No tenés cuenta?{" "}
-        <Link to="/register" style={{ color: "var(--accent)", fontWeight: 600 }}>Registrate gratis</Link>
+        <Link to={next && next !== "/" ? `/register?next=${encodeURIComponent(next)}` : "/register"} style={{ color: "var(--accent)", fontWeight: 600 }}>Registrate gratis</Link>
       </>}
     >
       <GoogleSignInButton onSuccess={handleGoogleSuccess} onError={(e) => setError(e.message)} />

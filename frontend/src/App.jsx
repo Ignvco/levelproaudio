@@ -3,7 +3,7 @@
 // ProtectedRoute redirige al login si el usuario no está autenticado
 // components/ui/PageTransition"
 import PageTransition from "./components/ui/PageTransition"
-import { Routes, Route, Navigate } from "react-router-dom"
+import { Routes, Route, Navigate, useLocation } from "react-router-dom"
 import { useEffect, Suspense, lazy } from "react"
 import { useAuthStore } from "./store/authStore"
 import SeoGlobal from "./components/SeoGlobal"
@@ -119,7 +119,14 @@ function PageLoading() {
 // ── Rutas protegidas ────────────────────────────────────────
 function ProtectedRoute({ children }) {
   const { isAuthenticated, user } = useAuthStore()
-  if (!isAuthenticated) return <Navigate to="/login" replace />
+  const location = useLocation()
+  if (!isAuthenticated) {
+    const nextPath = location.pathname + location.search
+    const target = nextPath && nextPath !== "/"
+      ? `/login?next=${encodeURIComponent(nextPath)}`
+      : "/login"
+    return <Navigate to={target} replace />
+  }
   // Si es admin, lo mandamos al panel admin, no al dashboard de usuario
   if (user?.is_staff || user?.is_superuser) return <Navigate to="/admin" replace />
   return children

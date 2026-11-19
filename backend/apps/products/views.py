@@ -116,8 +116,18 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
             )
 
         if product_ids:
+            import uuid
+            valid_uuids = []
+            for pid in product_ids:
+                try:
+                    valid_uuids.append(uuid.UUID(str(pid).strip()))
+                except (ValueError, AttributeError, TypeError):
+                    return Response(
+                        {"error": f"Identificador de producto inválido: '{pid}'. Debe ser un UUID válido."},
+                        status=status.HTTP_400_BAD_REQUEST,
+                    )
             products = list(
-                Product.objects.filter(id__in=product_ids, is_active=True)
+                Product.objects.filter(id__in=valid_uuids, is_active=True)
                 .select_related("category", "brand")
                 .prefetch_related("images")
             )

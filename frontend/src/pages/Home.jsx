@@ -14,9 +14,7 @@ import ServiceCard from "../components/services/ServiceCard"
 import Seo from "../components/Seo"
 import Button from "../components/ui/Button"
 import logoImg from "../assets/logo.png"
-import {
-  LED, VUMeter, DigitalReadout, Knob, Fader, AnimatedWaveform,
-} from "../components/ui/StudioUI"
+import { LED } from "../components/ui/StudioUI"
 import { ShieldCheck, Truck, CreditCard, MessageCircle } from "lucide-react"
 import { useSiteSettings } from "../hooks/useSiteSettings"
 
@@ -1026,8 +1024,21 @@ function ProductStudioCard({ product }) {
         {product.name}
       </p>
 
-      {/* VU meter rating */}
-      <VUMeter value={rating} segments={14} showLabel label="RATING" />
+      {/* Rating badge minimalista */}
+      <div style={{
+        display: "inline-flex", alignItems: "center", gap: "6px",
+        padding: "3px 8px", borderRadius: "var(--r-full)",
+        background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.08)",
+        width: "fit-content",
+      }}>
+        <span style={{ color: "#ffb340", fontSize: "11px", lineHeight: 1 }}>★</span>
+        <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--text-2)", fontFamily: "var(--font-mono)" }}>
+          {(rating / 20).toFixed(1)}
+        </span>
+        <span style={{ fontSize: "10px", color: "var(--text-3)", fontWeight: 500 }}>
+          · Verificado
+        </span>
+      </div>
 
       {/* Price + arrow */}
       <div style={{
