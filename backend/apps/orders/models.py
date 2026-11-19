@@ -115,7 +115,8 @@ class Order(TimeStampedModel):
     status = models.CharField(
         max_length=20,
         choices=OrderStatus.choices,
-        default=OrderStatus.PENDING
+        default=OrderStatus.PENDING,
+        db_index=True,
     )
 
     total = models.DecimalField(
@@ -164,6 +165,10 @@ class Order(TimeStampedModel):
         verbose_name        = "Pedido"
         verbose_name_plural = "Pedidos"
         ordering            = ["-created_at"]
+        indexes             = [
+            models.Index(fields=["status", "-created_at"], name="order_status_created_idx"),
+            models.Index(fields=["currency", "status"], name="order_currency_status_idx"),
+        ]
 
     def __str__(self):
         return f"Order #{self.id}"

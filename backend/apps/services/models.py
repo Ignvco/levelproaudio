@@ -59,6 +59,20 @@ class Service(TimeStampedModel):
         null=True, blank=True,
         validators=[MinValueValidator(Decimal("0"))],
     )
+    price_usd   = models.DecimalField(
+        max_digits=10, decimal_places=2,
+        null=True, blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        verbose_name="Precio USD",
+        help_text="Precio en dólares (PayPal / internacional). Vacío = calcula con tasa configurable.",
+    )
+    price_ars   = models.DecimalField(
+        max_digits=12, decimal_places=2,
+        null=True, blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        verbose_name="Precio ARS",
+        help_text="Precio en pesos argentinos (Ualá). Vacío = calcula con tasa configurable.",
+    )
     price_type  = models.CharField(
         max_length=20,
         choices=PriceType.choices,
@@ -105,6 +119,36 @@ class Service(TimeStampedModel):
         if not self.deliverables:
             return []
         return [d.strip() for d in self.deliverables.splitlines() if d.strip()]
+
+    def prices_by_currency(self, usd_to_clp=None, usd_to_ars=None):
+        """
+        Devuelve los precios en CLP, USD y ARS para servicios con precio definido.
+        Retorna None por moneda cuando el servicio no tiene precio base.
+        """
+        from decimal import ROUND_HALF_UP
+
+        if self.price is None and self.price_usd is None and self.price_ars is None:
+            return {"CLP": None, "USD": None, "ARS": None}
+
+        usd_to_clp = usd_to_clp or Decimal("950")
+        usd_to_ars = usd_to_ars or Decimal("1000")
+
+        clp = self.price
+        if self.price_usd is not None:
+            usd = self.price_usd
+        elif clp is not None and usd_to_clp:
+            usd = (clp / usd_to_clp).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        else:
+            usd = None
+
+        if self.price_ars is not None:
+            ars = self.price_ars
+        elif usd is not None:
+            ars = (usd * usd_to_ars).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+        else:
+            ars = None
+
+        return {"CLP": clp, "USD": usd, "ARS": ars}
 
 
 class Booking(TimeStampedModel):

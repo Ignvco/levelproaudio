@@ -22,6 +22,7 @@ const navGroups = [
   { key: "inicio", label: "Dashboard", to: "/admin", end: true },
   { key: "ventas", label: "Ventas", items: [
     { to: "/admin/orders",          label: "Órdenes" },
+    { to: "/admin/b2b",             label: "Cotizaciones B2B" },
     { to: "/admin/special-orders",  label: "Bajo pedido" },
     { to: "/admin/payments",        label: "Pagos" },
     { to: "/admin/payment-methods", label: "Métodos de pago" },

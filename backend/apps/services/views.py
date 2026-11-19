@@ -54,6 +54,8 @@ class BookingViewSet(viewsets.ModelViewSet):
     http_method_names  = ["get", "post", "delete", "head", "options"]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return Booking.objects.none()
         return Booking.objects.filter(
             user=self.request.user
         ).select_related("service").order_by("-created_at")
@@ -77,6 +79,8 @@ class ServiceRequestViewSet(viewsets.ModelViewSet):
     http_method_names  = ["get", "post", "patch", "head", "options"]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return ServiceRequest.objects.none()
         return ServiceRequest.objects.filter(
             user=self.request.user
         ).select_related("service").order_by("-created_at")
@@ -86,12 +90,14 @@ class ServiceCheckoutView(APIView):
     """
     POST /api/v1/services/{slug}/checkout/
     Crea una orden pendiente para pagar un servicio de PRECIO FIJO.
+    Admite moneda CLP, USD o ARS (respetando aislamiento multi-moneda).
     El frontend luego llama a /payments/create/ con el order_id.
     """
     permission_classes = [IsAuthenticated]
 
     def post(self, request, slug):
         from apps.orders.models import Order, OrderItem
+        from apps.site_settings.models import SiteSettings
 
         try:
             service = Service.objects.get(slug=slug, is_active=True)
@@ -105,11 +111,31 @@ class ServiceCheckoutView(APIView):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
+        currency = (request.data.get("currency") or "CLP").strip().upper()
+        if currency not in ("CLP", "USD", "ARS"):
+            return Response(
+                {"error": "Moneda no soportada. Usa CLP, USD o ARS."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        site = SiteSettings.objects.first()
+        prices = service.prices_by_currency(
+            site.usd_to_clp if site else None,
+            site.usd_to_ars if site else None,
+        )
+        unit_price = prices.get(currency)
+        if unit_price is None or unit_price <= 0:
+            return Response(
+                {"error": f"No hay un precio válido configurado para {currency}."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         order = Order.objects.create(
             stock_deductions={},  # Compra digital/servicio: no reserva inventario físico.
             user             = request.user,
             status           = "pending",
-            total            = service.price,
+            total            = unit_price,
+            currency         = currency,
             email            = request.user.email,
             shipping_address = "Servicio profesional — LevelPro Audio",
             notes            = f"Servicio contratado: {service.name}",
@@ -118,11 +144,11 @@ class ServiceCheckoutView(APIView):
             order        = order,
             product      = None,
             product_name = f"Servicio · {service.name}",
-            price        = service.price,
+            price        = unit_price,
             quantity     = 1,
         )
 
         return Response(
-            {"order_id": str(order.id), "total": float(service.price)},
+            {"order_id": str(order.id), "total": float(unit_price), "currency": currency},
             status=status.HTTP_201_CREATED,
         )

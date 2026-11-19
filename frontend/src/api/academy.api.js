@@ -44,8 +44,8 @@ export const markLessonComplete = async (lessonId, completed = true) => {
   return response.data
 }
 
-export const purchaseCourse = async (slug) => {
-  const response = await api.post(`/courses/${slug}/purchase/`)
+export const purchaseCourse = async (slug, currency = "CLP") => {
+  const response = await api.post(`/courses/${slug}/purchase/`, { currency })
   return response.data
 }
 

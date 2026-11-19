@@ -10,6 +10,7 @@ Endpoints:
 from decimal import Decimal
 from django.db import transaction
 from django.utils import timezone
+from drf_spectacular.utils import extend_schema, OpenApiTypes
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -25,6 +26,7 @@ def _sanitize_tax_id(tax_id_str):
     return (tax_id_str or "").strip().upper().replace(".", "").replace(" ", "")
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses={201: OpenApiTypes.OBJECT})
 @api_view(["POST"])
 @permission_classes([AllowAny])
 @transaction.atomic
@@ -142,6 +144,7 @@ def b2b_quote_create(request):
     }, status=status.HTTP_201_CREATED)
 
 
+@extend_schema(responses={200: OpenApiTypes.OBJECT})
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_b2b_quotes(request):
@@ -191,6 +194,7 @@ def admin_b2b_quotes(request):
     return Response({"results": results, "count": qs.count()})
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
 @api_view(["GET", "PATCH"])
 @permission_classes([IsAdminOrStaff])
 @transaction.atomic
@@ -265,6 +269,7 @@ def admin_b2b_quote_detail(request, quote_id):
     })
 
 
+@extend_schema(request=None, responses={201: OpenApiTypes.OBJECT})
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 @transaction.atomic

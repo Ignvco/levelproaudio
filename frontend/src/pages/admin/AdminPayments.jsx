@@ -19,8 +19,9 @@ const STATUS = {
 const TONE = { pending:"warning", approved:"success", rejected:"danger", cancelled:"neutral", refunded:"info" }
 
 const PROVIDERS = {
-  mercadopago_cl: "MP Chile", mercadopago_ar: "MP Argentina",
-  paypal:"PayPal", global66:"Global66", transfer:"Transferencia", cash:"Manual",
+  mercadopago_cl: "MP Chile", mercadopago_ar: "MP Argentina (legacy)",
+  uala: "Ualá (AR)", paypal: "PayPal", global66: "Global66",
+  transfer: "Transferencia", payoneer: "Payoneer", cash: "Manual",
 }
 
 function StatusSelector({ paymentId, current }) {

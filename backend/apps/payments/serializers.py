@@ -10,6 +10,7 @@ class CreatePaymentRequestSerializer(serializers.Serializer):
     provider = serializers.ChoiceField(choices=[
         PaymentProvider.MERCADOPAGO_CL,
         PaymentProvider.MERCADOPAGO_AR,
+        PaymentProvider.UALA,
         PaymentProvider.PAYPAL,
         PaymentProvider.GLOBAL66,
         PaymentProvider.TRANSFER,

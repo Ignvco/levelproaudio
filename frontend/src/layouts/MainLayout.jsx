@@ -34,6 +34,7 @@ const NAV_LINKS = [
   { label: "Tienda",    to: "/shop"     },
   { label: "Academia",  to: "/academy"  },
   { label: "Servicios", to: "/services" },
+  { label: "Empresas",  to: "/b2b"      },
   { label: "Rewards",   to: "/rewards"  },
 ]
 
@@ -809,11 +810,12 @@ function Footer() {
       { label:"Auriculares",         to:"/shop?category=auriculares" },
     ]},
     { title:"Plataforma", links:[
-      { label:"Academia",   to:"/academy" },
-      { label:"Servicios",  to:"/services" },
-      { label:"Bajo pedido",to:"/bajo-pedido" },
-      { label:"Rewards",    to:"/rewards" },
-      { label:"Mi cuenta",  to:"/dashboard" },
+      { label:"Academia",     to:"/academy" },
+      { label:"Servicios",    to:"/services" },
+      { label:"Empresas B2B", to:"/b2b" },
+      { label:"Bajo pedido",  to:"/bajo-pedido" },
+      { label:"Rewards",      to:"/rewards" },
+      { label:"Mi cuenta",    to:"/dashboard" },
     ]},
     { title:"Contacto", links:[
       { label:"WhatsApp",       href:whatsappUrl },

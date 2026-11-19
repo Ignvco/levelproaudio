@@ -20,6 +20,10 @@ from .services import (
     verify_mp_webhook_signature,
     create_paypal_order,
     capture_paypal_payment,
+    create_uala_checkout,
+    process_uala_webhook,
+    uala_credentials_configured,
+    verify_uala_webhook_signature,
     get_global66_info,
 )
 
@@ -105,6 +109,20 @@ def create_payment(request):
                 }
             else:
                 data = create_paypal_order(order)
+
+        elif provider == PaymentProvider.UALA:
+            existing_payment = Payment.objects.filter(
+                order=order, provider=PaymentProvider.UALA, status=PaymentStatus.PENDING,
+            ).exclude(payment_url="").order_by("-created_at").first()
+
+            if existing_payment and existing_payment.preference_id and existing_payment.payment_url:
+                data = {
+                    "uala_order_id": existing_payment.preference_id,
+                    "checkout_url": existing_payment.payment_url,
+                    "init_point": existing_payment.payment_url,
+                }
+            else:
+                data = create_uala_checkout(order)
 
         elif provider == PaymentProvider.GLOBAL66:
             data = get_global66_info(order)
@@ -241,6 +259,69 @@ def webhook_mercadopago_cl(request):
 def webhook_mercadopago_ar(request):
     """Notificaciones AR autenticadas con el secreto de la cuenta argentina."""
     return _webhook_mercadopago(request, PaymentProvider.MERCADOPAGO_AR)
+
+
+@csrf_exempt
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def webhook_uala(request):
+    """
+    POST /api/v1/payments/webhook/uala/
+    Notificaciones de Ualá Bis (Argentina — ARS).
+    Falla cerrado si faltan credenciales o la firma HMAC opcional es inválida.
+    Verifica siempre el estado real contra la API autoritativa de Ualá.
+    """
+    from django.utils import timezone
+
+    if not uala_credentials_configured():
+        logger.error("Webhook Ualá deshabilitado: faltan credenciales Ualá Bis.")
+        return Response({"status": "webhook unavailable"}, status=503)
+
+    if not verify_uala_webhook_signature(request):
+        logger.warning("Firma inválida en webhook Ualá, request rechazado.")
+        return Response({"status": "invalid signature"}, status=401)
+
+    payload = request.data if isinstance(request.data, dict) else {}
+    uala_uuid = str(payload.get("uuid") or payload.get("order_id") or "").strip()
+    remote_status = str(payload.get("status") or "notification").strip().upper()
+    if not uala_uuid:
+        return Response({"status": "invalid payload"}, status=400)
+
+    event_id = f"{uala_uuid}:{remote_status}"
+    if PaymentWebhookEvent.objects.filter(
+        provider=PaymentProvider.UALA, event_id=event_id, status=WebhookEventStatus.PROCESSED
+    ).exists():
+        logger.info("Webhook Ualá ignorado por deduplicación (event_id=%s).", event_id)
+        return Response({"status": "ok"})
+
+    webhook_event, _ = PaymentWebhookEvent.objects.get_or_create(
+        provider=PaymentProvider.UALA,
+        event_id=event_id,
+        defaults={
+            "resource_id": uala_uuid,
+            "topic": remote_status,
+            "status": WebhookEventStatus.PROCESSING,
+            "raw_payload": payload,
+        },
+    )
+
+    if webhook_event.status == WebhookEventStatus.PROCESSED:
+        return Response({"status": "ok"})
+
+    try:
+        process_uala_webhook(payload)
+        webhook_event.status = WebhookEventStatus.PROCESSED
+        webhook_event.processed_at = timezone.now()
+        webhook_event.save(update_fields=["status", "processed_at", "updated_at"])
+    except Exception as exc:
+        webhook_event.status = WebhookEventStatus.ERROR
+        webhook_event.error_message = str(exc)
+        webhook_event.save(update_fields=["status", "error_message", "updated_at"])
+        logger.exception("Error procesando webhook Ualá.")
+        return Response({"status": "error"}, status=503)
+
+    return Response({"status": "ok"})
 
 
 @api_view(["GET"])

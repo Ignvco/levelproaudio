@@ -12,6 +12,7 @@ import json
 import time
 from django.conf import settings
 from django.utils.encoding import force_bytes, force_str
+from drf_spectacular.utils import extend_schema, OpenApiTypes
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -91,6 +92,7 @@ def verify_soundmap_sso_token(token: str) -> dict:
 # ENDPOINTS API DE INTEGRACIÓN SOUNDMAP
 # ═══════════════════════════════════════════════════════════════
 
+@extend_schema(request=None, responses={200: OpenApiTypes.OBJECT})
 @api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def soundmap_sso_token_view(request):
@@ -106,6 +108,7 @@ def soundmap_sso_token_view(request):
     })
 
 
+@extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def soundmap_webhook_view(request):
@@ -138,6 +141,7 @@ def soundmap_webhook_view(request):
     }, status=status.HTTP_200_OK)
 
 
+@extend_schema(responses={200: OpenApiTypes.OBJECT})
 @api_view(["GET"])
 @permission_classes([AllowAny])
 def soundmap_audio_assets_view(request):

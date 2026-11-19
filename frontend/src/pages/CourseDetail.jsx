@@ -6,11 +6,12 @@ import {
   getCourse, enrollCourse, purchaseCourse,
   markLessonComplete, getCourseProgress,
 } from "../api/academy.api"
-import { createPayment } from "../api/payments.api"
+import { createPayment, getPaymentMethods } from "../api/payments.api"
 import { cancelOrder } from "../api/orders.api"
 import { showToast } from "../utils/toast"
 import { useAuthStore } from "../store/authStore"
 import { mediaUrl } from "../utils/mediaUrl"
+import { usePrice } from "../hooks/usePrice"
 import Seo from "../components/Seo"
 import Button from "../components/ui/Button"
 import JsonLd from "../components/JsonLd"
@@ -157,13 +158,31 @@ export default function CourseDetail() {
   const navigate    = useNavigate()
   const queryClient = useQueryClient()
   const { isAuthenticated } = useAuthStore()
+  const { currency, price, secondaryPrice } = usePrice()
 
   const [activeLesson,   setActiveLesson]   = useState(null)
   const [completedIds,   setCompletedIds]   = useState(new Set())
   const [showPayment,    setShowPayment]    = useState(false)
-  const [paymentMethod,  setPaymentMethod]  = useState("mercadopago_cl")
+  const [paymentMethod,  setPaymentMethod]  = useState("")
   const [purchaseOrderId,setPurchaseOrderId] = useState(null)
   const [showSuccess,    setShowSuccess]    = useState(false)
+
+  const { data: methodsData } = useQuery({
+    queryKey: ["payment-methods", currency],
+    queryFn:  () => getPaymentMethods(currency),
+  })
+  const availableMethods = (methodsData?.methods || []).map(m => ({
+    id: m.id,
+    label: m.label || m.id,
+    Icon: m.id === "paypal" || m.id === "payoneer" ? Globe
+      : (m.id === "transfer" || m.id === "global66" ? Landmark : CreditCard),
+  }))
+
+  useEffect(() => {
+    if (availableMethods.length && !availableMethods.some(m => m.id === paymentMethod)) {
+      setPaymentMethod(availableMethods[0].id)
+    }
+  }, [availableMethods, paymentMethod])
 
   const { data: course, isLoading, isError } = useQuery({
     queryKey: ["course", slug],
@@ -199,7 +218,7 @@ export default function CourseDetail() {
   })
 
   const purchaseMutation = useMutation({
-    mutationFn: () => purchaseCourse(slug),
+    mutationFn: () => purchaseCourse(slug, currency),
     onSuccess: (data) => {
       setPurchaseOrderId(data.order_id)
       setShowPayment(true)
@@ -210,8 +229,10 @@ export default function CourseDetail() {
   const payMutation = useMutation({
     mutationFn: () => createPayment(purchaseOrderId, paymentMethod),
     onSuccess: (data) => {
-      if (paymentMethod === "mercadopago_cl")
+      if (paymentMethod === "mercadopago_cl" || paymentMethod === "mercadopago_ar")
         window.location.href = data.sandbox_url || data.init_point
+      else if (paymentMethod === "uala")
+        window.location.href = data.checkout_url || data.init_point
       else if (paymentMethod === "paypal")
         window.location.href = data.approve_url
       else navigate(`/payment/transfer/${purchaseOrderId}`)
@@ -517,12 +538,16 @@ export default function CourseDetail() {
                 <p style={{ fontFamily: "var(--font-display)", fontSize: "2.4rem",
                   lineHeight: 1, marginBottom: "4px", fontWeight: 800, letterSpacing: "-0.03em",
                   color: course.is_free ? "var(--accent)" : "var(--text)" }}>
-                  {course.is_free ? "Gratis"
-                    : `$${Number(course.price).toLocaleString("es-CL")}`}
+                  {course.is_free ? "Gratis" : price(course)}
                 </p>
+                {!course.is_free && secondaryPrice(course) && (
+                  <p style={{ fontSize: "12px", color: "var(--text-3)", marginBottom: "4px" }}>
+                    Ref. {secondaryPrice(course)} ARS
+                  </p>
+                )}
                 {!course.is_free && (
                   <p style={{ fontSize: "12px", color: "var(--text-3)" }}>
-                    Acceso de por vida
+                    Acceso de por vida · {currency}
                   </p>
                 )}
               </div>
@@ -565,13 +590,12 @@ export default function CourseDetail() {
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     <p style={{ fontSize: "13px", fontWeight: 500, marginBottom: "4px" }}>
-                      Método de pago:
+                      Método de pago ({currency}):
                     </p>
-                    {[
+                    {(availableMethods.length ? availableMethods : [
                       { id: "mercadopago_cl", label: "MercadoPago", Icon: CreditCard },
                       { id: "paypal",         label: "PayPal",      Icon: Globe },
-                      { id: "global66",       label: "Transferencia",Icon: Landmark },
-                    ].map(m => (
+                    ]).map(m => (
                       <button key={m.id} type="button"
                         onClick={() => setPaymentMethod(m.id)}
                         style={{

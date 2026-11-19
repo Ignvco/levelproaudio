@@ -20,6 +20,8 @@ function CourseModal({ course, onClose, onSave }) {
     short_description: course?.short_description || "",
     description:       course?.description       || "",
     price:             course?.price             || "",
+    price_usd:         course?.price_usd         ?? "",
+    price_ars:         course?.price_ars         ?? "",
     level:             course?.level             || "beginner",
     is_published:      course?.is_published      ?? true,
     is_free:           course?.is_free           ?? false,
@@ -77,6 +79,22 @@ function CourseModal({ course, onClose, onSave }) {
             disabled={form.is_free}
             style={{ ...formInputStyle, opacity: form.is_free ? 0.4 : 1 }}
             placeholder="0" />
+        </FormField>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+        <FormField label="Precio USD (opcional · PayPal)">
+          <input type="number" min="0" step="0.01" value={form.price_usd}
+            onChange={e => setForm(p => ({ ...p, price_usd: e.target.value }))}
+            disabled={form.is_free}
+            style={{ ...formInputStyle, opacity: form.is_free ? 0.4 : 1 }}
+            placeholder="Auto por tasa" />
+        </FormField>
+        <FormField label="Precio ARS (opcional · Ualá)">
+          <input type="number" min="0" step="1" value={form.price_ars}
+            onChange={e => setForm(p => ({ ...p, price_ars: e.target.value }))}
+            disabled={form.is_free}
+            style={{ ...formInputStyle, opacity: form.is_free ? 0.4 : 1 }}
+            placeholder="Auto por tasa" />
         </FormField>
       </div>
       <FormField label="Descripción corta">

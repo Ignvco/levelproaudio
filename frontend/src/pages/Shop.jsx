@@ -8,6 +8,8 @@ import { getProducts, getCategories, getBrands } from "../api/products.api"
 import ProductCard from "../components/product/ProductCard"
 import ProductRow from "../components/product/ProductRow"
 import ShopFilters from "../components/product/ShopFilters"
+import CompareBar from "../components/product/CompareBar"
+import CompareModal from "../components/product/CompareModal"
 import Seo from "../components/Seo"
 import Button from "../components/ui/Button"
 import { useScrollReveal } from "../hooks/useScrollReveal"
@@ -418,6 +420,9 @@ export default function Shop() {
       )}
 
       </div>
+
+      <CompareBar />
+      <CompareModal />
 
       <style>{`
         @keyframes slideInLeft { from { transform: translateX(-100%) } to { transform: translateX(0) } }

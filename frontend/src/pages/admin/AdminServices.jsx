@@ -451,6 +451,8 @@ function ServiceModal({ service, onClose, onSaved }) {
     description:       service?.description || "",
     price_type:        service?.price_type || "quote",
     price:             service?.price || "",
+    price_usd:         service?.price_usd ?? "",
+    price_ars:         service?.price_ars ?? "",
     duration_hours:    service?.duration_hours || "",
     category:          service?.category || "",
     is_active:         service?.is_active ?? true,
@@ -488,6 +490,8 @@ function ServiceModal({ service, onClose, onSaved }) {
     fd.append("description", form.description || "")
     fd.append("price_type", form.price_type)
     fd.append("price", form.price_type === "quote" ? "" : (form.price || ""))
+    fd.append("price_usd", form.price_type === "quote" ? "" : (form.price_usd || ""))
+    fd.append("price_ars", form.price_type === "quote" ? "" : (form.price_ars || ""))
     fd.append("duration_hours", form.duration_hours || "")
     fd.append("is_active", form.is_active ? "true" : "false")
     fd.append("is_featured", form.is_featured ? "true" : "false")
@@ -631,10 +635,33 @@ function ServiceModal({ service, onClose, onSaved }) {
             </div>
             <div>
               <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
-                letterSpacing:"0.08em", textTransform:"uppercase" }}>Precio</label>
+                letterSpacing:"0.08em", textTransform:"uppercase" }}>Precio (CLP)</label>
               <input type="number" min="0" value={form.price || ""}
                 disabled={form.price_type === "quote"}
                 onChange={e => setForm(p => ({ ...p, price:e.target.value }))}
+                style={{ ...inputSt, marginTop:"6px",
+                  opacity: form.price_type === "quote" ? 0.4 : 1 }} />
+            </div>
+          </div>
+
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:"12px" }}>
+            <div>
+              <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
+                letterSpacing:"0.08em", textTransform:"uppercase" }}>Precio USD (opcional)</label>
+              <input type="number" min="0" step="0.01" value={form.price_usd || ""}
+                disabled={form.price_type === "quote"}
+                placeholder="Auto por tasa"
+                onChange={e => setForm(p => ({ ...p, price_usd:e.target.value }))}
+                style={{ ...inputSt, marginTop:"6px",
+                  opacity: form.price_type === "quote" ? 0.4 : 1 }} />
+            </div>
+            <div>
+              <label style={{ fontSize:"11px", fontWeight:600, color:"var(--text-3)",
+                letterSpacing:"0.08em", textTransform:"uppercase" }}>Precio ARS (opcional)</label>
+              <input type="number" min="0" step="1" value={form.price_ars || ""}
+                disabled={form.price_type === "quote"}
+                placeholder="Auto por tasa"
+                onChange={e => setForm(p => ({ ...p, price_ars:e.target.value }))}
                 style={{ ...inputSt, marginTop:"6px",
                   opacity: form.price_type === "quote" ? 0.4 : 1 }} />
             </div>

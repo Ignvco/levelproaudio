@@ -4,12 +4,13 @@ import { useQuery, useMutation } from "@tanstack/react-query"
 import { useState, useEffect } from "react"
 import {
   Check, Clock, ArrowRight, MessageCircle, SearchX,
-  Tag, Layers, Zap, ShieldCheck, Sparkles, CreditCard, Globe, Calendar, X,
+  Tag, Layers, Zap, ShieldCheck, Sparkles, CreditCard, Globe, Landmark, Calendar, X,
 } from "lucide-react"
 import { getService, getServices } from "../api/services.api"
 import { createServiceRequest, checkoutService, createBooking } from "../api/services.api"
-import { createPayment } from "../api/payments.api"
+import { createPayment, getPaymentMethods } from "../api/payments.api"
 import { useAuthStore } from "../store/authStore"
+import { usePrice } from "../hooks/usePrice"
 import { RichText } from "../components/ui/RichText"
 import { showToast } from "../utils/toast"
 import ServiceProcess from "../components/services/ServiceProcess"
@@ -167,6 +168,19 @@ export default function ServiceDetail() {
     queryFn:  () => getServices(),
   })
 
+  const { currency, price } = usePrice()
+  const { data: methodsData } = useQuery({
+    queryKey: ["payment-methods", currency],
+    queryFn:  () => getPaymentMethods(currency),
+  })
+  const servicePayMethods = (methodsData?.methods || []).map(m => ({
+    id: m.id,
+    label: m.label || m.id,
+    desc: m.description || "",
+    Icon: m.id === "paypal" || m.id === "payoneer" ? Globe
+      : (m.id === "transfer" || m.id === "global66" ? Landmark : CreditCard),
+  }))
+
   const mutation = useMutation({
     mutationFn: async () => {
       const budgetNum = form.budget ? Number(String(form.budget).replace(/[^\d]/g, "")) : null
@@ -237,6 +251,9 @@ export default function ServiceDetail() {
     .filter(s => s.slug !== service.slug).slice(0, 3)
   const modalidad = service.price_type_display || "A cotizar"
   const isFixed = service.price_type === "fixed" && Number(service.price) > 0
+  const displayPrice = isFixed
+    ? price(service)
+    : (service.price_type === "hourly" && service.price ? `${price(service)}/hr` : (service.price_display || "A cotizar"))
 
   const handlePay = async (provider) => {
     if (!isAuthenticated) {
@@ -246,9 +263,13 @@ export default function ServiceDetail() {
     }
     try {
       setPayLoading(true)
-      const { order_id } = await checkoutService(service.slug)
+      const { order_id } = await checkoutService(service.slug, currency)
       const pay = await createPayment(order_id, provider)
-      const url = pay.init_point || pay.approve_url
+      if (["transfer", "payoneer", "global66"].includes(provider)) {
+        navigate(`/payment/transfer/${order_id}`)
+        return
+      }
+      const url = pay.checkout_url || pay.init_point || pay.approve_url
       if (url) { window.location.href = url; return }
       showToast("No se pudo iniciar el pago. Intentá de nuevo.", "error")
       setPayLoading(false)
@@ -324,7 +345,7 @@ export default function ServiceDetail() {
 
           {/* Chips meta */}
           <div style={{ display: "flex", flexWrap: "wrap", gap: "10px" }}>
-            <Chip Icon={Tag}>{service.price_display}</Chip>
+            <Chip Icon={Tag}>{displayPrice}</Chip>
             <Chip Icon={Layers}>{modalidad}</Chip>
             {service.duration_hours && (
               <Chip Icon={Clock}>{service.duration_hours} hora{service.duration_hours !== 1 ? "s" : ""}</Chip>
@@ -459,7 +480,7 @@ export default function ServiceDetail() {
                   <h2 className="display-bold" style={{ fontFamily: "var(--font-display)",
                     fontSize: "clamp(1.8rem, 2.4vw, 2.2rem)", fontWeight: 800,
                     letterSpacing: "-0.03em", color: "var(--text)", lineHeight: 1 }}>
-                    {service.price_display}
+                    {displayPrice}
                   </h2>
                   <span style={{ fontSize: "12px", color: "var(--text-3)" }}>{modalidad}</span>
                 </div>
@@ -473,12 +494,12 @@ export default function ServiceDetail() {
               {isFixed ? (
                 <div data-testid="service-pay-block" style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "10px" }}>
                   <p style={{ fontSize: "12px", color: "var(--text-3)", fontWeight: 600, marginBottom: "2px" }}>
-                    Elegí cómo pagar:
+                    Elegí cómo pagar ({currency}):
                   </p>
-                  {[
+                  {(servicePayMethods.length ? servicePayMethods : [
                     { id: "mercadopago_cl", label: "MercadoPago", Icon: CreditCard, desc: "Tarjetas, Khipu, efectivo" },
                     { id: "paypal",         label: "PayPal",      Icon: Globe,      desc: "Tarjetas internacionales" },
-                  ].map(({ id, label, Icon, desc }) => (
+                  ]).map(({ id, label, Icon, desc }) => (
                     <button key={id} data-testid={`service-pay-${id}`} disabled={payLoading}
                       onClick={() => handlePay(id)}
                       style={{ display: "flex", alignItems: "center", gap: "12px", width: "100%",
@@ -496,7 +517,7 @@ export default function ServiceDetail() {
                     </button>
                   ))}
                   <p style={{ fontSize: "12px", color: "var(--text-3)", textAlign: "center", marginTop: "6px" }}>
-                    {payLoading ? "Redirigiendo al pago…" : `Total a pagar: ${service.price_display}`}
+                    {payLoading ? "Redirigiendo al pago…" : `Total a pagar: ${displayPrice}`}
                   </p>
                   <a href={whatsappUrl} target="_blank" rel="noreferrer"
                     style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",

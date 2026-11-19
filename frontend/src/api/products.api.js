@@ -14,3 +14,7 @@ export const getBrands = () =>
 // Solicitud de equipo bajo pedido (público)
 export const createSpecialOrder = (data) =>
   api.post("/special-orders/", data).then(r => r.data)
+
+// Comparador técnico de equipamiento de audio pro (V3.3 — 2 a 4 productos)
+export const compareProducts = ({ product_ids, slugs, currency = "CLP" }) =>
+  api.post("/products/compare/", { product_ids, slugs, currency }).then(r => r.data)

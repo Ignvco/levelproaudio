@@ -25,6 +25,18 @@ class Course(TimeStampedModel):
         max_digits=10, decimal_places=2, default=0,
         validators=[MinValueValidator(Decimal("0"))],
     )
+    price_usd    = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        verbose_name="Precio USD",
+        help_text="Precio en dólares (PayPal / internacional). Vacío = calcula con tasa configurable.",
+    )
+    price_ars    = models.DecimalField(
+        max_digits=12, decimal_places=2, null=True, blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        verbose_name="Precio ARS",
+        help_text="Precio en pesos argentinos (Ualá). Vacío = calcula con tasa configurable.",
+    )
     level        = models.CharField(
         max_length=20, choices=Level.choices, default=Level.BEGINNER
     )
@@ -65,6 +77,32 @@ class Course(TimeStampedModel):
     @property
     def enrolled_count(self):
         return self.enrollments.count()
+
+    def prices_by_currency(self, usd_to_clp=None, usd_to_ars=None):
+        """
+        Devuelve los precios en CLP, USD y ARS. Respeta precios manuales si están
+        cargados; si no, calcula desde CLP usando las tasas configurables.
+        """
+        from decimal import ROUND_HALF_UP
+
+        if self.is_free:
+            return {"CLP": Decimal("0"), "USD": Decimal("0"), "ARS": Decimal("0")}
+
+        usd_to_clp = usd_to_clp or Decimal("950")
+        usd_to_ars = usd_to_ars or Decimal("1000")
+
+        clp = self.price or Decimal("0")
+        if self.price_usd is not None:
+            usd = self.price_usd
+        else:
+            usd = (clp / usd_to_clp).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if usd_to_clp else Decimal("0")
+
+        if self.price_ars is not None:
+            ars = self.price_ars
+        else:
+            ars = (usd * usd_to_ars).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+
+        return {"CLP": clp, "USD": usd, "ARS": ars}
 
 
 class Module(TimeStampedModel):
