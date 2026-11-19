@@ -62,6 +62,28 @@ def test_academy_initial_courses_seeded_and_multicurrency():
 @pytest.mark.django_db
 def test_payment_methods_returns_bank_accounts_for_clp_and_ars():
     client = APIClient()
+    # Crear cuentas bancarias explícitamente dentro del test
+    BankAccount.objects.create(
+        payment_method="transfer",
+        label="Cuenta Corriente Chile (CLP) - Banco de Chile",
+        currency="CLP",
+        bank_name="Banco de Chile",
+        account_number="00-158-92451-03",
+        holder_name="LevelPro Audio SpA",
+        is_active=True,
+    )
+    BankAccount.objects.create(
+        payment_method="transfer",
+        label="Transferencia Argentina (ARS) - Banco Santander / CBU",
+        currency="ARS",
+        bank_name="Banco Santander Río",
+        account_number="072-019284/3",
+        holder_name="LevelPro Audio",
+        is_active=True,
+    )
+    PaymentMethodConfig.objects.filter(method="transfer").update(is_active=True)
+    PaymentMethodConfig.objects.filter(method="uala").update(is_active=True)
+
     # CLP
     res_clp = client.get("/api/v1/payments/methods/?currency=CLP")
     assert res_clp.status_code == 200
