@@ -151,10 +151,10 @@ steps:
       - --update-secrets=PAYPAL_CLIENT_ID=PAYPAL_CLIENT_ID:latest
       - --update-secrets=PAYPAL_CLIENT_SECRET=PAYPAL_CLIENT_SECRET:latest
       # Argentina opera con Ualá Bis (ARS) en lugar de MercadoPago AR.
-      # Una vez cargados los secretos en Secret Manager, descomentar:
-      # - --update-secrets=UALA_USERNAME=UALA_USERNAME:latest
-      # - --update-secrets=UALA_CLIENT_ID=UALA_CLIENT_ID:latest
-      # - --update-secrets=UALA_CLIENT_SECRET=UALA_CLIENT_SECRET:latest
+      - --update-secrets=UALA_USERNAME=UALA_USERNAME:latest
+      - --update-secrets=UALA_CLIENT_ID=UALA_CLIENT_ID:latest
+      - --update-secrets=UALA_CLIENT_SECRET=UALA_CLIENT_SECRET:latest
+      # UALA_WEBHOOK_SECRET es opcional (el webhook consulta el estado autoritativo a la API de Ualá)
       # - --update-secrets=UALA_WEBHOOK_SECRET=UALA_WEBHOOK_SECRET:latest
       # Resend (emails). Remitente de marca con dominio verificado.
       - --set-env-vars=RESEND_FROM_EMAIL=LevelPro Audio <no-responder@levelproaudio.com>
