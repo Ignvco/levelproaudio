@@ -1,6 +1,6 @@
 // pages/Register.jsx
 import { useState } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useSearchParams } from "react-router-dom"
 import { useAuthStore } from "../store/authStore"
 import AuthShell, { AuthField, AuthSubmit, AuthDivider } from "../components/auth/AuthShell"
 import GoogleSignInButton from "../components/auth/GoogleSignInButton"
@@ -17,13 +17,15 @@ export default function Register() {
   const [loading, setLoading] = useState(false)
   const { register, loginWithGoogle } = useAuthStore()
   const navigate            = useNavigate()
+  const [searchParams]      = useSearchParams()
+  const next                = searchParams.get("next") || "/"
 
   const handleGoogleSuccess = async (credential) => {
     setError("")
     setLoading(true)
     try {
       await loginWithGoogle(credential)
-      navigate("/")
+      navigate(next)
     } catch (err) {
       setError(err?.response?.data?.error || "No se pudo crear la cuenta con Google.")
     } finally {
@@ -45,7 +47,7 @@ export default function Register() {
     setError("")
     try {
       await register(form)
-      navigate("/")
+      navigate(next)
     } catch (err) {
       const data = err?.response?.data
       setError(
@@ -70,7 +72,7 @@ export default function Register() {
       title="Crear cuenta"
       subtitle="Unite a la comunidad LevelPro Audio y accedé a la tienda, la academia y los sorteos."
       footer={<>¿Ya tenés cuenta?{" "}
-        <Link to="/login" style={{ color: "var(--accent)", fontWeight: 600 }}>Iniciar sesión</Link>
+        <Link to={next && next !== "/" ? `/login?next=${encodeURIComponent(next)}` : "/login"} style={{ color: "var(--accent)", fontWeight: 600 }}>Iniciar sesión</Link>
       </>}
     >
       <GoogleSignInButton onSuccess={handleGoogleSuccess} onError={(e) => setError(e.message)} text="signup_with" />

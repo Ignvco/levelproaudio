@@ -19,8 +19,8 @@
   /* Acento — verde eléctrico LevelPro */
   --accent:       #1aff6e;
   --accent-hover: #00e653;
-  --accent-dim:   rgba(26,255,110,0.1);
-  --accent-glow:  rgba(26,255,110,0.22);
+  --accent-dim:   rgba(26,255,110,0.08);
+  --accent-glow:  rgba(26,255,110,0.14);
 
   /* Verde de los botones (sistema de botones global). Más sólido que el
      neón de marca — se cambia acá y se actualiza en todos los botones. */
