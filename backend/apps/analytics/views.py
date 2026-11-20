@@ -21,6 +21,17 @@ from django.core.exceptions import ValidationError as DjangoValidationError
 from django.views.decorators.csrf import csrf_exempt
 from datetime import timedelta
 from core.admin_permissions import IsAdminOrStaff
+from core.rbac.mixins import SensitiveDataSerializerMixin
+from core.rbac.constants import (
+    MODULE_CATALOG,
+    MODULE_ORDERS,
+    MODULE_FINANCES,
+    MODULE_ACADEMY,
+    MODULE_SERVICES,
+    PERM_VIEW_FINANCES,
+    PERM_EDIT_COSTS,
+)
+from core.rbac.permissions import user_has_capability
 
 from apps.orders.models import Order, OrderItem, OrderStatus
 from apps.orders.serializers import OrderSerializer
@@ -161,18 +172,18 @@ class CourseAdminSerializer(drf_serializers.ModelSerializer):
         return obj.total_lessons
 
 
-class AdminProductDetailSerializer(ProductDetailSerializer):
+class AdminProductDetailSerializer(SensitiveDataSerializerMixin, ProductDetailSerializer):
     """
     Mismo serializer que usa el público, pero con los campos internos
     que el admin sí necesita ver (costo real, umbral de stock mínimo).
     Separado a propósito del público — cost_price nunca debe viajar a
-    un endpoint que cualquiera pueda pedir sin login.
+    un endpoint que cualquiera pueda pedir sin login, y se enmascara para roles sin permiso.
     """
     class Meta(ProductDetailSerializer.Meta):
         fields = ProductDetailSerializer.Meta.fields + ["cost_price", "stock_min"]
 
 
-class AdminProductWriteSerializer(drf_serializers.ModelSerializer):
+class AdminProductWriteSerializer(SensitiveDataSerializerMixin, drf_serializers.ModelSerializer):
     """Serializer para crear/editar productos — acepta IDs de categoría y marca."""
     class Meta:
         model  = Product
@@ -197,6 +208,7 @@ class AdminProductWriteSerializer(drf_serializers.ModelSerializer):
 
 class AdminOrderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_ORDERS
     serializer_class   = OrderSerializer
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
     search_fields      = ["email", "id"]
@@ -281,6 +293,7 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
 class AdminProductViewSet(viewsets.ModelViewSet):
     """CRUD completo de productos para el admin."""
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_CATALOG
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
     search_fields      = ["name", "sku"]
@@ -364,6 +377,11 @@ class AdminProductViewSet(viewsets.ModelViewSet):
                     f'Opciones: {", ".join(valid_badges.keys())} (o vacío para ninguna).'
                 )
             product.badge = data["badge"] or ""
+
+        # ── Protección de costo sensible (RBAC) ──────────────────
+        if "cost_price" in data and not request.user.is_superuser:
+            if not user_has_capability(request.user, PERM_EDIT_COSTS):
+                raise AdminInputError("No posee autorización para modificar costos de adquisición (cost_price).")
 
         # ── Campos decimales — siempre convertir a Decimal ───────
         decimal_fields = ["price", "compare_price", "cost_price", "price_usd", "price_ars"]
@@ -499,6 +517,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
 
 class AdminCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_CATALOG
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
     queryset           = Category.objects.all().order_by("order", "name")
     filter_backends    = [filters.SearchFilter]
@@ -521,6 +540,7 @@ class AdminCategoryViewSet(viewsets.ModelViewSet):
 
 class AdminBrandViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_CATALOG
     serializer_class   = AdminBrandSerializer
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
     queryset           = Brand.objects.all().order_by("name")
@@ -593,6 +613,7 @@ class AdminProductImageViewSet(viewsets.ModelViewSet):
 
 class AdminCourseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_ACADEMY
     serializer_class   = CourseAdminSerializer
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
     lookup_field       = "id"
@@ -606,6 +627,7 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
 class AdminCertificationPathViewSet(viewsets.ModelViewSet):
     """CRUD de rutas de certificación para el panel admin de React."""
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_ACADEMY
     parser_classes     = [JSONParser]
     lookup_field       = "id"
 
@@ -619,6 +641,7 @@ class AdminCertificationPathViewSet(viewsets.ModelViewSet):
 
 class AdminModuleViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_ACADEMY
     serializer_class   = AdminModuleSerializer
     parser_classes     = [JSONParser]
 
@@ -632,6 +655,7 @@ class AdminModuleViewSet(viewsets.ModelViewSet):
 
 class AdminLessonViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_ACADEMY
     serializer_class   = AdminLessonSerializer
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
 
@@ -917,6 +941,7 @@ def admin_users(request):
             "is_active":    u.is_active,
             "is_staff":     u.is_staff,
             "is_superuser": u.is_superuser,
+            "roles":        list(u.groups.values_list("name", flat=True)),
             "orders_count": orders_count,
             "total_spent": spend_by_currency["CLP"],  # Legacy CLP-only field
             "total_spent_currency": "CLP",
@@ -1995,10 +2020,21 @@ def product_image_set_primary(request, image_id):
     
     # ── MÓDULO FINANCIERO ────────────────────────────────────────
 
+def check_finance_permission(user):
+    """Verifica capacidad sensible de finanzas para RBAC."""
+    if not user or not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    return user_has_capability(user, PERM_VIEW_FINANCES)
+
+
 @api_view(["GET", "POST"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_categories(request):
     """GET/POST /api/v1/admin/finance/categories/"""
+    if not check_finance_permission(request.user):
+        return Response({"error": "No posee autorización para acceder al módulo financiero."}, status=status.HTTP_403_FORBIDDEN)
     
 
     if request.method == "GET":
@@ -2031,6 +2067,8 @@ def admin_finance_categories(request):
 @permission_classes([IsAdminOrStaff])
 def admin_finance_category_detail(request, cat_id):
     """PATCH/DELETE /api/v1/admin/finance/categories/{id}/"""
+    if not check_finance_permission(request.user):
+        return Response({"error": "No posee autorización para acceder al módulo financiero."}, status=status.HTTP_403_FORBIDDEN)
     
     try:
         cat = DistributionCategory.objects.get(id=cat_id)
@@ -2100,6 +2138,8 @@ def admin_finance_category_detail(request, cat_id):
 @permission_classes([IsAdminOrStaff])
 def admin_finance_summary(request):
     """GET /api/v1/admin/finance/summary/?currency=CLP|USD|ARS"""
+    if not check_finance_permission(request.user):
+        return Response({"error": "No posee autorización para acceder al módulo financiero."}, status=status.HTTP_403_FORBIDDEN)
     currency = requested_currency(request)
     if currency is None:
         return currency_error()
@@ -2191,6 +2231,8 @@ def admin_finance_summary(request):
 @permission_classes([IsAdminOrStaff])
 def admin_finance_withdrawals(request):
     """GET/POST /api/v1/admin/finance/withdrawals/ (currency-aware)."""
+    if not check_finance_permission(request.user):
+        return Response({"error": "No posee autorización para acceder al módulo financiero."}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "GET":
         currency = requested_currency(request)
         if currency is None:
@@ -2264,6 +2306,8 @@ def admin_finance_withdrawals(request):
 @permission_classes([IsAdminOrStaff])
 def admin_finance_withdrawal_delete(request, withdrawal_id):
     """DELETE /api/v1/admin/finance/withdrawals/{id}/"""
+    if not check_finance_permission(request.user):
+        return Response({"error": "No posee autorización para acceder al módulo financiero."}, status=status.HTTP_403_FORBIDDEN)
     from apps.analytics.models import WithdrawalDeletionLog
 
     try:
@@ -2289,6 +2333,8 @@ def admin_finance_withdrawal_delete(request, withdrawal_id):
 @permission_classes([IsAdminOrStaff])
 def admin_finance_by_product(request):
     """GET /api/v1/admin/finance/by-product/?currency=CLP|USD|ARS"""
+    if not check_finance_permission(request.user):
+        return Response({"error": "No posee autorización para acceder al módulo financiero."}, status=status.HTTP_403_FORBIDDEN)
     currency = requested_currency(request)
     if currency is None:
         return currency_error()

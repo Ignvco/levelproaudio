@@ -7,6 +7,7 @@ from .views import (
     ChangePasswordView, GoogleAuthView, CsrfTokenView,
 )
 from .sso_soundmap import soundmap_sso_token_view
+from .views_rbac import me_permissions_view
 
 urlpatterns = [
     path('csrf/', CsrfTokenView.as_view(), name='auth-csrf'),
@@ -16,6 +17,7 @@ urlpatterns = [
     path('token/refresh/', CookieTokenRefreshView.as_view(), name='auth-token-refresh'),
     path('logout/', LogoutView.as_view(), name='auth-logout'),
     path('profile/', ProfileView.as_view(), name='auth-profile'),
+    path('me/permissions/', me_permissions_view, name='auth-me-permissions'),
     path('password/reset/', PasswordResetRequestView.as_view(), name='auth-password-reset'),
     path('password/reset/confirm/', PasswordResetConfirmView.as_view(), name='auth-password-reset-confirm'),
     path('password/change/', ChangePasswordView.as_view(), name='auth-password-change'),

@@ -5,6 +5,7 @@ import { NavLink, Link, useNavigate, useLocation, Outlet } from "react-router-do
 import { useQuery } from "@tanstack/react-query"
 import { useAuthStore } from "../store/authStore"
 import { getAdminDashboard } from "../api/admin.api"
+import { getMyPermissions } from "../api/rbac.api"
 import AdminSearch from "../components/admin/AdminSearch"
 import { useSiteSettings } from "../hooks/useSiteSettings"
 import logoImg from "../assets/logo.png"
@@ -17,43 +18,44 @@ import {
 
 const clpN = (n, currency) => formatCurrency(n, currency)
 
-// Mapa de navegación agrupado
+// Mapa de navegación agrupado con asignación de módulos RBAC
 const navGroups = [
-  { key: "inicio", label: "Dashboard", to: "/admin", end: true },
-  { key: "ventas", label: "Ventas", items: [
-    { to: "/admin/orders",          label: "Órdenes" },
-    { to: "/admin/b2b",             label: "Cotizaciones B2B" },
-    { to: "/admin/special-orders",  label: "Bajo pedido" },
-    { to: "/admin/payments",        label: "Pagos" },
-    { to: "/admin/payment-methods", label: "Métodos de pago" },
-    { to: "/admin/billing",         label: "Doc. tributaria" },
+  { key: "inicio", label: "Dashboard", to: "/admin", end: true, module: "dashboard" },
+  { key: "ventas", label: "Ventas", module: "orders", items: [
+    { to: "/admin/orders",          label: "Órdenes", module: "orders" },
+    { to: "/admin/b2b",             label: "Cotizaciones B2B", module: "orders" },
+    { to: "/admin/special-orders",  label: "Bajo pedido", module: "orders" },
+    { to: "/admin/payments",        label: "Pagos", module: "orders" },
+    { to: "/admin/payment-methods", label: "Métodos de pago", module: "orders" },
+    { to: "/admin/billing",         label: "Doc. tributaria", module: "orders" },
   ]},
-  { key: "catalogo", label: "Catálogo", items: [
-    { to: "/admin/products",        label: "Catálogo" },
-    { to: "/admin/brands",          label: "Marcas" },
-    { to: "/admin/categories",      label: "Categorías" },
-    { to: "/admin/products/import", label: "Importar" },
-    { to: "/admin/inventory",       label: "Inventario" },
+  { key: "catalogo", label: "Catálogo", module: "catalog", items: [
+    { to: "/admin/products",        label: "Catálogo", module: "catalog" },
+    { to: "/admin/brands",          label: "Marcas", module: "catalog" },
+    { to: "/admin/categories",      label: "Categorías", module: "catalog" },
+    { to: "/admin/products/import", label: "Importar", module: "catalog" },
+    { to: "/admin/inventory",       label: "Inventario", module: "inventory" },
   ]},
-  { key: "academia", label: "Academia", items: [
-    { to: "/admin/academy",                label: "Cursos" },
-    { to: "/admin/academy/modules",        label: "Módulos" },
-    { to: "/admin/academy/lessons",        label: "Lecciones" },
-    { to: "/admin/academy/enrollments",    label: "Inscripciones" },
-    { to: "/admin/academy/certifications", label: "Certificaciones" },
+  { key: "academia", label: "Academia", module: "academy", items: [
+    { to: "/admin/academy",                label: "Cursos", module: "academy" },
+    { to: "/admin/academy/modules",        label: "Módulos", module: "academy" },
+    { to: "/admin/academy/lessons",        label: "Lecciones", module: "academy" },
+    { to: "/admin/academy/enrollments",    label: "Inscripciones", module: "academy" },
+    { to: "/admin/academy/certifications", label: "Certificaciones", module: "academy" },
   ]},
-  { key: "servicios", label: "Servicios", to: "/admin/services" },
-  { key: "fidelizacion", label: "Fidelización", items: [
-    { to: "/admin/loyalty",           label: "Puntos y niveles" },
-    { to: "/admin/rewards",           label: "Rewards" },
-    { to: "/admin/rewards/campaigns", label: "Campañas" },
-    { to: "/admin/rewards/entries",   label: "Participaciones" },
-    { to: "/admin/rewards/winners",   label: "Ganadores" },
+  { key: "servicios", label: "Servicios", to: "/admin/services", module: "services" },
+  { key: "fidelizacion", label: "Fidelización", module: "marketing", items: [
+    { to: "/admin/loyalty",           label: "Puntos y niveles", module: "marketing" },
+    { to: "/admin/rewards",           label: "Rewards", module: "marketing" },
+    { to: "/admin/rewards/campaigns", label: "Campañas", module: "marketing" },
+    { to: "/admin/rewards/entries",   label: "Participaciones", module: "marketing" },
+    { to: "/admin/rewards/winners",   label: "Ganadores", module: "marketing" },
   ]},
   { key: "negocio", label: "Negocio", items: [
-    { to: "/admin/finance",  label: "Finanzas" },
-    { to: "/admin/users",    label: "Clientes" },
-    { to: "/admin/settings", label: "Personalización" },
+    { to: "/admin/finance",  label: "Finanzas", module: "finances" },
+    { to: "/admin/users",    label: "Clientes", module: "dashboard" },
+    { to: "/admin/roles",    label: "Roles y Permisos", module: "roles" },
+    { to: "/admin/settings", label: "Personalización", module: "settings" },
   ]},
 ]
 
@@ -309,6 +311,29 @@ export default function AdminLayout() {
   const flyoutTimeout = useRef(null)
   const userMenuRef = useRef(null)
 
+  const { data: myPerms } = useQuery({
+    queryKey: ["my-permissions"],
+    queryFn: getMyPermissions,
+    staleTime: 5 * 60 * 1000,
+  })
+
+  const canAccessModule = (mod) => {
+    if (!mod) return true
+    if (myPerms?.is_superuser) return true
+    if (!myPerms?.modules) return true
+    return myPerms.modules.includes(mod)
+  }
+
+  const filteredNavGroups = navGroups.map((group) => {
+    if (group.items) {
+      const visibleItems = group.items.filter((it) => canAccessModule(it.module))
+      if (visibleItems.length === 0) return null
+      return { ...group, items: visibleItems }
+    }
+    if (!canAccessModule(group.module)) return null
+    return group
+  }).filter(Boolean)
+
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -370,7 +395,7 @@ export default function AdminLayout() {
 
           {/* Navigation Pills (Desktop) */}
           <nav className="v3-nav-pills" aria-label="Navegación principal">
-            {navGroups.map((group) => {
+            {filteredNavGroups.map((group) => {
               const active = isGroupActive(group, location.pathname)
               const hasItems = !!group.items
 
@@ -555,7 +580,7 @@ export default function AdminLayout() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
-              {navGroups.map((g) => {
+              {filteredNavGroups.map((g) => {
                 if (g.to) {
                   return (
                     <NavLink
