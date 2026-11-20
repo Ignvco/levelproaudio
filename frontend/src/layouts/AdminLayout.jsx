@@ -38,6 +38,7 @@ const ROUTE_MODULE_RULES = [
   { prefix: "/admin/finance", module: "finances", capability: "view_finances", label: "Módulo Financiero" },
   { prefix: "/admin/users", module: "dashboard", altModule: "roles", altModule2: "orders", label: "Usuarios y Clientes" },
   { prefix: "/admin/roles", module: "roles", capability: "manage_roles", label: "Roles y Control de Acceso (RBAC)" },
+  { prefix: "/admin/audit", module: "audit", capability: "view_audit", label: "Registro de Actividad y Auditoría" },
   { prefix: "/admin/settings", module: "settings", capability: "manage_settings", label: "Personalización y Configuración del Sistema" },
 ]
 
@@ -86,6 +87,7 @@ const navGroups = [
     { to: "/admin/finance",  label: "Finanzas", module: "finances", capability: "view_finances" },
     { to: "/admin/users",    label: "Clientes", module: "dashboard" },
     { to: "/admin/roles",    label: "Roles y Permisos", module: "roles", capability: "manage_roles" },
+    { to: "/admin/audit",    label: "Registro de Actividad", module: "audit", capability: "view_audit" },
     { to: "/admin/settings", label: "Personalización", module: "settings", capability: "manage_settings" },
   ]},
 ]

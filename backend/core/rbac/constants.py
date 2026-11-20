@@ -16,6 +16,7 @@ MODULE_ACADEMY   = "academy"
 MODULE_SERVICES  = "services"
 MODULE_ROLES     = "roles"
 MODULE_SETTINGS  = "settings"
+MODULE_AUDIT     = "audit"
 
 ALL_MODULES = [
     MODULE_DASHBOARD,
@@ -30,9 +31,10 @@ ALL_MODULES = [
     MODULE_SERVICES,
     MODULE_ROLES,
     MODULE_SETTINGS,
+    MODULE_AUDIT,
 ]
 
-# Estado de implementación real de cada módulo en Gate 1.1
+# Estado de implementación real de cada módulo en Gate 1.2
 MODULE_IMPLEMENTATION_STATUS = {
     MODULE_DASHBOARD: {
         "status": "implemented",
@@ -94,21 +96,30 @@ MODULE_IMPLEMENTATION_STATUS = {
         "gate": "Gate 0 / Gate 11 & 12",
         "description": "Configuración global y personalización editorial del sitio web.",
     },
+    MODULE_AUDIT: {
+        "status": "implemented",
+        "gate": "Gate 1.2 (Audit Trail & Activity Log)",
+        "description": "Trazabilidad operacional inmutable, centro de actividad, eventos de auditoría y análisis forense.",
+    },
 }
 
-# ── Capacidades y Permisos Sensibles (12 Capacidades) ──────────────────────
-PERM_VIEW_COSTS       = "view_costs"
-PERM_EDIT_COSTS       = "edit_costs"
-PERM_VIEW_MARGINS     = "view_margins"
-PERM_VIEW_FINANCES    = "view_finances"
-PERM_MANAGE_FINANCES  = "manage_finances"
-PERM_APPROVE_PAYMENTS = "approve_payments"
-PERM_EDIT_PRICES      = "edit_prices"
-PERM_APPLY_DISCOUNTS  = "apply_discounts"
-PERM_ADJUST_INVENTORY = "adjust_inventory"
-PERM_EXPORT_DATA      = "export_data"
-PERM_MANAGE_ROLES     = "manage_roles"
-PERM_MANAGE_SETTINGS  = "manage_settings"
+# ── Capacidades y Permisos Sensibles (16 Capacidades) ──────────────────────
+PERM_VIEW_COSTS            = "view_costs"
+PERM_EDIT_COSTS            = "edit_costs"
+PERM_VIEW_MARGINS          = "view_margins"
+PERM_VIEW_FINANCES         = "view_finances"
+PERM_MANAGE_FINANCES       = "manage_finances"
+PERM_APPROVE_PAYMENTS      = "approve_payments"
+PERM_EDIT_PRICES           = "edit_prices"
+PERM_APPLY_DISCOUNTS       = "apply_discounts"
+PERM_ADJUST_INVENTORY      = "adjust_inventory"
+PERM_EXPORT_DATA           = "export_data"
+PERM_MANAGE_ROLES          = "manage_roles"
+PERM_MANAGE_SETTINGS       = "manage_settings"
+PERM_VIEW_AUDIT            = "view_audit"
+PERM_VIEW_SECURITY_AUDIT   = "view_security_audit"
+PERM_VIEW_FINANCIAL_AUDIT  = "view_financial_audit"
+PERM_EXPORT_AUDIT          = "export_audit"
 
 ALL_SENSITIVE_PERMISSIONS = [
     PERM_VIEW_COSTS,
@@ -123,6 +134,10 @@ ALL_SENSITIVE_PERMISSIONS = [
     PERM_EXPORT_DATA,
     PERM_MANAGE_ROLES,
     PERM_MANAGE_SETTINGS,
+    PERM_VIEW_AUDIT,
+    PERM_VIEW_SECURITY_AUDIT,
+    PERM_VIEW_FINANCIAL_AUDIT,
+    PERM_EXPORT_AUDIT,
 ]
 
 # ── Acciones Granulares por Recurso ────────────────────────────────────────
@@ -206,13 +221,14 @@ DEFAULT_ROLE_MATRIX = {
         "modules": [
             MODULE_DASHBOARD, MODULE_CATALOG, MODULE_ORDERS, MODULE_INVENTORY,
             MODULE_PURCHASES, MODULE_LOGISTICS, MODULE_FINANCES, MODULE_MARKETING,
-            MODULE_ACADEMY, MODULE_SERVICES, MODULE_SETTINGS,
+            MODULE_ACADEMY, MODULE_SERVICES, MODULE_SETTINGS, MODULE_AUDIT,
         ],
         "capabilities": [
             PERM_VIEW_COSTS, PERM_EDIT_COSTS, PERM_VIEW_MARGINS, PERM_VIEW_FINANCES,
             PERM_MANAGE_FINANCES, PERM_APPROVE_PAYMENTS, PERM_EDIT_PRICES,
             PERM_APPLY_DISCOUNTS, PERM_ADJUST_INVENTORY, PERM_EXPORT_DATA,
-            PERM_MANAGE_SETTINGS,
+            PERM_MANAGE_SETTINGS, PERM_VIEW_AUDIT, PERM_VIEW_SECURITY_AUDIT,
+            PERM_VIEW_FINANCIAL_AUDIT, PERM_EXPORT_AUDIT,
         ],
         "module_actions": {
             MODULE_DASHBOARD: [ACTION_READ, ACTION_EXPORT],
@@ -226,6 +242,7 @@ DEFAULT_ROLE_MATRIX = {
             MODULE_ACADEMY:   list(ALL_ACTIONS),
             MODULE_SERVICES:  list(ALL_ACTIONS),
             MODULE_SETTINGS:  [ACTION_READ, ACTION_UPDATE],
+            MODULE_AUDIT:     [ACTION_READ, ACTION_EXPORT],
         },
     },
     ROLE_SALES: {
@@ -265,10 +282,14 @@ DEFAULT_ROLE_MATRIX = {
         },
     },
     ROLE_FINANCE: {
-        "modules": [MODULE_DASHBOARD, MODULE_CATALOG, MODULE_INVENTORY, MODULE_FINANCES, MODULE_ORDERS, MODULE_PURCHASES],
+        "modules": [
+            MODULE_DASHBOARD, MODULE_CATALOG, MODULE_INVENTORY, MODULE_FINANCES,
+            MODULE_ORDERS, MODULE_PURCHASES, MODULE_AUDIT,
+        ],
         "capabilities": [
             PERM_VIEW_FINANCES, PERM_MANAGE_FINANCES, PERM_VIEW_COSTS,
             PERM_VIEW_MARGINS, PERM_APPROVE_PAYMENTS, PERM_EXPORT_DATA,
+            PERM_VIEW_AUDIT, PERM_VIEW_FINANCIAL_AUDIT, PERM_EXPORT_AUDIT,
         ],
         "module_actions": {
             MODULE_DASHBOARD: [ACTION_READ, ACTION_EXPORT],
@@ -277,6 +298,7 @@ DEFAULT_ROLE_MATRIX = {
             MODULE_FINANCES:  [ACTION_READ, ACTION_CREATE, ACTION_UPDATE, ACTION_DELETE, ACTION_APPROVE, ACTION_EXPORT],
             MODULE_ORDERS:    [ACTION_READ, ACTION_APPROVE, ACTION_EXPORT],
             MODULE_PURCHASES: [ACTION_READ],
+            MODULE_AUDIT:     [ACTION_READ, ACTION_EXPORT],
         },
     },
     ROLE_MARKETING: {

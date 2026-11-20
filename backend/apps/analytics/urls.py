@@ -56,6 +56,13 @@ from apps.users.views_rbac import (
     user_roles_management_view,
     permissions_catalog_view,
 )
+from .views_audit import (
+    audit_events_list_view,
+    audit_event_detail_view,
+    audit_summary_view,
+    audit_catalog_view,
+    audit_export_view,
+)
 
 router = DefaultRouter()
 router.register("orders",          AdminOrderViewSet,   basename="admin-orders")
@@ -80,6 +87,13 @@ urlpatterns = [
     path("roles/",             roles_list_view,    name="admin-roles-list"),
     path("roles/<str:role_name>/", role_detail_view, name="admin-role-detail"),
     path("permissions/catalog/", permissions_catalog_view, name="admin-permissions-catalog"),
+
+    # LEVELPRO OS V4.0 — AUDIT TRAIL & ACTIVITY LOG (Gate 1.2)
+    path("audit/events/", audit_events_list_view, name="admin-audit-events"),
+    path("audit/events/<uuid:event_id>/", audit_event_detail_view, name="admin-audit-event-detail"),
+    path("audit/events/export/", audit_export_view, name="admin-audit-export"),
+    path("audit/summary/", audit_summary_view, name="admin-audit-summary"),
+    path("audit/catalog/", audit_catalog_view, name="admin-audit-catalog"),
      
     path("executive/", executive_dashboard, name="executive-dashboard"),
      

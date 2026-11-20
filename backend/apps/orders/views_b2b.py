@@ -27,6 +27,13 @@ from core.rbac.constants import (
     ROLE_SALES,
 )
 from core.rbac.permissions import is_effective_super_admin, user_has_capability
+from core.audit.services import record_audit_event
+from core.audit.constants import (
+    CATEGORY_MODIFICATION,
+    CATEGORY_ORDER_STATUS,
+    SEVERITY_INFO,
+    RESULT_SUCCESS,
+)
 from apps.products.models import Product
 from apps.site_settings.models import SiteSettings
 from .models import Order, OrderItem, B2BQuote, B2BQuoteItem, B2BQuoteStatus
@@ -305,6 +312,25 @@ def admin_b2b_quote_detail(request, quote_id):
     quote.total = net_after_discount + quote.tax_amount
     quote.save()
 
+    try:
+        record_audit_event(
+            module="orders",
+            action="B2B_QUOTE_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="B2BQuote",
+            resource_id=str(quote.id),
+            resource_repr=f"Cotización B2B #{str(quote.id)[:8].upper()} - {quote.company_name}",
+            actor=request.user,
+            new_values={
+                "status": quote.status,
+                "discount_percent": str(quote.discount_percent),
+                "total": str(quote.total),
+            },
+            mandatory=True,
+        )
+    except Exception:
+        pass
+
     return Response({
         "id": str(quote.id),
         "status": quote.status,
@@ -377,6 +403,21 @@ def admin_b2b_quote_convert(request, quote_id):
     quote.converted_order = order
     quote.status = B2BQuoteStatus.CONVERTED
     quote.save(update_fields=["converted_order", "status"])
+
+    try:
+        record_audit_event(
+            module="orders",
+            action="B2B_QUOTE_CONVERTED",
+            event_category=CATEGORY_ORDER_STATUS,
+            resource_type="B2BQuote",
+            resource_id=str(quote.id),
+            resource_repr=f"Cotización B2B #{str(quote.id)[:8].upper()} convertida en Orden #{order.id}",
+            actor=request.user,
+            new_values={"order_id": str(order.id), "total": str(order.total)},
+            mandatory=True,
+        )
+    except Exception:
+        pass
 
     return Response({
         "order_id": str(order.id),

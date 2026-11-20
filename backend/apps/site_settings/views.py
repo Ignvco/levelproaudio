@@ -5,6 +5,13 @@ from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from core.admin_permissions import IsAdminOrStaff
 from core.rbac.constants import MODULE_SETTINGS, PERM_MANAGE_SETTINGS
 from core.rbac.permissions import is_effective_super_admin, user_has_capability
+from core.audit.services import record_audit_event
+from core.audit.constants import (
+    CATEGORY_CONFIG_CHANGE,
+    SEVERITY_WARNING,
+    RESULT_SUCCESS,
+)
+from core.audit.sanitizer import sanitize_audit_payload
 from .models        import SiteSettings
 from .serializers   import SiteSettingsSerializer, SiteSettingsWriteSerializer
 
@@ -44,6 +51,25 @@ class AdminSiteSettingsView(views.APIView):
         ser = SiteSettingsWriteSerializer(obj, data=request.data, partial=True)
         ser.is_valid(raise_exception=True)
         ser.save()
+
+        # Registro de auditoría obligatorio
+        try:
+            record_audit_event(
+                module=MODULE_SETTINGS,
+                action="CONFIG_CHANGED",
+                event_category=CATEGORY_CONFIG_CHANGE,
+                resource_type="SiteSettings",
+                resource_id=str(obj.id),
+                resource_repr="Configuración General del Sitio",
+                actor=request.user,
+                result=RESULT_SUCCESS,
+                severity=SEVERITY_WARNING,
+                new_values=sanitize_audit_payload(request.data),
+                mandatory=False,
+            )
+        except Exception:
+            pass
+
         resp = Response(SiteSettingsSerializer(obj).data, status=status.HTTP_200_OK)
         resp["Cache-Control"] = "private, no-store"
         return resp

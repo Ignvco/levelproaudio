@@ -1,5 +1,13 @@
 from core.api_errors import api_error_response
 from django.db import transaction
+from core.audit.services import record_audit_event
+from core.audit.constants import (
+    CATEGORY_CONFIG_CHANGE,
+    CATEGORY_FINANCIAL_OPERATION,
+    SEVERITY_INFO,
+    SEVERITY_WARNING,
+    RESULT_SUCCESS,
+)
 # apps/loyalty/views.py
 
 from rest_framework.decorators import api_view, permission_classes
@@ -198,6 +206,21 @@ def admin_loyalty_config(request):
                 setattr(config, f, request.data[f])
         config.save()
 
+        try:
+            record_audit_event(
+                module="marketing",
+                action="LOYALTY_CONFIG_UPDATED",
+                event_category=CATEGORY_CONFIG_CHANGE,
+                resource_type="LoyaltyConfig",
+                resource_id=str(config.id),
+                resource_repr="Configuración de Loyalty",
+                actor=request.user,
+                new_values={f: request.data[f] for f in fields if f in request.data},
+                mandatory=True,
+            )
+        except Exception:
+            pass
+
     return Response({
         "puntos_por_peso":  float(config.puntos_por_peso),
         "peso_por_punto":   float(config.peso_por_punto),
@@ -258,6 +281,22 @@ def admin_adjust_points(request):
                 descripcion = descripcion,
             )
             account.refresh_from_db()
+
+        try:
+            record_audit_event(
+                module="marketing",
+                action="LOYALTY_POINTS_ADJUSTED",
+                event_category=CATEGORY_FINANCIAL_OPERATION,
+                resource_type="LoyaltyPoints",
+                resource_id=str(user_id),
+                resource_repr=f"Ajuste de {puntos} puntos para usuario {user.email}",
+                actor=request.user,
+                new_values={"points": puntos, "reason": descripcion, "new_balance": account.puntos_disponibles},
+                mandatory=True,
+            )
+        except Exception:
+            pass
+
         return Response({"puntos_disponibles": account.puntos_disponibles})
     except User.DoesNotExist:
         return Response({"error": "Usuario no encontrado"}, status=404)

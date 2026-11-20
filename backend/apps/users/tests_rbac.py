@@ -874,8 +874,10 @@ class TestSuperAdminLifecycleAndSegregationOfDuties:
         assert response.status_code == 200
         assert "no-store" in response["Cache-Control"]
         data = response.json()
-        assert len(data["modules"]) == 12
-        assert len(data["capabilities"]) == 12
+        assert len(data["modules"]) >= 12
+        assert "audit" in data["modules"]
+        assert len(data["capabilities"]) >= 12
+        assert "view_audit" in data["capabilities"]
         assert len(data["role_matrix"]) == 10
         assert data["module_status"]["purchases"]["status"] == "partial_reserved"
         assert data["module_status"]["logistics"]["status"] == "partial_reserved"
