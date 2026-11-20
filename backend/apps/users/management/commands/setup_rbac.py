@@ -80,9 +80,13 @@ class Command(BaseCommand):
             if created or reset_defaults:
                 group.permissions.set(perms_to_add)
             else:
-                # Preserva permisos personalizados ya asignados al grupo y asegura los base
-                if perms_to_add:
-                    group.permissions.add(*perms_to_add)
+                # Si el grupo ya existía pero nunca había recibido ningún permiso RBAC
+                # (0 permisos asignados), se inicializa con la matriz base.
+                # Si ya tenía permisos configurados, NO se restituyen silenciosamente
+                # permisos sensibles retirados de forma deliberada (salvo con --reset-defaults).
+                has_existing_perms = group.permissions.exists()
+                if not has_existing_perms and perms_to_add:
+                    group.permissions.set(perms_to_add)
 
         self.stdout.write(
             self.style.SUCCESS(

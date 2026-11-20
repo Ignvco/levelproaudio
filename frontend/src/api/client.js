@@ -1,6 +1,7 @@
 // api/client.js
 import { createApiClient, authClient } from "./http"
 import { useAuthStore } from "../store/authStore"
+import { queryClient } from "../queryClient"
 
 // withCredentials: envía/recibe las cookies HTTPOnly de auth en cada request.
 const api = createApiClient()
@@ -43,6 +44,11 @@ api.interceptors.response.use(
         useAuthStore.getState().clearSession()
         return Promise.reject(error)
       }
+    }
+    if (error.response?.status === 403 && !url.includes("/auth/me/permissions/")) {
+      // Si un endpoint administrativo responde 403 (ej. revocación en caliente de permisos),
+      // invalidamos la caché de permisos efectivos y removemos datos sensibles en caché.
+      queryClient.invalidateQueries({ queryKey: ["my-permissions"] })
     }
     return Promise.reject(error)
   }

@@ -57,6 +57,39 @@ const CAPABILITY_LABELS = {
   export_data: "Exportar Datos y Reportes",
   manage_roles: "Administrar Roles y Staff",
   manage_settings: "Configuración Crítica y Tasas FX",
+  view_audit: "Consultar Registro de Auditoría",
+  view_security_audit: "Consultar Eventos de Seguridad",
+  view_financial_audit: "Consultar Auditoría Financiera y Costos",
+  export_audit: "Exportar Registro de Auditoría",
+}
+
+const CAPABILITY_SHORT_LABELS = {
+  view_costs: "Ver Costos",
+  edit_costs: "Editar Costos",
+  view_margins: "Ver Márgenes",
+  view_finances: "Ver Finanzas",
+  manage_finances: "Operar Finanzas",
+  approve_payments: "Aprobar Pagos",
+  edit_prices: "Editar Precios",
+  apply_discounts: "Descuentos",
+  adjust_inventory: "Ajustar Stock",
+  export_data: "Exportar Datos",
+  manage_roles: "Gestionar Roles",
+  manage_settings: "Configuración y FX",
+  view_audit: "Ver Auditoría",
+  view_security_audit: "Auditoría Seguridad",
+  view_financial_audit: "Auditoría Financiera",
+  export_audit: "Exportar Auditoría",
+}
+
+const ACTION_LABELS = {
+  read: "Lectura",
+  create: "Crear",
+  update: "Editar",
+  delete: "Eliminar",
+  export: "Exportar",
+  import: "Importar",
+  approve: "Aprobar",
 }
 
 const MODULE_LABELS = {
@@ -72,6 +105,7 @@ const MODULE_LABELS = {
   services: "Servicios Técnicos",
   roles: "Seguridad y RBAC",
   settings: "Personalización y Ajustes",
+  audit: "Auditoría y Actividad",
 }
 
 export default function AdminRoles() {
@@ -235,10 +269,11 @@ export default function AdminRoles() {
                             borderRadius: 6,
                             background: "var(--admin-primary-soft)",
                             color: "var(--admin-primary-text)",
-                            fontFamily: "var(--font-mono)",
+                            fontWeight: 600,
                           }}
+                          title={m}
                         >
-                          {m}
+                          {MODULE_LABELS[m] || m}
                         </span>
                       ))}
                       {role.modules?.length > 6 && (
@@ -278,15 +313,16 @@ export default function AdminRoles() {
                             key={c}
                             style={{
                               fontSize: 10.5,
-                              padding: "2px 6px",
+                              padding: "2px 7px",
                               borderRadius: 4,
                               background: "rgba(26, 255, 110, 0.1)",
-                              color: "#1AFF6E",
-                              fontFamily: "var(--font-mono)",
-                              border: "1px solid rgba(26, 255, 110, 0.2)",
+                              color: "var(--admin-primary-text)",
+                              fontWeight: 600,
+                              border: "1px solid rgba(26, 255, 110, 0.3)",
                             }}
+                            title={c}
                           >
-                            {c}
+                            {CAPABILITY_LABELS[c] || c}
                           </span>
                         ))
                       ) : (
@@ -357,13 +393,13 @@ export default function AdminRoles() {
                       padding: "12px 8px",
                       color: "var(--admin-text-muted)",
                       textAlign: "center",
-                      fontFamily: "var(--font-mono)",
                       fontSize: 11,
+                      fontWeight: 700,
                       whiteSpace: "nowrap",
                     }}
-                    title={CAPABILITY_LABELS[cap] || cap}
+                    title={`${CAPABILITY_LABELS[cap] || cap} (${cap})`}
                   >
-                    {cap}
+                    {CAPABILITY_SHORT_LABELS[cap] || CAPABILITY_LABELS[cap] || cap}
                   </th>
                 ))}
               </tr>
@@ -485,14 +521,15 @@ export default function AdminRoles() {
                               key={act}
                               style={{
                                 fontSize: 10,
-                                padding: "1px 5px",
+                                padding: "1px 6px",
                                 borderRadius: 4,
                                 background: "rgba(255,255,255,0.06)",
                                 color: "var(--admin-text-muted)",
-                                fontFamily: "var(--font-mono)",
+                                fontWeight: 600,
                               }}
+                              title={act}
                             >
-                              {act}
+                              {ACTION_LABELS[act] || act}
                             </span>
                           ))}
                         </div>

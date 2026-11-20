@@ -2,6 +2,7 @@
 import { create } from "zustand"
 import { persist, createJSONStorage } from "zustand/middleware"
 import { authClient as authAxios } from "../api/http"
+import { resetAndCancelQueryCache } from "../queryClient"
 
 // Los tokens JWT viven en cookies HTTPOnly (no accesibles desde JS).
 // El store sólo guarda el objeto `user` y el flag `isAuthenticated` para la UI;
@@ -25,6 +26,7 @@ export const useAuthStore = create(
       setUser: (user) => set({ user }),
 
       login: async (email, password) => {
+        await resetAndCancelQueryCache()
         await authAxios.post("/auth/login/", { email, password })
         const { data: user } = await authAxios.get("/auth/profile/")
         set({ isAuthenticated: true, user })
@@ -34,6 +36,7 @@ export const useAuthStore = create(
       // credential = el ID token que devuelve Google Identity Services.
       // El backend verifica la firma contra Google antes de crear/loguear.
       loginWithGoogle: async (credential) => {
+        await resetAndCancelQueryCache()
         await authAxios.post("/auth/google/", { credential })
         const { data: user } = await authAxios.get("/auth/profile/")
         set({ isAuthenticated: true, user })
@@ -65,15 +68,22 @@ export const useAuthStore = create(
       checkAuth: async () => {
         try {
           const { data: user } = await authAxios.get("/auth/profile/")
-          set({ isAuthenticated: true, user })
+          set((prev) => {
+            if (prev.user?.id && user?.id && prev.user.id !== user.id) {
+              resetAndCancelQueryCache()
+            }
+            return { isAuthenticated: true, user }
+          })
           return user
         } catch {
+          await resetAndCancelQueryCache()
           set({ isAuthenticated: false, user: null })
           return null
         }
       },
 
       logout: async () => {
+        await resetAndCancelQueryCache()
         try {
           await authAxios.post("/auth/logout/")
         } catch { /* noop */ }
@@ -81,7 +91,10 @@ export const useAuthStore = create(
       },
 
       // Limpieza local sin llamada al backend (usado por el interceptor en 401).
-      clearSession: () => set({ user: null, isAuthenticated: false }),
+      clearSession: () => {
+        resetAndCancelQueryCache()
+        set({ user: null, isAuthenticated: false })
+      },
     }),
     {
       name: "levelproaudio-auth",

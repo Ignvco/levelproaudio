@@ -36,7 +36,7 @@
 | 5 | `manage_finances` | Modificar configuración financiera, registrar/eliminar retiros (`Withdrawal`) y emitir registros tributarios (`TributaryDocument`). | `Super Admin`, `Gerencia / Administración`, `Finanzas / Contabilidad` |
 | 6 | `approve_payments` | Aprobar/rechazar pagos manuales (`admin_update_payment_status`) y marcar órdenes como `paid`. | `Super Admin`, `Gerencia / Administración`, `Finanzas / Contabilidad` |
 | 7 | `edit_prices` | Modificar precios de venta (`price`, `price_usd`, `price_ars`, `compare_price`), crear/editar productos y servicios, y aprobar descuentos B2B > 15%. | `Super Admin`, `Gerencia / Administración` |
-| 8 | `apply_discounts` | Aplicar descuentos comerciales en cotizaciones B2B hasta el límite de política (`15.00%`). | `Super Admin`, `Gerencia / Administración`, `Ventas`, `Marketing` |
+| 8 | `apply_discounts` | Aplicar descuentos comerciales en cotizaciones B2B hasta el límite de política (`15.00%`). | `Super Admin`, `Gerencia / Administración` |
 | 9 | `adjust_inventory` | Ajustar existencias físicas (`stock`, `stock_min`) en catálogo y bodega. | `Super Admin`, `Gerencia / Administración`, `Bodega` |
 | 10 | `export_data` | Exportar reportes y listados CSV/Excel sensibles (ej. `AdminEntryViewSet.export_csv`). | `Super Admin`, `Gerencia / Administración`, `Compras`, `Finanzas / Contabilidad` |
 | 11 | `manage_roles` | Consultar catálogo RBAC, asignar/revocar roles y administrar cuentas de usuario (`MODULE_ROLES`). | `Super Admin` |
@@ -50,12 +50,12 @@
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | **Super Admin** | SI | SI | SI | SI | SI | SI | SI | SI | SI | SI | SI | SI |
 | **Gerencia / Administración** | SI | SI | SI | SI | SI | SI | SI | SI | SI | SI | — | SI |
-| **Ventas** | — | — | — | — | — | — | — | SI | — | — | — | — |
+| **Ventas** | — | — | — | — | — | — | — | — | — | — | — | — |
 | **Compras** | SI | SI | — | — | — | — | — | — | — | SI | — | — |
 | **Bodega** | — | — | — | — | — | — | — | — | SI | — | — | — |
 | **Logística** | — | — | — | — | — | — | — | — | — | — | — | — |
 | **Finanzas / Contabilidad** | SI | — | SI | SI | SI | SI | — | — | — | SI | — | — |
-| **Marketing** | — | — | — | — | — | — | — | SI | — | — | — | — |
+| **Marketing** | — | — | — | — | — | — | — | — | — | — | — | — |
 | **Academia** | — | — | — | — | — | — | — | — | — | — | — | — |
 | **Soporte Técnico** | — | — | — | — | — | — | — | — | — | — | — | — |
 
@@ -91,7 +91,7 @@
    - `Compras`: Actualización exclusiva de `cost_price` (`edit_costs`), sin edición de precios de venta ni eliminación.
    - `Marketing`: Actualización exclusiva de campos editoriales/SEO e imágenes, sin edición de precios, costos o stock, y sin eliminación.
    - `DELETE` de productos, cursos, rutas de certificación, categorías, marcas, imágenes y solicitudes bajo pedido: Restringido exclusivamente a `Super Admin` y `Gerencia / Administración`.
-7. **Límite de política comercial en descuentos B2B:** `MAX_UNAPPROVED_DISCOUNT_PERCENT = 15.00%`. `Ventas` puede aplicar descuentos hasta 15.00%; cualquier porcentaje superior requiere `edit_prices` (`Gerencia / Administración` o `Super Admin`).
+7. **Límite de política comercial en descuentos B2B:** `MAX_UNAPPROVED_DISCOUNT_PERCENT = 0.00%`. `Ventas` puede aplicar descuentos hasta 15.00%; cualquier porcentaje superior requiere `edit_prices` (`Gerencia / Administración` o `Super Admin`).
 8. **Pares de roles incompatibles por Segregación de Funciones (SoD):**
    - `Ventas` ↔ `Finanzas / Contabilidad` (rechazado atómicamente en `assign_role_to_user` con HTTP 400).
    - `Compras` ↔ `Finanzas / Contabilidad` (rechazado atómicamente en `assign_role_to_user` con HTTP 400).

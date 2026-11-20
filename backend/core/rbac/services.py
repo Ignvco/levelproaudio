@@ -161,6 +161,28 @@ def remove_role_from_user(target_user, role_name, operator=None, ip_address=None
     Remueve un rol empresarial de un usuario objetivo con bloqueo pesimista (select_for_update)
     contra pérdida del último Super Admin activo y limpieza automática de is_staff al revocar el último rol.
     """
+    # 1. Primero adquirir el bloqueo pesimista determinista sobre TODOS los Super Admins activos
+    # y el usuario objetivo en orden de PK para serializar transacciones concurrentes en PostgreSQL.
+    super_pks = list(
+        User.objects.filter(is_active=True)
+        .filter(Q(is_superuser=True) | Q(groups__name=ROLE_SUPER_ADMIN))
+        .values_list("pk", flat=True)
+        .distinct()
+    )
+    pks_to_lock = set(super_pks) | {target_user.pk}
+    if operator and getattr(operator, "pk", None):
+        pks_to_lock.add(operator.pk)
+
+    locked_users_map = {
+        u.pk: u
+        for u in User.objects.select_for_update()
+        .filter(pk__in=pks_to_lock)
+        .order_by("id")
+    }
+    locked_target = locked_users_map.get(target_user.pk) or User.objects.select_for_update().get(pk=target_user.pk)
+
+    # 2. Una vez adquirido el lock, re-evaluar en vivo los privilegios del operador
+    # (por si otra transacción concurrente acaba de desactivarlo o revocarle su rol Super Admin).
     if operator:
         live_op = _resolve_live_user(operator)
         if not live_op or (not is_effective_super_admin(live_op) and not user_has_capability(live_op, PERM_MANAGE_ROLES)):
@@ -168,19 +190,11 @@ def remove_role_from_user(target_user, role_name, operator=None, ip_address=None
         if role_name == ROLE_SUPER_ADMIN and not is_effective_super_admin(live_op):
             raise PermissionDenied("Solo un Super Admin activo puede revocar el rol Super Admin.")
 
-    # Bloqueo determinista de superusuarios activos para evitar condiciones de carrera concurrentes
-    super_pks = list(
-        User.objects.filter(is_active=True)
-        .filter(Q(is_superuser=True) | Q(groups__name=ROLE_SUPER_ADMIN))
-        .values_list("pk", flat=True)
-        .distinct()
-    )
-    active_supers = list(
-        User.objects.select_for_update()
-        .filter(pk__in=super_pks, is_active=True)
-        .order_by("id")
-    )
-    locked_target = User.objects.select_for_update().get(pk=target_user.pk)
+    # 3. Re-calcular los Super Admins que siguen realmente activos DESPUÉS de obtener el lock
+    active_supers = [
+        u for u in locked_users_map.values()
+        if u.is_active and (u.is_superuser or u.groups.filter(name=ROLE_SUPER_ADMIN).exists())
+    ]
 
     if role_name == ROLE_SUPER_ADMIN:
         is_target_active_super = any(u.pk == locked_target.pk for u in active_supers)
@@ -223,18 +237,36 @@ def remove_role_from_user(target_user, role_name, operator=None, ip_address=None
 
 
 def get_roles_summary():
-    """Retorna el listado completo de los 10 roles con métricas de usuarios asignados y acciones."""
+    """Retorna el listado completo de los 10 roles con métricas de usuarios asignados y capacidades reales desde DB."""
+    from django.contrib.auth.models import Permission
+    any_rbac_perms_in_db = Permission.objects.filter(
+        content_type__app_label="users",
+        codename__in=ALL_SENSITIVE_PERMISSIONS,
+    ).exists()
+
     roles_list = []
     for role_name in ALL_ROLES:
         desc = ROLE_DESCRIPTIONS.get(role_name, "")
         config = DEFAULT_ROLE_MATRIX.get(role_name, {})
         user_count = User.objects.filter(groups__name=role_name, is_active=True).distinct().count()
+        if any_rbac_perms_in_db and Group.objects.filter(name=role_name).exists():
+            db_caps = set(
+                Permission.objects.filter(
+                    group__name=role_name,
+                    content_type__app_label="users",
+                    codename__in=ALL_SENSITIVE_PERMISSIONS,
+                ).values_list("codename", flat=True)
+            )
+            effective_caps = [c for c in ALL_SENSITIVE_PERMISSIONS if c in db_caps]
+        else:
+            effective_caps = config.get("capabilities", [])
+
         roles_list.append({
             "name": role_name,
             "description": desc,
             "user_count": user_count,
             "modules": config.get("modules", []),
-            "capabilities": config.get("capabilities", []),
+            "capabilities": effective_caps,
             "module_actions": config.get("module_actions", {}),
         })
     return roles_list

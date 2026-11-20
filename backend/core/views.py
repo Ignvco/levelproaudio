@@ -21,6 +21,9 @@ class MediaProxyView(View):
         user = getattr(request, "user", None)
         if user and getattr(user, "is_authenticated", False):
             return user
+        force_user = getattr(request, "_force_auth_user", None)
+        if force_user and getattr(force_user, "is_authenticated", False):
+            return force_user
         try:
             from apps.users.authentication import CookieJWTAuthentication
             auth_res = CookieJWTAuthentication().authenticate(request)
@@ -35,16 +38,23 @@ class MediaProxyView(View):
         return normalized.startswith(self.PRIVATE_PREFIXES)
 
     def _check_private_access(self, request, path):
-        from core.rbac.constants import MODULE_FINANCES, MODULE_ORDERS
-        from core.rbac.permissions import is_effective_super_admin, user_has_module_access
-        user = self._resolve_request_user(request)
-        if not user or not getattr(user, "is_authenticated", False) or not getattr(user, "is_active", False):
+        from core.rbac.constants import PERM_VIEW_FINANCES
+        from core.rbac.permissions import (
+            _resolve_live_user,
+            is_effective_super_admin,
+            user_has_capability,
+        )
+        raw_user = self._resolve_request_user(request)
+        user = _resolve_live_user(raw_user)
+        if not user:
             return False
         if is_effective_super_admin(user):
             return True
-        if user_has_module_access(user, MODULE_FINANCES) or user_has_module_access(user, MODULE_ORDERS):
+        # La pertenencia a MODULE_ORDERS NO otorga acceso indiscriminado a archivos financieros o tributarios.
+        # Solo quienes poseen la capacidad financiera explícita (PERM_VIEW_FINANCES) pueden consultarlos.
+        if user_has_capability(user, PERM_VIEW_FINANCES):
             return True
-        # Permitir al propietario legítimo de un documento tributario descargar su propio PDF
+        # Excepción legítima de titularidad: permitir al cliente propietario de la orden descargar su documento tributario.
         normalized = (path or "").lstrip("/")
         if normalized.startswith("billing/"):
             from apps.billing.models import TributaryDocument
@@ -58,7 +68,7 @@ class MediaProxyView(View):
             resp = HttpResponse(status=403)
             resp["Cache-Control"] = "private, no-store"
             return resp
-        if settings.DEBUG:
+        if settings.DEBUG or getattr(settings, "QA_LOCAL_ONLY", False):
             resp = self._serve_local(request, path)
         else:
             resp = self._serve_gcs(request, path)

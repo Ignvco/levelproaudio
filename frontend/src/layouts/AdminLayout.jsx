@@ -343,7 +343,10 @@ export default function AdminLayout() {
   const flyoutTimeout = useRef(null)
   const userMenuRef = useRef(null)
 
+  const prevPermSig = useRef(null)
+
   const handleLogout = () => {
+    queryClient.cancelQueries()
     queryClient.clear()
     logout()
     navigate("/admin/login")
@@ -354,6 +357,27 @@ export default function AdminLayout() {
     queryFn: getMyPermissions,
     staleTime: 60 * 1000,
   })
+
+  // Si los permisos/roles efectivos del usuario cambian o son revocados en caliente,
+  // cancelar peticiones pendientes y purgar de la caché cualquier consulta de otros módulos.
+  useEffect(() => {
+    if (!myPerms) return
+    const sig = JSON.stringify({
+      id: myPerms.id,
+      roles: myPerms.roles,
+      modules: myPerms.modules,
+      capabilities: myPerms.capabilities,
+    })
+    if (prevPermSig.current && prevPermSig.current !== sig) {
+      queryClient.cancelQueries({
+        predicate: (q) => q.queryKey?.[0] !== "my-permissions",
+      })
+      queryClient.removeQueries({
+        predicate: (q) => q.queryKey?.[0] !== "my-permissions",
+      })
+    }
+    prevPermSig.current = sig
+  }, [myPerms, queryClient])
 
   const canAccessModule = (mod, cap = null) => {
     if (myPerms?.is_superuser) return true

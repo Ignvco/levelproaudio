@@ -78,11 +78,28 @@ def role_detail_view(request, role_name):
     config = DEFAULT_ROLE_MATRIX.get(role_name, {})
     assigned_users = User.objects.filter(groups__name=role_name).values("id", "email", "username", "is_active")
 
+    from django.contrib.auth.models import Group, Permission
+    any_rbac_perms_in_db = Permission.objects.filter(
+        content_type__app_label="users",
+        codename__in=ALL_SENSITIVE_PERMISSIONS,
+    ).exists()
+    if any_rbac_perms_in_db and Group.objects.filter(name=role_name).exists():
+        db_caps = set(
+            Permission.objects.filter(
+                group__name=role_name,
+                content_type__app_label="users",
+                codename__in=ALL_SENSITIVE_PERMISSIONS,
+            ).values_list("codename", flat=True)
+        )
+        effective_caps = [c for c in ALL_SENSITIVE_PERMISSIONS if c in db_caps]
+    else:
+        effective_caps = config.get("capabilities", [])
+
     data = {
         "name": role_name,
         "description": ROLE_DESCRIPTIONS.get(role_name, ""),
         "modules": config.get("modules", []),
-        "capabilities": config.get("capabilities", []),
+        "capabilities": effective_caps,
         "module_actions": config.get("module_actions", {}),
         "user_count": len(assigned_users),
         "users": list(assigned_users),

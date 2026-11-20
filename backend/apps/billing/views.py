@@ -11,12 +11,11 @@ from decimal import Decimal, InvalidOperation
 from core.admin_permissions import IsAdminOrStaff, rbac_endpoint
 from core.rbac.constants import (
     MODULE_FINANCES,
-    MODULE_ORDERS,
+    PERM_VIEW_FINANCES,
     PERM_MANAGE_FINANCES,
     ROLE_SUPER_ADMIN,
     ROLE_MANAGEMENT,
     ROLE_FINANCE,
-    ROLE_SALES,
 )
 from .models import TributaryDocument
 
@@ -43,8 +42,9 @@ def _serialize(d):
 
 # ── Tablero: todas las órdenes pagadas + su documento (si existe) ──
 @rbac_endpoint(
-    allowed_modules=[MODULE_FINANCES, MODULE_ORDERS],
-    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_FINANCE, ROLE_SALES],
+    module=MODULE_FINANCES,
+    capability=PERM_VIEW_FINANCES,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_FINANCE],
 )
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])

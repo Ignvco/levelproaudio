@@ -2690,6 +2690,8 @@ def inventory_summary(request):
         ),
         "cost_missing_count": cost_missing_count if can_view_costs else None,
         "profit_calculable": (cost_missing_count == 0) if (can_view_costs and can_view_margins) else False,
+        "costs_restricted_rbac": not can_view_costs,
+        "margins_restricted_rbac": not (can_view_costs and can_view_margins),
         "total_productos":   total_productos,
         "sin_stock":         sin_stock,
         "stock_critico":     stock_critico,

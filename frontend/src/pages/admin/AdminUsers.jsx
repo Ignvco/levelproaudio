@@ -36,12 +36,19 @@ const ROLE_TONE_MAP = {
   "Soporte Técnico": "neutral",
 }
 
+const HIGH_PRIVILEGE_ROLES = new Set([
+  "Super Admin",
+  "Gerencia / Administración",
+  "Finanzas / Contabilidad",
+])
+
 export default function AdminUsers() {
   const [roleFilter, setRoleFilter] = useState("")
   const [selectedUser, setSelectedUser] = useState(null)
   const [roleModalOpen, setRoleModalOpen] = useState(false)
   const [roleToAssign, setRoleToAssign] = useState("")
   const [actionError, setActionError] = useState(null)
+  const [pendingConfirmAction, setPendingConfirmAction] = useState(null)
 
   const queryClient = useQueryClient()
 
@@ -68,6 +75,7 @@ export default function AdminUsers() {
         setSelectedUser({ ...selectedUser, roles: data.roles })
       }
       setActionError(null)
+      setPendingConfirmAction(null)
     },
     onError: (err) => {
       const msg = err.response?.data?.error || "Error al actualizar roles del usuario."
@@ -92,9 +100,19 @@ export default function AdminUsers() {
 
   const handleOpenRoleModal = (u) => {
     setSelectedUser(u)
-    setRoleToAssign(availableRoles[0]?.name || "")
+    // Nunca seleccionar Super Admin como rol predeterminado; preferir un rol operativo estándar o vacío
+    setRoleToAssign("")
     setActionError(null)
+    setPendingConfirmAction(null)
     setRoleModalOpen(true)
+  }
+
+  const handleRequestRoleChange = (userId, role, action) => {
+    if (HIGH_PRIVILEGE_ROLES.has(role) || action === "remove") {
+      setPendingConfirmAction({ userId, role, action })
+      return
+    }
+    roleMutation.mutate({ userId, role, action })
   }
 
   const columns = [
@@ -254,7 +272,7 @@ export default function AdminUsers() {
                     >
                       <StatusBadge tone={ROLE_TONE_MAP[r] || "info"}>{r}</StatusBadge>
                       <SecondaryButton
-                        onClick={() => roleMutation.mutate({ userId: selectedUser.id, role: r, action: "remove" })}
+                        onClick={() => handleRequestRoleChange(selectedUser.id, r, "remove")}
                         style={{ fontSize: 11, padding: "2px 6px", color: "#FF4444" }}
                         disabled={roleMutation.isPending}
                       >
@@ -270,6 +288,44 @@ export default function AdminUsers() {
               )}
             </div>
 
+            {pendingConfirmAction && (
+              <div
+                data-testid="role-privilege-confirmation"
+                style={{
+                  padding: "12px 14px",
+                  borderRadius: 10,
+                  background: "rgba(245, 158, 11, 0.1)",
+                  border: "1px solid rgba(245, 158, 11, 0.35)",
+                  marginBottom: 14,
+                }}
+              >
+                <p style={{ fontSize: 12.5, fontWeight: 700, color: "#D97706", margin: "0 0 6px" }}>
+                  Confirmación de operación de privilegios elevados
+                </p>
+                <p style={{ fontSize: 12, color: "var(--admin-text-secondary)", margin: "0 0 10px" }}>
+                  {pendingConfirmAction.action === "assign"
+                    ? `¿Confirmas otorgar el rol privilegiado "${pendingConfirmAction.role}" a ${selectedUser.email}?`
+                    : `¿Confirmas revocar el rol "${pendingConfirmAction.role}" de ${selectedUser.email}?`}
+                </p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <PrimaryButton
+                    onClick={() => roleMutation.mutate(pendingConfirmAction)}
+                    disabled={roleMutation.isPending}
+                    size="sm"
+                  >
+                    Confirmar operación
+                  </PrimaryButton>
+                  <SecondaryButton
+                    onClick={() => setPendingConfirmAction(null)}
+                    disabled={roleMutation.isPending}
+                    size="sm"
+                  >
+                    Cancelar
+                  </SecondaryButton>
+                </div>
+              </div>
+            )}
+
             <div style={{ borderTop: "1px solid var(--admin-border)", paddingTop: 14 }}>
               <label style={{ fontSize: 11, textTransform: "uppercase", fontWeight: 700, color: "var(--admin-text-muted)", display: "block", marginBottom: 6 }}>
                 Asignar Nuevo Rol
@@ -277,7 +333,10 @@ export default function AdminUsers() {
               <div style={{ display: "flex", gap: 8 }}>
                 <select
                   value={roleToAssign}
-                  onChange={(e) => setRoleToAssign(e.target.value)}
+                  onChange={(e) => {
+                    setRoleToAssign(e.target.value)
+                    setPendingConfirmAction(null)
+                  }}
                   style={{
                     flex: 1,
                     padding: "8px 12px",
@@ -288,6 +347,7 @@ export default function AdminUsers() {
                     fontSize: 13,
                   }}
                 >
+                  <option value="">Selecciona un rol empresarial...</option>
                   {availableRoles.map(r => (
                     <option key={r.name} value={r.name}>
                       {r.name}
@@ -295,7 +355,7 @@ export default function AdminUsers() {
                   ))}
                 </select>
                 <PrimaryButton
-                  onClick={() => roleMutation.mutate({ userId: selectedUser.id, role: roleToAssign, action: "assign" })}
+                  onClick={() => handleRequestRoleChange(selectedUser.id, roleToAssign, "assign")}
                   disabled={roleMutation.isPending || !roleToAssign || selectedUser.roles?.includes(roleToAssign)}
                 >
                   <Plus size={13} style={{ marginRight: 4 }} /> Asignar

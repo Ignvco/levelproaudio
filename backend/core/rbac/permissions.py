@@ -126,6 +126,10 @@ def user_has_capability(user, capability_name):
     """
     Determina si el usuario activo posee una capacidad sensible específica
     (ej: view_costs, edit_costs, view_finances, manage_finances, approve_payments).
+    Fuente de verdad: permisos efectivos en base de datos (auth_group_permissions + user_permissions)
+    condicionados a que el usuario posea al menos un rol activo en ALL_ROLES.
+    Si los grupos de un rol aún no tienen filas en auth_group_permissions (ej. en tests unitarios
+    que crean el Group sin ejecutar setup_rbac), hace fallback a DEFAULT_ROLE_MATRIX.
     """
     live = _resolve_live_user(user)
     if not live:
@@ -139,15 +143,35 @@ def user_has_capability(user, capability_name):
     if not roles:
         return False
 
+    from django.contrib.auth.models import Permission
+    # Verificar si los grupos del usuario fueron aprovisionados con permisos RBAC en la base de datos
+    any_rbac_perms_in_db = Permission.objects.filter(
+        content_type__app_label="users",
+        codename__in=DEFAULT_ROLE_MATRIX.get(ROLE_SUPER_ADMIN, {}).get("capabilities", []),
+    ).exists()
+
+    if any_rbac_perms_in_db:
+        # Evaluar estrictamente contra la base de datos (sin usar el caché _perm_cache de la instancia)
+        has_group_perm = Permission.objects.filter(
+            group__user=live,
+            group__name__in=roles,
+            content_type__app_label="users",
+            codename=capability_name,
+        ).exists()
+        if has_group_perm:
+            return True
+        has_direct_perm = Permission.objects.filter(
+            user=live,
+            content_type__app_label="users",
+            codename=capability_name,
+        ).exists()
+        return has_direct_perm
+
+    # Fallback exclusivo para tests ligeros que crean Group sin ejecutar setup_rbac
     for role in roles:
         role_config = DEFAULT_ROLE_MATRIX.get(role)
         if role_config and capability_name in role_config.get("capabilities", []):
             return True
-
-    # Chequeo por permiso directo Django solo si el usuario mantiene al menos un rol activo
-    perm_name = f"users.{capability_name}"
-    if live.has_perm(perm_name):
-        return True
 
     return False
 

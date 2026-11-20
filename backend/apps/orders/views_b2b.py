@@ -272,14 +272,17 @@ def admin_b2b_quote_detail(request, quote_id):
             d_pct = None
 
     if d_pct is not None and d_pct > Decimal("0.00") and not is_effective_super_admin(request.user):
-        if not user_has_capability(request.user, PERM_APPLY_DISCOUNTS):
+        if not (
+            user_has_capability(request.user, PERM_APPLY_DISCOUNTS)
+            and user_has_capability(request.user, PERM_EDIT_PRICES)
+        ):
             return Response(
-                {"error": "No posee la capacidad 'apply_discounts' para aplicar descuentos comerciales."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-        if d_pct > MAX_UNAPPROVED_DISCOUNT_PERCENT and not user_has_capability(request.user, PERM_EDIT_PRICES):
-            return Response(
-                {"error": f"Política comercial: descuentos superiores al {MAX_UNAPPROVED_DISCOUNT_PERCENT}% requieren aprobación de Gerencia o Super Admin."},
+                {
+                    "error": (
+                        "Política comercial: los descuentos en cotizaciones B2B requieren autorización "
+                        "de Gerencia / Administración o Super Admin."
+                    )
+                },
                 status=status.HTTP_403_FORBIDDEN,
             )
 

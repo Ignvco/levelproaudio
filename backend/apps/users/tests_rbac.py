@@ -54,8 +54,8 @@ User = get_user_model()
 
 @pytest.fixture(autouse=True)
 def setup_rbac_environment(db):
-    """Ejecuta setup_rbac para asegurar roles y permisos en la base de pruebas."""
-    call_command("setup_rbac")
+    """Ejecuta setup_rbac con reset_defaults para asegurar la matriz limpia al inicio de cada prueba."""
+    call_command("setup_rbac", reset_defaults=True)
 
 
 @pytest.fixture
@@ -217,6 +217,65 @@ class TestDenyByDefaultAndLegacyHardening:
     Verifica denegación por defecto en recursos no clasificados, bloqueo de
     is_staff sin rol, bloqueo de usuario inactivo y revocación en sesión abierta.
     """
+
+    def test_anonymous_user_cannot_access_me_permissions(self, api_client):
+        response = api_client.get("/api/v1/auth/me/permissions/")
+        assert response.status_code == 401
+
+    def test_regular_customer_sees_empty_roles_and_no_admin_access(self, api_client, regular_customer):
+        api_client.force_authenticate(user=regular_customer)
+        response = api_client.get("/api/v1/auth/me/permissions/")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["is_staff"] is False
+        assert data["is_superuser"] is False
+        assert data["roles"] == []
+        assert data["modules"] == []
+        assert api_client.get("/api/v1/admin/roles/").status_code == 403
+        assert api_client.get("/api/v1/admin/products/").status_code == 403
+
+    def test_sales_effective_permissions_and_finance_isolation(
+        self, api_client, sales_staff_user, finance_staff_user, super_admin_user, regular_customer, test_product
+    ):
+        """Preserva las verificaciones originales de Gate 1.1: permisos efectivos de Ventas, Finanzas y Super Admin."""
+        # 1. Ventas: ve catálogo y órdenes, no finanzas ni costos
+        api_client.force_authenticate(user=sales_staff_user)
+        me_res = api_client.get("/api/v1/auth/me/permissions/")
+        assert me_res.status_code == 200
+        me_data = me_res.json()
+        assert ROLE_SALES in me_data["roles"]
+        assert MODULE_CATALOG in me_data["modules"]
+        assert MODULE_ORDERS in me_data["modules"]
+        assert MODULE_FINANCES not in me_data["modules"]
+        assert me_data["capabilities"][PERM_VIEW_COSTS] is False
+        assert api_client.get("/api/v1/admin/finance/summary/?currency=CLP").status_code == 403
+        assert api_client.get("/api/v1/admin/finance/categories/").status_code == 403
+
+        # 2. Finanzas: accede a finanzas y visualiza cost_price
+        api_client.force_authenticate(user=finance_staff_user)
+        assert api_client.get("/api/v1/admin/finance/summary/?currency=CLP").status_code == 200
+        prod_fin = api_client.get(f"/api/v1/admin/products/{test_product.id}/").json()
+        assert float(prod_fin["cost_price"]) == 220000.0
+
+        # 3. Ventas no puede auto-asignarse ni asignar Super Admin
+        api_client.force_authenticate(user=sales_staff_user)
+        esc_res = api_client.post(
+            f"/api/v1/admin/users/{regular_customer.id}/roles/",
+            {"role": ROLE_SUPER_ADMIN, "action": "assign"},
+            format="json",
+        )
+        assert esc_res.status_code == 403
+
+        # 4. Super Admin tiene bypass total y puede editar cost_price
+        api_client.force_authenticate(user=super_admin_user)
+        patch_su = api_client.patch(
+            f"/api/v1/admin/products/{test_product.id}/",
+            {"cost_price": 210000},
+            format="json",
+        )
+        assert patch_su.status_code == 200
+        test_product.refresh_from_db()
+        assert float(test_product.cost_price) == 210000.0
 
     def test_unclassified_endpoint_denied_by_default_for_all_non_superusers(
         self, sales_staff_user, management_user, legacy_staff_without_role, super_admin_user
@@ -496,8 +555,8 @@ class TestGranularActionsAndAtomicFieldProtection:
         self, api_client, sales_staff_user, management_user
     ):
         """
-        Ventas puede aplicar descuentos comerciales hasta 15.0% en cotizaciones B2B.
-        Descuentos > 15.0% requieren aprobación de Gerencia o Super Admin.
+        No se permiten descuentos autónomos no autorizados en cotizaciones B2B por parte de Ventas.
+        Todo descuento B2B > 0% requiere autorización de Gerencia / Administración o Super Admin.
         """
         quote = B2BQuote.objects.create(
             company_name="Estudio Pro Audio SpA",
@@ -510,30 +569,34 @@ class TestGranularActionsAndAtomicFieldProtection:
         )
 
         api_client.force_authenticate(user=sales_staff_user)
-        # 10% descuento (100.000 sobre 1.000.000) -> 200 OK
-        res_ok = api_client.patch(
+        # Ventas puede actualizar notas sin alterar descuentos -> 200 OK
+        res_notes = api_client.patch(
             f"/api/v1/admin/b2b/quotes/{quote.id}/",
-            {"discount_amount": "100000"},
+            {"admin_notes": "Cotización revisada por ejecutivo comercial"},
             format="json",
         )
-        assert res_ok.status_code == 200
+        assert res_notes.status_code == 200
 
-        # 25% descuento (250.000 sobre 1.000.000) -> 403 para Ventas
-        res_over = api_client.patch(
+        # Ventas intenta aplicar 5% o 10% de descuento autónomo -> 403 Forbidden
+        res_sales_disc = api_client.patch(
             f"/api/v1/admin/b2b/quotes/{quote.id}/",
-            {"discount_amount": "250000"},
+            {"discount_amount": "50000"},
             format="json",
         )
-        assert res_over.status_code == 403
+        assert res_sales_disc.status_code == 403
+        quote.refresh_from_db()
+        assert quote.discount_amount == Decimal("0.00")
 
-        # Gerencia sí puede aprobar 25% de descuento -> 200 OK
+        # Gerencia / Administración sí está autorizada a aplicar descuento -> 200 OK
         api_client.force_authenticate(user=management_user)
         res_mgmt = api_client.patch(
             f"/api/v1/admin/b2b/quotes/{quote.id}/",
-            {"discount_amount": "250000"},
+            {"discount_amount": "150000"},
             format="json",
         )
         assert res_mgmt.status_code == 200
+        quote.refresh_from_db()
+        assert quote.discount_amount == Decimal("150000.00")
 
 
 @pytest.mark.django_db
@@ -622,10 +685,18 @@ class TestIndirectSensitiveDataLeakProtection:
         assert exec_fin["utilidad_estado"] == "estimacion_costos_catalogo_CLP"
 
     def test_private_media_proxy_requires_authentication_and_rbac(
-        self, api_client, regular_customer, support_staff_user, finance_staff_user
+        self,
+        api_client,
+        regular_customer,
+        support_staff_user,
+        sales_staff_user,
+        logistics_staff_user,
+        finance_staff_user,
     ):
         """
-        Archivos bajo /media/billing/ o /media/receipts/ requieren autenticación y autorización RBAC.
+        Archivos bajo /media/billing/, /media/receipts/ o /media/private/ requieren autenticación y
+        autorización financiera específica (PERM_VIEW_FINANCES) o titularidad comprobada sobre la orden.
+        La sola pertenencia a MODULE_ORDERS (ej. Ventas, Logística, Soporte) NO otorga acceso a archivos financieros.
         """
         # Anónimo -> 401/403 denegado
         res_anon = api_client.get("/media/billing/test_invoice.pdf")
@@ -636,10 +707,28 @@ class TestIndirectSensitiveDataLeakProtection:
         res_cust = api_client.get("/media/billing/test_invoice.pdf")
         assert res_cust.status_code == 403
 
-        # Soporte sin acceso a finanzas ni documentos -> 403
-        api_client.force_authenticate(user=support_staff_user)
-        res_sup = api_client.get("/media/billing/test_invoice.pdf")
-        assert res_sup.status_code == 403
+        # Roles con acceso a MODULE_ORDERS pero sin PERM_VIEW_FINANCES -> 403 en archivos privados y en tax_dashboard
+        for non_finance_staff in (support_staff_user, sales_staff_user, logistics_staff_user):
+            api_client.force_authenticate(user=non_finance_staff)
+            assert api_client.get("/media/billing/test_invoice.pdf").status_code == 403
+            assert api_client.get("/media/receipts/transfer_proof.pdf").status_code == 403
+            assert api_client.get("/media/private/internal_doc.pdf").status_code == 403
+            assert api_client.get("/api/v1/billing/dashboard/").status_code == 403
+
+        # Finanzas posee PERM_VIEW_FINANCES -> autorizado en tax_dashboard (200) y en MediaProxyView._check_private_access
+        api_client.force_authenticate(user=finance_staff_user)
+        assert api_client.get("/api/v1/billing/dashboard/").status_code == 200
+
+        from core.views import MediaProxyView
+        factory = APIRequestFactory()
+        for p in ("billing/test_invoice.pdf", "receipts/transfer_proof.pdf", "private/internal_doc.pdf"):
+            req_fin = factory.get(f"/media/{p}")
+            req_fin.user = finance_staff_user
+            assert MediaProxyView()._check_private_access(req_fin, p) is True
+
+            req_sales = factory.get(f"/media/{p}")
+            req_sales.user = sales_staff_user
+            assert MediaProxyView()._check_private_access(req_sales, p) is False
 
 
 @pytest.mark.django_db
@@ -705,27 +794,77 @@ class TestSuperAdminLifecycleAndSegregationOfDuties:
         assert res_del.status_code == 403
 
     def test_setup_rbac_is_idempotent_and_non_destructive_to_custom_group_permissions_and_users(
-        self, db, legacy_staff_without_role
+        self, db, legacy_staff_without_role, management_user
     ):
         """
-        setup_rbac preserva permisos adicionales asignados a grupos y no modifica usuarios reales
+        setup_rbac preserva permisos adicionales asignados a grupos, NO restituye silenciosamente
+        permisos sensibles retirados de forma deliberada y no modifica usuarios reales
         salvo que se indique explícitamente --reset-defaults o --sync-superusers.
         """
+        from core.rbac.permissions import user_has_capability
+
         sales_group = Group.objects.get(name=ROLE_SALES)
         extra_perm = Permission.objects.get(codename=PERM_EXPORT_DATA)
         sales_group.permissions.add(extra_perm)
 
+        # Retirar deliberadamente PERM_EDIT_COSTS del grupo Gerencia / Administración
+        mgmt_group = Group.objects.get(name=ROLE_MANAGEMENT)
+        removed_perm = Permission.objects.get(codename=PERM_EDIT_COSTS)
+        assert user_has_capability(management_user, PERM_EDIT_COSTS) is True
+        mgmt_group.permissions.remove(removed_perm)
+        assert user_has_capability(management_user, PERM_EDIT_COSTS) is False
+
         # Ejecutar setup_rbac por defecto (no destructivo)
         call_command("setup_rbac")
 
-        # El permiso adicional en el grupo se conserva
+        # 1. El permiso adicional en Ventas se conserva
         assert sales_group.permissions.filter(codename=PERM_EXPORT_DATA).exists()
-        # El usuario staff legacy NO fue promovido a ningún rol automáticamente
+        # 2. El permiso sensible retirado deliberadamente de Gerencia NO se restituye silenciosamente
+        assert not mgmt_group.permissions.filter(codename=PERM_EDIT_COSTS).exists()
+        assert user_has_capability(management_user, PERM_EDIT_COSTS) is False
+        # 3. El usuario staff legacy NO fue promovido a ningún rol automáticamente
         assert legacy_staff_without_role.groups.count() == 0
 
         # Con --reset-defaults se restaura exactamente la matriz base
         call_command("setup_rbac", reset_defaults=True)
         assert not sales_group.permissions.filter(codename=PERM_EXPORT_DATA).exists()
+        assert mgmt_group.permissions.filter(codename=PERM_EDIT_COSTS).exists()
+        assert user_has_capability(management_user, PERM_EDIT_COSTS) is True
+
+    def test_django_admin_protects_last_super_admin_on_direct_edit_and_bulk_delete(
+        self, db, super_admin_user, regular_customer
+    ):
+        """
+        Verifica que UserAdmin en Django Admin impide desactivar, quitar is_superuser
+        o ejecutar eliminación masiva (delete_queryset) sobre el último Super Admin activo.
+        """
+        from django.contrib.admin.sites import AdminSite
+        from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
+        from apps.users.admin import UserAdmin
+
+        site = AdminSite()
+        user_admin = UserAdmin(User, site)
+
+        class DummyRequest:
+            user = super_admin_user
+
+        req = DummyRequest()
+
+        # 1. has_delete_permission devuelve False para el único Super Admin activo
+        assert user_admin.has_delete_permission(req, obj=super_admin_user) is False
+
+        # 2. Acción masiva delete_queryset incluyendo al único Super Admin activo es bloqueada
+        qs_all = User.objects.filter(pk__in=[super_admin_user.pk, regular_customer.pk])
+        with pytest.raises(DjangoPermissionDenied):
+            user_admin.delete_queryset(req, qs_all)
+        assert User.objects.filter(pk=super_admin_user.pk, is_active=True).exists()
+
+        # 3. Edición directa save_model intentando desactivar al único Super Admin activo es bloqueada
+        super_admin_user.is_active = False
+        with pytest.raises(DjangoPermissionDenied):
+            user_admin.save_model(req, super_admin_user, form=None, change=True)
+        super_admin_user.refresh_from_db()
+        assert super_admin_user.is_active is True
 
     def test_permissions_catalog_endpoint_reflects_12_capabilities_and_module_status(
         self, api_client, super_admin_user
@@ -741,3 +880,94 @@ class TestSuperAdminLifecycleAndSegregationOfDuties:
         assert data["module_status"]["purchases"]["status"] == "partial_reserved"
         assert data["module_status"]["logistics"]["status"] == "partial_reserved"
         assert data["module_status"]["catalog"]["status"] == "implemented"
+
+
+@pytest.mark.django_db(transaction=True)
+def test_concurrent_super_admin_revocation_and_deactivation_preserves_at_least_one_active(super_admin_user):
+    """
+    BLOQUE A.3 — Prueba real de concurrencia PostgreSQL (SELECT ... FOR UPDATE):
+    Cuando existen 2 Super Admins activos y dos transacciones concurrentes intentan revocar
+    o desactivar simultáneamente a ambos, el bloqueo pesimista serializa las operaciones y
+    garantiza que exactamente 1 tenga éxito (200) y la segunda sea bloqueada (400),
+    preservando siempre al menos 1 Super Admin activo en PostgreSQL.
+    """
+    from concurrent.futures import ThreadPoolExecutor
+    from queue import Queue
+    import time
+    from django.db import close_old_connections, connection, connections, transaction
+    from django.db.models import Q
+
+    if connection.vendor != "postgresql":
+        pytest.skip("Requiere PostgreSQL real para validar SELECT ... FOR UPDATE.")
+
+    second_super = User.objects.create_superuser(
+        username="superadmin2@levelpro.cl",
+        email="superadmin2@levelpro.cl",
+        password="SuperPassword123!",
+    )
+    super_group = Group.objects.get(name=ROLE_SUPER_ADMIN)
+    second_super.groups.add(super_group)
+
+    def revoke_role(actor_pk, target_pk):
+        client = APIClient()
+        client.force_authenticate(user=User.objects.get(pk=actor_pk))
+        return client.post(
+            f"/api/v1/admin/users/{target_pk}/roles/",
+            {"role": ROLE_SUPER_ADMIN, "action": "remove"},
+            format="json",
+        ).status_code
+
+    pids = Queue()
+
+    def worker(action):
+        close_old_connections()
+        try:
+            with connection.cursor() as cursor:
+                cursor.execute("SET lock_timeout = '8s'")
+                cursor.execute("SET statement_timeout = '12s'")
+                cursor.execute("SELECT pg_backend_pid()")
+                pids.put(cursor.fetchone()[0])
+            return action()
+        finally:
+            connections.close_all()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        with transaction.atomic():
+            # Retener el lock de los dos Super Admins hasta que ambos workers estén en espera real
+            list(
+                User.objects.select_for_update()
+                .filter(pk__in=[super_admin_user.pk, second_super.pk])
+                .order_by("id")
+            )
+            f1 = pool.submit(worker, lambda: revoke_role(super_admin_user.pk, second_super.pk))
+            f2 = pool.submit(worker, lambda: revoke_role(second_super.pk, super_admin_user.pk))
+            worker_pids = [pids.get(timeout=5), pids.get(timeout=5)]
+            deadline = time.monotonic() + 5
+            waiting = 0
+            while time.monotonic() < deadline:
+                with connection.cursor() as cursor:
+                    cursor.execute("SELECT pg_stat_clear_snapshot()")
+                    cursor.execute(
+                        "SELECT count(*) FROM pg_stat_activity WHERE pid = ANY(%s) AND wait_event_type = 'Lock'",
+                        [worker_pids],
+                    )
+                    waiting = cursor.fetchone()[0]
+                if waiting == 2:
+                    break
+                time.sleep(0.02)
+            assert waiting == 2, "Ambas transacciones concurrentes deben esperar el lock de fila en PostgreSQL."
+
+        results = sorted([f1.result(timeout=15), f2.result(timeout=15)])
+
+    # Una revocación tiene éxito (200) y la segunda es rechazada por ser el último Super Admin o por pérdida de privilegio (400 o 403)
+    assert results[0] == 200
+    assert results[1] in (400, 403)
+
+    remaining_active_supers = (
+        User.objects.filter(is_active=True)
+        .filter(Q(is_superuser=True) | Q(groups__name=ROLE_SUPER_ADMIN))
+        .distinct()
+        .count()
+    )
+    assert remaining_active_supers == 1
+

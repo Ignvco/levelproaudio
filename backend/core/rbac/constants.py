@@ -145,7 +145,10 @@ ALL_ACTIONS = [
 ]
 
 # ── Políticas Comerciales y Segregación de Funciones (SoD) ─────────────────
-MAX_UNAPPROVED_DISCOUNT_PERCENT = Decimal("15.00")
+# Descuentos autónomos no autorizados deshabilitados (0.00%): todo descuento B2B > 0%
+# requiere autorización de Gerencia / Administración o Super Admin hasta que se defina
+# una política comercial de descuentos autónomos.
+MAX_UNAPPROVED_DISCOUNT_PERCENT = Decimal("0.00")
 
 # Roles empresariales oficiales (10 Roles)
 ROLE_SUPER_ADMIN = "Super Admin"
@@ -182,7 +185,7 @@ INCOMPATIBLE_ROLE_PAIRS = [
 ROLE_DESCRIPTIONS = {
     ROLE_SUPER_ADMIN: "Control técnico e institucional irrestricto de toda la plataforma.",
     ROLE_MANAGEMENT: "Dirección operativa, comercial y financiera integral del negocio.",
-    ROLE_SALES: "Atención comercial, consulta de catálogo, gestión de órdenes y cotizaciones B2B (descuentos hasta 15%).",
+    ROLE_SALES: "Atención comercial, consulta de catálogo, gestión de órdenes y cotizaciones B2B (descuentos sujetos a autorización de Gerencia o Super Admin).",
     ROLE_PURCHASING: "Gestión de abastecimiento, solicitudes bajo pedido y actualización de costos de adquisición.",
     ROLE_WAREHOUSE: "Control físico de existencias, ajuste de stock y alertas de inventario sin visibilidad de costos.",
     ROLE_LOGISTICS: "Coordinación de despachos y transición de estados de envío en órdenes pagadas.",
@@ -227,7 +230,7 @@ DEFAULT_ROLE_MATRIX = {
     },
     ROLE_SALES: {
         "modules": [MODULE_DASHBOARD, MODULE_CATALOG, MODULE_ORDERS, MODULE_MARKETING],
-        "capabilities": [PERM_APPLY_DISCOUNTS],
+        "capabilities": [],
         "module_actions": {
             MODULE_DASHBOARD: [ACTION_READ],
             MODULE_CATALOG:   [ACTION_READ],
@@ -278,7 +281,7 @@ DEFAULT_ROLE_MATRIX = {
     },
     ROLE_MARKETING: {
         "modules": [MODULE_DASHBOARD, MODULE_MARKETING, MODULE_CATALOG],
-        "capabilities": [PERM_APPLY_DISCOUNTS],
+        "capabilities": [],
         "module_actions": {
             MODULE_DASHBOARD: [ACTION_READ],
             MODULE_MARKETING: [ACTION_READ, ACTION_CREATE, ACTION_UPDATE],
