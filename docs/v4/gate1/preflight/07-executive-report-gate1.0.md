@@ -43,11 +43,9 @@ El modelo preliminar de 4 gates fue reestructurado en un **Roadmap Maestro de 17
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │                        ROADMAP MAESTRO LEVELPRO OS V4.0 (17 GATES)                     │
 ├────────────────────────────────────────────────────────────────────────────────────────┤
-│ FASE 0: Auditoría y Línea Base                                                         │
-│   • Gate 0: Auditoría Integral y Diagnóstico 360°                              [LISTO] │
-│   • Gate 0.1: Rectificación Técnica y Alineación de Stack                      [LISTO] │
-│                                                                                        │
-│ FASE 1: Seguridad, Infraestructura y Datos Maestros                                    │
+│ FASE I: Fundamentos y Núcleo de Seguridad                                              │
+│   • Gate 0: Discovery & Audit                                                  [LISTO] │
+│   • Gate 0.1: Baseline Certification                                           [LISTO] │
 │   • Gate 1: Security & Business Core                                           [ACTUAL]│
 │     ├─ Subgate 1.0: Preflight y Cierre de Evidencias                      [COMPLETADO] │
 │     ├─ Subgate 1.1: RBAC Granular y Aislamiento de Márgenes                 [SIGUIENTE]│
@@ -55,28 +53,29 @@ El modelo preliminar de 4 gates fue reestructurado en un **Roadmap Maestro de 17
 │     ├─ Subgate 1.3: Desacoplamiento de Migraciones Cloud Run               [PENDIENTE] │
 │     ├─ Subgate 1.4: Contratos Fundacionales y Tipos Numéricos              [PENDIENTE] │
 │     └─ Subgate 1.5: Aseguramiento de Calidad y Cierre de Gate 1            [PENDIENTE] │
-│   • Gate 2: Catálogo Avanzado, Marcas y Clasificación Comercial            [PENDIENTE] │
-│   • Gate 3: Proveedores, Catálogos Externos y Condiciones Comerciales      [PENDIENTE] │
 │                                                                                        │
-│ FASE 2: Inventario, Logística y Compras                                                │
-│   • Gate 4: Inventario Dimensional y Multi-Bodega                          [PENDIENTE] │
-│   • Gate 5: Trazabilidad, Seriales y Lotes                                 [PENDIENTE] │
-│   • Gate 6: Gestión de Compras y Costos Reales                             [PENDIENTE] │
-│   • Gate 7: Logística, WMS y Despachos                                     [PENDIENTE] │
+│ FASE II: Abastecimiento e Inventario                                                   │
+│   • Gate 2: Product Information Management (PIM Avanzado & Variantes)      [PENDIENTE] │
+│   • Gate 3: Supplier Management (Proveedores M2M & Listas de Costo)        [PENDIENTE] │
+│   • Gate 4: Warehouse Management (WMS, Bodegas, Kardex & Seriales)         [PENDIENTE] │
+│   • Gate 5: Procurement Management (Órdenes de Compra & Recepción)         [PENDIENTE] │
+│   • Gate 6: Cost & Pricing Intelligence (Landed Cost & Precios Dinámicos)  [PENDIENTE] │
 │                                                                                        │
-│ FASE 3: Ventas Omnicanal y B2B                                                         │
-│   • Gate 8: Pedidos Omnicanal y Flujos de Aprobación                       [PENDIENTE] │
-│   • Gate 9: Cotizaciones y Venta Consultiva B2B                            [PENDIENTE] │
-│   • Gate 10: Portales Especializados (Servicios y Academia)                [PENDIENTE] │
+│ FASE III: Operaciones Comerciales, Finanzas y Posventa                                 │
+│   • Gate 7: Order Management System (OMS, Ventas Manuales & Desacople)     [PENDIENTE] │
+│   • Gate 8: CRM & B2B Management (Ficha 360°, Cotizaciones PDF & Crédito) [PENDIENTE] │
+│   • Gate 9: Financial Management (Conciliación, Tesorería & DTE)           [PENDIENTE] │
+│   • Gate 10: Logistics & After-Sales (Couriers, Guías, RMA & Garantías)    [PENDIENTE] │
+│   • Gate 11: Marketing & Customer Growth (Rewards, Fidelización & Cupones) [PENDIENTE] │
 │                                                                                        │
-│ FASE 4: Finanzas, Fidelización y Operaciones                                           │
-│   • Gate 11: Finanzas, Tesorería y Documentos Tributarios                  [PENDIENTE] │
-│   • Gate 12: Fidelización, Rewards y Marketing Operativo                   [PENDIENTE] │
-│   • Gate 13: Reportes Ejecutivos y Business Intelligence                   [PENDIENTE] │
+│ FASE IV: Experiencia, Contenidos y Ecosistema                                          │
+│   • Gate 12: Website & Content Management (CMS Bento, Hero & Banners)      [PENDIENTE] │
+│   • Gate 13: Admin Experience (Unificación Global Bento UI 320px-4K)       [PENDIENTE] │
+│   • Gate 14: Ecosystem, Specialized Portals & Business Intelligence        [PENDIENTE] │
+│     (Evolución Academia, Servicios, Loyalty/Rewards, Pagos & BI)                       │
 │                                                                                        │
-│ FASE 5: Consolidación, UI Editorial Bento y Despliegue                                 │
-│   • Gate 14: Experiencia de Usuario y Bento Design System                  [PENDIENTE] │
-│   • Gate 15: Certificación Integral, Hardening y Go-Live                   [PENDIENTE] │
+│ FASE V: Certificación y Lanzamiento                                                    │
+│   • Gate 15: Enterprise Release & Certification (Hardening, QA & Go-Live)  [PENDIENTE] │
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 

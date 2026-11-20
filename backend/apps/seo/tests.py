@@ -6,7 +6,7 @@
 # realmente existe, devuelve XML válido con el contenido esperado.
 
 from decimal import Decimal
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.utils import timezone
 from datetime import timedelta
 
@@ -15,6 +15,7 @@ from apps.services.models import Service
 from apps.academy.models import Course
 
 
+@override_settings(SITE_URL="https://levelproaudio.com")
 class SitemapTest(TestCase):
     def test_sitemap_returns_valid_xml(self):
         resp = self.client.get("/api/v1/seo/sitemap.xml")

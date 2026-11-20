@@ -274,7 +274,8 @@ FASE V — CERTIFICACIÓN Y LANZAMIENTO
 ---
 
 #### GATE 13: Admin Experience (Unificación Global Bento UI & Responsive 320px-4K)
-- **Objetivo:** Unificar toda la suite administrativa bajo una sola experiencia visual impecable y ergonómica.
+- **Objetivo:** Unificar toda la suite administrativa bajo una sola experiencia visual impecable, ergonómica y de alto rendimiento.
+- **Regla de Entrega Progresiva:** Cada compuerta del roadmap (Gates 1 al 12 y 14) entrega sus interfaces funcionales operativas correspondientes en su respectivo gate. Gate 13 **no posterga el desarrollo de interfaces**, sino que actúa como la compuerta de pulido, estandarización de componentes Bento, micro-interacciones, accesibilidad y orquestación ergonómica global.
 - **Alcance:** Integración del sistema de diseño Editorial Bento en la totalidad de los paneles; barra de comandos global (`CommandPalette / Cmd+K`) con búsqueda instantánea de órdenes, clientes, SKUs y números de serie; responsive garantizado desde 320px hasta 4K; paleta oficial `#0B0E14` con acento `#1AFF6E` y tipografías Geist / Geist Mono.
 - **Dependencias:** Gates 1 al 12.
 - **Funcionalidades a Preservar:** Todas las vistas operativas construidas en gates anteriores.
@@ -289,19 +290,29 @@ FASE V — CERTIFICACIÓN Y LANZAMIENTO
 
 ---
 
-#### GATE 14: Ecosystem & Business Intelligence (SoundMap Hub, BI & Analítica)
-- **Objetivo:** Consolidar la inteligencia comercial y la integración profunda con la comunidad de creadores de audio.
-- **Alcance:** Dashboard ejecutivo con métricas de capital inmovilizado, rotación de existencias (DSI), margen por marca y categoría; embudo de conversión nativo; profundización de la integración con SoundMap (sincronización de credenciales, tokens SSO y eventos de audio assets).
+#### GATE 14: Ecosystem, Specialized Portals & Business Intelligence
+- **Objetivo:** Consolidar la inteligencia comercial, la integración profunda con SoundMap y la evolución especializada de todos los paneles administrativos de servicios verticales: Academia, Servicios Profesionales, Loyalty/Rewards y Tesorería/Pasarelas.
+- **Alcance Especializado:**
+  1. **Evolución del Panel de Academia:** Gestión completa de Cursos, Módulos, Lecciones en video con firmas temporales seguras, control de Inscripciones (Enrollments), emisión y verificación criptográfica de Certificados de finalización.
+  2. **Evolución del Panel de Servicios Profesionales:** Catálogo de servicios técnicos y de estudio, categorías especializadas, agenda interactiva de reservas (`ServiceBooking`), gestión de cotizaciones y consultas (`ServiceInquiry`).
+  3. **Evolución de Loyalty & Rewards:** Panel de fidelización para cuentas de puntos (`LoyaltyAccount`), transacciones de acumulación/vencimiento, y gestión de campañas de sorteos y venta de tickets (`rewards.Campaign`, `Entry`).
+  4. **Evolución de Pagos & Métodos de Pago:** Panel de configuración de pasarelas (`PaymentMethodConfig`), instrucciones de transferencia bancaria, conciliación y monitoreo de webhooks (Mercado Pago, PayPal, Ualá Bis).
+  5. **Business Intelligence & Hub:** Dashboard ejecutivo con métricas de capital inmovilizado, rotación de existencias (DSI), margen por marca y categoría; embudo de conversión nativo; hub de integraciones SoundMap (SSO y eventos de audio assets).
 - **Dependencias:** Gates 6, 7 y 9.
-- **Funcionalidades a Preservar:** SSO SoundMap en `apps.users.sso_soundmap`, endpoints de audio assets y webhooks.
-- **Modelos Involucrados:** `analytics.*`, `users.User`, `IntegrationsHub`.
-- **Endpoints:** `/api/v1/admin/analytics/turnover/`, `/api/v1/integrations/soundmap/`.
-- **Interfaces:** `AdminDashboard` con widgets Bento analíticos, Hub de Integraciones.
-- **Riesgos:** Lentitud en consultas analíticas complejas sobre PostgreSQL.
-- **Pruebas Obligatorias:** Pruebas de optimización de queries SQL con `EXPLAIN ANALYZE` y validación de webhooks firmados de SoundMap.
-- **Entregables:** Módulo de Business Intelligence, centro de métricas y hub SoundMap.
-- **Definition of Done (DoD):** El dashboard muestra en tiempo real los 5 productos con mayor margen neto y alerta sobre SKUs con más de 90 días inmovilizados.
-- **Criterio de Aceptación del Propietario:** Validación de los indicadores comerciales de BI.
+- **Funcionalidades a Preservar:** 100% de los modelos y flujos existentes en `apps.academy`, `apps.services`, `apps.loyalty`, `apps.rewards` y `apps.payments`.
+- **Modelos Involucrados:** `academy.*` (Course, Lesson, Enrollment, CourseReview, Certificate), `services.*` (Service, ServiceCategory, ServiceBooking, ServiceInquiry), `loyalty.*`, `rewards.*`, `payments.*`, `analytics.*`, `users.User`.
+- **Endpoints:** `/api/v1/admin/academy/*`, `/api/v1/admin/services/*`, `/api/v1/admin/loyalty/*`, `/api/v1/admin/rewards/*`, `/api/v1/admin/payments/*`, `/api/v1/admin/analytics/*`, `/api/v1/integrations/soundmap/`.
+- **Interfaces:** Paneles administrativos dedicados en Bento UI para Academia, Servicios, Fidelización, Pasarelas y Analytics BI.
+- **Riesgos:** Lentitud en consultas analíticas complejas o desincronización de inscripciones y certificados.
+- **Pruebas Obligatorias:** Pruebas de integración E2E para flujo completo de inscripción y certificación, agendamiento de servicios, acreditación de puntos y webhooks de pagos.
+- **Entregables:**
+  - Panel administrativo de Academia y Certificaciones certificado.
+  - Panel administrativo de Servicios y Agendamiento certificado.
+  - Panel administrativo de Fidelización, Rewards y Sorteos certificado.
+  - Panel administrativo de Pasarelas y Métodos de Pago certificado.
+  - Dashboard ejecutivo de Business Intelligence y Hub SoundMap.
+- **Definition of Done (DoD):** El administrador gestiona integralmente alumnos, lecciones, servicios de calibración acústica, promociones de fidelización y métodos de pago desde interfaces Bento nativas, con métricas de rentabilidad consolidadas.
+- **Criterio de Aceptación del Propietario:** Aprobación funcional de los paneles especializados de Academia, Servicios, Pagos y fidelización.
 
 ---
 
