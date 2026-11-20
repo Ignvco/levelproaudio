@@ -101,9 +101,13 @@ def test_free_lesson_always_visible():
 
 @pytest.mark.django_db
 def test_staff_can_preview_locked_lesson_video_source():
+    from django.contrib.auth.models import Group
+    from core.rbac.constants import ROLE_ACADEMY
     staff = User.objects.create_user(
         email="staff@test.com", username="staffuser", password="x", is_staff=True
     )
+    group, _ = Group.objects.get_or_create(name=ROLE_ACADEMY)
+    staff.groups.add(group)
     course = Course.objects.create(title="Curso pago", price=Decimal("1000"), is_published=True)
     module = Module.objects.create(course=course, title="M1")
     lesson = Lesson.objects.create(

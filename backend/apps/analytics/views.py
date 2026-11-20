@@ -17,21 +17,53 @@ from django.db.models.functions import TruncDay, TruncMonth
 from django.utils import timezone as tz
 from django.utils import timezone
 from django.db import transaction
-from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.exceptions import ValidationError as DjangoValidationError, PermissionDenied as DjangoPermissionDenied
 from django.views.decorators.csrf import csrf_exempt
 from datetime import timedelta
-from core.admin_permissions import IsAdminOrStaff
+from core.admin_permissions import IsAdminOrStaff, rbac_endpoint
 from core.rbac.mixins import SensitiveDataSerializerMixin
 from core.rbac.constants import (
+    MODULE_DASHBOARD,
     MODULE_CATALOG,
     MODULE_ORDERS,
+    MODULE_INVENTORY,
+    MODULE_PURCHASES,
+    MODULE_LOGISTICS,
     MODULE_FINANCES,
+    MODULE_MARKETING,
     MODULE_ACADEMY,
     MODULE_SERVICES,
-    PERM_VIEW_FINANCES,
+    MODULE_ROLES,
+    MODULE_SETTINGS,
+    PERM_VIEW_COSTS,
     PERM_EDIT_COSTS,
+    PERM_VIEW_MARGINS,
+    PERM_VIEW_FINANCES,
+    PERM_MANAGE_FINANCES,
+    PERM_APPROVE_PAYMENTS,
+    PERM_EDIT_PRICES,
+    PERM_APPLY_DISCOUNTS,
+    PERM_ADJUST_INVENTORY,
+    PERM_EXPORT_DATA,
+    PERM_MANAGE_ROLES,
+    PERM_MANAGE_SETTINGS,
+    ROLE_SUPER_ADMIN,
+    ROLE_MANAGEMENT,
+    ROLE_SALES,
+    ROLE_PURCHASING,
+    ROLE_WAREHOUSE,
+    ROLE_LOGISTICS,
+    ROLE_FINANCE,
+    ROLE_MARKETING,
+    ROLE_ACADEMY,
+    ROLE_SUPPORT,
 )
-from core.rbac.permissions import user_has_capability
+from core.rbac.permissions import (
+    is_effective_super_admin,
+    user_has_capability,
+    user_has_module_access,
+    get_user_roles,
+)
 
 from apps.orders.models import Order, OrderItem, OrderStatus
 from apps.orders.serializers import OrderSerializer
@@ -209,6 +241,13 @@ class AdminProductWriteSerializer(SensitiveDataSerializerMixin, drf_serializers.
 class AdminOrderViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
     rbac_module        = MODULE_ORDERS
+    rbac_allowed_roles_by_method = {
+        "create": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+        "destroy": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+        "update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_SALES, ROLE_LOGISTICS],
+        "partial_update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_SALES, ROLE_LOGISTICS],
+        "update_status": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_SALES, ROLE_LOGISTICS],
+    }
     serializer_class   = OrderSerializer
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
     search_fields      = ["email", "id"]
@@ -224,6 +263,36 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
             qs = qs.filter(status=status_filter)
         return qs
 
+    def _validate_order_mutation_rbac(self, request, order, new_status=None):
+        """Valida restricciones RBAC por rol en mutaciones de estado o pago de una orden."""
+        if is_effective_super_admin(request.user):
+            return None
+        user_roles = get_user_roles(request.user)
+        if new_status:
+            # Transicionar a 'paid' o despachar una orden aún 'pending' (que auto-aprueba pago) requiere approve_payments
+            if new_status == "paid" or (order.status == "pending" and new_status in ("shipped", "completed")):
+                if not user_has_capability(request.user, PERM_APPROVE_PAYMENTS):
+                    return Response(
+                        {"error": "No posee la capacidad 'approve_payments' para aprobar pagos o marcar órdenes como pagadas."},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+            # Logística solo puede actualizar despacho (shipped/completed) sobre órdenes ya pagadas
+            if ROLE_LOGISTICS in user_roles and not any(r in user_roles for r in (ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_SALES)):
+                if new_status not in ("shipped", "completed") or order.status not in ("paid", "shipped", "completed"):
+                    return Response(
+                        {"error": "El rol Logística solo está autorizado para gestionar despachos de órdenes pagadas."},
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+        return None
+
+    def update(self, request, *args, **kwargs):
+        order = self.get_object()
+        new_status = request.data.get("status")
+        denied = self._validate_order_mutation_rbac(request, order, new_status=new_status)
+        if denied is not None:
+            return denied
+        return super().update(request, *args, **kwargs)
+
     @action(detail=True, methods=["post"])
     @transaction.atomic
     def update_status(self, request, pk=None):
@@ -238,6 +307,10 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
 
         if new_status not in valid:
             return Response({"error": "Estado inválido."}, status=400)
+
+        denied = self._validate_order_mutation_rbac(request, order, new_status=new_status)
+        if denied is not None:
+            return denied
 
         order.status = new_status
         try:
@@ -291,15 +364,58 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
 
 
 class AdminProductViewSet(viewsets.ModelViewSet):
-    """CRUD completo de productos para el admin."""
-    permission_classes = [IsAdminOrStaff]
-    rbac_module        = MODULE_CATALOG
-    parser_classes     = [MultiPartParser, FormParser, JSONParser]
-    filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields      = ["name", "sku"]
-    ordering_fields    = ["name", "price", "stock", "created_at"]
-    ordering           = ["-created_at"]
-    lookup_field       = "id"
+    """CRUD completo de productos para el admin con control granular RBAC por acción y campo."""
+    permission_classes   = [IsAdminOrStaff]
+    rbac_module          = MODULE_CATALOG
+    rbac_allowed_modules = [MODULE_CATALOG, MODULE_INVENTORY]
+    rbac_allowed_roles_by_method = {
+        "create": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+        "destroy": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+        "update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_PURCHASING, ROLE_WAREHOUSE, ROLE_MARKETING],
+        "partial_update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_PURCHASING, ROLE_WAREHOUSE, ROLE_MARKETING],
+    }
+    parser_classes       = [MultiPartParser, FormParser, JSONParser]
+    filter_backends      = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields        = ["name", "sku"]
+    ordering_fields      = ["name", "price", "stock", "created_at"]
+    ordering             = ["-created_at"]
+    lookup_field         = "id"
+
+    COST_WRITE_KEYS       = {"cost_price"}
+    PRICE_WRITE_KEYS      = {"price", "compare_price", "price_usd", "price_ars"}
+    STOCK_WRITE_KEYS      = {"stock", "stock_min"}
+    EDITORIAL_WRITE_KEYS  = {"short_description", "description", "seo_title", "seo_description", "badge", "is_featured"}
+    STRUCTURAL_WRITE_KEYS = {"name", "sku", "product_type", "is_active", "category", "brand", "related_products", "bundle_items", "weight"}
+
+    def _validate_product_field_permissions(self, request, data):
+        """
+        Verifica permisos granulares de escritura por campo ANTES de realizar cualquier mutación.
+        Rechaza escrituras no autorizadas sin efectos secundarios (atomicidad estricta).
+        """
+        if is_effective_super_admin(request.user):
+            return
+        user = request.user
+        user_roles = get_user_roles(user)
+
+        if any(k in data for k in self.COST_WRITE_KEYS):
+            if not user_has_capability(user, PERM_EDIT_COSTS):
+                raise DjangoPermissionDenied("No posee autorización ('edit_costs') para modificar costos de adquisición.")
+
+        if any(k in data for k in self.PRICE_WRITE_KEYS):
+            if not user_has_capability(user, PERM_EDIT_PRICES):
+                raise DjangoPermissionDenied("No posee autorización ('edit_prices') para modificar precios de venta.")
+
+        if any(k in data for k in self.STOCK_WRITE_KEYS):
+            if not user_has_capability(user, PERM_ADJUST_INVENTORY):
+                raise DjangoPermissionDenied("No posee autorización ('adjust_inventory') para modificar existencias.")
+
+        if any(k in data for k in self.STRUCTURAL_WRITE_KEYS):
+            if not user_has_capability(user, PERM_EDIT_PRICES):
+                raise DjangoPermissionDenied("No posee autorización para modificar campos estructurales del catálogo.")
+
+        if any(k in data for k in self.EDITORIAL_WRITE_KEYS):
+            if not user_has_capability(user, PERM_EDIT_PRICES) and ROLE_MARKETING not in user_roles:
+                raise DjangoPermissionDenied("No posee autorización para modificar contenido editorial del producto.")
 
     def get_queryset(self):
         qs = Product.objects.select_related(
@@ -335,6 +451,9 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         from django.utils.text import slugify
 
         data = request.data
+
+        # Validación atómica de permisos granulares por campo ANTES de cualquier mutación
+        self._validate_product_field_permissions(request, data)
 
         if product is None:
             product = Product()
@@ -469,6 +588,9 @@ class AdminProductViewSet(viewsets.ModelViewSet):
                 product, context=self.get_serializer_context()
             )
             return Response(serializer.data, status=status.HTTP_201_CREATED)
+        except DjangoPermissionDenied as exc:
+            transaction.set_rollback(True)
+            return Response({"error": str(exc)}, status=status.HTTP_403_FORBIDDEN)
         except AdminInputError as exc:
             transaction.set_rollback(True)
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -495,6 +617,9 @@ class AdminProductViewSet(viewsets.ModelViewSet):
                 product, context=self.get_serializer_context()
             )
             return Response(serializer.data)
+        except DjangoPermissionDenied as exc:
+            transaction.set_rollback(True)
+            return Response({"error": str(exc)}, status=status.HTTP_403_FORBIDDEN)
         except AdminInputError as exc:
             transaction.set_rollback(True)
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -518,6 +643,12 @@ class AdminProductViewSet(viewsets.ModelViewSet):
 class AdminCategoryViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
     rbac_module        = MODULE_CATALOG
+    rbac_capability_by_method = {
+        "create": PERM_EDIT_PRICES,
+        "update": PERM_EDIT_PRICES,
+        "partial_update": PERM_EDIT_PRICES,
+        "destroy": PERM_EDIT_PRICES,
+    }
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
     queryset           = Category.objects.all().order_by("order", "name")
     filter_backends    = [filters.SearchFilter]
@@ -541,6 +672,12 @@ class AdminCategoryViewSet(viewsets.ModelViewSet):
 class AdminBrandViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
     rbac_module        = MODULE_CATALOG
+    rbac_capability_by_method = {
+        "create": PERM_EDIT_PRICES,
+        "update": PERM_EDIT_PRICES,
+        "partial_update": PERM_EDIT_PRICES,
+        "destroy": PERM_EDIT_PRICES,
+    }
     serializer_class   = AdminBrandSerializer
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
     queryset           = Brand.objects.all().order_by("name")
@@ -553,6 +690,13 @@ class AdminBrandViewSet(viewsets.ModelViewSet):
 
 class AdminProductImageViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_CATALOG
+    rbac_allowed_roles_by_method = {
+        "create": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "partial_update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "destroy": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+    }
     parser_classes     = [MultiPartParser, FormParser]
     serializer_class   = ProductImageSerializer
 
@@ -614,6 +758,9 @@ class AdminProductImageViewSet(viewsets.ModelViewSet):
 class AdminCourseViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
     rbac_module        = MODULE_ACADEMY
+    rbac_allowed_roles_by_method = {
+        "destroy": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+    }
     serializer_class   = CourseAdminSerializer
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
     lookup_field       = "id"
@@ -628,6 +775,9 @@ class AdminCertificationPathViewSet(viewsets.ModelViewSet):
     """CRUD de rutas de certificación para el panel admin de React."""
     permission_classes = [IsAdminOrStaff]
     rbac_module        = MODULE_ACADEMY
+    rbac_allowed_roles_by_method = {
+        "destroy": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+    }
     parser_classes     = [JSONParser]
     lookup_field       = "id"
 
@@ -671,6 +821,7 @@ class AdminLessonViewSet(viewsets.ModelViewSet):
 # API VIEWS (funciones)
 # ═══════════════════════════════════════════════════════════
 
+@rbac_endpoint(module=MODULE_ACADEMY)
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 def admin_lesson_video_upload_url(request):
@@ -735,12 +886,17 @@ def admin_lesson_video_upload_url(request):
 
     return Response({"upload_url": upload_url, "object_path": object_path, "content_type": content_type})
 
+@rbac_endpoint(module=MODULE_DASHBOARD)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def dashboard_overview(request):
     currency = requested_currency(request)
     if currency is None:
         return currency_error()
+    can_view_revenue = (
+        user_has_capability(request.user, PERM_VIEW_FINANCES)
+        or user_has_module_access(request.user, MODULE_ORDERS)
+    )
     now         = timezone.now()
     today       = now.date()
     month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -818,12 +974,12 @@ def dashboard_overview(request):
 
     return Response({
         "currency": currency,
-        "revenue_by_currency": summarize_by_currency(all_paid_orders),
+        "revenue_by_currency": summarize_by_currency(all_paid_orders) if can_view_revenue else None,
         "revenue": {
             "total":        float(total_revenue),
             "this_month":   float(revenue_this_month),
             "last_30_days": float(revenue_last_30),
-        },
+        } if can_view_revenue else None,
         "orders": {
             "total":      total_orders,
             "pending":    pending_orders,
@@ -847,23 +1003,30 @@ def dashboard_overview(request):
         "sales_chart": [
             {
                 "date":  item["day"].strftime("%Y-%m-%d"),
-                "total": float(item["total"]),
+                "total": float(item["total"]) if can_view_revenue else None,
                 "count": item["count"],
             }
             for item in sales_chart
         ],
-        "top_products": list(top_products),
+        "top_products": [
+            {
+                "product_name": p["product_name"],
+                "total_sold": p["total_sold"],
+                "revenue": float(p["revenue"]) if (can_view_revenue and p["revenue"] is not None) else None,
+            }
+            for p in top_products
+        ],
         "recent_orders": [
             {
                 "id":      str(o.id),
                 "email":   o.email,
-                "total":   float(o.total),
+                "total":   float(o.total) if can_view_revenue else None,
                 "currency": o.currency,
                 "status":  o.status,
                 "created": o.created_at.strftime("%Y-%m-%d %H:%M"),
             }
             for o in recent_orders
-        ],
+        ] if user_has_module_access(request.user, MODULE_ORDERS) or can_view_revenue else [],
         "actions": {
             "pending_orders": [
                 {
@@ -872,13 +1035,13 @@ def dashboard_overview(request):
                     "email":      o.email,
                     "user_name":  f"{o.user.first_name} {o.user.last_name}".strip()
                                   if o.user else "Invitado",
-                    "total":      float(o.total),
+                    "total":      float(o.total) if can_view_revenue else None,
                     "currency":   o.currency,
                     "created":    o.created_at.strftime("%d/%m %H:%M"),
                     "items_count": o.items.count(),
                 }
                 for o in pending_orders_list
-            ],
+            ] if user_has_module_access(request.user, MODULE_ORDERS) or can_view_revenue else [],
             "low_stock": [
                 {
                     "id":    str(p.id),
@@ -894,6 +1057,10 @@ def dashboard_overview(request):
     })
 
 
+@rbac_endpoint(
+    allowed_modules=[MODULE_ROLES, MODULE_DASHBOARD, MODULE_ORDERS],
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_SALES, ROLE_SUPPORT],
+)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_users(request):
@@ -925,13 +1092,20 @@ def admin_users(request):
     else:
         users_slice = users[:page_size]
 
+    user_roles = set(request.user.groups.values_list("name", flat=True)) if not request.user.is_superuser else {ROLE_SUPER_ADMIN}
+    can_view_user_spend = (
+        request.user.is_superuser
+        or user_has_capability(request.user, PERM_VIEW_FINANCES)
+        or bool(user_roles & {ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_SALES})
+    )
+
     data = []
     for u in users_slice:
         orders_count = Order.objects.filter(user=u).count()
         paid_by_user = Order.objects.filter(
             user=u, status__in=["paid", "shipped", "completed"]
         )
-        spend_by_currency = summarize_by_currency(paid_by_user)
+        spend_by_currency = summarize_by_currency(paid_by_user) if can_view_user_spend else None
         data.append({
             "id":           str(u.id),
             "email":        u.email,
@@ -943,28 +1117,23 @@ def admin_users(request):
             "is_superuser": u.is_superuser,
             "roles":        list(u.groups.values_list("name", flat=True)),
             "orders_count": orders_count,
-            "total_spent": spend_by_currency["CLP"],  # Legacy CLP-only field
-            "total_spent_currency": "CLP",
+            "total_spent": spend_by_currency["CLP"] if spend_by_currency else None,
+            "total_spent_currency": "CLP" if spend_by_currency else None,
             "spend_by_currency": spend_by_currency,
         })
 
     return Response({"results": data, "count": total_count, "page_size": page_size})
 
+@rbac_endpoint(module=MODULE_ROLES, capability=PERM_MANAGE_ROLES)
 @api_view(["PATCH", "DELETE"])
 @permission_classes([IsAdminOrStaff])
+@transaction.atomic
 def admin_user_detail(request, user_id):
     """
     PATCH/DELETE /api/v1/admin/users/{id}/
-
-    IsAdminOrStaff acepta cualquier is_staff=True, no solo superusuarios
-    — así que sin las protecciones de acá abajo, CUALQUIER cuenta de
-    staff (aunque tenga permisos pensados para ser limitados) podría
-    otorgarse is_staff a sí misma o a otra cuenta, o borrar/desactivar
-    la cuenta de un superusuario. Nunca se pudo hacer eso a propósito,
-    pero tampoco había nada que lo impidiera.
     """
     try:
-        user = User.objects.get(id=user_id)
+        user = User.objects.select_for_update().get(id=user_id)
     except User.DoesNotExist:
         return Response({"error": "Usuario no encontrado."}, status=404)
 
@@ -976,24 +1145,45 @@ def admin_user_detail(request, user_id):
             status=403,
         )
 
-    # Solo un superusuario puede tocar cuentas de otro superusuario o
-    # de staff — evita que un staff común "gestione" a sus superiores.
-    if (user.is_superuser or user.is_staff) and not request.user.is_superuser:
+    is_caller_super = is_effective_super_admin(request.user)
+    is_target_super = is_effective_super_admin(user)
+
+    # Solo un Super Admin puede tocar cuentas de otro superusuario o de staff.
+    if (is_target_super or user.is_staff) and not is_caller_super:
         return Response(
-            {"error": "Solo un superusuario puede modificar cuentas de staff/admin."},
+            {"error": "Solo un Super Admin puede modificar cuentas administrativas."},
             status=403,
         )
 
     if request.method == "PATCH":
         allowed = ["first_name", "last_name", "phone", "is_active", "is_staff"]
-        # is_staff (otorgar o quitar permisos de administrador) es
-        # exclusivo de superusuarios — un staff común no puede crear
-        # más cuentas de staff ni tocar las existentes.
-        if "is_staff" in request.data and not request.user.is_superuser:
+        if "is_staff" in request.data and not is_caller_super:
             return Response(
-                {"error": "Solo un superusuario puede otorgar o quitar permisos de administrador."},
+                {"error": "Solo un Super Admin puede otorgar o quitar permisos de administrador."},
                 status=403,
             )
+
+        # Proteger al último Super Admin activo ante desactivación o quita de flags
+        will_deactivate = "is_active" in request.data and not bool(request.data["is_active"])
+        if is_target_super and will_deactivate:
+            super_pks = list(
+                User.objects.filter(is_active=True)
+                .filter(Q(is_superuser=True) | Q(groups__name=ROLE_SUPER_ADMIN))
+                .exclude(pk=user.pk)
+                .values_list("pk", flat=True)
+                .distinct()
+            )
+            remaining_supers = (
+                User.objects.select_for_update()
+                .filter(pk__in=super_pks, is_active=True)
+                .count()
+            )
+            if remaining_supers == 0:
+                return Response(
+                    {"error": "Operación bloqueada: no se puede desactivar al último Super Admin activo."},
+                    status=400,
+                )
+
         for field in allowed:
             if field in request.data:
                 setattr(user, field, request.data[field])
@@ -1001,15 +1191,16 @@ def admin_user_detail(request, user_id):
         return Response({"detail": "Usuario actualizado."})
 
     if request.method == "DELETE":
-        if user.is_superuser:
+        if is_target_super:
             return Response(
-                {"error": "No se puede eliminar una cuenta de superusuario desde acá."},
+                {"error": "No se puede eliminar una cuenta de Super Admin desde acá."},
                 status=403,
             )
         user.delete()
         return Response({"detail": "Usuario eliminado."}, status=204)
 
 
+@rbac_endpoint(module=MODULE_ACADEMY, allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT])
 @api_view(["DELETE"])
 @permission_classes([IsAdminOrStaff])
 def admin_delete_enrollment(request, enrollment_id):
@@ -1021,6 +1212,10 @@ def admin_delete_enrollment(request, enrollment_id):
     except Enrollment.DoesNotExist:
         return Response({"error": "No encontrada."}, status=404)
 
+@rbac_endpoint(
+    allowed_modules=[MODULE_ORDERS, MODULE_FINANCES],
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_FINANCE, ROLE_SALES],
+)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_payments(request):
@@ -1076,6 +1271,10 @@ def admin_payments(request):
         "approved_by_currency": summarize_by_currency(Payment.objects.filter(status="approved"), "amount")
     })
 
+@rbac_endpoint(
+    allowed_modules=[MODULE_FINANCES, MODULE_ORDERS],
+    capability=PERM_APPROVE_PAYMENTS,
+)
 @api_view(["PATCH"])
 @permission_classes([IsAdminOrStaff])
 @transaction.atomic
@@ -1142,6 +1341,7 @@ def admin_update_payment_status(request, payment_id):
     
     
 
+@rbac_endpoint(module=MODULE_ACADEMY)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_academy(request):
@@ -1167,6 +1367,7 @@ def admin_academy(request):
     })
 
 
+@rbac_endpoint(module=MODULE_SERVICES)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_services(request):
@@ -1200,6 +1401,7 @@ def admin_services(request):
     })
 
 
+@rbac_endpoint(module=MODULE_SERVICES)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_service_requests(request):
@@ -1294,6 +1496,10 @@ def _svc_resolve_category(data):
     return None
 
 
+@rbac_endpoint(
+    module=MODULE_SERVICES,
+    capability_by_method={"POST": PERM_EDIT_PRICES},
+)
 @api_view(["GET", "POST"])
 @permission_classes([IsAdminOrStaff])
 def admin_services_crud(request):
@@ -1364,6 +1570,11 @@ def admin_services_crud(request):
     return Response({"id": str(service.id), "name": service.name}, status=201)
 
 
+@rbac_endpoint(
+    module=MODULE_SERVICES,
+    capability=PERM_EDIT_PRICES,
+    allowed_roles_by_method={"DELETE": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT]},
+)
 @api_view(["PATCH", "DELETE"])
 @permission_classes([IsAdminOrStaff])
 def admin_service_detail(request, service_id):
@@ -1416,6 +1627,7 @@ def admin_service_detail(request, service_id):
     service.save()
     return Response({"id": str(service.id), "name": service.name})
 
+@rbac_endpoint(module=MODULE_SERVICES)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_bookings_list(request):
@@ -1481,6 +1693,7 @@ def admin_bookings_list(request):
     return Response(res)
 
 
+@rbac_endpoint(module=MODULE_SERVICES)
 @api_view(["PATCH"])
 @permission_classes([IsAdminOrStaff])
 def update_booking_status(request, pk):
@@ -1525,6 +1738,7 @@ def update_booking_status(request, pk):
     return Response({"status": booking.status})
 
 
+@rbac_endpoint(module=MODULE_SERVICES)
 @api_view(["PATCH"])
 @permission_classes([IsAdminOrStaff])
 def update_request_status(request, pk):
@@ -1574,6 +1788,7 @@ def update_request_status(request, pk):
     return Response({"status": sr.status})
 
 
+@rbac_endpoint(module=MODULE_ACADEMY)
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 def admin_create_enrollment(request):
@@ -1603,6 +1818,7 @@ def admin_create_enrollment(request):
     })
 
 
+@rbac_endpoint(module=MODULE_ACADEMY)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_enrollments(request):
@@ -1641,12 +1857,17 @@ def admin_enrollments(request):
     })
 
 
+@rbac_endpoint(module=MODULE_DASHBOARD)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def analytics_full(request):
     currency = requested_currency(request)
     if currency is None:
         return currency_error()
+    can_view_revenue = (
+        user_has_capability(request.user, PERM_VIEW_FINANCES)
+        or user_has_module_access(request.user, MODULE_ORDERS)
+    )
     now      = timezone.now()
     last_12m = now - timedelta(days=365)
 
@@ -1727,10 +1948,10 @@ def analytics_full(request):
 
     return Response({
         "currency": currency,
-        "revenue_by_currency": summarize_by_currency(all_paid_orders),
+        "revenue_by_currency": summarize_by_currency(all_paid_orders) if can_view_revenue else None,
         "kpis": {
-            "total_revenue":    float(total_revenue),
-            "avg_order_value":  float(avg_order_value),
+            "total_revenue":    float(total_revenue) if can_view_revenue else None,
+            "avg_order_value":  float(avg_order_value) if can_view_revenue else None,
             "total_customers":  total_customers,
             "repeat_customers": repeat_customers,
             "repeat_rate": round(
@@ -1740,7 +1961,8 @@ def analytics_full(request):
         },
         "sales_by_month": [
             {"month": i["month"].strftime("%b %Y"),
-             "total": float(i["total"]), "count": i["count"]}
+             "total": float(i["total"]) if can_view_revenue else None,
+             "count": i["count"]}
             for i in sales_by_month
         ],
         "orders_by_status": [
@@ -1753,13 +1975,15 @@ def analytics_full(request):
         ],
         "revenue_by_provider": [
             {"provider": i["provider"],
-             "total": float(i["total"]), "count": i["count"]}
+             "total": float(i["total"]) if can_view_revenue else None,
+             "count": i["count"]}
             for i in revenue_by_provider
         ],
         "low_stock_products": list(low_stock_products),
         "revenue_by_category": [
             {"category": i["product__category__name"] or "Sin categoría",
-             "total": float(i["total"]), "count": i["count"]}
+             "total": float(i["total"]) if can_view_revenue else None,
+             "count": i["count"]}
             for i in revenue_by_category
         ],
         "enrollments_by_month": [
@@ -1768,6 +1992,10 @@ def analytics_full(request):
         ],
     })
 
+@rbac_endpoint(
+    module=MODULE_CATALOG,
+    capability=[PERM_EDIT_PRICES, PERM_EDIT_COSTS],
+)
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 def import_products(request):
@@ -1793,6 +2021,7 @@ def import_products(request):
     return Response(result, status=200)
 
 
+@rbac_endpoint(module=MODULE_CATALOG, capability=PERM_EDIT_PRICES)
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 def import_brands(request):
@@ -1816,6 +2045,7 @@ def import_brands(request):
     return Response(result, status=200)
 
 
+@rbac_endpoint(module=MODULE_ACADEMY)
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 def import_courses(request):
@@ -1841,6 +2071,7 @@ def import_courses(request):
     return Response(result, status=200)
 
 
+@rbac_endpoint(module=MODULE_CATALOG)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def download_template(request):
@@ -1946,6 +2177,7 @@ def download_template(request):
     wb.save(response)
     return response
 
+@rbac_endpoint(module=MODULE_CATALOG)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def product_images(request, product_id):
@@ -1959,6 +2191,10 @@ def product_images(request, product_id):
     } for img in images])
 
 
+@rbac_endpoint(
+    module=MODULE_CATALOG,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+)
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 def product_image_upload(request, product_id):
@@ -1991,6 +2227,10 @@ def product_image_upload(request, product_id):
         "is_primary": img.is_primary,
     }, status=201)
 
+@rbac_endpoint(
+    module=MODULE_CATALOG,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+)
 @api_view(["DELETE"])
 @permission_classes([IsAdminOrStaff])
 def product_image_delete(request, image_id):
@@ -2004,6 +2244,10 @@ def product_image_delete(request, image_id):
         return Response({"error": "No encontrada."}, status=404)
 
 
+@rbac_endpoint(
+    module=MODULE_CATALOG,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+)
 @api_view(["PATCH"])
 @permission_classes([IsAdminOrStaff])
 def product_image_set_primary(request, image_id):
@@ -2020,21 +2264,27 @@ def product_image_set_primary(request, image_id):
     
     # ── MÓDULO FINANCIERO ────────────────────────────────────────
 
-def check_finance_permission(user):
-    """Verifica capacidad sensible de finanzas para RBAC."""
+def check_finance_permission(user, write: bool = False):
+    """Verifica capacidad sensible de finanzas para RBAC (lectura vs escritura)."""
     if not user or not user.is_authenticated:
         return False
-    if user.is_superuser:
+    if is_effective_super_admin(user):
         return True
+    if write:
+        return user_has_capability(user, PERM_MANAGE_FINANCES)
     return user_has_capability(user, PERM_VIEW_FINANCES)
 
 
+@rbac_endpoint(
+    module=MODULE_FINANCES,
+    capability_by_method={"GET": PERM_VIEW_FINANCES, "POST": PERM_MANAGE_FINANCES},
+)
 @api_view(["GET", "POST"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_categories(request):
     """GET/POST /api/v1/admin/finance/categories/"""
-    if not check_finance_permission(request.user):
-        return Response({"error": "No posee autorización para acceder al módulo financiero."}, status=status.HTTP_403_FORBIDDEN)
+    if not check_finance_permission(request.user, write=(request.method == "POST")):
+        return Response({"error": "No posee autorización para acceder o modificar el módulo financiero."}, status=status.HTTP_403_FORBIDDEN)
     
 
     if request.method == "GET":
@@ -2063,12 +2313,13 @@ def admin_finance_categories(request):
     return Response({"id": str(cat.id), "name": cat.name}, status=201)
 
 
+@rbac_endpoint(module=MODULE_FINANCES, capability=PERM_MANAGE_FINANCES)
 @api_view(["PATCH", "DELETE"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_category_detail(request, cat_id):
     """PATCH/DELETE /api/v1/admin/finance/categories/{id}/"""
-    if not check_finance_permission(request.user):
-        return Response({"error": "No posee autorización para acceder al módulo financiero."}, status=status.HTTP_403_FORBIDDEN)
+    if not check_finance_permission(request.user, write=True):
+        return Response({"error": "No posee autorización para modificar el módulo financiero."}, status=status.HTTP_403_FORBIDDEN)
     
     try:
         cat = DistributionCategory.objects.get(id=cat_id)
@@ -2134,6 +2385,7 @@ def admin_finance_category_detail(request, cat_id):
         "is_active":  cat.is_active,
     })
 
+@rbac_endpoint(module=MODULE_FINANCES, capability=PERM_VIEW_FINANCES)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_summary(request):
@@ -2227,12 +2479,16 @@ def admin_finance_summary(request):
     })
 
 
+@rbac_endpoint(
+    module=MODULE_FINANCES,
+    capability_by_method={"GET": PERM_VIEW_FINANCES, "POST": PERM_MANAGE_FINANCES},
+)
 @api_view(["GET", "POST"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_withdrawals(request):
     """GET/POST /api/v1/admin/finance/withdrawals/ (currency-aware)."""
-    if not check_finance_permission(request.user):
-        return Response({"error": "No posee autorización para acceder al módulo financiero."}, status=status.HTTP_403_FORBIDDEN)
+    if not check_finance_permission(request.user, write=(request.method == "POST")):
+        return Response({"error": "No posee autorización para acceder o registrar retiros en el módulo financiero."}, status=status.HTTP_403_FORBIDDEN)
     if request.method == "GET":
         currency = requested_currency(request)
         if currency is None:
@@ -2302,12 +2558,13 @@ def admin_finance_withdrawals(request):
     return Response({"id": str(w.id), "created": True}, status=201)
 
 
+@rbac_endpoint(module=MODULE_FINANCES, capability=PERM_MANAGE_FINANCES)
 @api_view(["DELETE"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_withdrawal_delete(request, withdrawal_id):
     """DELETE /api/v1/admin/finance/withdrawals/{id}/"""
-    if not check_finance_permission(request.user):
-        return Response({"error": "No posee autorización para acceder al módulo financiero."}, status=status.HTTP_403_FORBIDDEN)
+    if not check_finance_permission(request.user, write=True):
+        return Response({"error": "No posee autorización para eliminar retiros en el módulo financiero."}, status=status.HTTP_403_FORBIDDEN)
     from apps.analytics.models import WithdrawalDeletionLog
 
     try:
@@ -2329,6 +2586,7 @@ def admin_finance_withdrawal_delete(request, withdrawal_id):
     w.delete()
     return Response({"deleted": True})
 
+@rbac_endpoint(module=MODULE_FINANCES, capability=PERM_VIEW_FINANCES)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_finance_by_product(request):
@@ -2338,6 +2596,9 @@ def admin_finance_by_product(request):
     currency = requested_currency(request)
     if currency is None:
         return currency_error()
+
+    can_view_costs = user_has_capability(request.user, PERM_VIEW_COSTS)
+    can_view_margins = user_has_capability(request.user, PERM_VIEW_MARGINS)
 
     # Solo órdenes pagadas
     items = OrderItem.objects.filter(
@@ -2374,9 +2635,9 @@ def admin_finance_by_product(request):
             "units_sold":    item["units_sold"],
             "total_revenue": float(item["total_revenue"]),
             "currency":      currency,
-            "total_cost":    float(total_cost) if total_cost is not None else None,
-            "profit":        float(profit) if profit is not None else None,
-            "margin":        margin,
+            "total_cost":    float(total_cost) if (total_cost is not None and can_view_costs) else None,
+            "profit":        float(profit) if (profit is not None and can_view_margins) else None,
+            "margin":        margin if can_view_margins else None,
         })
 
     return Response({"results": results, "currency": currency})    
@@ -2384,12 +2645,16 @@ def admin_finance_by_product(request):
 
 # ── INVENTARIO INTELIGENTE ────────────────────────────────────
 
+@rbac_endpoint(module=MODULE_INVENTORY)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def inventory_summary(request):
     """KPIs generales del inventario"""
     
     products = Product.objects.filter(is_active=True)
+    can_view_costs = user_has_capability(request.user, PERM_VIEW_COSTS)
+    can_view_margins = user_has_capability(request.user, PERM_VIEW_MARGINS)
+    can_view_finances = user_has_capability(request.user, PERM_VIEW_FINANCES)
 
     # Valor total del inventario (stock × cost_price)
     valor_inventario = sum(
@@ -2417,14 +2682,14 @@ def inventory_summary(request):
     stock_ok         = products.filter(stock__gt=F("stock_min")).count()
 
     return Response({
-        "valor_inventario":  float(valor_inventario),
-        "valor_venta":       float(valor_venta),
+        "valor_inventario":  float(valor_inventario) if can_view_costs else None,
+        "valor_venta":       float(valor_venta) if (can_view_costs or can_view_finances) else None,
         "ganancia_potencial": (
             float(valor_venta - valor_inventario)
-            if cost_missing_count == 0 else None
+            if (cost_missing_count == 0 and can_view_costs and can_view_margins) else None
         ),
-        "cost_missing_count": cost_missing_count,
-        "profit_calculable": cost_missing_count == 0,
+        "cost_missing_count": cost_missing_count if can_view_costs else None,
+        "profit_calculable": (cost_missing_count == 0) if (can_view_costs and can_view_margins) else False,
         "total_productos":   total_productos,
         "sin_stock":         sin_stock,
         "stock_critico":     stock_critico,
@@ -2432,6 +2697,7 @@ def inventory_summary(request):
     })
 
 
+@rbac_endpoint(module=MODULE_INVENTORY)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def inventory_alerts(request):
@@ -2442,26 +2708,31 @@ def inventory_alerts(request):
         stock__lte=F("stock_min")
     ).select_related("category", "brand").order_by("stock")
 
+    can_view_costs = user_has_capability(request.user, PERM_VIEW_COSTS)
+
     data = []
     for p in products:
         primary_img = p.images.filter(is_primary=True).first() or p.images.first()
-        data.append({
+        row = {
             "id":         str(p.id),
             "name":       p.name,
             "sku":        p.sku,
             "stock":      p.stock,
             "stock_min":  p.stock_min,
             "price":      float(p.price),
-            "cost_price": float(p.cost_price) if p.cost_price else None,
             "category":   p.category.name if p.category else None,
             "brand":      p.brand.name if p.brand else None,
             "image":      f"/media/{primary_img.image.name}" if primary_img else None,
             "status":     "sin_stock" if p.stock == 0 else "critico",
-        })
+        }
+        if can_view_costs:
+            row["cost_price"] = float(p.cost_price) if p.cost_price else None
+        data.append(row)
 
     return Response(data)
 
 
+@rbac_endpoint(module=MODULE_INVENTORY)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def inventory_rotation(request):
@@ -2472,6 +2743,11 @@ def inventory_rotation(request):
     from apps.orders.models import OrderItem
     from apps.products.models import Product
     from django.db.models import Sum, Count, F
+
+    can_view_revenue = (
+        user_has_capability(request.user, PERM_VIEW_FINANCES)
+        or user_has_capability(request.user, PERM_VIEW_COSTS)
+    )
 
     # Ventas por producto (últimos 30 días)
     from django.utils import timezone
@@ -2497,18 +2773,20 @@ def inventory_rotation(request):
             "name":             v["product__name"],
             "stock_actual":     v["product__stock"],
             "unidades_vendidas":v["unidades_vendidas"] or 0,
-            "ingresos":         float(v["ingresos"] or 0),
+            "ingresos":         float(v["ingresos"] or 0) if can_view_revenue else None,
             "currency":         currency,
         })
 
     return Response(data)
 
 
+@rbac_endpoint(module=MODULE_INVENTORY)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def inventory_value_by_category(request):
     """Valor del inventario por categoría"""
 
+    can_view_costs = user_has_capability(request.user, PERM_VIEW_COSTS)
     categories = Category.objects.filter(is_active=True)
     data = []
 
@@ -2519,7 +2797,7 @@ def inventory_value_by_category(request):
         valor = sum(
             float(p.stock * p.cost_price)
             for p in products if p.cost_price
-        )
+        ) if can_view_costs else None
         unidades = sum(p.stock for p in products)
         data.append({
             "category": cat.name,
@@ -2528,8 +2806,10 @@ def inventory_value_by_category(request):
             "productos": products.count(),
         })
 
-    return Response(sorted(data, key=lambda x: x["valor_inventario"], reverse=True))
+    sort_key = (lambda x: x["valor_inventario"] or 0) if can_view_costs else (lambda x: x["unidades"])
+    return Response(sorted(data, key=sort_key, reverse=True))
 
+@rbac_endpoint(module=MODULE_DASHBOARD)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def executive_dashboard(request):
@@ -2537,6 +2817,10 @@ def executive_dashboard(request):
     currency = requested_currency(request)
     if currency is None:
         return currency_error()
+
+    can_view_finances = user_has_capability(request.user, PERM_VIEW_FINANCES)
+    can_view_margins = user_has_capability(request.user, PERM_VIEW_MARGINS)
+    can_view_revenue = can_view_finances or user_has_module_access(request.user, MODULE_ORDERS)
 
     hoy        = timezone.now()
     hoy_inicio = hoy.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -2580,11 +2864,11 @@ def executive_dashboard(request):
     ordenes_hoy_data = [{
         "id":     str(o.id),
         "status": o.status,
-        "total":  float(o.total),
+        "total":  float(o.total) if can_view_revenue else None,
         "currency": o.currency,
         "email":  o.email,
         "hora":   o.created_at.strftime("%H:%M"),
-    } for o in ordenes_hoy]
+    } for o in ordenes_hoy] if can_view_revenue else []
 
     # ── Inventario crítico ───────────────────────────────────
     
@@ -2626,13 +2910,13 @@ def executive_dashboard(request):
         ventas_7dias.append({
             "dia":   dia_inicio.strftime("%a"),
             "fecha": dia_inicio.strftime("%d/%m"),
-            "total": float(v["total"] or 0),
+            "total": float(v["total"] or 0) if can_view_revenue else None,
             "count": v["count"] or 0,
         })
 
     # ── Top 3 productos del mes ──────────────────────────────
     from apps.orders.models import OrderItem
-    top_productos = OrderItem.objects.filter(
+    top_productos_qs = OrderItem.objects.filter(
         order__status__in=["paid", "shipped", "completed"],
         order__currency=currency,
         order__created_at__gte=mes_inicio,
@@ -2640,28 +2924,44 @@ def executive_dashboard(request):
         unidades=Sum("quantity"),
         ingresos=Sum(F("quantity") * F("price")),
     ).order_by("-ingresos")[:3]
+    top_productos = [
+        {
+            "product_name": p["product_name"],
+            "unidades": p["unidades"],
+            "ingresos": float(p["ingresos"]) if (can_view_revenue and p["ingresos"] is not None) else None,
+        }
+        for p in top_productos_qs
+    ]
+
+    show_utilidad = (currency == "CLP" and can_view_finances and can_view_margins)
+    if not (can_view_finances and can_view_margins):
+        utilidad_estado = "restringido_rbac"
+    elif currency == "CLP":
+        utilidad_estado = "estimacion_costos_catalogo_CLP"
+    else:
+        utilidad_estado = "sin_costos_comparables"
 
     return Response({
         "currency": currency,
         "ventas": {
-            "hoy":            float(ventas_hoy["total"] or 0),
+            "hoy":            float(ventas_hoy["total"] or 0) if can_view_revenue else None,
             "hoy_count":      ventas_hoy["count"] or 0,
-            "ayer":           float(ventas_ayer["total"] or 0),
-            "semana":         float(ventas_semana["total"] or 0),
-            "mes":            float(ventas_mes["total"] or 0),
-            "mes_anterior":   float(ventas_mes_ant["total"] or 0),
-            "var_dia":        variacion(ventas_hoy["total"], ventas_ayer["total"]),
-            "var_mes":        variacion(ventas_mes["total"], ventas_mes_ant["total"]),
+            "ayer":           float(ventas_ayer["total"] or 0) if can_view_revenue else None,
+            "semana":         float(ventas_semana["total"] or 0) if can_view_revenue else None,
+            "mes":            float(ventas_mes["total"] or 0) if can_view_revenue else None,
+            "mes_anterior":   float(ventas_mes_ant["total"] or 0) if can_view_revenue else None,
+            "var_dia":        variacion(ventas_hoy["total"], ventas_ayer["total"]) if can_view_revenue else None,
+            "var_mes":        variacion(ventas_mes["total"], ventas_mes_ant["total"]) if can_view_revenue else None,
         },
         # Product costs are cataloged in CLP. Foreign-currency profit is
         # unknown until explicit matching cost and FX provenance exists.
-        "utilidad_mes":    float(utilidad_mes) if currency == "CLP" else None,
-        "utilidad_estado": "estimacion_costos_catalogo_CLP" if currency == "CLP" else "sin_costos_comparables",
+        "utilidad_mes":    float(utilidad_mes) if show_utilidad else None,
+        "utilidad_estado": utilidad_estado,
         "inventario": {
             "criticos":  criticos,
             "sin_stock": sin_stock,
         },
         "ordenes_hoy":     ordenes_hoy_data,
         "ventas_7dias":    ventas_7dias,
-        "top_productos":   list(top_productos),
+        "top_productos":   top_productos,
     })

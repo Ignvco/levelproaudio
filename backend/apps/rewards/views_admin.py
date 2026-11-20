@@ -21,7 +21,17 @@ from rest_framework.response import Response
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
-from core.admin_permissions import IsAdminOrStaff
+from core.admin_permissions import IsAdminOrStaff, rbac_endpoint
+from core.rbac.constants import (
+    MODULE_MARKETING,
+    MODULE_ORDERS,
+    PERM_EXPORT_DATA,
+    PERM_VIEW_FINANCES,
+    ROLE_SUPER_ADMIN,
+    ROLE_MANAGEMENT,
+    ROLE_MARKETING,
+)
+from core.rbac.permissions import is_effective_super_admin, user_has_capability, user_has_module_access
 from apps.orders.models import Order, OrderItem
 
 from .models      import Campaign, RewardProduct, Entry, Winner, CampaignStatus
@@ -40,6 +50,16 @@ from .serializers import (
 
 class AdminCampaignViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_MARKETING
+    rbac_allowed_roles_by_method = {
+        "create": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "partial_update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "duplicate": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "finish": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "draw": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+        "destroy": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+    }
     serializer_class   = AdminCampaignSerializer
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
@@ -107,6 +127,13 @@ class AdminCampaignViewSet(viewsets.ModelViewSet):
 
 class AdminRewardProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_MARKETING
+    rbac_allowed_roles_by_method = {
+        "create": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "partial_update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "destroy": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+    }
     serializer_class   = AdminRewardProductSerializer
     parser_classes     = [JSONParser]
 
@@ -124,6 +151,10 @@ class AdminRewardProductViewSet(viewsets.ModelViewSet):
 
 class AdminEntryViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_MARKETING
+    rbac_capability_by_method = {
+        "export_csv": PERM_EXPORT_DATA,
+    }
     serializer_class   = AdminEntrySerializer
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
     search_fields      = ["unique_code", "user__email"]
@@ -177,6 +208,12 @@ class AdminEntryViewSet(viewsets.ReadOnlyModelViewSet):
 
 class AdminWinnerViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_MARKETING
+    rbac_allowed_roles_by_method = {
+        "create": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "partial_update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "destroy": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+    }
     serializer_class   = AdminWinnerSerializer
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
     http_method_names  = ["get", "patch", "delete", "head", "options"]
@@ -193,6 +230,7 @@ class AdminWinnerViewSet(viewsets.ModelViewSet):
 # DASHBOARD (KPIs Admin)
 # ═══════════════════════════════════════════════════════════════
 
+@rbac_endpoint(module=MODULE_MARKETING)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def rewards_dashboard(request):
@@ -252,14 +290,16 @@ def rewards_dashboard(request):
         remaining = current.draw_date - now
         current_data["seconds_remaining"] = max(0, int(remaining.total_seconds()))
 
+    can_see_finances = is_effective_super_admin(request.user) or user_has_capability(request.user, PERM_VIEW_FINANCES)
+
     return Response({
         "currency": currency,
-        "related_revenue_by_currency": related_revenue_by_currency,
+        "related_revenue_by_currency": related_revenue_by_currency if can_see_finances else None,
         "totals": {
             "campaigns":        total_campaigns,
             "entries":          total_entries,
             "participants":     total_participants,
-            "related_revenue":  float(related_revenue),
+            "related_revenue":  float(related_revenue) if can_see_finances else None,
         },
         "current_campaign": current_data,
         "recent_campaigns": [

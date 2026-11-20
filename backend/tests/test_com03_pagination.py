@@ -5,6 +5,7 @@ usuarios e inscripciones (Issue #22 / COM-03).
 """
 
 from decimal import Decimal
+from django.contrib.auth.models import Group
 from django.test import TestCase
 from rest_framework.test import APIClient
 
@@ -13,6 +14,7 @@ from apps.products.models import Category, Product
 from apps.academy.models import Course, Enrollment
 from apps.payments.models import Payment, PaymentProvider, PaymentStatus
 from apps.orders.models import Order, OrderStatus
+from core.rbac.constants import ROLE_MANAGEMENT
 
 
 class Com03PaginationTest(TestCase):
@@ -23,6 +25,8 @@ class Com03PaginationTest(TestCase):
             password="x",
             is_staff=True,
         )
+        group, _ = Group.objects.get_or_create(name=ROLE_MANAGEMENT)
+        self.staff_user.groups.add(group)
         self.client = APIClient()
         self.client.force_authenticate(user=self.staff_user)
 

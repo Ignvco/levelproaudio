@@ -62,6 +62,7 @@ export default function AdminUsers() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["admin-users"] })
       queryClient.invalidateQueries({ queryKey: ["admin-roles-list"] })
+      queryClient.invalidateQueries({ queryKey: ["my-permissions"] })
       // Actualizar el usuario seleccionado en el modal
       if (selectedUser) {
         setSelectedUser({ ...selectedUser, roles: data.roles })

@@ -10,8 +10,24 @@ from drf_spectacular.views import (
 )
 from core.views import MediaProxyView
 from core.admin_permissions import IsAdminOrStaff
+from core.rbac.constants import MODULE_DASHBOARD
 from apps.users.sso_soundmap import soundmap_webhook_view, soundmap_audio_assets_view
 from apps.billing.shipping_and_tax import estimate_shipping_rates
+
+
+class AdminSpectacularAPIView(SpectacularAPIView):
+    permission_classes = [IsAdminOrStaff]
+    rbac_module = MODULE_DASHBOARD
+
+
+class AdminSpectacularSwaggerView(SpectacularSwaggerView):
+    permission_classes = [IsAdminOrStaff]
+    rbac_module = MODULE_DASHBOARD
+
+
+class AdminSpectacularRedocView(SpectacularRedocView):
+    permission_classes = [IsAdminOrStaff]
+    rbac_module = MODULE_DASHBOARD
 
 urlpatterns = [
     # Panel admin Django
@@ -58,9 +74,9 @@ urlpatterns = [
     path("api/v1/shipping/estimate/", estimate_shipping_rates, name="shipping-estimate-root"),
 
     # API docs
-    path("api/schema/", SpectacularAPIView.as_view(permission_classes=[IsAdminOrStaff]), name="schema"),
-    path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema", permission_classes=[IsAdminOrStaff]), name="swagger-ui"),
-    path("api/redoc/", SpectacularRedocView.as_view(url_name="schema", permission_classes=[IsAdminOrStaff]), name="redoc"),
+    path("api/schema/", AdminSpectacularAPIView.as_view(), name="schema"),
+    path("api/docs/", AdminSpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+    path("api/redoc/", AdminSpectacularRedocView.as_view(url_name="schema"), name="redoc"),
 
     # Proxy de media — sirve imágenes desde GCS usando credenciales del SA
     # En producción: lee desde GCS con Compute Engine credentials

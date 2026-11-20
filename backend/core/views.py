@@ -13,12 +13,58 @@ class MediaProxyView(View):
     """
     Sirve archivos de media desde GCS (producción) o filesystem local (desarrollo).
     Soporta HTTP Range requests (206 Partial Content) para streaming de video/audio.
+    Protege rutas privadas (billing/, receipts/, private/) exigiendo autenticación y autorización RBAC.
     """
+    PRIVATE_PREFIXES = ("billing/", "receipts/", "private/")
+
+    def _resolve_request_user(self, request):
+        user = getattr(request, "user", None)
+        if user and getattr(user, "is_authenticated", False):
+            return user
+        try:
+            from apps.users.authentication import CookieJWTAuthentication
+            auth_res = CookieJWTAuthentication().authenticate(request)
+            if auth_res:
+                return auth_res[0]
+        except Exception:
+            pass
+        return None
+
+    def _is_private_path(self, path):
+        normalized = (path or "").lstrip("/")
+        return normalized.startswith(self.PRIVATE_PREFIXES)
+
+    def _check_private_access(self, request, path):
+        from core.rbac.constants import MODULE_FINANCES, MODULE_ORDERS
+        from core.rbac.permissions import is_effective_super_admin, user_has_module_access
+        user = self._resolve_request_user(request)
+        if not user or not getattr(user, "is_authenticated", False) or not getattr(user, "is_active", False):
+            return False
+        if is_effective_super_admin(user):
+            return True
+        if user_has_module_access(user, MODULE_FINANCES) or user_has_module_access(user, MODULE_ORDERS):
+            return True
+        # Permitir al propietario legítimo de un documento tributario descargar su propio PDF
+        normalized = (path or "").lstrip("/")
+        if normalized.startswith("billing/"):
+            from apps.billing.models import TributaryDocument
+            if TributaryDocument.objects.filter(pdf_externo=normalized, order__user=user).exists():
+                return True
+        return False
 
     def get(self, request, path):
+        is_private = self._is_private_path(path)
+        if is_private and not self._check_private_access(request, path):
+            resp = HttpResponse(status=403)
+            resp["Cache-Control"] = "private, no-store"
+            return resp
         if settings.DEBUG:
-            return self._serve_local(request, path)
-        return self._serve_gcs(request, path)
+            resp = self._serve_local(request, path)
+        else:
+            resp = self._serve_gcs(request, path)
+        if is_private:
+            resp["Cache-Control"] = "private, no-store"
+        return resp
 
     # ── helpers ───────────────────────────────────────────────
     @staticmethod

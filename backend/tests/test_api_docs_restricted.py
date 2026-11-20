@@ -35,9 +35,13 @@ class ApiDocsRestrictedTest(TestCase):
         self.assertEqual(resp.status_code, 403)
 
     def test_staff_can_access_docs(self):
+        from django.contrib.auth.models import Group
+        from core.rbac.constants import ROLE_MANAGEMENT
         staff = User.objects.create_user(
             email="staffdocs@test.com", username="staffdocs", password="x", is_staff=True
         )
+        group, _ = Group.objects.get_or_create(name=ROLE_MANAGEMENT)
+        staff.groups.add(group)
         self.client.force_authenticate(user=staff)
         resp = self.client.get("/api/schema/")
         self.assertEqual(resp.status_code, 200)

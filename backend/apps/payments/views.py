@@ -401,6 +401,7 @@ def transfer_instructions(request, order_id):
 # ── Admin: CRUD de métodos de pago y cuentas bancarias ──────────────
 from rest_framework import viewsets
 from core.admin_permissions import IsAdminOrStaff
+from core.rbac.constants import MODULE_FINANCES, PERM_VIEW_FINANCES, PERM_MANAGE_SETTINGS
 from .models import PaymentMethodConfig, BankAccount
 from .serializers import PaymentMethodConfigSerializer, BankAccountSerializer
 
@@ -410,6 +411,15 @@ class AdminPaymentMethodViewSet(viewsets.ModelViewSet):
     queryset = PaymentMethodConfig.objects.all()
     serializer_class = PaymentMethodConfigSerializer
     permission_classes = [IsAdminOrStaff]
+    rbac_module = MODULE_FINANCES
+    rbac_capability_by_method = {
+        "list": PERM_VIEW_FINANCES,
+        "retrieve": PERM_VIEW_FINANCES,
+        "create": PERM_MANAGE_SETTINGS,
+        "update": PERM_MANAGE_SETTINGS,
+        "partial_update": PERM_MANAGE_SETTINGS,
+        "destroy": PERM_MANAGE_SETTINGS,
+    }
 
 
 class AdminBankAccountViewSet(viewsets.ModelViewSet):
@@ -417,3 +427,12 @@ class AdminBankAccountViewSet(viewsets.ModelViewSet):
     queryset = BankAccount.objects.all()
     serializer_class = BankAccountSerializer
     permission_classes = [IsAdminOrStaff]
+    rbac_module = MODULE_FINANCES
+    rbac_capability_by_method = {
+        "list": PERM_VIEW_FINANCES,
+        "retrieve": PERM_VIEW_FINANCES,
+        "create": PERM_MANAGE_SETTINGS,
+        "update": PERM_MANAGE_SETTINGS,
+        "partial_update": PERM_MANAGE_SETTINGS,
+        "destroy": PERM_MANAGE_SETTINGS,
+    }

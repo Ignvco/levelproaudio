@@ -19,8 +19,9 @@ class LessonSerializer(serializers.ModelSerializer):
         request = self.context.get("request")
         if not request or not request.user.is_authenticated:
             return not obj.is_free
-        # Staff/admin siempre pueden previsualizar
-        if request.user.is_staff or request.user.is_superuser:
+        from core.rbac.constants import MODULE_ACADEMY
+        from core.rbac.permissions import is_effective_super_admin, user_has_module_access
+        if is_effective_super_admin(request.user) or user_has_module_access(request.user, MODULE_ACADEMY):
             return False
         enrolled = Enrollment.objects.filter(user=request.user, course=obj.module.course).exists()
         return not enrolled and not obj.is_free

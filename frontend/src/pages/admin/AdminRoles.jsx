@@ -48,14 +48,15 @@ const CAPABILITY_LABELS = {
   view_costs: "Ver Costos de Adquisición",
   edit_costs: "Modificar Costos",
   view_margins: "Ver Márgenes y Rentabilidad",
-  view_finances: "Módulo Financiero y Flujos",
+  view_finances: "Consultar Módulo Financiero",
+  manage_finances: "Ejecutar Retiros y Modificar Finanzas",
   approve_payments: "Aprobar Pagos Manuales",
   edit_prices: "Modificar Precios de Venta",
-  apply_discounts: "Aplicar Descuentos y Cupones",
+  apply_discounts: "Aplicar Descuentos Comerciales",
   adjust_inventory: "Ajustar Existencias de Bodega",
   export_data: "Exportar Datos y Reportes",
   manage_roles: "Administrar Roles y Staff",
-  manage_settings: "Configuración del Sistema",
+  manage_settings: "Configuración Crítica y Tasas FX",
 }
 
 const MODULE_LABELS = {
@@ -130,7 +131,7 @@ export default function AdminRoles() {
           variant="primary"
           Icon={Key}
           label="Capacidades Sensibles"
-          value={catalog.capabilities?.length || 11}
+          value={catalog.capabilities?.length || 12}
           sub="Permisos críticos protegidos"
         />
         <StatCard
@@ -329,7 +330,7 @@ export default function AdminRoles() {
               Matriz de Segregación de Funciones LEVELPRO OS V4.0
             </h3>
             <p style={{ fontSize: 12.5, color: "var(--admin-text-muted)", margin: 0 }}>
-              Cruce exhaustivo de los 10 roles empresariales con los 12 módulos y las 11 capacidades sensibles protegidas.
+              Cruce exhaustivo de los 10 roles empresariales con los 12 módulos y las {catalog.capabilities?.length || 12} capacidades sensibles protegidas.
             </p>
           </div>
 
@@ -437,27 +438,68 @@ export default function AdminRoles() {
 
             <div style={{ marginBottom: 16 }}>
               <h4 style={{ fontSize: 12, textTransform: "uppercase", color: "var(--admin-text-muted)", letterSpacing: "0.05em", marginBottom: 8 }}>
-                Módulos Habilitados
+                Módulos Habilitados y Acciones Granulares
               </h4>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                {roleDetailQuery.data?.modules?.map((m) => (
-                  <div
-                    key={m}
-                    style={{
-                      padding: "6px 10px",
-                      borderRadius: 6,
-                      background: "rgba(255,255,255,0.03)",
-                      border: "1px solid var(--admin-border)",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      fontSize: 12,
-                    }}
-                  >
-                    <CheckCircle2 size={13} color="#1AFF6E" />
-                    <span>{MODULE_LABELS[m] || m}</span>
-                  </div>
-                ))}
+                {roleDetailQuery.data?.modules?.map((m) => {
+                  const modStatus = catalog.module_status?.[m]?.status
+                  const actions = roleDetailQuery.data?.module_actions?.[m] || []
+                  return (
+                    <div
+                      key={m}
+                      style={{
+                        padding: "8px 10px",
+                        borderRadius: 6,
+                        background: "rgba(255,255,255,0.03)",
+                        border: "1px solid var(--admin-border)",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: 4,
+                        fontSize: 12,
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <CheckCircle2 size={13} color="#1AFF6E" />
+                          <span style={{ fontWeight: 600 }}>{MODULE_LABELS[m] || m}</span>
+                        </div>
+                        {modStatus === "partial_reserved" && (
+                          <span
+                            style={{
+                              fontSize: 9.5,
+                              padding: "1px 5px",
+                              borderRadius: 4,
+                              background: "rgba(245, 158, 11, 0.14)",
+                              color: "#F59E0B",
+                              fontFamily: "var(--font-mono)",
+                            }}
+                          >
+                            PARCIAL / RESERVADO
+                          </span>
+                        )}
+                      </div>
+                      {actions.length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 3, paddingLeft: 19 }}>
+                          {actions.map((act) => (
+                            <span
+                              key={act}
+                              style={{
+                                fontSize: 10,
+                                padding: "1px 5px",
+                                borderRadius: 4,
+                                background: "rgba(255,255,255,0.06)",
+                                color: "var(--admin-text-muted)",
+                                fontFamily: "var(--font-mono)",
+                              }}
+                            >
+                              {act}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
               </div>
             </div>
 

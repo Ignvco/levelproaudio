@@ -1,7 +1,9 @@
 # core/rbac/services.py
-"""Servicios de negocio para gestión, auditoría y resolución de roles y permisos RBAC."""
+"""Servicios de negocio para gestión, ciclo de vida, SoD y resolución de roles y permisos RBAC."""
 
-from django.contrib.auth.models import Group, Permission
+from django.db import transaction
+from django.db.models import Q
+from django.contrib.auth.models import Group
 from django.contrib.auth import get_user_model
 from django.core.exceptions import PermissionDenied, ValidationError
 
@@ -9,143 +11,230 @@ from core.rbac.constants import (
     ALL_ROLES,
     ROLE_SUPER_ADMIN,
     ALL_MODULES,
+    ALL_ACTIONS,
     ALL_SENSITIVE_PERMISSIONS,
     DEFAULT_ROLE_MATRIX,
     ROLE_DESCRIPTIONS,
+    INCOMPATIBLE_ROLE_PAIRS,
     PERM_MANAGE_ROLES,
 )
-from core.rbac.permissions import user_has_capability, get_user_roles, user_has_module_access
+from core.rbac.permissions import (
+    _resolve_live_user,
+    is_effective_super_admin,
+    user_has_capability,
+    get_user_roles,
+)
 from core.rbac.events import log_security_event
 
 User = get_user_model()
 
 
+def _blacklist_user_tokens(user):
+    """Invalida tokens de refresco activos en simplejwt token_blacklist tras revocación total o desactivación."""
+    try:
+        from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
+        for token in OutstandingToken.objects.filter(user=user):
+            BlacklistedToken.objects.get_or_create(token=token)
+    except Exception:
+        pass
+
+
 def get_user_effective_permissions(user):
     """
-    Calcula y consolida la totalidad de permisos, roles y capacidades efectivas
+    Calcula y consolida la totalidad de permisos, roles, acciones y capacidades efectivas
     del usuario autenticado para consumo directo del frontend y verificación de seguridad.
+    Aplica Denegación por Defecto: usuarios inactivos o is_staff sin rol reciben 0 módulos y 0 capacidades.
     """
-    if not user or not user.is_authenticated:
+    live = _resolve_live_user(user)
+    if not live:
         return {
             "is_authenticated": False,
+            "is_staff": False,
             "is_superuser": False,
             "roles": [],
             "modules": [],
-            "capabilities": {},
+            "capabilities": {perm: False for perm in ALL_SENSITIVE_PERMISSIONS},
+            "module_actions": {},
         }
 
-    is_super = bool(user.is_superuser and user.is_active)
-    roles = get_user_roles(user)
+    is_super = is_effective_super_admin(live)
+    roles = get_user_roles(live)
 
-    # Si es Super Admin, tiene acceso total a todos los módulos y capacidades
     if is_super:
         allowed_modules = list(ALL_MODULES)
         capabilities = {perm: True for perm in ALL_SENSITIVE_PERMISSIONS}
+        module_actions = {m: list(ALL_ACTIONS) for m in ALL_MODULES}
+        effective_roles = roles if ROLE_SUPER_ADMIN in roles else [ROLE_SUPER_ADMIN] + roles
     else:
-        # Calcular módulos permitidos acumulados de todos sus roles
         modules_set = set()
+        module_actions_map = {}
         for role in roles:
             role_config = DEFAULT_ROLE_MATRIX.get(role, {})
-            modules_set.update(role_config.get("modules", []))
+            for m in role_config.get("modules", []):
+                modules_set.add(m)
+            for m, acts in role_config.get("module_actions", {}).items():
+                module_actions_map.setdefault(m, set()).update(acts)
 
-        # Si es staff legacy sin rol, dar acceso limitado básico (excluyendo finanzas y roles)
-        if not roles and user.is_staff:
-            modules_set = set(m for m in ALL_MODULES if m not in ("finances", "roles"))
-
+        # Denegación por defecto: si no posee roles empresariales oficiales, no recibe módulos ni capacidades
         allowed_modules = [m for m in ALL_MODULES if m in modules_set]
         capabilities = {
-            perm: user_has_capability(user, perm) for perm in ALL_SENSITIVE_PERMISSIONS
+            perm: user_has_capability(live, perm) for perm in ALL_SENSITIVE_PERMISSIONS
         }
+        module_actions = {
+            m: [a for a in ALL_ACTIONS if a in module_actions_map.get(m, set())]
+            for m in allowed_modules
+        }
+        effective_roles = roles
 
     return {
-        "id": str(user.id),
-        "email": user.email,
-        "username": user.username,
-        "is_staff": user.is_staff,
+        "id": str(live.id),
+        "email": live.email,
+        "username": live.username,
+        "is_authenticated": True,
+        "is_staff": bool(live.is_staff and (is_super or bool(effective_roles))),
         "is_superuser": is_super,
-        "roles": roles if not is_super else [ROLE_SUPER_ADMIN],
+        "roles": effective_roles,
         "modules": allowed_modules,
         "capabilities": capabilities,
+        "module_actions": module_actions,
     }
 
 
+@transaction.atomic
 def assign_role_to_user(target_user, role_name, operator=None, ip_address=None):
     """
-    Asigna un rol empresarial a un usuario objetivo con validaciones de seguridad anti-escalada.
+    Asigna un rol empresarial a un usuario objetivo con validaciones anti-escalada,
+    verificación de Segregación de Funciones (SoD) y sincronización atómica de flags.
     """
     if role_name not in ALL_ROLES:
         raise ValidationError(f"El rol '{role_name}' no es un rol válido del sistema.")
 
-    # Verificación de permisos del operador (a menos que sea script de sistema)
     if operator:
-        if not operator.is_superuser and not user_has_capability(operator, PERM_MANAGE_ROLES):
+        live_op = _resolve_live_user(operator)
+        if not live_op or (not is_effective_super_admin(live_op) and not user_has_capability(live_op, PERM_MANAGE_ROLES)):
             raise PermissionDenied("No posee autorización para administrar roles de usuarios.")
 
-        # Impedir escalada: un no-superuser no puede otorgar el rol Super Admin
-        if role_name == ROLE_SUPER_ADMIN and not operator.is_superuser:
-            raise PermissionDenied("Solo un Super Admin existente puede otorgar el rol Super Admin.")
+        if role_name == ROLE_SUPER_ADMIN and not is_effective_super_admin(live_op):
+            raise PermissionDenied("Solo un Super Admin activo puede otorgar el rol Super Admin.")
+
+    locked_target = User.objects.select_for_update().get(pk=target_user.pk)
+    existing_roles = set(locked_target.groups.filter(name__in=ALL_ROLES).values_list("name", flat=True))
+
+    # Validación de Segregación de Funciones (SoD) para roles operativos incompatibles
+    if role_name != ROLE_SUPER_ADMIN and ROLE_SUPER_ADMIN not in existing_roles:
+        for role_a, role_b in INCOMPATIBLE_ROLE_PAIRS:
+            if (role_name == role_a and role_b in existing_roles) or (role_name == role_b and role_a in existing_roles):
+                conflict = role_b if role_name == role_a else role_a
+                raise ValidationError(
+                    f"Conflicto de Segregación de Funciones (SoD): el rol '{role_name}' es incompatible con el rol '{conflict}' ya asignado al usuario."
+                )
 
     group, _ = Group.objects.get_or_create(name=role_name)
-    target_user.groups.add(group)
+    locked_target.groups.add(group)
 
-    # Si se asigna cualquier rol administrativo, asegurarse de que is_staff sea True
-    if not target_user.is_staff:
-        target_user.is_staff = True
-        target_user.save(update_fields=["is_staff"])
+    update_fields = []
+    if not locked_target.is_staff:
+        locked_target.is_staff = True
+        update_fields.append("is_staff")
+    if role_name == ROLE_SUPER_ADMIN and not locked_target.is_superuser:
+        locked_target.is_superuser = True
+        update_fields.append("is_superuser")
+    if update_fields:
+        locked_target.save(update_fields=update_fields)
 
-    # Emisión de evento de seguridad sanitizado
+    target_user.is_staff = locked_target.is_staff
+    target_user.is_superuser = locked_target.is_superuser
+
     log_security_event(
         event_type="RBAC_ROLE_ASSIGNED",
         operator=operator,
-        target_user=target_user,
+        target_user=locked_target,
         details={"role": role_name},
         ip_address=ip_address,
     )
     return True
 
 
+@transaction.atomic
 def remove_role_from_user(target_user, role_name, operator=None, ip_address=None):
     """
-    Remueve un rol empresarial de un usuario objetivo con protección contra lockout del propietario.
+    Remueve un rol empresarial de un usuario objetivo con bloqueo pesimista (select_for_update)
+    contra pérdida del último Super Admin activo y limpieza automática de is_staff al revocar el último rol.
     """
     if operator:
-        if not operator.is_superuser and not user_has_capability(operator, PERM_MANAGE_ROLES):
+        live_op = _resolve_live_user(operator)
+        if not live_op or (not is_effective_super_admin(live_op) and not user_has_capability(live_op, PERM_MANAGE_ROLES)):
             raise PermissionDenied("No posee autorización para administrar roles de usuarios.")
+        if role_name == ROLE_SUPER_ADMIN and not is_effective_super_admin(live_op):
+            raise PermissionDenied("Solo un Super Admin activo puede revocar el rol Super Admin.")
 
-    # Protección de contingencia: no permitir eliminar el último Super Admin activo
+    # Bloqueo determinista de superusuarios activos para evitar condiciones de carrera concurrentes
+    super_pks = list(
+        User.objects.filter(is_active=True)
+        .filter(Q(is_superuser=True) | Q(groups__name=ROLE_SUPER_ADMIN))
+        .values_list("pk", flat=True)
+        .distinct()
+    )
+    active_supers = list(
+        User.objects.select_for_update()
+        .filter(pk__in=super_pks, is_active=True)
+        .order_by("id")
+    )
+    locked_target = User.objects.select_for_update().get(pk=target_user.pk)
+
     if role_name == ROLE_SUPER_ADMIN:
-        super_count = User.objects.filter(is_superuser=True, is_active=True).count()
-        if super_count <= 1 and target_user.is_superuser:
+        is_target_active_super = any(u.pk == locked_target.pk for u in active_supers)
+        if is_target_active_super and len(active_supers) <= 1:
             raise ValidationError("No se puede revocar el rol al único Super Admin activo del sistema.")
 
     try:
         group = Group.objects.get(name=role_name)
-        target_user.groups.remove(group)
+        locked_target.groups.remove(group)
     except Group.DoesNotExist:
         pass
+
+    remaining_roles = list(locked_target.groups.filter(name__in=ALL_ROLES).values_list("name", flat=True))
+    update_fields = []
+
+    if role_name == ROLE_SUPER_ADMIN and locked_target.is_superuser:
+        locked_target.is_superuser = False
+        update_fields.append("is_superuser")
+
+    if not remaining_roles and not locked_target.is_superuser:
+        if locked_target.is_staff:
+            locked_target.is_staff = False
+            update_fields.append("is_staff")
+        _blacklist_user_tokens(locked_target)
+
+    if update_fields:
+        locked_target.save(update_fields=update_fields)
+
+    target_user.is_staff = locked_target.is_staff
+    target_user.is_superuser = locked_target.is_superuser
 
     log_security_event(
         event_type="RBAC_ROLE_REVOKED",
         operator=operator,
-        target_user=target_user,
-        details={"role": role_name},
+        target_user=locked_target,
+        details={"role": role_name, "remaining_roles": remaining_roles},
         ip_address=ip_address,
     )
     return True
 
 
 def get_roles_summary():
-    """Retorna el listado completo de los 10 roles con métricas de usuarios asignados."""
+    """Retorna el listado completo de los 10 roles con métricas de usuarios asignados y acciones."""
     roles_list = []
     for role_name in ALL_ROLES:
         desc = ROLE_DESCRIPTIONS.get(role_name, "")
         config = DEFAULT_ROLE_MATRIX.get(role_name, {})
-        user_count = User.objects.filter(groups__name=role_name).count()
+        user_count = User.objects.filter(groups__name=role_name, is_active=True).distinct().count()
         roles_list.append({
             "name": role_name,
             "description": desc,
             "user_count": user_count,
             "modules": config.get("modules", []),
             "capabilities": config.get("capabilities", []),
+            "module_actions": config.get("module_actions", {}),
         })
     return roles_list
