@@ -634,9 +634,9 @@ class AdminProductViewSet(viewsets.ModelViewSet):
                         raise AdminInputError(
                             "La variante seleccionada para el componente del kit no existe, está inactiva o no pertenece al producto."
                         )
-                elif ProductVariant.objects.filter(product_id=comp_id, is_active=True).exists():
+                elif ProductVariant.objects.filter(product_id=comp_id).exists():
                     raise AdminInputError(
-                        "El producto componente posee variantes activas; debe indicar explícitamente 'variant_id'."
+                        "El producto componente posee variantes; debe indicar explícitamente 'variant_id'."
                     )
                 qty = int(it.get("quantity") or 1)
                 BundleItem.objects.create(

@@ -278,13 +278,13 @@ class Product(TimeStampedModel):
                     if it.component.product_type == self.ProductType.STOCK:
                         counts.append(it.variant.stock // max(1, it.quantity))
                 else:
-                    if it.component.variants.filter(is_active=True).exists():
+                    if it.component.variants.exists():
                         return 0
                     if it.component.product_type == self.ProductType.STOCK:
                         counts.append(it.component.stock // max(1, it.quantity))
             return min(counts) if counts else 99
-        active_variants = list(self.variants.filter(is_active=True).values_list("stock", flat=True))
-        if active_variants:
+        if self.variants.exists():
+            active_variants = list(self.variants.filter(is_active=True).values_list("stock", flat=True))
             return sum(active_variants)
         return self.stock
 
@@ -303,13 +303,15 @@ class Product(TimeStampedModel):
                     if it.component.product_type == self.ProductType.STOCK and it.variant.stock < it.quantity:
                         return False
                 else:
-                    if it.component.variants.filter(is_active=True).exists():
+                    if it.component.variants.exists():
                         return False
                     if it.component.product_type == self.ProductType.STOCK and it.component.stock < it.quantity:
                         return False
             return True
-        active_variants = self.variants.filter(is_active=True)
-        if active_variants.exists():
+        if self.variants.exists():
+            active_variants = self.variants.filter(is_active=True)
+            if not active_variants.exists():
+                return False
             if self.product_type != self.ProductType.STOCK:
                 return True
             return active_variants.filter(stock__gt=0).exists()
@@ -360,9 +362,9 @@ class BundleItem(TimeStampedModel):
         if self.variant_id and self.variant.product_id != self.component_id:
             raise ValidationError({"variant": "La variante seleccionada no pertenece al producto componente."})
         if not self.variant_id and self.component_id:
-            if ProductVariant.objects.filter(product_id=self.component_id, is_active=True).exists():
+            if ProductVariant.objects.filter(product_id=self.component_id).exists():
                 raise ValidationError({
-                    "variant": f"El componente '{self.component.name}' posee variantes activas; debe seleccionar una variante explícita."
+                    "variant": f"El componente '{self.component.name}' posee variantes; debe seleccionar una variante explícita."
                 })
 
     def __str__(self):

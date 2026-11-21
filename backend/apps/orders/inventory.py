@@ -96,10 +96,10 @@ def prepare_inventory(items_data):
             raise InventoryError("El kit cambió durante la compra. Actualiza e intenta nuevamente.")
         components.setdefault(item.bundle_id, []).append(item)
 
-    # Detectar qué productos (directos o componentes de bundle) tienen variantes activas registradas
+    # Detectar qué productos (directos o componentes de bundle) poseen variantes registradas
     all_checked_product_ids = product_ids | component_ids
     products_with_variants = set(
-        ProductVariant.objects.filter(product_id__in=all_checked_product_ids, is_active=True)
+        ProductVariant.objects.filter(product_id__in=all_checked_product_ids)
         .values_list("product_id", flat=True)
     )
 
