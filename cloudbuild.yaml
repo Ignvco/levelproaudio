@@ -130,7 +130,7 @@ steps:
         echo "$${FRONTEND_DIGEST}" > /workspace/frontend_digest.txt
 
   # ── 4.3. Concurrency & Out-of-Order Release Check ───────────
-  # Previene que un build retrasado o concurrente sobreescriba un release posterior.
+  # Previene colisiones concurrentes en el migrador y despliegues fuera de orden.
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "verify-release-ordering"
     waitFor: ["push-backend"]
@@ -139,7 +139,35 @@ steps:
       - -c
       - |
         set -euo pipefail
-        echo "[RELEASE_GUARD] Verificando orden de despliegue y prevención de regresión..."
+        echo "[RELEASE_GUARD] 1. Verificando concurrencia de pipelines activos..."
+        CURRENT_BUILD_ID="${BUILD_ID:-local}"
+        if [ "$$CURRENT_BUILD_ID" != "local" ]; then
+          CONCURRENT_BUILDS=$$(gcloud builds list \
+            --filter="status=WORKING AND id!=$$CURRENT_BUILD_ID" \
+            --format="value(id,createTime)" 2>/dev/null || echo "")
+          if [ -n "$$CONCURRENT_BUILDS" ]; then
+            echo "[RELEASE_GUARD] ⚠️ Se detectaron builds concurrentes en progreso:"
+            echo "$$CONCURRENT_BUILDS"
+            echo "[RELEASE_GUARD] Esperando liberación de builds concurrentes previos (máx 120s)..."
+            for i in $$(seq 1 12); do
+              sleep 10
+              REMAINING=$$(gcloud builds list \
+                --filter="status=WORKING AND id!=$$CURRENT_BUILD_ID" \
+                --format="value(id)" 2>/dev/null || echo "")
+              if [ -z "$$REMAINING" ]; then
+                echo "[RELEASE_GUARD] ✓ Builds concurrentes finalizados. Continuando."
+                break
+              fi
+              echo "[RELEASE_GUARD] Esperando... ($$i/12)"
+              if [ "$$i" -eq 12 ]; then
+                echo "[RELEASE_GUARD] ⚠️ Timeout esperando builds concurrentes. Abortando para prevenir colisión."
+                exit 1
+              fi
+            done
+          fi
+        fi
+
+        echo "[RELEASE_GUARD] 2. Verificando orden de despliegue y prevención de regresión..."
         ACTIVE_COMMIT=$$(gcloud run services describe "${_BACKEND_SERVICE}" \
           --region="${_REGION}" \
           --format='value(metadata.labels["commit-sha"])' 2>/dev/null || echo "")
