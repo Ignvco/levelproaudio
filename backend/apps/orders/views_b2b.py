@@ -312,24 +312,21 @@ def admin_b2b_quote_detail(request, quote_id):
     quote.total = net_after_discount + quote.tax_amount
     quote.save()
 
-    try:
-        record_audit_event(
-            module="orders",
-            action="B2B_QUOTE_UPDATED",
-            event_category=CATEGORY_MODIFICATION,
-            resource_type="B2BQuote",
-            resource_id=str(quote.id),
-            resource_repr=f"Cotización B2B #{str(quote.id)[:8].upper()} - {quote.company_name}",
-            actor=request.user,
-            new_values={
-                "status": quote.status,
-                "discount_percent": str(quote.discount_percent),
-                "total": str(quote.total),
-            },
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module="orders",
+        action="B2B_QUOTE_UPDATED",
+        event_category=CATEGORY_MODIFICATION,
+        resource_type="B2BQuote",
+        resource_id=str(quote.id),
+        resource_repr=f"Cotización B2B #{str(quote.id)[:8].upper()} - {quote.company_name}",
+        actor=request.user,
+        new_values={
+            "status": quote.status,
+            "discount_percent": str(quote.discount_percent),
+            "total": str(quote.total),
+        },
+        mandatory=True,
+    )
 
     return Response({
         "id": str(quote.id),
@@ -404,20 +401,17 @@ def admin_b2b_quote_convert(request, quote_id):
     quote.status = B2BQuoteStatus.CONVERTED
     quote.save(update_fields=["converted_order", "status"])
 
-    try:
-        record_audit_event(
-            module="orders",
-            action="B2B_QUOTE_CONVERTED",
-            event_category=CATEGORY_ORDER_STATUS,
-            resource_type="B2BQuote",
-            resource_id=str(quote.id),
-            resource_repr=f"Cotización B2B #{str(quote.id)[:8].upper()} convertida en Orden #{order.id}",
-            actor=request.user,
-            new_values={"order_id": str(order.id), "total": str(order.total)},
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module="orders",
+        action="B2B_QUOTE_CONVERTED",
+        event_category=CATEGORY_ORDER_STATUS,
+        resource_type="B2BQuote",
+        resource_id=str(quote.id),
+        resource_repr=f"Cotización B2B #{str(quote.id)[:8].upper()} convertida en Orden #{order.id}",
+        actor=request.user,
+        new_values={"order_id": str(order.id), "total": str(order.total)},
+        mandatory=True,
+    )
 
     return Response({
         "order_id": str(order.id),

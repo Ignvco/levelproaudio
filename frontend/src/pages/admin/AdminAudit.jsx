@@ -71,6 +71,63 @@ const MODULE_DISPLAY_NAMES = {
   dashboard: "Dashboard",
 }
 
+const ACTION_DISPLAY_NAMES = {
+  PRODUCT_CREATED: "Creación de Producto",
+  PRODUCT_UPDATED: "Actualización de Producto",
+  PRODUCT_DELETED: "Eliminación de Producto",
+  PRICE_CHANGED: "Cambio de Precio",
+  COST_CHANGED: "Cambio de Costo",
+  STOCK_ADJUSTED: "Ajuste de Stock",
+  CATEGORY_CREATED: "Creación de Categoría",
+  CATEGORY_UPDATED: "Actualización de Categoría",
+  CATEGORY_DELETED: "Eliminación de Categoría",
+  BRAND_CREATED: "Creación de Marca",
+  BRAND_UPDATED: "Actualización de Marca",
+  BRAND_DELETED: "Eliminación de Marca",
+  ORDER_STATUS_CHANGED: "Transición de Pedido",
+  PAYMENT_APPROVED: "Aprobación de Pago",
+  PAYMENT_REJECTED: "Rechazo de Pago",
+  PAYMENT_METHOD_CREATED: "Método de Pago Creado",
+  PAYMENT_METHOD_UPDATED: "Método de Pago Modificado",
+  PAYMENT_METHOD_DELETED: "Método de Pago Eliminado",
+  BANK_ACCOUNT_CREATED: "Cuenta Bancaria Creada",
+  BANK_ACCOUNT_UPDATED: "Cuenta Bancaria Modificada",
+  BANK_ACCOUNT_DELETED: "Cuenta Bancaria Eliminada",
+  FINANCIAL_WITHDRAWAL_CREATED: "Retiro Financiero Creado",
+  FINANCIAL_WITHDRAWAL_EXECUTED: "Retiro Financiero Ejecutado",
+  TRIBUTARY_DOCUMENT_UPSERTED: "Documento Tributario SII",
+  TRIBUTARY_DOCUMENT_PDF_UPLOADED: "Carga de PDF Tributario",
+  ROLE_ASSIGNED: "Asignación de Rol",
+  ROLE_REVOKED: "Revocación de Rol",
+  RBAC_ROLE_ASSIGNED: "Rol RBAC Asignado",
+  RBAC_ROLE_REVOKED: "Rol RBAC Revocado",
+  SECURITY_DENIED_ACCESS: "Acceso Denegado 403",
+  PRIVILEGE_ESCALATION_ATTEMPT: "Intento de Escalación",
+  CONFIG_CHANGED: "Ajuste de Configuración",
+  SITE_SETTINGS_UPDATED: "Configuración Actualizada",
+  REWARDS_CAMPAIGN_CREATED: "Campaña Rewards Creada",
+  REWARDS_CAMPAIGN_UPDATED: "Campaña Rewards Modificada",
+  REWARDS_CAMPAIGN_DELETED: "Campaña Rewards Eliminada",
+  REWARDS_CAMPAIGN_DRAWN: "Sorteo Rewards Ejecutado",
+  REWARDS_CAMPAIGN_DUPLICATED: "Campaña Rewards Duplicada",
+  REWARDS_CAMPAIGN_FINISHED: "Campaña Rewards Finalizada",
+  REWARDS_PRODUCT_CREATED: "Premio Rewards Creado",
+  REWARDS_PRODUCT_UPDATED: "Premio Rewards Modificado",
+  REWARDS_PRODUCT_DELETED: "Premio Rewards Eliminado",
+  REWARDS_WINNER_UPDATED: "Ganador Rewards Actualizado",
+  LOYALTY_CONFIG_UPDATED: "Configuración Loyalty Modificada",
+  LOYALTY_POINTS_ADJUSTED: "Ajuste de Puntos Loyalty",
+  B2B_QUOTE_UPDATED: "Cotización B2B Modificada",
+  B2B_QUOTE_CONVERTED: "Cotización B2B Convertida",
+  COURSE_CREATED: "Curso Creado",
+  COURSE_UPDATED: "Curso Modificado",
+  COURSE_DELETED: "Curso Eliminado",
+  SERVICE_CREATED: "Servicio Creado",
+  SERVICE_UPDATED: "Servicio Modificado",
+  SERVICE_DELETED: "Servicio Eliminado",
+  SENSITIVE_DATA_EXPORTED: "Exportación de Datos Sensibles",
+}
+
 export default function AdminAudit() {
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(25)
@@ -205,11 +262,11 @@ export default function AdminAudit() {
       {/* ── Encabezado de Página ───────────────────────────────────── */}
       <AdminPageHeader
         title="Registro de Actividad y Auditoría"
-        subtitle="Trazabilidad operacional inmutable append-only con verificación criptográfica y segregación RBAC de LEVELPRO OS V4.0."
+        subtitle="Trazabilidad operacional inmutable append-only (ORM + Trigger PostgreSQL) y segregación RBAC de LEVELPRO OS V4.0."
         badge="GATE 1.2"
         badgeTone="success"
         actions={
-          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <SecondaryButton
               icon={<RefreshCw size={15} />}
               onClick={handleRefreshAll}
@@ -586,16 +643,21 @@ export default function AdminAudit() {
 
                     {/* Acción */}
                     <td style={{ padding: "14px 16px" }}>
-                      <span
-                        style={{
-                          fontFamily: "Geist Mono, monospace",
-                          color: "#1AFF6E",
-                          fontSize: 12,
-                          fontWeight: 500,
-                        }}
-                      >
-                        {ev.action}
-                      </span>
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <span style={{ color: "#FFFFFF", fontWeight: 600, fontSize: 13 }}>
+                          {ACTION_DISPLAY_NAMES[ev.action] || ev.action}
+                        </span>
+                        <span
+                          style={{
+                            fontFamily: "Geist Mono, monospace",
+                            color: "#1AFF6E",
+                            fontSize: 11,
+                            marginTop: 2,
+                          }}
+                        >
+                          {ev.action}
+                        </span>
+                      </div>
                     </td>
 
                     {/* Recurso */}
@@ -721,7 +783,11 @@ export default function AdminAudit() {
           open={Boolean(selectedEventId)}
           isOpen={Boolean(selectedEventId)}
           onClose={() => setSelectedEventId(null)}
-          title={`Evento de Auditoría: ${eventDetail?.action || "Cargando..."}`}
+          title={
+            eventDetail
+              ? `Evento: ${ACTION_DISPLAY_NAMES[eventDetail.action] || eventDetail.action} [${eventDetail.action}]`
+              : "Detalle Forense de Auditoría"
+          }
           maxWidth="820px"
           scrollableBody={true}
         >

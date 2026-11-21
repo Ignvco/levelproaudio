@@ -200,27 +200,24 @@ def upsert_document(request):
 
     doc.save()
 
-    try:
-        record_audit_event(
-            module="billing",
-            action="TRIBUTARY_DOCUMENT_UPSERTED",
-            event_category=CATEGORY_FINANCIAL_OPERATION,
-            resource_type="TributaryDocument",
-            resource_id=str(doc.id),
-            resource_repr=f"Doc Tributario {doc.tipo} #{doc.numero_externo or doc.id}",
-            actor=request.user,
-            result=RESULT_SUCCESS,
-            severity=SEVERITY_INFO,
-            new_values={
-                "tipo": doc.tipo,
-                "estado": doc.estado,
-                "numero_externo": doc.numero_externo,
-                "monto": str(doc.monto) if doc.monto is not None else None,
-            },
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module="billing",
+        action="TRIBUTARY_DOCUMENT_UPSERTED",
+        event_category=CATEGORY_FINANCIAL_OPERATION,
+        resource_type="TributaryDocument",
+        resource_id=str(doc.id),
+        resource_repr=f"Doc Tributario {doc.tipo} #{doc.numero_externo or doc.id}",
+        actor=request.user,
+        result=RESULT_SUCCESS,
+        severity=SEVERITY_INFO,
+        new_values={
+            "tipo": doc.tipo,
+            "estado": doc.estado,
+            "numero_externo": doc.numero_externo,
+            "monto": str(doc.monto) if doc.monto is not None else None,
+        },
+        mandatory=True,
+    )
 
     return Response(_serialize(doc), status=200)
 
@@ -242,21 +239,18 @@ def upload_document_pdf(request, doc_id):
 
     doc.pdf_externo.save(pdf.name, pdf, save=True)
 
-    try:
-        record_audit_event(
-            module="billing",
-            action="TRIBUTARY_DOCUMENT_PDF_UPLOADED",
-            event_category=CATEGORY_FINANCIAL_OPERATION,
-            resource_type="TributaryDocument",
-            resource_id=str(doc.id),
-            resource_repr=f"PDF Doc Tributario {doc.tipo} #{doc.numero_externo or doc.id}",
-            actor=request.user,
-            result=RESULT_SUCCESS,
-            severity=SEVERITY_INFO,
-            new_values={"filename": pdf.name},
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module="billing",
+        action="TRIBUTARY_DOCUMENT_PDF_UPLOADED",
+        event_category=CATEGORY_FINANCIAL_OPERATION,
+        resource_type="TributaryDocument",
+        resource_id=str(doc.id),
+        resource_repr=f"PDF Doc Tributario {doc.tipo} #{doc.numero_externo or doc.id}",
+        actor=request.user,
+        result=RESULT_SUCCESS,
+        severity=SEVERITY_INFO,
+        new_values={"filename": pdf.name},
+        mandatory=True,
+    )
 
     return Response(_serialize(doc))

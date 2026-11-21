@@ -378,22 +378,19 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
                     pass
             transaction.on_commit(notify_status)
 
-        try:
-            record_audit_event(
-                module=MODULE_ORDERS,
-                action="ORDER_STATUS_CHANGED",
-                event_category=CATEGORY_ORDER_STATUS,
-                resource_type="Order",
-                resource_id=str(order.id),
-                resource_repr=f"Orden #{order.id}",
-                actor=request.user,
-                previous_values={"status": old_status},
-                new_values={"status": new_status},
-                changed_fields=["status"],
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ORDERS,
+            action="ORDER_STATUS_CHANGED",
+            event_category=CATEGORY_ORDER_STATUS,
+            resource_type="Order",
+            resource_id=str(order.id),
+            resource_repr=f"Orden #{order.id}",
+            actor=request.user,
+            previous_values={"status": old_status},
+            new_values={"status": new_status},
+            changed_fields=["status"],
+            mandatory=True,
+        )
 
         return Response({"status": new_status, "detail": "Estado actualizado."})
 
@@ -619,20 +616,17 @@ class AdminProductViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         try:
             product = self._save_product(request)
-            try:
-                record_audit_event(
-                    module=MODULE_CATALOG,
-                    action="PRODUCT_CREATED",
-                    event_category=CATEGORY_CREATION,
-                    resource_type="Product",
-                    resource_id=str(product.id),
-                    resource_repr=product.name,
-                    new_values={"name": product.name, "sku": product.sku, "price": str(product.price), "stock": product.stock},
-                    actor=request.user,
-                    mandatory=True,
-                )
-            except Exception:
-                pass
+            record_audit_event(
+                module=MODULE_CATALOG,
+                action="PRODUCT_CREATED",
+                event_category=CATEGORY_CREATION,
+                resource_type="Product",
+                resource_id=str(product.id),
+                resource_repr=product.name,
+                new_values={"name": product.name, "sku": product.sku, "price": str(product.price), "stock": product.stock},
+                actor=request.user,
+                mandatory=True,
+            )
             serializer = AdminProductDetailSerializer(
                 product, context=self.get_serializer_context()
             )
@@ -699,23 +693,20 @@ class AdminProductViewSet(viewsets.ModelViewSet):
                 cat = CATEGORY_MODIFICATION
                 sev = SEVERITY_INFO
 
-            try:
-                record_audit_event(
-                    module=MODULE_CATALOG,
-                    action=act,
-                    event_category=cat,
-                    resource_type="Product",
-                    resource_id=str(product.id),
-                    resource_repr=product.name,
-                    previous_values=prev_vals,
-                    new_values=new_vals,
-                    changed_fields=changed,
-                    actor=request.user,
-                    severity=sev,
-                    mandatory=True,
-                )
-            except Exception:
-                pass
+            record_audit_event(
+                module=MODULE_CATALOG,
+                action=act,
+                event_category=cat,
+                resource_type="Product",
+                resource_id=str(product.id),
+                resource_repr=product.name,
+                previous_values=prev_vals,
+                new_values=new_vals,
+                changed_fields=changed,
+                actor=request.user,
+                severity=sev,
+                mandatory=True,
+            )
 
             serializer = AdminProductDetailSerializer(
                 product, context=self.get_serializer_context()
@@ -751,21 +742,18 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         psku = product.sku
         pprice = str(product.price)
         res = super().destroy(request, *args, **kwargs)
-        try:
-            record_audit_event(
-                module=MODULE_CATALOG,
-                action="PRODUCT_DELETED",
-                event_category=CATEGORY_DELETION,
-                resource_type="Product",
-                resource_id=pid,
-                resource_repr=pname,
-                previous_values={"name": pname, "sku": psku, "price": pprice},
-                actor=request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_CATALOG,
+            action="PRODUCT_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="Product",
+            resource_id=pid,
+            resource_repr=pname,
+            previous_values={"name": pname, "sku": psku, "price": pprice},
+            actor=request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
         return res
 
 
@@ -792,56 +780,47 @@ class AdminCategoryViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module=MODULE_CATALOG,
-                action="CATEGORY_CREATED",
-                event_category=CATEGORY_CREATION,
-                resource_type="Category",
-                resource_id=str(instance.id),
-                resource_repr=f"Categoría {instance.name}",
-                actor=self.request.user,
-                new_values={"name": instance.name},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_CATALOG,
+            action="CATEGORY_CREATED",
+            event_category=CATEGORY_CREATION,
+            resource_type="Category",
+            resource_id=str(instance.id),
+            resource_repr=f"Categoría {instance.name}",
+            actor=self.request.user,
+            new_values={"name": instance.name},
+            mandatory=True,
+        )
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module=MODULE_CATALOG,
-                action="CATEGORY_UPDATED",
-                event_category=CATEGORY_MODIFICATION,
-                resource_type="Category",
-                resource_id=str(instance.id),
-                resource_repr=f"Categoría {instance.name}",
-                actor=self.request.user,
-                new_values={"name": instance.name},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_CATALOG,
+            action="CATEGORY_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="Category",
+            resource_id=str(instance.id),
+            resource_repr=f"Categoría {instance.name}",
+            actor=self.request.user,
+            new_values={"name": instance.name},
+            mandatory=True,
+        )
 
     def perform_destroy(self, instance):
         cid = str(instance.id)
         name = instance.name
         instance.delete()
-        try:
-            record_audit_event(
-                module=MODULE_CATALOG,
-                action="CATEGORY_DELETED",
-                event_category=CATEGORY_DELETION,
-                resource_type="Category",
-                resource_id=cid,
-                resource_repr=f"Categoría {name}",
-                actor=self.request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_CATALOG,
+            action="CATEGORY_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="Category",
+            resource_id=cid,
+            resource_repr=f"Categoría {name}",
+            actor=self.request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
 
 
 class AdminBrandViewSet(viewsets.ModelViewSet):
@@ -861,56 +840,47 @@ class AdminBrandViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module=MODULE_CATALOG,
-                action="BRAND_CREATED",
-                event_category=CATEGORY_CREATION,
-                resource_type="Brand",
-                resource_id=str(instance.id),
-                resource_repr=f"Marca {instance.name}",
-                actor=self.request.user,
-                new_values={"name": instance.name},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_CATALOG,
+            action="BRAND_CREATED",
+            event_category=CATEGORY_CREATION,
+            resource_type="Brand",
+            resource_id=str(instance.id),
+            resource_repr=f"Marca {instance.name}",
+            actor=self.request.user,
+            new_values={"name": instance.name},
+            mandatory=True,
+        )
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module=MODULE_CATALOG,
-                action="BRAND_UPDATED",
-                event_category=CATEGORY_MODIFICATION,
-                resource_type="Brand",
-                resource_id=str(instance.id),
-                resource_repr=f"Marca {instance.name}",
-                actor=self.request.user,
-                new_values={"name": instance.name},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_CATALOG,
+            action="BRAND_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="Brand",
+            resource_id=str(instance.id),
+            resource_repr=f"Marca {instance.name}",
+            actor=self.request.user,
+            new_values={"name": instance.name},
+            mandatory=True,
+        )
 
     def perform_destroy(self, instance):
         bid = str(instance.id)
         name = instance.name
         instance.delete()
-        try:
-            record_audit_event(
-                module=MODULE_CATALOG,
-                action="BRAND_DELETED",
-                event_category=CATEGORY_DELETION,
-                resource_type="Brand",
-                resource_id=bid,
-                resource_repr=f"Marca {name}",
-                actor=self.request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_CATALOG,
+            action="BRAND_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="Brand",
+            resource_id=bid,
+            resource_repr=f"Marca {name}",
+            actor=self.request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
 
 
 class AdminProductImageViewSet(viewsets.ModelViewSet):
@@ -997,56 +967,47 @@ class AdminCourseViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module=MODULE_ACADEMY,
-                action="COURSE_CREATED",
-                event_category=CATEGORY_CREATION,
-                resource_type="Course",
-                resource_id=str(instance.id),
-                resource_repr=f"Curso {instance.title}",
-                actor=self.request.user,
-                new_values={"title": instance.title, "price": str(instance.price)},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ACADEMY,
+            action="COURSE_CREATED",
+            event_category=CATEGORY_CREATION,
+            resource_type="Course",
+            resource_id=str(instance.id),
+            resource_repr=f"Curso {instance.title}",
+            actor=self.request.user,
+            new_values={"title": instance.title, "price": str(instance.price)},
+            mandatory=True,
+        )
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module=MODULE_ACADEMY,
-                action="COURSE_UPDATED",
-                event_category=CATEGORY_MODIFICATION,
-                resource_type="Course",
-                resource_id=str(instance.id),
-                resource_repr=f"Curso {instance.title}",
-                actor=self.request.user,
-                new_values={"title": instance.title, "price": str(instance.price)},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ACADEMY,
+            action="COURSE_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="Course",
+            resource_id=str(instance.id),
+            resource_repr=f"Curso {instance.title}",
+            actor=self.request.user,
+            new_values={"title": instance.title, "price": str(instance.price)},
+            mandatory=True,
+        )
 
     def perform_destroy(self, instance):
         cid = str(instance.id)
         title = instance.title
         instance.delete()
-        try:
-            record_audit_event(
-                module=MODULE_ACADEMY,
-                action="COURSE_DELETED",
-                event_category=CATEGORY_DELETION,
-                resource_type="Course",
-                resource_id=cid,
-                resource_repr=f"Curso {title}",
-                actor=self.request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ACADEMY,
+            action="COURSE_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="Course",
+            resource_id=cid,
+            resource_repr=f"Curso {title}",
+            actor=self.request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
 
 
 class AdminCertificationPathViewSet(viewsets.ModelViewSet):
@@ -1068,54 +1029,45 @@ class AdminCertificationPathViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module=MODULE_ACADEMY,
-                action="CERTIFICATION_CREATED",
-                event_category=CATEGORY_CREATION,
-                resource_type="CertificationPath",
-                resource_id=str(instance.id),
-                resource_repr=f"Ruta de certificación {instance.title}",
-                actor=self.request.user,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ACADEMY,
+            action="CERTIFICATION_CREATED",
+            event_category=CATEGORY_CREATION,
+            resource_type="CertificationPath",
+            resource_id=str(instance.id),
+            resource_repr=f"Ruta de certificación {instance.title}",
+            actor=self.request.user,
+            mandatory=True,
+        )
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module=MODULE_ACADEMY,
-                action="CERTIFICATION_UPDATED",
-                event_category=CATEGORY_MODIFICATION,
-                resource_type="CertificationPath",
-                resource_id=str(instance.id),
-                resource_repr=f"Ruta de certificación {instance.title}",
-                actor=self.request.user,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ACADEMY,
+            action="CERTIFICATION_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="CertificationPath",
+            resource_id=str(instance.id),
+            resource_repr=f"Ruta de certificación {instance.title}",
+            actor=self.request.user,
+            mandatory=True,
+        )
 
     def perform_destroy(self, instance):
         cid = str(instance.id)
         title = instance.title
         instance.delete()
-        try:
-            record_audit_event(
-                module=MODULE_ACADEMY,
-                action="CERTIFICATION_DELETED",
-                event_category=CATEGORY_DELETION,
-                resource_type="CertificationPath",
-                resource_id=cid,
-                resource_repr=f"Ruta {title}",
-                actor=self.request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ACADEMY,
+            action="CERTIFICATION_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="CertificationPath",
+            resource_id=cid,
+            resource_repr=f"Ruta {title}",
+            actor=self.request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
 
 
 class AdminModuleViewSet(viewsets.ModelViewSet):
@@ -1133,54 +1085,45 @@ class AdminModuleViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module=MODULE_ACADEMY,
-                action="MODULE_CREATED",
-                event_category=CATEGORY_CREATION,
-                resource_type="Module",
-                resource_id=str(instance.id),
-                resource_repr=f"Módulo {instance.title}",
-                actor=self.request.user,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ACADEMY,
+            action="MODULE_CREATED",
+            event_category=CATEGORY_CREATION,
+            resource_type="Module",
+            resource_id=str(instance.id),
+            resource_repr=f"Módulo {instance.title}",
+            actor=self.request.user,
+            mandatory=True,
+        )
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module=MODULE_ACADEMY,
-                action="MODULE_UPDATED",
-                event_category=CATEGORY_MODIFICATION,
-                resource_type="Module",
-                resource_id=str(instance.id),
-                resource_repr=f"Módulo {instance.title}",
-                actor=self.request.user,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ACADEMY,
+            action="MODULE_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="Module",
+            resource_id=str(instance.id),
+            resource_repr=f"Módulo {instance.title}",
+            actor=self.request.user,
+            mandatory=True,
+        )
 
     def perform_destroy(self, instance):
         mid = str(instance.id)
         title = instance.title
         instance.delete()
-        try:
-            record_audit_event(
-                module=MODULE_ACADEMY,
-                action="MODULE_DELETED",
-                event_category=CATEGORY_DELETION,
-                resource_type="Module",
-                resource_id=mid,
-                resource_repr=f"Módulo {title}",
-                actor=self.request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ACADEMY,
+            action="MODULE_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="Module",
+            resource_id=mid,
+            resource_repr=f"Módulo {title}",
+            actor=self.request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
 
 
 class AdminLessonViewSet(viewsets.ModelViewSet):
@@ -1198,54 +1141,45 @@ class AdminLessonViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module=MODULE_ACADEMY,
-                action="LESSON_CREATED",
-                event_category=CATEGORY_CREATION,
-                resource_type="Lesson",
-                resource_id=str(instance.id),
-                resource_repr=f"Lección {instance.title}",
-                actor=self.request.user,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ACADEMY,
+            action="LESSON_CREATED",
+            event_category=CATEGORY_CREATION,
+            resource_type="Lesson",
+            resource_id=str(instance.id),
+            resource_repr=f"Lección {instance.title}",
+            actor=self.request.user,
+            mandatory=True,
+        )
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module=MODULE_ACADEMY,
-                action="LESSON_UPDATED",
-                event_category=CATEGORY_MODIFICATION,
-                resource_type="Lesson",
-                resource_id=str(instance.id),
-                resource_repr=f"Lección {instance.title}",
-                actor=self.request.user,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ACADEMY,
+            action="LESSON_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="Lesson",
+            resource_id=str(instance.id),
+            resource_repr=f"Lección {instance.title}",
+            actor=self.request.user,
+            mandatory=True,
+        )
 
     def perform_destroy(self, instance):
         lid = str(instance.id)
         title = instance.title
         instance.delete()
-        try:
-            record_audit_event(
-                module=MODULE_ACADEMY,
-                action="LESSON_DELETED",
-                event_category=CATEGORY_DELETION,
-                resource_type="Lesson",
-                resource_id=lid,
-                resource_repr=f"Lección {title}",
-                actor=self.request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ACADEMY,
+            action="LESSON_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="Lesson",
+            resource_id=lid,
+            resource_repr=f"Lección {title}",
+            actor=self.request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
 
 
 # ═══════════════════════════════════════════════════════════
@@ -1315,18 +1249,15 @@ def admin_lesson_video_upload_url(request):
             operation="admin_lesson_upload_url",
         )
 
-    try:
-        record_audit_event(
-            module=MODULE_ACADEMY,
-            action="LESSON_VIDEO_REQUESTED",
-            event_category=CATEGORY_CREATION,
-            resource_type="LessonVideo",
-            resource_repr=f"URL de subida generada para {filename}",
-            actor=request.user,
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module=MODULE_ACADEMY,
+        action="LESSON_VIDEO_REQUESTED",
+        event_category=CATEGORY_CREATION,
+        resource_type="LessonVideo",
+        resource_repr=f"URL de subida generada para {filename}",
+        actor=request.user,
+        mandatory=True,
+    )
 
     return Response({"upload_url": upload_url, "object_path": object_path, "content_type": content_type})
 
@@ -1633,20 +1564,17 @@ def admin_user_detail(request, user_id):
                 setattr(user, field, request.data[field])
         user.save(update_fields=[f for f in allowed if f in request.data])
 
-        try:
-            record_audit_event(
-                module=MODULE_ROLES,
-                action="USER_UPDATED",
-                event_category=CATEGORY_MODIFICATION,
-                resource_type="User",
-                resource_id=str(user.id),
-                resource_repr=f"Usuario {user.email}",
-                actor=request.user,
-                new_values={f: request.data[f] for f in allowed if f in request.data},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ROLES,
+            action="USER_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="User",
+            resource_id=str(user.id),
+            resource_repr=f"Usuario {user.email}",
+            actor=request.user,
+            new_values={f: request.data[f] for f in allowed if f in request.data},
+            mandatory=True,
+        )
 
         return Response({"detail": "Usuario actualizado."})
 
@@ -1659,20 +1587,17 @@ def admin_user_detail(request, user_id):
         uid = str(user.id)
         uemail = user.email
         user.delete()
-        try:
-            record_audit_event(
-                module=MODULE_ROLES,
-                action="USER_DELETED",
-                event_category=CATEGORY_DELETION,
-                resource_type="User",
-                resource_id=uid,
-                resource_repr=f"Usuario {uemail}",
-                actor=request.user,
-                severity=SEVERITY_HIGH,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ROLES,
+            action="USER_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="User",
+            resource_id=uid,
+            resource_repr=f"Usuario {uemail}",
+            actor=request.user,
+            severity=SEVERITY_HIGH,
+            mandatory=True,
+        )
         return Response({"detail": "Usuario eliminado."}, status=204)
 
 
@@ -1686,19 +1611,16 @@ def admin_delete_enrollment(request, enrollment_id):
         eid = str(enrollment.id)
         user_info = str(enrollment.user) if hasattr(enrollment, "user") else ""
         enrollment.delete()
-        try:
-            record_audit_event(
-                module=MODULE_ACADEMY,
-                action="ENROLLMENT_DELETED",
-                event_category=CATEGORY_DELETION,
-                resource_type="Enrollment",
-                resource_id=eid,
-                resource_repr=f"Inscripción {eid} ({user_info})",
-                actor=request.user,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ACADEMY,
+            action="ENROLLMENT_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="Enrollment",
+            resource_id=eid,
+            resource_repr=f"Inscripción {eid} ({user_info})",
+            actor=request.user,
+            mandatory=True,
+        )
         return Response({"deleted": True})
     except Enrollment.DoesNotExist:
         return Response({"error": "No encontrada."}, status=404)
@@ -1823,25 +1745,22 @@ def admin_update_payment_status(request, payment_id):
         # Marca el IncomeRecord como reembolsado eliminándolo
         IncomeRecord.objects.filter(order=order).delete()
 
-    try:
-        act = "PAYMENT_APPROVED" if new_status == "approved" else ("PAYMENT_REJECTED" if new_status == "rejected" else f"PAYMENT_STATUS_{new_status.upper()}")
-        sev = SEVERITY_WARNING if new_status in ["rejected", "cancelled"] else SEVERITY_INFO
-        record_audit_event(
-            module=MODULE_FINANCES,
-            action=act,
-            event_category=CATEGORY_PAYMENT_OPERATION,
-            resource_type="Payment",
-            resource_id=str(payment.id),
-            resource_repr=f"Pago #{payment.id} (${payment.amount} {payment.currency})",
-            actor=request.user,
-            previous_values={"status": old_status},
-            new_values={"status": new_status},
-            changed_fields=["status"],
-            severity=sev,
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    act = "PAYMENT_APPROVED" if new_status == "approved" else ("PAYMENT_REJECTED" if new_status == "rejected" else f"PAYMENT_STATUS_{new_status.upper()}")
+    sev = SEVERITY_WARNING if new_status in ["rejected", "cancelled"] else SEVERITY_INFO
+    record_audit_event(
+        module=MODULE_FINANCES,
+        action=act,
+        event_category=CATEGORY_PAYMENT_OPERATION,
+        resource_type="Payment",
+        resource_id=str(payment.id),
+        resource_repr=f"Pago #{payment.id} (${payment.amount} {payment.currency})",
+        actor=request.user,
+        previous_values={"status": old_status},
+        new_values={"status": new_status},
+        changed_fields=["status"],
+        severity=sev,
+        mandatory=True,
+    )
 
     return Response({
         "id":         str(payment.id),
@@ -2078,20 +1997,17 @@ def admin_services_crud(request):
         category         = _svc_resolve_category(data),
         thumbnail        = request.FILES.get("thumbnail"),
     )
-    try:
-        record_audit_event(
-            module=MODULE_SERVICES,
-            action="SERVICE_CREATED",
-            event_category=CATEGORY_CREATION,
-            resource_type="Service",
-            resource_id=str(service.id),
-            resource_repr=f"Servicio {service.name}",
-            actor=request.user,
-            new_values={"name": service.name, "price": str(service.price) if service.price is not None else None},
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module=MODULE_SERVICES,
+        action="SERVICE_CREATED",
+        event_category=CATEGORY_CREATION,
+        resource_type="Service",
+        resource_id=str(service.id),
+        resource_repr=f"Servicio {service.name}",
+        actor=request.user,
+        new_values={"name": service.name, "price": str(service.price) if service.price is not None else None},
+        mandatory=True,
+    )
     return Response({"id": str(service.id), "name": service.name}, status=201)
 
 
@@ -2114,20 +2030,17 @@ def admin_service_detail(request, service_id):
         sname = service.name
         sid = str(service.id)
         service.delete()
-        try:
-            record_audit_event(
-                module=MODULE_SERVICES,
-                action="SERVICE_DELETED",
-                event_category=CATEGORY_DELETION,
-                resource_type="Service",
-                resource_id=sid,
-                resource_repr=f"Servicio {sname}",
-                actor=request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_SERVICES,
+            action="SERVICE_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="Service",
+            resource_id=sid,
+            resource_repr=f"Servicio {sname}",
+            actor=request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
         return Response({"deleted": True})
 
     allowed = ["name", "short_description", "description", "price_type",
@@ -2166,19 +2079,16 @@ def admin_service_detail(request, service_id):
         service.thumbnail = request.FILES["thumbnail"]
 
     service.save()
-    try:
-        record_audit_event(
-            module=MODULE_SERVICES,
-            action="SERVICE_UPDATED",
-            event_category=CATEGORY_MODIFICATION,
-            resource_type="Service",
-            resource_id=str(service.id),
-            resource_repr=f"Servicio {service.name}",
-            actor=request.user,
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module=MODULE_SERVICES,
+        action="SERVICE_UPDATED",
+        event_category=CATEGORY_MODIFICATION,
+        resource_type="Service",
+        resource_id=str(service.id),
+        resource_repr=f"Servicio {service.name}",
+        actor=request.user,
+        mandatory=True,
+    )
     return Response({"id": str(service.id), "name": service.name})
 
 @rbac_endpoint(module=MODULE_SERVICES)
@@ -2279,22 +2189,19 @@ def update_booking_status(request, pk):
 
     booking.save(update_fields=update_fields)
 
-    try:
-        record_audit_event(
-            module=MODULE_SERVICES,
-            action="BOOKING_STATUS_CHANGED",
-            event_category=CATEGORY_MODIFICATION,
-            resource_type="Booking",
-            resource_id=str(booking.id),
-            resource_repr=f"Reserva #{booking.id} ({booking.service.name if booking.service else ''})",
-            actor=request.user,
-            previous_values={"status": old_status},
-            new_values={"status": new_status},
-            changed_fields=["status"],
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module=MODULE_SERVICES,
+        action="BOOKING_STATUS_CHANGED",
+        event_category=CATEGORY_MODIFICATION,
+        resource_type="Booking",
+        resource_id=str(booking.id),
+        resource_repr=f"Reserva #{booking.id} ({booking.service.name if booking.service else ''})",
+        actor=request.user,
+        previous_values={"status": old_status},
+        new_values={"status": new_status},
+        changed_fields=["status"],
+        mandatory=True,
+    )
 
     # Solo si realmente CAMBIÓ de estado — si el admin re-guarda el
     # mismo estado sin querer, no hay que mandar el email de nuevo.
@@ -2331,22 +2238,19 @@ def update_request_status(request, pk):
     sr.admin_notes = request.data.get("admin_notes", sr.admin_notes)
     sr.save(update_fields=["status", "admin_notes"])
 
-    try:
-        record_audit_event(
-            module=MODULE_SERVICES,
-            action="SERVICE_REQUEST_STATUS_CHANGED",
-            event_category=CATEGORY_MODIFICATION,
-            resource_type="ServiceRequest",
-            resource_id=str(sr.id),
-            resource_repr=f"Solicitud #{sr.id} ({sr.service.name if sr.service else ''})",
-            actor=request.user,
-            previous_values={"status": old_status},
-            new_values={"status": new_status},
-            changed_fields=["status"],
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module=MODULE_SERVICES,
+        action="SERVICE_REQUEST_STATUS_CHANGED",
+        event_category=CATEGORY_MODIFICATION,
+        resource_type="ServiceRequest",
+        resource_id=str(sr.id),
+        resource_repr=f"Solicitud #{sr.id} ({sr.service.name if sr.service else ''})",
+        actor=request.user,
+        previous_values={"status": old_status},
+        new_values={"status": new_status},
+        changed_fields=["status"],
+        mandatory=True,
+    )
 
     # Acepta → crea Booking automáticamente
     if sr.status == "accepted" and old_status != "accepted" and sr.service:
@@ -2399,19 +2303,16 @@ def admin_create_enrollment(request):
         user=user, course=course
     )
     if created:
-        try:
-            record_audit_event(
-                module=MODULE_ACADEMY,
-                action="ENROLLMENT_CREATED",
-                event_category=CATEGORY_CREATION,
-                resource_type="Enrollment",
-                resource_id=str(enrollment.id),
-                resource_repr=f"Inscripción de {user.email} en {course.title}",
-                actor=request.user,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_ACADEMY,
+            action="ENROLLMENT_CREATED",
+            event_category=CATEGORY_CREATION,
+            resource_type="Enrollment",
+            resource_id=str(enrollment.id),
+            resource_repr=f"Inscripción de {user.email} en {course.title}",
+            actor=request.user,
+            mandatory=True,
+        )
     return Response({
         "created":       created,
         "enrollment_id": str(enrollment.id),
@@ -2620,19 +2521,16 @@ def import_products(request):
     if "error" in result:
         return Response(result, status=400)
 
-    try:
-        record_audit_event(
-            module=MODULE_CATALOG,
-            action="BULK_PRODUCTS_IMPORTED",
-            event_category=CATEGORY_BULK_OPERATION,
-            resource_type="Product",
-            resource_repr=f"Importación masiva de productos ({file.name})",
-            actor=request.user,
-            metadata=result,
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module=MODULE_CATALOG,
+        action="BULK_PRODUCTS_IMPORTED",
+        event_category=CATEGORY_BULK_OPERATION,
+        resource_type="Product",
+        resource_repr=f"Importación masiva de productos ({file.name})",
+        actor=request.user,
+        metadata=result,
+        mandatory=True,
+    )
 
     return Response(result, status=200)
 
@@ -2659,19 +2557,16 @@ def import_brands(request):
     if "error" in result:
         return Response(result, status=400)
 
-    try:
-        record_audit_event(
-            module=MODULE_CATALOG,
-            action="BULK_BRANDS_IMPORTED",
-            event_category=CATEGORY_BULK_OPERATION,
-            resource_type="Brand",
-            resource_repr=f"Importación masiva de marcas ({file.name})",
-            actor=request.user,
-            metadata=result,
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module=MODULE_CATALOG,
+        action="BULK_BRANDS_IMPORTED",
+        event_category=CATEGORY_BULK_OPERATION,
+        resource_type="Brand",
+        resource_repr=f"Importación masiva de marcas ({file.name})",
+        actor=request.user,
+        metadata=result,
+        mandatory=True,
+    )
 
     return Response(result, status=200)
 
@@ -2700,19 +2595,16 @@ def import_courses(request):
     if "error" in result:
         return Response(result, status=400)
 
-    try:
-        record_audit_event(
-            module=MODULE_ACADEMY,
-            action="BULK_COURSES_IMPORTED",
-            event_category=CATEGORY_BULK_OPERATION,
-            resource_type="Course",
-            resource_repr=f"Importación masiva de cursos ({file.name})",
-            actor=request.user,
-            metadata=result,
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module=MODULE_ACADEMY,
+        action="BULK_COURSES_IMPORTED",
+        event_category=CATEGORY_BULK_OPERATION,
+        resource_type="Course",
+        resource_repr=f"Importación masiva de cursos ({file.name})",
+        actor=request.user,
+        metadata=result,
+        mandatory=True,
+    )
 
     return Response(result, status=200)
 
@@ -2865,19 +2757,16 @@ def product_image_upload(request, product_id):
         is_primary = is_primary,
         order      = ProductImage.objects.filter(product=product).count(),
     )
-    try:
-        record_audit_event(
-            module=MODULE_CATALOG,
-            action="IMAGE_UPLOADED",
-            event_category=CATEGORY_CREATION,
-            resource_type="ProductImage",
-            resource_id=str(img.id),
-            resource_repr=f"Imagen para producto {product.name}",
-            actor=request.user,
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module=MODULE_CATALOG,
+        action="IMAGE_UPLOADED",
+        event_category=CATEGORY_CREATION,
+        resource_type="ProductImage",
+        resource_id=str(img.id),
+        resource_repr=f"Imagen para producto {product.name}",
+        actor=request.user,
+        mandatory=True,
+    )
 
     return Response({
         "id":         str(img.id),
@@ -2900,20 +2789,17 @@ def product_image_delete(request, image_id):
         pname = img.product.name if img.product else ""
         img.image.delete(save=False)
         img.delete()
-        try:
-            record_audit_event(
-                module=MODULE_CATALOG,
-                action="IMAGE_DELETED",
-                event_category=CATEGORY_DELETION,
-                resource_type="ProductImage",
-                resource_id=str(image_id),
-                resource_repr=f"Imagen eliminada de {pname}",
-                actor=request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_CATALOG,
+            action="IMAGE_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="ProductImage",
+            resource_id=str(image_id),
+            resource_repr=f"Imagen eliminada de {pname}",
+            actor=request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
         return Response({"deleted": True})
     except ProductImage.DoesNotExist:
         return Response({"error": "No encontrada."}, status=404)
@@ -2932,19 +2818,16 @@ def product_image_set_primary(request, image_id):
         ProductImage.objects.filter(product=img.product).update(is_primary=False)
         img.is_primary = True
         img.save(update_fields=["is_primary"])
-        try:
-            record_audit_event(
-                module=MODULE_CATALOG,
-                action="IMAGE_SET_PRIMARY",
-                event_category=CATEGORY_MODIFICATION,
-                resource_type="ProductImage",
-                resource_id=str(image_id),
-                resource_repr=f"Imagen marcada como principal para {img.product.name}",
-                actor=request.user,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module=MODULE_CATALOG,
+            action="IMAGE_SET_PRIMARY",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="ProductImage",
+            resource_id=str(image_id),
+            resource_repr=f"Imagen marcada como principal para {img.product.name}",
+            actor=request.user,
+            mandatory=True,
+        )
         return Response({"is_primary": True})
     except ProductImage.DoesNotExist:
         return Response({"error": "No encontrada."}, status=404)
@@ -2998,19 +2881,16 @@ def admin_finance_categories(request):
         is_active  = request.data.get("is_active", True),        # ← AGREGA
         order      = DistributionCategory.objects.count() + 1,
     )
-    try:
-        record_audit_event(
-            module=MODULE_FINANCES,
-            action="FINANCIAL_CATEGORY_CREATED",
-            event_category=CATEGORY_FINANCIAL_OPERATION,
-            resource_type="DistributionCategory",
-            resource_id=str(cat.id),
-            resource_repr=f"Categoría financiera {cat.name} ({cat.cat_type})",
-            actor=request.user,
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module=MODULE_FINANCES,
+        action="FINANCIAL_CATEGORY_CREATED",
+        event_category=CATEGORY_FINANCIAL_OPERATION,
+        resource_type="DistributionCategory",
+        resource_id=str(cat.id),
+        resource_repr=f"Categoría financiera {cat.name} ({cat.cat_type})",
+        actor=request.user,
+        mandatory=True,
+    )
     return Response({"id": str(cat.id), "name": cat.name}, status=201)
 
 
@@ -3068,19 +2948,16 @@ def admin_finance_category_detail(request, cat_id):
 
     cat.save()
 
-    try:
-        record_audit_event(
-            module=MODULE_FINANCES,
-            action="FINANCIAL_CATEGORY_UPDATED",
-            event_category=CATEGORY_FINANCIAL_OPERATION,
-            resource_type="DistributionCategory",
-            resource_id=str(cat.id),
-            resource_repr=f"Categoría financiera {cat.name}",
-            actor=request.user,
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module=MODULE_FINANCES,
+        action="FINANCIAL_CATEGORY_UPDATED",
+        event_category=CATEGORY_FINANCIAL_OPERATION,
+        resource_type="DistributionCategory",
+        resource_id=str(cat.id),
+        resource_repr=f"Categoría financiera {cat.name}",
+        actor=request.user,
+        mandatory=True,
+    )
 
     # Importante: NO recalculamos IncomeDistribution existentes acá.
     # Antes, cambiar el % de una categoría reescribía TODO el historial
@@ -3270,26 +3147,23 @@ def admin_finance_withdrawals(request):
         reference   = request.data.get("reference", ""),
         created_by  = request.user,
     )
-    try:
-        record_audit_event(
-            module=MODULE_FINANCES,
-            action="FINANCIAL_WITHDRAWAL_CREATED",
-            event_category=CATEGORY_FINANCIAL_OPERATION,
-            resource_type="Withdrawal",
-            resource_id=str(w.id),
-            resource_repr=f"Retiro {cat.name} (${amount} {currency}) a {w.destination}",
-            actor=request.user,
-            new_values={
-                "category": cat.name,
-                "amount": str(amount),
-                "currency": currency,
-                "destination": w.destination,
-            },
-            severity=SEVERITY_WARNING,
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module=MODULE_FINANCES,
+        action="FINANCIAL_WITHDRAWAL_CREATED",
+        event_category=CATEGORY_FINANCIAL_OPERATION,
+        resource_type="Withdrawal",
+        resource_id=str(w.id),
+        resource_repr=f"Retiro {cat.name} (${amount} {currency}) a {w.destination}",
+        actor=request.user,
+        new_values={
+            "category": cat.name,
+            "amount": str(amount),
+            "currency": currency,
+            "destination": w.destination,
+        },
+        severity=SEVERITY_WARNING,
+        mandatory=True,
+    )
     return Response({"id": str(w.id), "created": True}, status=201)
 
 
@@ -3325,26 +3199,23 @@ def admin_finance_withdrawal_delete(request, withdrawal_id):
     wid = str(w.id)
     w.delete()
 
-    try:
-        record_audit_event(
-            module=MODULE_FINANCES,
-            action="FINANCIAL_WITHDRAWAL_DELETED",
-            event_category=CATEGORY_FINANCIAL_OPERATION,
-            resource_type="Withdrawal",
-            resource_id=wid,
-            resource_repr=f"Retiro eliminado {cname} (${amt} {curr}) a {dest}",
-            previous_values={
-                "category": cname,
-                "amount": amt,
-                "currency": curr,
-                "destination": dest,
-            },
-            actor=request.user,
-            severity=SEVERITY_HIGH,
-            mandatory=True,
-        )
-    except Exception:
-        pass
+    record_audit_event(
+        module=MODULE_FINANCES,
+        action="FINANCIAL_WITHDRAWAL_DELETED",
+        event_category=CATEGORY_FINANCIAL_OPERATION,
+        resource_type="Withdrawal",
+        resource_id=wid,
+        resource_repr=f"Retiro eliminado {cname} (${amt} {curr}) a {dest}",
+        previous_values={
+            "category": cname,
+            "amount": amt,
+            "currency": curr,
+            "destination": dest,
+        },
+        actor=request.user,
+        severity=SEVERITY_HIGH,
+        mandatory=True,
+    )
 
     return Response({"deleted": True})
 

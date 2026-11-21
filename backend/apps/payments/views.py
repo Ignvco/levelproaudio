@@ -400,6 +400,7 @@ def transfer_instructions(request, order_id):
 
 # ── Admin: CRUD de métodos de pago y cuentas bancarias ──────────────
 from rest_framework import viewsets
+from django.db import transaction
 from core.admin_permissions import IsAdminOrStaff
 from core.rbac.constants import MODULE_FINANCES, PERM_VIEW_FINANCES, PERM_MANAGE_SETTINGS
 from core.audit.services import record_audit_event
@@ -426,58 +427,52 @@ class AdminPaymentMethodViewSet(viewsets.ModelViewSet):
         "destroy": PERM_MANAGE_SETTINGS,
     }
 
+    @transaction.atomic
     def perform_create(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module="finances",
-                action="PAYMENT_METHOD_CREATED",
-                event_category=CATEGORY_CONFIG_CHANGE,
-                resource_type="PaymentMethodConfig",
-                resource_id=str(instance.id),
-                resource_repr=f"Método de pago {instance.name}",
-                actor=self.request.user,
-                new_values={"name": instance.name, "is_active": instance.is_active},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="finances",
+            action="PAYMENT_METHOD_CREATED",
+            event_category=CATEGORY_CONFIG_CHANGE,
+            resource_type="PaymentMethodConfig",
+            resource_id=str(instance.id),
+            resource_repr=f"Método de pago {instance.name}",
+            actor=self.request.user,
+            new_values={"name": instance.name, "is_active": instance.is_active},
+            mandatory=True,
+        )
 
+    @transaction.atomic
     def perform_update(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module="finances",
-                action="PAYMENT_METHOD_UPDATED",
-                event_category=CATEGORY_CONFIG_CHANGE,
-                resource_type="PaymentMethodConfig",
-                resource_id=str(instance.id),
-                resource_repr=f"Método de pago {instance.name}",
-                actor=self.request.user,
-                new_values={"name": instance.name, "is_active": instance.is_active},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="finances",
+            action="PAYMENT_METHOD_UPDATED",
+            event_category=CATEGORY_CONFIG_CHANGE,
+            resource_type="PaymentMethodConfig",
+            resource_id=str(instance.id),
+            resource_repr=f"Método de pago {instance.name}",
+            actor=self.request.user,
+            new_values={"name": instance.name, "is_active": instance.is_active},
+            mandatory=True,
+        )
 
+    @transaction.atomic
     def perform_destroy(self, instance):
         name = instance.name
         iid = str(instance.id)
         instance.delete()
-        try:
-            record_audit_event(
-                module="finances",
-                action="PAYMENT_METHOD_DELETED",
-                event_category=CATEGORY_CONFIG_CHANGE,
-                resource_type="PaymentMethodConfig",
-                resource_id=iid,
-                resource_repr=f"Método de pago {name}",
-                actor=self.request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="finances",
+            action="PAYMENT_METHOD_DELETED",
+            event_category=CATEGORY_CONFIG_CHANGE,
+            resource_type="PaymentMethodConfig",
+            resource_id=iid,
+            resource_repr=f"Método de pago {name}",
+            actor=self.request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
 
 
 class AdminBankAccountViewSet(viewsets.ModelViewSet):
@@ -495,56 +490,50 @@ class AdminBankAccountViewSet(viewsets.ModelViewSet):
         "destroy": PERM_MANAGE_SETTINGS,
     }
 
+    @transaction.atomic
     def perform_create(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module="finances",
-                action="BANK_ACCOUNT_CREATED",
-                event_category=CATEGORY_CONFIG_CHANGE,
-                resource_type="BankAccount",
-                resource_id=str(instance.id),
-                resource_repr=f"Cuenta {instance.bank_name} {instance.account_number}",
-                actor=self.request.user,
-                new_values={"bank": instance.bank_name, "is_active": instance.is_active},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="finances",
+            action="BANK_ACCOUNT_CREATED",
+            event_category=CATEGORY_CONFIG_CHANGE,
+            resource_type="BankAccount",
+            resource_id=str(instance.id),
+            resource_repr=f"Cuenta {instance.bank_name} {instance.account_number}",
+            actor=self.request.user,
+            new_values={"bank": instance.bank_name, "is_active": instance.is_active},
+            mandatory=True,
+        )
 
+    @transaction.atomic
     def perform_update(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module="finances",
-                action="BANK_ACCOUNT_UPDATED",
-                event_category=CATEGORY_CONFIG_CHANGE,
-                resource_type="BankAccount",
-                resource_id=str(instance.id),
-                resource_repr=f"Cuenta {instance.bank_name} {instance.account_number}",
-                actor=self.request.user,
-                new_values={"bank": instance.bank_name, "is_active": instance.is_active},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="finances",
+            action="BANK_ACCOUNT_UPDATED",
+            event_category=CATEGORY_CONFIG_CHANGE,
+            resource_type="BankAccount",
+            resource_id=str(instance.id),
+            resource_repr=f"Cuenta {instance.bank_name} {instance.account_number}",
+            actor=self.request.user,
+            new_values={"bank": instance.bank_name, "is_active": instance.is_active},
+            mandatory=True,
+        )
 
+    @transaction.atomic
     def perform_destroy(self, instance):
         bank = instance.bank_name
         acc = instance.account_number
         iid = str(instance.id)
         instance.delete()
-        try:
-            record_audit_event(
-                module="finances",
-                action="BANK_ACCOUNT_DELETED",
-                event_category=CATEGORY_CONFIG_CHANGE,
-                resource_type="BankAccount",
-                resource_id=iid,
-                resource_repr=f"Cuenta {bank} {acc}",
-                actor=self.request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="finances",
+            action="BANK_ACCOUNT_DELETED",
+            event_category=CATEGORY_CONFIG_CHANGE,
+            resource_type="BankAccount",
+            resource_id=iid,
+            resource_repr=f"Cuenta {bank} {acc}",
+            actor=self.request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )

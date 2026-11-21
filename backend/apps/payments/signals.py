@@ -1,5 +1,6 @@
 # apps/payments/signals.py
 
+import logging
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from .models import Payment
@@ -11,6 +12,8 @@ from core.audit.constants import (
     ACTOR_SYSTEM,
     SOURCE_SYSTEM_SIGNAL,
 )
+
+logger = logging.getLogger("levelpro.audit")
 
 
 @receiver(post_save, sender=Payment)
@@ -35,6 +38,20 @@ def update_order_status(sender, instance, **kwargs):
                     changed_fields=["status"],
                     source=SOURCE_SYSTEM_SIGNAL,
                     severity=SEVERITY_INFO,
+                    mandatory=False,
                 )
-            except Exception:
-                pass
+            except Exception as exc:
+                # Evento Clase 2 (señal asíncrona de pago): Alerta crítica de seguridad
+                # Nunca silenciar con pass; garantiza trazabilidad y monitoreo operacional
+                logger.critical(
+                    "AUDIT_ALERT_CRITICAL: Falló registro de auditoría en señal de pago para Orden #%s (Payment #%s): %s",
+                    order.id,
+                    instance.id,
+                    exc,
+                    extra={
+                        "order_id": str(order.id),
+                        "payment_id": str(instance.id),
+                        "signal": "update_order_status",
+                    },
+                    exc_info=True,
+                )

@@ -43,6 +43,7 @@ from .serializers import (
     AdminWinnerSerializer,
 )
 from core.audit.services import record_audit_event
+from core.audit.sanitizer import sanitize_csv_cell
 from core.audit.constants import (
     CATEGORY_CREATION,
     CATEGORY_MODIFICATION,
@@ -82,56 +83,47 @@ class AdminCampaignViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module="marketing",
-                action="REWARDS_CAMPAIGN_CREATED",
-                event_category=CATEGORY_CREATION,
-                resource_type="Campaign",
-                resource_id=str(instance.id),
-                resource_repr=f"Campaña {instance.name}",
-                actor=self.request.user,
-                new_values={"name": instance.name, "status": instance.status},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_CAMPAIGN_CREATED",
+            event_category=CATEGORY_CREATION,
+            resource_type="Campaign",
+            resource_id=str(instance.id),
+            resource_repr=f"Campaña {instance.name}",
+            actor=self.request.user,
+            new_values={"name": instance.name, "status": instance.status},
+            mandatory=True,
+        )
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module="marketing",
-                action="REWARDS_CAMPAIGN_UPDATED",
-                event_category=CATEGORY_MODIFICATION,
-                resource_type="Campaign",
-                resource_id=str(instance.id),
-                resource_repr=f"Campaña {instance.name}",
-                actor=self.request.user,
-                new_values={"name": instance.name, "status": instance.status},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_CAMPAIGN_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="Campaign",
+            resource_id=str(instance.id),
+            resource_repr=f"Campaña {instance.name}",
+            actor=self.request.user,
+            new_values={"name": instance.name, "status": instance.status},
+            mandatory=True,
+        )
 
     def perform_destroy(self, instance):
         cid = str(instance.id)
         name = instance.name
         instance.delete()
-        try:
-            record_audit_event(
-                module="marketing",
-                action="REWARDS_CAMPAIGN_DELETED",
-                event_category=CATEGORY_DELETION,
-                resource_type="Campaign",
-                resource_id=cid,
-                resource_repr=f"Campaña {name}",
-                actor=self.request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_CAMPAIGN_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="Campaign",
+            resource_id=cid,
+            resource_repr=f"Campaña {name}",
+            actor=self.request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
 
     @action(detail=True, methods=["post"])
     def draw(self, request, pk=None):
@@ -142,21 +134,18 @@ class AdminCampaignViewSet(viewsets.ModelViewSet):
         except DrawError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            record_audit_event(
-                module="marketing",
-                action="REWARDS_CAMPAIGN_DRAWN",
-                event_category=CATEGORY_MODIFICATION,
-                resource_type="Campaign",
-                resource_id=str(campaign.id),
-                resource_repr=f"Sorteo ejecutado en Campaña {campaign.name}",
-                actor=request.user,
-                severity=SEVERITY_WARNING,
-                metadata={"winners_count": len(winners)},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_CAMPAIGN_DRAWN",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="Campaign",
+            resource_id=str(campaign.id),
+            resource_repr=f"Sorteo ejecutado en Campaña {campaign.name}",
+            actor=request.user,
+            severity=SEVERITY_WARNING,
+            metadata={"winners_count": len(winners)},
+            mandatory=True,
+        )
 
         return Response(
             {
@@ -189,19 +178,16 @@ class AdminCampaignViewSet(viewsets.ModelViewSet):
                 is_active            = rp.is_active,
             )
 
-        try:
-            record_audit_event(
-                module="marketing",
-                action="REWARDS_CAMPAIGN_DUPLICATED",
-                event_category=CATEGORY_CREATION,
-                resource_type="Campaign",
-                resource_id=str(original.id),
-                resource_repr=f"Campaña clonada: {original.name}",
-                actor=request.user,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_CAMPAIGN_DUPLICATED",
+            event_category=CATEGORY_CREATION,
+            resource_type="Campaign",
+            resource_id=str(original.id),
+            resource_repr=f"Campaña clonada: {original.name}",
+            actor=request.user,
+            mandatory=True,
+        )
 
         return Response(AdminCampaignSerializer(original).data,
                         status=status.HTTP_201_CREATED)
@@ -213,20 +199,17 @@ class AdminCampaignViewSet(viewsets.ModelViewSet):
         campaign.status = CampaignStatus.FINISHED
         campaign.save(update_fields=["status"])
 
-        try:
-            record_audit_event(
-                module="marketing",
-                action="REWARDS_CAMPAIGN_FINISHED",
-                event_category=CATEGORY_MODIFICATION,
-                resource_type="Campaign",
-                resource_id=str(campaign.id),
-                resource_repr=f"Campaña finalizada: {campaign.name}",
-                actor=request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_CAMPAIGN_FINISHED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="Campaign",
+            resource_id=str(campaign.id),
+            resource_repr=f"Campaña finalizada: {campaign.name}",
+            actor=request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
 
         return Response({"status": campaign.status})
 
@@ -256,54 +239,45 @@ class AdminRewardProductViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module="marketing",
-                action="REWARDS_PRODUCT_CREATED",
-                event_category=CATEGORY_CREATION,
-                resource_type="RewardProduct",
-                resource_id=str(instance.id),
-                resource_repr=f"Producto Reward #{instance.id} (Campaña {instance.campaign.name})",
-                actor=self.request.user,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_PRODUCT_CREATED",
+            event_category=CATEGORY_CREATION,
+            resource_type="RewardProduct",
+            resource_id=str(instance.id),
+            resource_repr=f"Producto Reward #{instance.id} (Campaña {instance.campaign.name})",
+            actor=self.request.user,
+            mandatory=True,
+        )
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module="marketing",
-                action="REWARDS_PRODUCT_UPDATED",
-                event_category=CATEGORY_MODIFICATION,
-                resource_type="RewardProduct",
-                resource_id=str(instance.id),
-                resource_repr=f"Producto Reward #{instance.id} (Campaña {instance.campaign.name})",
-                actor=self.request.user,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_PRODUCT_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="RewardProduct",
+            resource_id=str(instance.id),
+            resource_repr=f"Producto Reward #{instance.id} (Campaña {instance.campaign.name})",
+            actor=self.request.user,
+            mandatory=True,
+        )
 
     def perform_destroy(self, instance):
         rpid = str(instance.id)
         cname = instance.campaign.name
         instance.delete()
-        try:
-            record_audit_event(
-                module="marketing",
-                action="REWARDS_PRODUCT_DELETED",
-                event_category=CATEGORY_DELETION,
-                resource_type="RewardProduct",
-                resource_id=rpid,
-                resource_repr=f"Producto Reward #{rpid} eliminado de {cname}",
-                actor=self.request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_PRODUCT_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="RewardProduct",
+            resource_id=rpid,
+            resource_repr=f"Producto Reward #{rpid} eliminado de {cname}",
+            actor=self.request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -352,29 +326,26 @@ class AdminEntryViewSet(viewsets.ReadOnlyModelViewSet):
                          "Orden", "Producto", "Fecha"])
         for e in qs.iterator(chunk_size=500):
             writer.writerow([
-                e.unique_code,
-                e.campaign.name,
-                f"{e.user.first_name} {e.user.last_name}".strip(),
-                e.user.email,
-                str(e.order.id)[:8].upper(),
-                e.product.name if e.product else "—",
-                e.created_at.strftime("%Y-%m-%d %H:%M"),
+                sanitize_csv_cell(e.unique_code),
+                sanitize_csv_cell(e.campaign.name),
+                sanitize_csv_cell(f"{e.user.first_name} {e.user.last_name}".strip()),
+                sanitize_csv_cell(e.user.email),
+                sanitize_csv_cell(str(e.order.id)[:8].upper()),
+                sanitize_csv_cell(e.product.name if e.product else "—"),
+                sanitize_csv_cell(e.created_at.strftime("%Y-%m-%d %H:%M")),
             ])
 
-        try:
-            record_audit_event(
-                module="marketing",
-                action="SENSITIVE_DATA_EXPORTED",
-                event_category=CATEGORY_EXPORT,
-                resource_type="RewardEntries",
-                resource_id="participaciones.csv",
-                resource_repr="Exportación CSV de participaciones Rewards",
-                actor=request.user,
-                severity=SEVERITY_WARNING,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="marketing",
+            action="SENSITIVE_DATA_EXPORTED",
+            event_category=CATEGORY_EXPORT,
+            resource_type="RewardEntries",
+            resource_id="participaciones.csv",
+            resource_repr="Exportación CSV de participaciones Rewards",
+            actor=request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
 
         return resp
 
@@ -404,19 +375,16 @@ class AdminWinnerViewSet(viewsets.ModelViewSet):
 
     def perform_update(self, serializer):
         instance = serializer.save()
-        try:
-            record_audit_event(
-                module="marketing",
-                action="REWARDS_WINNER_UPDATED",
-                event_category=CATEGORY_MODIFICATION,
-                resource_type="Winner",
-                resource_id=str(instance.id),
-                resource_repr=f"Ganador #{instance.id} (Campaña {instance.campaign.name})",
-                actor=self.request.user,
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_WINNER_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="Winner",
+            resource_id=str(instance.id),
+            resource_repr=f"Ganador #{instance.id} (Campaña {instance.campaign.name})",
+            actor=self.request.user,
+            mandatory=True,
+        )
 
 
 # ═══════════════════════════════════════════════════════════════

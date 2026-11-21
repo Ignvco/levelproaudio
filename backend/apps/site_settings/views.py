@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import views, permissions, status
 from rest_framework.response import Response
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
@@ -47,13 +48,13 @@ class AdminSiteSettingsView(views.APIView):
                     {"error": "No posee la capacidad 'manage_settings' para modificar tasas de cambio o configuración crítica del sistema."},
                     status=status.HTTP_403_FORBIDDEN,
                 )
-        obj = SiteSettings.get()
-        ser = SiteSettingsWriteSerializer(obj, data=request.data, partial=True)
-        ser.is_valid(raise_exception=True)
-        ser.save()
+        with transaction.atomic():
+            obj = SiteSettings.get()
+            ser = SiteSettingsWriteSerializer(obj, data=request.data, partial=True)
+            ser.is_valid(raise_exception=True)
+            ser.save()
 
-        # Registro de auditoría obligatorio
-        try:
+            # Registro de auditoría obligatorio, transaccional y fail-closed (Clase 1)
             record_audit_event(
                 module=MODULE_SETTINGS,
                 action="CONFIG_CHANGED",
@@ -65,10 +66,8 @@ class AdminSiteSettingsView(views.APIView):
                 result=RESULT_SUCCESS,
                 severity=SEVERITY_WARNING,
                 new_values=sanitize_audit_payload(request.data),
-                mandatory=False,
+                mandatory=True,
             )
-        except Exception:
-            pass
 
         resp = Response(SiteSettingsSerializer(obj).data, status=status.HTTP_200_OK)
         resp["Cache-Control"] = "private, no-store"

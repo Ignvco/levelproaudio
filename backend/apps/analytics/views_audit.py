@@ -2,6 +2,7 @@
 """Vistas API para el Centro de Registro de Actividad y Auditoría LEVELPRO OS V4.0 (Gate 1.2)."""
 
 import csv
+import logging
 from datetime import datetime
 from django.http import HttpResponse, Http404
 from django.utils import timezone
@@ -9,6 +10,8 @@ from django.core.paginator import Paginator
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework import status
+
+logger = logging.getLogger("levelpro.audit")
 
 from core.admin_permissions import IsAdminOrStaff, rbac_endpoint
 from core.rbac.constants import (
@@ -40,7 +43,7 @@ from core.audit.constants import (
     SEVERITY_WARNING,
     RESULT_SUCCESS,
 )
-from core.audit.sanitizer import mask_payload_financial_data
+from core.audit.sanitizer import mask_payload_financial_data, sanitize_csv_cell
 from core.audit.services import (
     get_audit_events_queryset,
     get_audit_summary,
@@ -244,7 +247,7 @@ def audit_catalog_view(request):
 def audit_export_view(request):
     """
     Exportación de registros de auditoría a CSV.
-    Aplica enmascaramiento RBAC dinámico y audita síncronamente la exportación.
+    Aplica enmascaramiento RBAC dinámico, previene inyección de fórmulas y audita síncronamente la exportación.
     """
     filters = {
         "date_from": request.query_params.get("date_from"),
@@ -287,25 +290,25 @@ def audit_export_view(request):
 
     for ev in qs:
         writer.writerow([
-            str(ev.id),
-            ev.created_at.isoformat(),
-            ev.actor_email,
-            ev.actor_username,
-            ", ".join(ev.actor_roles or []),
-            ev.module,
-            ev.action,
-            CATEGORY_LABELS.get(ev.event_category, ev.event_category),
-            ev.resource_type,
-            ev.resource_id,
-            ev.resource_repr,
-            RESULT_LABELS.get(ev.result, ev.result),
-            SEVERITY_LABELS.get(ev.severity, ev.severity),
-            ev.correlation_id,
-            ev.ip_address or "",
-            ", ".join(ev.changed_fields or []),
+            sanitize_csv_cell(str(ev.id)),
+            sanitize_csv_cell(ev.created_at.isoformat()),
+            sanitize_csv_cell(ev.actor_email),
+            sanitize_csv_cell(ev.actor_username),
+            sanitize_csv_cell(", ".join(ev.actor_roles or [])),
+            sanitize_csv_cell(ev.module),
+            sanitize_csv_cell(ev.action),
+            sanitize_csv_cell(CATEGORY_LABELS.get(ev.event_category, ev.event_category)),
+            sanitize_csv_cell(ev.resource_type),
+            sanitize_csv_cell(ev.resource_id),
+            sanitize_csv_cell(ev.resource_repr),
+            sanitize_csv_cell(RESULT_LABELS.get(ev.result, ev.result)),
+            sanitize_csv_cell(SEVERITY_LABELS.get(ev.severity, ev.severity)),
+            sanitize_csv_cell(ev.correlation_id),
+            sanitize_csv_cell(ev.ip_address or ""),
+            sanitize_csv_cell(", ".join(ev.changed_fields or [])),
         ])
 
-    # Registrar el evento de exportación en la auditoría
+    # Registrar el evento de exportación en la auditoría con manejo explícito
     try:
         record_audit_event(
             module=MODULE_AUDIT,
@@ -318,8 +321,14 @@ def audit_export_view(request):
             result=RESULT_SUCCESS,
             severity=SEVERITY_WARNING,
             metadata={"exported_count": len(qs), "filename": filename},
+            mandatory=False,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.error(
+            "AUDIT_ALERT: Falló registro de auditoría en exportación CSV: %s",
+            exc,
+            extra={"user": str(request.user), "filename": filename, "count": len(qs)},
+            exc_info=True,
+        )
 
     return response

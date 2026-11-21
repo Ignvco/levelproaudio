@@ -206,20 +206,17 @@ def admin_loyalty_config(request):
                 setattr(config, f, request.data[f])
         config.save()
 
-        try:
-            record_audit_event(
-                module="marketing",
-                action="LOYALTY_CONFIG_UPDATED",
-                event_category=CATEGORY_CONFIG_CHANGE,
-                resource_type="LoyaltyConfig",
-                resource_id=str(config.id),
-                resource_repr="Configuración de Loyalty",
-                actor=request.user,
-                new_values={f: request.data[f] for f in fields if f in request.data},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="marketing",
+            action="LOYALTY_CONFIG_UPDATED",
+            event_category=CATEGORY_CONFIG_CHANGE,
+            resource_type="LoyaltyConfig",
+            resource_id=str(config.id),
+            resource_repr="Configuración de Loyalty",
+            actor=request.user,
+            new_values={f: request.data[f] for f in fields if f in request.data},
+            mandatory=True,
+        )
 
     return Response({
         "puntos_por_peso":  float(config.puntos_por_peso),
@@ -282,20 +279,17 @@ def admin_adjust_points(request):
             )
             account.refresh_from_db()
 
-        try:
-            record_audit_event(
-                module="marketing",
-                action="LOYALTY_POINTS_ADJUSTED",
-                event_category=CATEGORY_FINANCIAL_OPERATION,
-                resource_type="LoyaltyPoints",
-                resource_id=str(user_id),
-                resource_repr=f"Ajuste de {puntos} puntos para usuario {user.email}",
-                actor=request.user,
-                new_values={"points": puntos, "reason": descripcion, "new_balance": account.puntos_disponibles},
-                mandatory=True,
-            )
-        except Exception:
-            pass
+        record_audit_event(
+            module="marketing",
+            action="LOYALTY_POINTS_ADJUSTED",
+            event_category=CATEGORY_FINANCIAL_OPERATION,
+            resource_type="LoyaltyPoints",
+            resource_id=str(user_id),
+            resource_repr=f"Ajuste de {puntos} puntos para usuario {user.email}",
+            actor=request.user,
+            new_values={"points": puntos, "reason": descripcion, "new_balance": account.puntos_disponibles},
+            mandatory=True,
+        )
 
         return Response({"puntos_disponibles": account.puntos_disponibles})
     except User.DoesNotExist:

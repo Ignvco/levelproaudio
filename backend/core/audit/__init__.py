@@ -13,6 +13,7 @@ from .sanitizer import (
     sanitize_audit_payload,
     compute_state_diff,
     mask_payload_financial_data,
+    sanitize_csv_cell,
 )
 from .services import (
     record_audit_event,
@@ -29,6 +30,7 @@ __all__ = [
     "sanitize_audit_payload",
     "compute_state_diff",
     "mask_payload_financial_data",
+    "sanitize_csv_cell",
     "record_audit_event",
     "record_out_of_band_audit_event",
     "get_audit_events_queryset",

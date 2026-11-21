@@ -142,3 +142,17 @@ def mask_payload_financial_data(
             masked[k] = v
 
     return masked
+
+
+def sanitize_csv_cell(value) -> str:
+    """
+    Previene inyección de fórmulas CSV (CWE-1236 / Formula Injection).
+    Si el valor comienza con '=', '+', '-', '@', tab o retorno de carro,
+    antepone una comilla simple (') para forzar interpretación como texto plano en hojas de cálculo.
+    """
+    if value is None:
+        return ""
+    val_str = str(value)
+    if val_str and val_str[0] in ("=", "+", "-", "@", "\t", "\r"):
+        return f"'{val_str}"
+    return val_str

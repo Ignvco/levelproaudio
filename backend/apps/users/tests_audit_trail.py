@@ -28,11 +28,30 @@ Cubre los 21 escenarios obligatorios:
 from decimal import Decimal
 import io
 import uuid
+from unittest.mock import patch
 from django.test import TransactionTestCase
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
 from django.core.exceptions import PermissionDenied
 from django.db import connection, transaction
+from django.db.utils import InternalError
+from django.db.backends.base.operations import BaseDatabaseOperations
+
+_orig_execute_sql_flush = BaseDatabaseOperations.execute_sql_flush
+
+
+def _audit_aware_execute_sql_flush(self, sql_list):
+    if self.connection.vendor == "postgresql":
+        with self.connection.cursor() as cursor:
+            cursor.execute("SET levelpro.allow_audit_truncate = 'on';")
+            try:
+                return _orig_execute_sql_flush(self, sql_list)
+            finally:
+                cursor.execute("SET levelpro.allow_audit_truncate = 'off';")
+    return _orig_execute_sql_flush(self, sql_list)
+
+
+BaseDatabaseOperations.execute_sql_flush = _audit_aware_execute_sql_flush
 from rest_framework.test import APIClient
 from rest_framework import status
 
@@ -571,21 +590,23 @@ class AuditTrailComprehensiveTestSuite(TransactionTestCase):
             resource_id="sql-1",
         )
 
-        # Raw SQL UPDATE debe fallar por el trigger
-        with self.assertRaises(Exception):
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    "UPDATE audit_events SET action = 'SQL_INJECTION' WHERE id = %s",
-                    [str(event.id)],
-                )
+        # Raw SQL UPDATE debe fallar por el trigger con InternalError de PostgreSQL
+        with self.assertRaises(InternalError):
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        "UPDATE audit_events SET action = 'SQL_INJECTION' WHERE id = %s",
+                        [str(event.id)],
+                    )
 
-        # Raw SQL DELETE debe fallar por el trigger
-        with self.assertRaises(Exception):
-            with connection.cursor() as cursor:
-                cursor.execute(
-                    "DELETE FROM audit_events WHERE id = %s",
-                    [str(event.id)],
-                )
+        # Raw SQL DELETE debe fallar por el trigger con InternalError de PostgreSQL
+        with self.assertRaises(InternalError):
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        "DELETE FROM audit_events WHERE id = %s",
+                        [str(event.id)],
+                    )
 
     # 17. Sanitizer recursive secret stripping
     def test_audit_sanitizer_recursive_strips_passwords_tokens_and_secrets(self):
@@ -700,3 +721,98 @@ class AuditTrailComprehensiveTestSuite(TransactionTestCase):
         # El contador de eventos exitosos no debe haber aumentado (sin falsos positivos)
         final_count = AuditEvent.objects.filter(resource_type="Product", action="PRODUCT_CREATED").count()
         self.assertEqual(initial_count, final_count)
+
+    # 22. Mandatory audit failure rolls back business mutation (fail-closed transaction)
+    def test_audit_mandatory_failure_rolls_back_business_mutation(self):
+        self.client.force_authenticate(user=self.management_user)
+        initial_price = self.product.price
+
+        # Inyectar fallo en record_audit_event cuando mandatory=True
+        with patch("apps.analytics.views.record_audit_event", side_effect=RuntimeError("Fallo inducido en motor de auditoría")):
+            resp = self.client.patch(
+                f"/api/v1/admin/products/{self.product.id}/",
+                {"price": "999999.00"},
+                format="json",
+            )
+            # Debe fallar con error de servidor (500) y abortar la transacción
+            self.assertEqual(resp.status_code, status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        # Verificar que el precio en la base de datos NO cambió (rollback íntegro)
+        self.product.refresh_from_db()
+        self.assertEqual(self.product.price, initial_price)
+
+    # 23. PostgreSQL trigger blocks raw SQL TRUNCATE
+    def test_postgresql_trigger_blocks_sql_truncate(self):
+        if connection.vendor != "postgresql":
+            self.skipTest("Prueba específica para base de datos PostgreSQL")
+
+        with self.assertRaises(InternalError):
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute("TRUNCATE TABLE audit_events")
+
+    # 24. Prevention of CSV formula injection (CWE-1236)
+    def test_csv_formula_injection_prevention(self):
+        # Crear evento con payloads que contienen fórmulas maliciosas de Excel
+        AuditEvent.objects.create(
+            module=MODULE_CATALOG,
+            action="PRICE_CHANGED",
+            event_category=CATEGORY_PRICE_CHANGE,
+            resource_type="Product",
+            resource_id="=cmd|'/C calc'!A0",
+            resource_repr="@SUM(1+1)",
+            actor_email="+admin@malicious.com",
+            actor_username="=1+1",
+        )
+        self.client.force_authenticate(user=self.super_admin)
+        resp = self.client.get("/api/v1/admin/audit/events/export/")
+        self.assertEqual(resp.status_code, status.HTTP_200_OK)
+        content = resp.content.decode("utf-8")
+
+        # Verificar que las fórmulas han sido neutralizadas anteponiendo '
+        self.assertIn("'=cmd|'/C calc'!A0", content)
+        self.assertIn("'@SUM(1+1)", content)
+        self.assertIn("'+admin@malicious.com", content)
+        self.assertIn("'=1+1", content)
+
+    # 25. Payment signal audit failure logs critical alert (Class 2)
+    def test_payment_signal_audit_failure_logs_critical_alert(self):
+        order = Order.objects.create(
+            user=self.sales_user,
+            total=Decimal("50000.00"),
+            currency="CLP",
+            status="pending",
+        )
+        with patch("apps.payments.signals.record_audit_event", side_effect=RuntimeError("Fallo inducido en auditoría asíncrona")):
+            with self.assertLogs("levelpro.audit", level="CRITICAL") as cm:
+                Payment.objects.create(
+                    order=order,
+                    provider="transfer",
+                    status="approved",
+                    amount=Decimal("50000.00"),
+                )
+                # Alerta crítica registrada
+                self.assertTrue(any("AUDIT_ALERT_CRITICAL" in msg for msg in cm.output))
+
+    # 26. Audit Summary and Export RBAC Segregation for non-security users
+    def test_audit_summary_and_export_rbac_segregation(self):
+        # Crear evento de seguridad
+        sec_event = AuditEvent.objects.create(
+            module=MODULE_ROLES,
+            action="PRIVILEGE_ESCALATION_ATTEMPT",
+            event_category=CATEGORY_PRIVILEGE_ESCALATION,
+            resource_type="User",
+            resource_id="sec-summary",
+            severity="critical",
+            result="denied",
+        )
+        # Finanzas (sin view_security_audit) no debe ver el evento en summary
+        self.client.force_authenticate(user=self.finance_user)
+        resp_sum = self.client.get("/api/v1/admin/audit/summary/")
+        self.assertEqual(resp_sum.status_code, status.HTTP_200_OK)
+
+        # Export CSV para finanzas tampoco debe contener el ID del evento de seguridad
+        resp_exp = self.client.get("/api/v1/admin/audit/events/export/")
+        self.assertEqual(resp_exp.status_code, status.HTTP_200_OK)
+        exp_content = resp_exp.content.decode("utf-8")
+        self.assertNotIn(str(sec_event.id), exp_content)
