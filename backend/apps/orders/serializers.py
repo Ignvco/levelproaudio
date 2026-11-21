@@ -6,15 +6,24 @@ from .models import Cart, CartItem, Order, OrderItem
 from apps.products.serializers import ProductListSerializer
 
 
+class CartItemVariantSerializer(serializers.Serializer):
+    id = serializers.UUIDField()
+    name = serializers.CharField()
+    sku = serializers.CharField()
+    effective_price = serializers.DecimalField(max_digits=12, decimal_places=2)
+    stock = serializers.IntegerField()
+
+
 class CartItemSerializer(serializers.ModelSerializer):
     product  = ProductListSerializer(read_only=True)
+    variant  = CartItemVariantSerializer(read_only=True)
     subtotal = serializers.DecimalField(
         max_digits=12, decimal_places=2, read_only=True
     )
 
     class Meta:
         model  = CartItem
-        fields = ["id", "product", "quantity", "subtotal"]
+        fields = ["id", "product", "variant", "quantity", "subtotal"]
 
 
 class CartSerializer(serializers.ModelSerializer):
@@ -36,7 +45,7 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model  = OrderItem
-        fields = ["id", "product_name", "price", "quantity", "subtotal"]
+        fields = ["id", "product_name", "variant_name", "variant_sku", "price", "quantity", "subtotal"]
 
 
 class PaymentSummarySerializer(serializers.Serializer):

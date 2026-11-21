@@ -1,17 +1,20 @@
 // pages/admin/AdminProducts.jsx
 import { useState, useRef } from "react"
+import { useNavigate } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   getAdminProducts, getAdminCategories, getAdminBrands,
   createAdminProduct, updateAdminProduct, deleteAdminProduct,
   uploadProductImage, deleteProductImage, setPrimaryImage,
+  exportAdminCatalog,
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../utils/toast"
 import { DataTable, StatusBadge, AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, ConfirmationModal } from "../../components/admin/ui"
+import BulkEditModal from "../../components/admin/BulkEditModal"
 import { useSiteSettings } from "../../hooks/useSiteSettings"
 import { formatCurrency } from "../../utils/accountingCurrency"
-import { Pencil, Trash2, Package, CheckCircle2, Star, AlertTriangle } from "lucide-react"
+import { Pencil, Trash2, Package, CheckCircle2, Star, AlertTriangle, Layers, Download, SlidersHorizontal } from "lucide-react"
 
 const inputSt = {
   width: "100%", padding: "10px 14px",
@@ -829,18 +832,25 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
 
 // ── AdminProducts ─────────────────────────────────────────────
 export default function AdminProducts() {
+  const navigate = useNavigate()
   const [search, setSearch]         = useState("")
   const [catFilter, setCatFilter]   = useState("")
+  const [brandFilter, setBrandFilter] = useState("")
+  const [typeFilter, setTypeFilter] = useState("")
   const [statusFilter, setStatusFilter] = useState("active")  // active | inactive | all
+  const [selectedIds, setSelectedIds] = useState([])
+  const [bulkOpen, setBulkOpen]     = useState(false)
   const [modal, setModal]           = useState(null) // null | "new" | product
   const [toDelete, setToDelete]     = useState(null)
   const queryClient                 = useQueryClient()
 
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ["admin-products", search, catFilter, statusFilter],
+    queryKey: ["admin-products", search, catFilter, brandFilter, typeFilter, statusFilter],
     queryFn:  () => getAdminProducts({
-      ...(search    && { search }),
-      ...(catFilter && { category__slug: catFilter }),
+      ...(search      && { search }),
+      ...(catFilter   && { category__slug: catFilter }),
+      ...(brandFilter && { brand: brandFilter }),
+      ...(typeFilter  && { product_type: typeFilter }),
       ...(statusFilter === "active"   && { is_active: "true"  }),
       ...(statusFilter === "inactive" && { is_active: "false" }),
     }),
@@ -867,7 +877,60 @@ export default function AdminProducts() {
   const categories = Array.isArray(categoriesData) ? categoriesData : Array.isArray(categoriesData?.results) ? categoriesData.results : []
   const brands     = Array.isArray(brandsData) ? brandsData : Array.isArray(brandsData?.results) ? brandsData.results : []
 
+  const toggleSelect = (id, e) => {
+    e?.stopPropagation?.()
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === products.length && products.length > 0) {
+      setSelectedIds([])
+    } else {
+      setSelectedIds(products.map(p => p.id))
+    }
+  }
+
+  const handleExport = async (fmt) => {
+    try {
+      const blob = await exportAdminCatalog({
+        format: fmt,
+        ...(search && { search }),
+        ...(catFilter && { category__slug: catFilter }),
+        ...(statusFilter === "active" && { is_active: "true" }),
+        ...(statusFilter === "inactive" && { is_active: "false" }),
+      })
+      const url = window.URL.createObjectURL(new Blob([blob]))
+      const link = document.createElement("a")
+      link.href = url
+      link.setAttribute("download", `levelpro_catalogo_pim.${fmt}`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      showToast(`Catálogo exportado en formato ${fmt.toUpperCase()}`)
+    } catch (e) {
+      showToast(e?.response?.data?.error || "Sin permisos para exportar catálogo.", "error")
+    }
+  }
+
   const columns = [
+    { key:"select", header: (
+      <input
+        type="checkbox"
+        aria-label="Seleccionar todos"
+        checked={products.length > 0 && selectedIds.length === products.length}
+        onChange={toggleSelectAll}
+        style={{ accentColor: "var(--accent)", cursor: "pointer" }}
+      />
+    ), render: p => (
+      <input
+        type="checkbox"
+        aria-label={`Seleccionar ${p.name}`}
+        checked={selectedIds.includes(p.id)}
+        onClick={e => e.stopPropagation()}
+        onChange={e => toggleSelect(p.id, e)}
+        style={{ accentColor: "var(--accent)", cursor: "pointer" }}
+      />
+    )},
     { key:"name", header:"Producto", sortable:true, render:p => {
       const primaryImg = p.images?.find(img => img.is_primary) || p.images?.[0]
       const img = primaryImg ? mediaUrl(primaryImg.image) : null
@@ -897,13 +960,23 @@ export default function AdminProducts() {
           textDecoration:"line-through" }}>{formatCurrency(p.compare_price, "CLP")}</p>}
       </div>
     )},
-    { key:"stock", header:"Stock", sortable:true, align:"right", render:p => (
-      <span style={{ fontSize:"13px", fontWeight:600,
-        color: p.stock === 0 ? "var(--admin-danger, #EF4444)"
-          : p.stock <= (p.stock_min || 3) ? "#D97706" : "inherit" }}>
-        {p.stock}
-      </span>
-    )},
+    { key:"stock", header:"Stock", sortable:true, align:"right", render:p => {
+      const sVal = p.effective_stock ?? p.stock
+      return (
+        <div style={{ textAlign: "right" }}>
+          <span style={{ fontSize:"13px", fontWeight:600,
+            color: sVal === 0 ? "var(--admin-danger, #EF4444)"
+              : sVal <= (p.stock_min || 3) ? "#D97706" : "inherit" }}>
+            {sVal}
+          </span>
+          {p.admin_variants?.length > 0 && (
+            <p style={{ fontSize: "10.5px", color: "var(--admin-text-muted)" }}>
+              {p.admin_variants.length} var.
+            </p>
+          )}
+        </div>
+      )
+    }},
     { key:"category", header:"Categoría",
       render:p => <span style={{ color:"var(--admin-text-muted)" }}>{p.category?.name || "—"}</span> },
     { key:"is_active", header:"Estado", render:p => (
@@ -935,6 +1008,22 @@ export default function AdminProducts() {
         />
       )}
 
+      <BulkEditModal
+        open={bulkOpen}
+        selectedIds={selectedIds}
+        filters={{
+          ...(search && { search }),
+          ...(catFilter && { category_slug: catFilter }),
+          ...(brandFilter && { brand_id: brandFilter }),
+          ...(typeFilter && { product_type: typeFilter }),
+          ...(statusFilter === "active" && { is_active: true }),
+          ...(statusFilter === "inactive" && { is_active: false }),
+        }}
+        categories={categories}
+        brands={brands}
+        onClose={() => setBulkOpen(false)}
+      />
+
       <ConfirmationModal
         open={!!toDelete}
         title="¿Eliminar producto?"
@@ -952,6 +1041,15 @@ export default function AdminProducts() {
         description={isLoading || isError ? "Administración del catálogo" : `${totalCount} productos en el filtro actual · ${categories.length} categorías · ${brands.length} marcas`}
         actions={
           <>
+            <SecondaryButton size="sm" onClick={() => setBulkOpen(true)} data-testid="bulk-edit-btn">
+              <Layers size={13} /> Edición masiva{selectedIds.length > 0 ? ` (${selectedIds.length})` : ""}
+            </SecondaryButton>
+            <SecondaryButton size="sm" onClick={() => handleExport("xlsx")} data-testid="export-xlsx-btn">
+              <Download size={13} /> Exportar .xlsx
+            </SecondaryButton>
+            <SecondaryButton size="sm" onClick={() => handleExport("csv")} data-testid="export-csv-btn">
+              CSV
+            </SecondaryButton>
             <SecondaryButton to="/admin/products/import" size="sm">
               Importar .xlsx
             </SecondaryButton>
@@ -1014,11 +1112,28 @@ export default function AdminProducts() {
             style={{ flex: "1 1 260px", maxWidth: "340px" }} />
           <select value={catFilter} onChange={e => setCatFilter(e.target.value)} aria-label="Filtrar por categoría"
             className="au-select"
-            style={{ maxWidth: "220px" }}>
+            style={{ maxWidth: "200px" }}>
             <option value="">Todas las categorías</option>
             {categories.map(c => (
               <option key={c.id} value={c.slug}>{c.name}</option>
             ))}
+          </select>
+          <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} aria-label="Filtrar por marca"
+            className="au-select"
+            style={{ maxWidth: "180px" }}>
+            <option value="">Todas las marcas</option>
+            {brands.map(b => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} aria-label="Filtrar por tipo"
+            className="au-select"
+            style={{ maxWidth: "160px" }}>
+            <option value="">Todos los tipos</option>
+            <option value="stock">En Stock</option>
+            <option value="preorder">Preorden</option>
+            <option value="on_demand">A pedido</option>
+            <option value="bundle">Kit / Combo</option>
           </select>
         </div>
 
@@ -1043,7 +1158,8 @@ export default function AdminProducts() {
         searchable={false}
         onRowClick={p => setModal(p)}
         rowActions={p => [
-          { label:"Editar", icon:Pencil, onClick:() => setModal(p) },
+          { label:"Variantes & Specs", icon:SlidersHorizontal, onClick:() => navigate(`/admin/products/${p.id}`) },
+          { label:"Editar rápido", icon:Pencil, onClick:() => setModal(p) },
           { label:"Eliminar", icon:Trash2, danger:true, onClick:() => setToDelete(p) },
         ]}
         emptyIcon={Package} emptyTitle="Sin productos"

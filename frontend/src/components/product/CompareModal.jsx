@@ -10,11 +10,14 @@ import { compareProducts } from "../../api/products.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../utils/toast"
 
-const SPEC_ROWS = [
+const BASE_SPEC_ROWS = [
   { key: "brand",              label: "Marca" },
   { key: "category",           label: "Categoría" },
   { key: "sku",                label: "SKU" },
   { key: "product_type",       label: "Disponibilidad" },
+]
+
+const FALLBACK_SPEC_ROWS = [
   { key: "frequency_response", label: "Respuesta en frecuencia" },
   { key: "connectivity",       label: "Conectividad" },
   { key: "weight_kg",          label: "Peso", fmt: v => (v != null ? `${v} kg` : "—") },
@@ -45,6 +48,13 @@ export default function CompareModal() {
   const products = data?.products || []
   const advantages = data?.advantages || {}
   const accessories = data?.compatible_accessories || []
+  const dynamicRows = data?.dynamic_spec_rows || []
+  const specRows = [
+    ...BASE_SPEC_ROWS,
+    ...(dynamicRows.length > 0
+      ? dynamicRows.map(r => ({ key: r.key, label: r.label }))
+      : FALLBACK_SPEC_ROWS),
+  ]
 
   const handleAddToCart = (comparedProd) => {
     const original = items.find(i => String(i.id) === String(comparedProd.id))
@@ -238,7 +248,7 @@ export default function CompareModal() {
                       </td>
                     ))}
                   </tr>
-                  {SPEC_ROWS.map(row => (
+                  {specRows.map(row => (
                     <tr key={row.key} style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
                       <td style={{ padding: "12px", fontSize: "12px", fontWeight: 600, color: "var(--text-3)" }}>{row.label}</td>
                       {products.map(p => {

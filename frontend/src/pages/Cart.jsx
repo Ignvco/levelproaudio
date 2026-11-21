@@ -50,12 +50,14 @@ function AccentCTA({ children, testid, onClick, to, full = false, disabled = fal
 // ─────────────────────────────────────────────────────────────
 function CartItem({ item }) {
   const { updateQuantity, removeItem } = useCartStore()
-  const { product, quantity }          = item
+  const { product, variant, quantity } = item
   const { currency, format }           = usePrice()
-  const unitPrice = product.prices?.[currency] ?? (currency === "CLP" ? product.price : null)
+  const priceSource = variant || product
+  const unitPrice = priceSource?.prices?.[currency] ?? (currency === "CLP" ? (priceSource?.price ?? product.price) : null)
+  const itemStock = variant ? variant.stock : product.stock
 
   const primaryImg = product.images?.find(i => i.is_primary) || product.images?.[0]
-  const img        = primaryImg ? mediaUrl(primaryImg.image) : null
+  const img        = variant?.image_url ? mediaUrl(variant.image_url) : (primaryImg ? mediaUrl(primaryImg.image) : null)
 
   const stepBtn = {
     width: "34px", height: "34px", background: "none",
@@ -105,11 +107,16 @@ function CartItem({ item }) {
           <p data-testid={`cart-item-name-${product.slug}`} style={{
             fontFamily: "var(--font-display)", fontSize: "16px", fontWeight: 700,
             color: "var(--text)", letterSpacing: "-0.01em", lineHeight: 1.25,
-            marginBottom: "12px",
+            marginBottom: variant ? "4px" : "12px",
             overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
             {product.name}
           </p>
         </Link>
+        {variant && (
+          <p style={{ fontSize: "12px", color: "var(--accent)", fontFamily: "var(--font-mono)", marginBottom: "10px" }}>
+            {variant.name} · SKU {variant.sku}
+          </p>
+        )}
 
         <div style={{ display: "flex", alignItems: "center",
           justifyContent: "space-between", flexWrap: "wrap", gap: "12px" }}>
@@ -120,7 +127,7 @@ function CartItem({ item }) {
             borderRadius: "var(--r-full)", overflow: "hidden" }}>
             <button
               data-testid={`cart-qty-minus-${product.slug}`}
-              onClick={() => updateQuantity(product.id, quantity - 1)}
+              onClick={() => updateQuantity(product.id, quantity - 1, variant?.id || null)}
               disabled={quantity <= 1}
               style={{ ...stepBtn, opacity: quantity <= 1 ? 0.3 : 1,
                 cursor: quantity <= 1 ? "not-allowed" : "pointer" }}>
@@ -134,10 +141,10 @@ function CartItem({ item }) {
             </span>
             <button
               data-testid={`cart-qty-plus-${product.slug}`}
-              onClick={() => updateQuantity(product.id, quantity + 1)}
-              disabled={quantity >= product.stock}
-              style={{ ...stepBtn, opacity: quantity >= product.stock ? 0.3 : 1,
-                cursor: quantity >= product.stock ? "not-allowed" : "pointer" }}>
+              onClick={() => updateQuantity(product.id, quantity + 1, variant?.id || null)}
+              disabled={quantity >= itemStock}
+              style={{ ...stepBtn, opacity: quantity >= itemStock ? 0.3 : 1,
+                cursor: quantity >= itemStock ? "not-allowed" : "pointer" }}>
               <Plus size={15} strokeWidth={2.5} />
             </button>
           </div>
@@ -150,7 +157,7 @@ function CartItem({ item }) {
             </p>
             <button
               data-testid={`cart-remove-${product.slug}`}
-              onClick={() => removeItem(product.id)}
+              onClick={() => removeItem(product.id, variant?.id || null)}
               title="Eliminar"
               style={{ width: "34px", height: "34px", borderRadius: "50%",
                 display: "flex", alignItems: "center", justifyContent: "center",
@@ -342,7 +349,7 @@ export default function Cart() {
           <div>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
               {items.map(item => (
-                <CartItem key={item.product.id} item={item} />
+                <CartItem key={`${item.product.id}-${item.variant?.id || "base"}`} item={item} />
               ))}
             </div>
             <button
@@ -374,22 +381,26 @@ export default function Cart() {
 
             <div style={{ display: "flex", flexDirection: "column",
               gap: "10px", marginBottom: "20px" }}>
-              {items.map(item => (
-                <div key={item.product.id} style={{ display: "flex",
-                  justifyContent: "space-between", fontSize: "13px" }}>
-                  <span style={{ color: "var(--text-2)", overflow: "hidden",
-                    textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    marginRight: "8px", maxWidth: "220px" }}>
-                    {item.product.name} ×{item.quantity}
-                  </span>
-                  <span style={{ flexShrink: 0, color: "var(--text-2)",
-                    fontVariantNumeric: "tabular-nums" }}>
-                    {item.product.prices?.[currency] == null && currency !== "CLP"
-                      ? "—"
-                      : format(Number(item.product.prices?.[currency] ?? item.product.price) * item.quantity)}
-                  </span>
-                </div>
-              ))}
+              {items.map(item => {
+                const src = item.variant || item.product
+                const p = src?.prices?.[currency] ?? (currency === "CLP" ? (src?.price ?? item.product.price) : null)
+                return (
+                  <div key={`${item.product.id}-${item.variant?.id || "base"}`} style={{ display: "flex",
+                    justifyContent: "space-between", fontSize: "13px" }}>
+                    <span style={{ color: "var(--text-2)", overflow: "hidden",
+                      textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      marginRight: "8px", maxWidth: "220px" }}>
+                      {item.product.name}{item.variant ? ` (${item.variant.name})` : ""} ×{item.quantity}
+                    </span>
+                    <span style={{ flexShrink: 0, color: "var(--text-2)",
+                      fontVariantNumeric: "tabular-nums" }}>
+                      {p == null
+                        ? "—"
+                        : format(Number(p) * item.quantity)}
+                    </span>
+                  </div>
+                )
+              })}
             </div>
 
             <div style={{ borderTop: "1px solid var(--border)",

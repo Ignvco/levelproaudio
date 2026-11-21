@@ -34,8 +34,11 @@ class CartViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=["post"])
     def add_item(self, request):
+        from apps.products.models import ProductVariant
+
         cart       = self.get_or_create_cart()
         product_id = request.data.get("product_id")
+        variant_id = request.data.get("variant_id") or request.data.get("variant")
         quantity   = int(request.data.get("quantity", 1))
 
         try:
@@ -46,23 +49,40 @@ class CartViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
 
+        variant = None
+        if variant_id:
+            try:
+                variant = ProductVariant.objects.get(id=variant_id, product=product, is_active=True)
+            except ProductVariant.DoesNotExist:
+                return Response(
+                    {"error": "Variante no encontrada o no disponible."},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        elif product.variants.filter(is_active=True).exists():
+            return Response(
+                {"error": "Debes seleccionar una variante para este producto."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        available_stock = variant.stock if variant is not None else product.stock
+
         # Los productos "preorden" y "a pedido" son, por definición, para
         # vender sin stock físico disponible todavía — antes esta validación
         # los bloqueaba igual que a un producto normal, lo cual los hacía
         # imposibles de comprar (contradice el propósito del tipo).
-        if product.product_type == Product.ProductType.STOCK and product.stock < quantity:
+        if product.product_type == Product.ProductType.STOCK and available_stock < quantity:
             return Response(
                 {"error": "Stock insuficiente."},
                 status=status.HTTP_400_BAD_REQUEST
             )
 
         item, created = CartItem.objects.get_or_create(
-            cart=cart, product=product, defaults={"quantity": quantity}
+            cart=cart, product=product, variant=variant, defaults={"quantity": quantity}
         )
         if not created:
             new_quantity = item.quantity + quantity
             if product.product_type == Product.ProductType.STOCK:
-                new_quantity = min(new_quantity, product.stock)
+                new_quantity = min(new_quantity, available_stock)
             item.quantity = new_quantity
             item.save()
 
@@ -143,7 +163,8 @@ class OrderViewSet(viewsets.ModelViewSet):
         except InventoryError as exc:
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         for item in validated_items:
-            item["price"] = item["product"].prices_by_currency(_rate_clp, _rate_ars)[currency]
+            target = item.get("variant") or item["product"]
+            item["price"] = target.prices_by_currency(_rate_clp, _rate_ars)[currency]
 
         subtotal = sum(
             float(item["price"]) * item["quantity"]
@@ -210,10 +231,14 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         for item in validated_items:
             product = item["product"]
+            variant = item.get("variant")
             OrderItem.objects.create(
                 order        = order,
                 product      = product,
+                variant      = variant,
                 product_name = product.name,
+                variant_name = variant.name if variant else "",
+                variant_sku  = variant.sku if variant else "",
                 price        = item["price"],
                 quantity     = item["quantity"],
             )

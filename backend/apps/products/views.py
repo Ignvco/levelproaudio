@@ -66,7 +66,9 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         qs = Product.objects.filter(
             is_active=True
-        ).select_related("category", "brand").prefetch_related("images")
+        ).select_related("category", "brand").prefetch_related(
+            "images", "variants", "technical_specs__attribute"
+        )
 
         category_slug = self.request.query_params.get("category__slug")
         if category_slug:
@@ -129,13 +131,13 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
             products = list(
                 Product.objects.filter(id__in=valid_uuids, is_active=True)
                 .select_related("category", "brand")
-                .prefetch_related("images")
+                .prefetch_related("images", "variants", "technical_specs__attribute")
             )
         else:
             products = list(
                 Product.objects.filter(slug__in=slugs, is_active=True)
                 .select_related("category", "brand")
-                .prefetch_related("images")
+                .prefetch_related("images", "variants", "technical_specs__attribute")
             )
 
         if len(products) < 2:
@@ -150,20 +152,36 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
         _rate_ars = _s.usd_to_ars if _s else None
 
         products_data = []
+        dynamic_rows_map = {}
         for p in products:
             prices = p.prices_by_currency(_rate_clp, _rate_ars)
             selected_price = prices.get(currency)
             primary_img = p.images.filter(is_primary=True).first() or p.images.first()
+            eff_stock = p.effective_stock
 
             desc_lower = ((p.description or "") + " " + (p.short_description or "")).lower()
+            tech_specs_map = {}
+            for ts in p.technical_specs.all():
+                if not ts.attribute.is_comparable:
+                    continue
+                tech_specs_map[ts.attribute.key] = ts.display_value
+                if ts.attribute.key not in dynamic_rows_map:
+                    dynamic_rows_map[ts.attribute.key] = {
+                        "key": ts.attribute.key,
+                        "label": ts.attribute.label,
+                        "unit": ts.attribute.unit,
+                        "order": ts.attribute.order,
+                    }
+
             specs = {
                 "weight_kg": float(p.weight) if p.weight else None,
                 "product_type": p.get_product_type_display(),
                 "sku": p.sku or "—",
                 "category": p.category.name if p.category else "—",
                 "brand": p.brand.name if p.brand else "—",
-                "frequency_response": "20 Hz – 20 kHz" if ("20 hz" in desc_lower or "20khz" in desc_lower) else "Rango Pro",
-                "connectivity": "XLR balanceado" if "xlr" in desc_lower else ("USB-C / Digital" if "usb" in desc_lower else "Analógico"),
+                "frequency_response": tech_specs_map.get("frequency_response") or ("20 Hz – 20 kHz" if ("20 hz" in desc_lower or "20khz" in desc_lower) else "Rango Pro"),
+                "connectivity": tech_specs_map.get("connectivity") or ("XLR balanceado" if "xlr" in desc_lower else ("USB-C / Digital" if "usb" in desc_lower else "Analógico")),
+                **tech_specs_map,
             }
 
             products_data.append({
@@ -174,12 +192,16 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
                 "category": p.category.name if p.category else None,
                 "price": float(selected_price) if selected_price is not None else float(p.price),
                 "currency": currency,
-                "stock": p.stock,
-                "in_stock": p.stock > 0,
-                "stock_status": "in_stock" if p.stock > p.stock_min else ("low_stock" if p.stock > 0 else "out_of_stock"),
+                "stock": eff_stock,
+                "in_stock": p.in_stock,
+                "has_variants": p.has_variants,
+                "stock_status": "in_stock" if eff_stock > p.stock_min else ("low_stock" if eff_stock > 0 else "out_of_stock"),
                 "image_url": primary_img.image.url if primary_img and primary_img.image else None,
                 "specs": specs,
+                "technical_specs": tech_specs_map,
             })
+
+        dynamic_spec_rows = sorted(dynamic_rows_map.values(), key=lambda r: (r["order"], r["label"]))
 
         min_price_prod = min(products_data, key=lambda x: x["price"])
         max_stock_prod = max(products_data, key=lambda x: x["stock"])
@@ -215,6 +237,7 @@ class ProductViewSet(viewsets.ReadOnlyModelViewSet):
             "currency": currency,
             "count": len(products_data),
             "products": products_data,
+            "dynamic_spec_rows": dynamic_spec_rows,
             "advantages": advantages,
             "compatible_accessories": [
                 {**acc, "id": str(acc["id"]), "price": float(acc["price"])}

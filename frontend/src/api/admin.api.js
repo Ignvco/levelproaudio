@@ -118,13 +118,40 @@ export const updateBookingStatus   = (id, status) =>
 export const updateRequestStatus   = (id, data) =>
   api.patch(`${BASE}/requests/${id}/status/`, data).then(r => r.data)
 
-// ── Import ───────────────────────────────────────────────────
-export const importProducts    = (formData) =>
+// ── Import / Export / Bulk PIM (Gate 2) ──────────────────────
+export const importProducts    = (formData, { dryRun = false, confirm = false } = {}) =>
   api.post(`${BASE}/products/import/`, formData, {
+    params: { dry_run: dryRun ? "true" : "false", confirm: confirm ? "true" : "false" },
     headers: { "Content-Type": "multipart/form-data" }
   }).then(r => r.data)
-export const downloadTemplate  = () =>
-  api.get(`${BASE}/products/template/`, { responseType: "blob" }).then(r => r.data)
+export const downloadTemplate  = (format = "xlsx") =>
+  api.get(`${BASE}/products/template/`, { params: { format }, responseType: "blob" }).then(r => r.data)
+export const exportAdminCatalog = (params = {}) =>
+  api.get(`${BASE}/products/export/`, { params, responseType: "blob" }).then(r => r.data)
+
+export const previewBulkProductsUpdate = (payload) =>
+  api.post(`${BASE}/products/bulk-preview/`, payload).then(r => r.data)
+export const applyBulkProductsUpdate = (payload, idempotencyKey) =>
+  api.post(`${BASE}/products/bulk-apply/`, payload, {
+    headers: idempotencyKey ? { "Idempotency-Key": idempotencyKey } : undefined,
+  }).then(r => r.data)
+
+// ── Variants & Technical Specs (Gate 2 PIM) ──────────────────
+export const getAdminProductVariants = (productId) =>
+  api.get(`${BASE}/products/${productId}/variants/`).then(r => r.data)
+export const createAdminProductVariant = (productId, data) =>
+  api.post(`${BASE}/products/${productId}/variants/`, data).then(r => r.data)
+export const updateAdminProductVariant = (productId, variantId, data) =>
+  api.patch(`${BASE}/products/${productId}/variants/${variantId}/`, data).then(r => r.data)
+export const deleteAdminProductVariant = (productId, variantId) =>
+  api.delete(`${BASE}/products/${productId}/variants/${variantId}/`).then(r => r.data)
+
+export const getTechnicalAttributesCatalog = (categoryId) =>
+  api.get(`${BASE}/products/technical-attributes/`, { params: categoryId ? { category_id: categoryId } : {} }).then(r => r.data)
+export const getAdminProductSpecs = (productId) =>
+  api.get(`${BASE}/products/${productId}/technical-specs/`).then(r => r.data)
+export const saveAdminProductSpecs = (productId, specs) =>
+  api.put(`${BASE}/products/${productId}/technical-specs/`, { specs }).then(r => r.data)
 
 
 // Al final del archivo, agrega:

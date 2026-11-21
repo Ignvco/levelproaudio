@@ -1,18 +1,20 @@
 // pages/ProductDetail.jsx
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useParams, Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import {
   ShoppingBag, Minus, Plus, ArrowRight, Gift,
   Truck, ShieldCheck, RotateCcw, MessageCircle, PackageSearch,
+  Scale, SlidersHorizontal,
 } from "lucide-react"
 import { getProduct } from "../api/products.api"
 import { getProductParticipation } from "../api/rewards.api"
 import { useCartStore } from "../store/cartStore"
+import { useCompareStore } from "../store/compareStore"
 import { useScrollReveal } from "../hooks/useScrollReveal"
 import { mediaUrl } from "../utils/mediaUrl"
 import { showToast } from "../utils/toast"
-import ProductCard from "../components/product/ProductCard"
+import { resolveEffectiveSpecs } from "../utils/variantSpecs"
 import { RichText } from "../components/ui/RichText"
 import Seo from "../components/Seo"
 import Button from "../components/ui/Button"
@@ -27,13 +29,26 @@ export default function ProductDetail() {
   const { price, secondaryPrice } = usePrice()
   const { slug }  = useParams()
   const { addItem } = useCartStore()
+  const { items: compareItems, toggleItem: toggleCompare, openModal: openCompare } = useCompareStore()
   const [qty, setQty]           = useState(1)
   const [activeImg, setActiveImg] = useState(0)
+  const [selectedVariantId, setSelectedVariantId] = useState(null)
 
   const { data: product, isLoading, isError } = useQuery({
     queryKey: ["product", slug],
     queryFn:  () => getProduct(slug),
   })
+
+  useEffect(() => {
+    const vars = product?.variants || []
+    if (!vars.length) {
+      setSelectedVariantId(null)
+      return
+    }
+    const def = vars.find(v => v.is_default && v.in_stock) || vars.find(v => v.in_stock) || vars[0]
+    setSelectedVariantId(def?.id || null)
+    setQty(1)
+  }, [product])
 
   const { data: rewardCampaigns = [] } = useQuery({
     queryKey: ["reward-participation", slug],
@@ -73,17 +88,30 @@ export default function ProductDetail() {
     </div>
   )
 
+  const variants        = product.variants || []
+  const selectedVariant = variants.find(v => v.id === selectedVariantId) || null
+  const activeSource    = selectedVariant || product
+
   const images      = product.images || []
   const activeImage = images[activeImg]
-  const imgUrl      = activeImage ? mediaUrl(activeImage.image) : null
-  const hasDiscount = product.compare_price && product.compare_price > product.price
+  const imgUrl      = selectedVariant?.image_url
+    ? mediaUrl(selectedVariant.image_url)
+    : (activeImage ? mediaUrl(activeImage.image) : null)
+
+  const effectivePrice = Number(activeSource.price)
+  const effectiveCompare = activeSource.compare_price ? Number(activeSource.compare_price) : null
+  const hasDiscount = effectiveCompare && effectiveCompare > effectivePrice
   const discount    = hasDiscount
-    ? Math.round((1 - product.price / product.compare_price) * 100) : 0
+    ? Math.round((1 - effectivePrice / effectiveCompare) * 100) : 0
+  const activeStock = selectedVariant ? selectedVariant.stock : product.stock
+  const activeSku   = selectedVariant ? selectedVariant.sku : product.sku
+  const activeInStock = selectedVariant ? selectedVariant.in_stock : product.in_stock
   const productBadge = getProductBadge(product)
+  const isCompared = compareItems.some(i => i.id === product.id)
 
   const handleAddToCart = () => {
-    addItem(product, qty)
-    showToast(`${product.name} agregado al carrito`)
+    addItem(product, qty, selectedVariant)
+    showToast(`${product.name}${selectedVariant ? ` (${selectedVariant.name})` : ""} agregado al carrito`)
   }
 
   const productUrl = `${SITE_URL}/shop/${product.slug}`
@@ -95,15 +123,15 @@ export default function ProductDetail() {
     ...(product.description || product.short_description
       ? { description: (product.short_description || product.description).replace(/<[^>]+>/g, "").slice(0, 300) }
       : {}),
-    ...(product.sku ? { sku: product.sku } : {}),
+    ...(activeSku ? { sku: activeSku } : {}),
     ...(product.brand ? { brand: { "@type": "Brand", name: product.brand.name } } : {}),
     ...(product.category ? { category: product.category.name } : {}),
     offers: {
       "@type": "Offer",
       url: productUrl,
       priceCurrency: "CLP",
-      price: Number(product.price),
-      availability: product.stock > 0
+      price: effectivePrice,
+      availability: activeInStock
         ? "https://schema.org/InStock"
         : "https://schema.org/OutOfStock",
     },
@@ -236,17 +264,17 @@ export default function ProductDetail() {
                 <p data-testid="product-detail-price" style={{ fontFamily: "var(--font-display)",
                   fontSize: "2.4rem", fontWeight: 800, letterSpacing: "-0.03em",
                   color: "var(--text)", lineHeight: 1 }}>
-                  {price(product)}
+                  {price(activeSource)}
                 </p>
                 {hasDiscount && (
                   <p style={{ fontSize: "16px", color: "var(--text-3)", textDecoration: "line-through" }}>
-                    ${Number(product.compare_price).toLocaleString("es-CL")}
+                    ${effectiveCompare.toLocaleString("es-CL")}
                   </p>
                 )}
               </div>
-              {secondaryPrice(product) && (
+              {secondaryPrice(activeSource) && (
                 <p style={{ fontSize: "14px", color: "var(--text-3)", marginTop: "6px" }}>
-                  ≈ {secondaryPrice(product)} <span style={{ fontSize: "12px" }}>(referencial)</span>
+                  ≈ {secondaryPrice(activeSource)} <span style={{ fontSize: "12px" }}>(referencial)</span>
                 </p>
               )}
               {hasDiscount && (
@@ -258,23 +286,73 @@ export default function ProductDetail() {
               )}
             </div>
             <div style={{ textAlign: "right" }}>
-              <p style={{ fontSize: "12px", fontWeight: 700,
-                color: product.stock > 5 ? "var(--accent)" : product.stock > 0 ? "var(--warning)" : "var(--danger)" }}>
+              <p data-testid="product-detail-stock" style={{ fontSize: "12px", fontWeight: 700,
+                color: activeStock > 5 ? "var(--accent)" : activeStock > 0 ? "var(--warning)" : "var(--danger)" }}>
                 {product.product_type === "bundle"
                   ? (product.in_stock ? "Disponible" : "Sin stock")
-                  : product.stock > 0
-                  ? (product.stock <= 5 ? `¡Solo ${product.stock} disponibles!` : "En stock")
+                  : activeStock > 0
+                  ? (activeStock <= 5 ? `¡Solo ${activeStock} disponibles!` : "En stock")
                   : product.product_type === "preorder" ? "Preventa"
                   : product.product_type === "on_demand" ? "A pedido"
                   : "Sin stock"}
               </p>
-              {product.sku && (
-                <p style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "4px" }}>
-                  SKU: {product.sku}
+              {activeSku && (
+                <p data-testid="product-detail-sku" style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "4px", fontFamily: "var(--font-mono)" }}>
+                  SKU: {activeSku}
                 </p>
               )}
             </div>
           </div>
+
+          {/* Selector de Variantes (BF-14) */}
+          {variants.length > 0 && (
+            <div data-testid="variant-selector" style={{ padding: "18px 20px", background: "#121212",
+              borderRadius: "var(--r-xl)", border: "1px solid rgba(255,255,255,0.08)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
+                <p style={{ fontSize: "11px", fontWeight: 700, color: "var(--accent)",
+                  textTransform: "uppercase", letterSpacing: "0.14em" }}>
+                  Configuración / Variante
+                </p>
+                {selectedVariant && (
+                  <span style={{ fontSize: "12px", color: "var(--text-3)", fontFamily: "var(--font-mono)" }}>
+                    {selectedVariant.name}
+                  </span>
+                )}
+              </div>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+                {variants.map(v => {
+                  const isSelected = v.id === selectedVariant?.id
+                  const attrTags = Object.values(v.attributes || {}).filter(Boolean)
+                  return (
+                    <button
+                      key={v.id}
+                      type="button"
+                      data-testid={`variant-option-${v.sku}`}
+                      onClick={() => { setSelectedVariantId(v.id); setQty(1) }}
+                      style={{
+                        padding: "10px 14px",
+                        borderRadius: "12px",
+                        cursor: "pointer",
+                        textAlign: "left",
+                        background: isSelected ? "rgba(26,255,110,0.12)" : "rgba(255,255,255,0.03)",
+                        border: isSelected ? "1.5px solid var(--accent)" : "1px solid rgba(255,255,255,0.1)",
+                        color: "#fff",
+                        opacity: v.in_stock ? 1 : 0.55,
+                        transition: "all 180ms ease",
+                      }}
+                    >
+                      <span style={{ display: "block", fontSize: "13px", fontWeight: 700, color: isSelected ? "var(--accent)" : "#fff" }}>
+                        {v.name}
+                      </span>
+                      <span style={{ display: "block", fontSize: "11px", color: "var(--text-3)", fontFamily: "var(--font-mono)", marginTop: "2px" }}>
+                        {price(v)}{attrTags.length > 0 ? ` · ${attrTags.join(" / ")}` : ""} · {v.in_stock ? `${v.stock} u.` : "Agotado"}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Este kit incluye — componentes del bundle */}
           {product.product_type === "bundle" && product.bundle_items?.length > 0 && (
@@ -303,7 +381,7 @@ export default function ProductDetail() {
           )}
 
           {/* Cantidad + Agregar */}
-          {(product.stock > 0 || product.product_type !== "stock") && (
+          {(activeStock > 0 || product.product_type !== "stock") && (
             <div className="pd-purchase-actions" style={{ display: "flex", gap: "12px" }}>
               <div style={{ display: "flex", alignItems: "center", background: "rgba(255,255,255,0.05)",
                 border: "1px solid rgba(255,255,255,0.1)", borderRadius: "var(--r-full)",
@@ -313,20 +391,20 @@ export default function ProductDetail() {
                 <span style={{ minWidth: "36px", textAlign: "center", fontSize: "15px",
                   fontWeight: 700, color: "var(--text)" }}>{qty}</span>
                 <button data-testid="pd-qty-plus"
-                  onClick={() => setQty(q => Math.min(product.product_type === "stock" ? product.stock : 99, q + 1))}
+                  onClick={() => setQty(q => Math.min(product.product_type === "stock" ? Math.max(1, activeStock) : 99, q + 1))}
                   style={qtyBtn}><Plus size={16} strokeWidth={2.5} /></button>
               </div>
               <Button testId="pd-add-to-cart" onClick={handleAddToCart}
                 variant="green" size="md" arrow
                 style={{ flex: 1, justifyContent: "space-between" }}>
-                {product.stock > 0 ? "Agregar al carrito"
+                {activeStock > 0 ? "Agregar al carrito"
                   : product.product_type === "preorder" ? "Reservar (preventa)"
                   : "Pedir"}
               </Button>
             </div>
           )}
 
-          {product.stock === 0 && product.product_type === "stock" && (
+          {activeStock === 0 && product.product_type === "stock" && (
             <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
               <button disabled style={{ display: "inline-flex", justifyContent: "center",
                 padding: "15px", borderRadius: "var(--r-full)", background: "rgba(255,255,255,0.04)",
@@ -363,6 +441,60 @@ export default function ProductDetail() {
               </span>
             </span>
           </a>
+
+          {/* Especificaciones Técnicas Profesionales (BF-44) */}
+          {(() => {
+            const effectiveSpecs = resolveEffectiveSpecs(product.technical_specs, selectedVariant)
+            if (effectiveSpecs.length === 0) return null
+            return (
+            <div data-testid="product-technical-specs" style={{ paddingTop: "22px", borderTop: "1px solid var(--border)" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginBottom: "14px" }}>
+                <p style={{ ...eyebrowSt, display: "inline-flex", alignItems: "center", gap: "8px" }}>
+                  <SlidersHorizontal size={13} /> Especificaciones Técnicas
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const res = toggleCompare(product)
+                    if (res.limitReached) {
+                      showToast("Máximo 4 equipos en el comparador.", "error")
+                    } else if (res.added) {
+                      showToast(`${product.name} agregado al comparador`)
+                    }
+                    if (compareItems.length >= 1 && res.added) {
+                      openCompare()
+                    }
+                  }}
+                  style={{
+                    display: "inline-flex", alignItems: "center", gap: "6px",
+                    padding: "6px 12px", borderRadius: "999px", cursor: "pointer",
+                    fontSize: "11px", fontWeight: 700,
+                    background: isCompared ? "rgba(26,255,110,0.14)" : "rgba(255,255,255,0.05)",
+                    color: isCompared ? "var(--accent)" : "var(--text-2)",
+                    border: `1px solid ${isCompared ? "rgba(26,255,110,0.35)" : "rgba(255,255,255,0.1)"}`,
+                  }}
+                >
+                  <Scale size={12} /> {isCompared ? "En comparador" : "Comparar equipo"}
+                </button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "10px" }}>
+                {effectiveSpecs.map(spec => (
+                  <div key={spec.id || spec.key} data-testid={`spec-item-${spec.key}`} style={{
+                    padding: "12px 14px", borderRadius: "14px",
+                    background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
+                  }}>
+                    <p style={{ fontSize: "11px", color: "var(--text-3)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "4px" }}>
+                      {spec.label}
+                    </p>
+                    <p style={{ fontSize: "13.5px", fontWeight: 700, color: "#fff", fontFamily: "var(--font-mono)" }}>
+                      {spec.display_value}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            )
+          })()}
 
           {/* Descripción completa */}
           {product.description && (
