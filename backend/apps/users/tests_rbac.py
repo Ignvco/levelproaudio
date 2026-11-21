@@ -879,7 +879,7 @@ class TestSuperAdminLifecycleAndSegregationOfDuties:
         assert len(data["capabilities"]) >= 12
         assert "view_audit" in data["capabilities"]
         assert len(data["role_matrix"]) == 10
-        assert data["module_status"]["purchases"]["status"] == "partial_reserved"
+        assert data["module_status"]["purchases"]["status"] == "implemented"
         assert data["module_status"]["logistics"]["status"] == "partial_reserved"
         assert data["module_status"]["catalog"]["status"] == "implemented"
 
