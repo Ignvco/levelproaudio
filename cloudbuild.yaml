@@ -67,6 +67,8 @@ steps:
       - build
       - -t
       - "${_REPO}/backend:${_TAG}"
+      - -t
+      - "${_REPO}/backend:$COMMIT_SHA"
       - -f
       - backend/Dockerfile.prod
       - ./backend
@@ -78,6 +80,8 @@ steps:
       - build
       - -t
       - "${_REPO}/frontend:${_TAG}"
+      - -t
+      - "${_REPO}/frontend:$COMMIT_SHA"
       - --build-arg
       - "VITE_GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}"
       - --build-arg
@@ -98,22 +102,37 @@ steps:
   - name: "gcr.io/cloud-builders/docker"
     id: "push-backend"
     waitFor: ["build-backend"]
-    args: ["push", "${_REPO}/backend:${_TAG}"]
+    args: ["push", "--all-tags", "${_REPO}/backend"]
 
   # ── 4. Push Frontend ─────────────────────────────────────────
   - name: "gcr.io/cloud-builders/docker"
     id: "push-frontend"
     waitFor: ["build-frontend"]
-    args: ["push", "${_REPO}/frontend:${_TAG}"]
+    args: ["push", "--all-tags", "${_REPO}/frontend"]
 
   # ── 4.5. Run Database Migrations (Decoupled Cloud Run Job) ───
   # LEVELPRO OS V4.0 — GATE 1.3: DECOUPLED MIGRATION RUNNER
-  # Ejecuta las migraciones en un trabajo efímero aislado antes de desplegar
-  # el backend web. Si la migración falla, el deploy del backend se detiene
-  # inmediatamente sin afectar las instancias de producción activas.
+  # 1. Configurar y actualizar la definición del Cloud Run Job con el digest inmutable
+  #    correspondiente al release exacto que se desplegará antes de ejecutarlo.
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "update-migrator-job"
+    waitFor: ["push-backend"]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        IMAGE_URI="${_REPO}/backend:$COMMIT_SHA"
+        echo "[MIGRATOR] Verificando e inyectando imagen inmutable de release en ${_MIGRATOR_JOB}..."
+        echo "[MIGRATOR] Target image: $${IMAGE_URI}"
+        gcloud run jobs update "${_MIGRATOR_JOB}" \
+          --image="$${IMAGE_URI}" \
+          --region="${_REGION}"
+  # 2. Ejecutar el Job con la imagen verificada y esperar su terminación exitosa.
+  #    Si la migración falla, el deploy del backend se detiene inmediatamente.
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "run-migrations"
-    waitFor: ["push-backend"]
+    waitFor: ["update-migrator-job"]
     entrypoint: gcloud
     args:
       - run
@@ -124,8 +143,7 @@ steps:
       - --wait
 
   # ── 5. Deploy Backend ────────────────────────────────────────
-  # Despliega el backend web únicamente si las migraciones concluyeron
-  # con éxito (waitFor: run-migrations) y ambas imágenes están listas.
+  # Despliega el backend web con la MISMA imagen inmutable verificada por el migrador
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "deploy-backend"
     waitFor: ["run-migrations", "push-frontend"]
@@ -134,7 +152,7 @@ steps:
       - run
       - deploy
       - "${_BACKEND_SERVICE}"
-      - --image=${_REPO}/backend:${_TAG}
+      - --image=${_REPO}/backend:$COMMIT_SHA
       - --region=${_REGION}
       - --platform=managed
       - --allow-unauthenticated

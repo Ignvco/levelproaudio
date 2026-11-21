@@ -22,6 +22,22 @@ END $$;
 -- Otorgar membrecía de mantenimiento a superusuario y migrador si se requiere
 GRANT levelpro_maintenance TO levelpro_qa;
 
+-- NOTA ARQUITECTÓNICA DE SEGURIDAD (POSTGRESQL OWNERSHIP):
+-- En PostgreSQL, ejecutar operaciones DDL como ALTER TABLE o DROP TABLE requiere ser el
+-- propietario (tableowner) de la tabla o ser miembro del rol propietario. GRANT ALL PRIVILEGES
+-- concede DML extendido pero NO autoriza ALTER TABLE sobre tablas de otros usuarios.
+-- Por ello, para que levelpro_migrator_user pueda migrar tablas preexistentes de esquemas legacy,
+-- se le otorga membrecía en los roles propietarios de tablas existentes (o se reasigna la propiedad).
+DO $$
+BEGIN
+    IF EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'levelpro_qa') THEN
+        GRANT levelpro_qa TO levelpro_migrator_user;
+    END IF;
+    IF EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'levelpro') THEN
+        GRANT levelpro TO levelpro_migrator_user;
+    END IF;
+END $$;
+
 -- Configurar permisos para levelpro_migrator_user (DDL)
 GRANT CONNECT ON DATABASE levelpro_v32_qa TO levelpro_migrator_user;
 GRANT USAGE, CREATE ON SCHEMA public TO levelpro_migrator_user;

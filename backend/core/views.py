@@ -68,7 +68,7 @@ class MediaProxyView(View):
             resp = HttpResponse(status=403)
             resp["Cache-Control"] = "private, no-store"
             return resp
-        if settings.DEBUG or getattr(settings, "QA_LOCAL_ONLY", False):
+        if (settings.DEBUG or getattr(settings, "QA_LOCAL_ONLY", False)) and not getattr(settings, "GS_BUCKET_NAME", None):
             resp = self._serve_local(request, path)
         else:
             resp = self._serve_gcs(request, path)
