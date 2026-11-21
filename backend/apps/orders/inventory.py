@@ -7,7 +7,7 @@ from uuid import UUID
 from django.db import connection
 from django.db.models import F
 
-from apps.products.models import BundleItem, Product
+from apps.products.models import BundleItem, Product, ProductVariant
 
 
 class InventoryError(ValueError):
@@ -17,16 +17,33 @@ class InventoryError(ValueError):
 def _lock_products(ids):
     # Todas las rutas toman los productos en el mismo orden. NO KEY UPDATE
     # permite referencias FK (items/componentes) sin bloquearlas innecesariamente.
+    if not ids:
+        return {}
     queryset = Product.objects.filter(pk__in=ids).order_by("pk")
     options = {"no_key": True} if connection.vendor == "postgresql" else {}
     return {product.pk: product for product in queryset.select_for_update(**options)}
 
 
+def _lock_variants(ids):
+    if not ids:
+        return {}
+    queryset = ProductVariant.objects.filter(pk__in=ids).order_by("pk")
+    options = {"no_key": True} if connection.vendor == "postgresql" else {}
+    return {variant.pk: variant for variant in queryset.select_for_update(**options)}
+
+
 def prepare_inventory(items_data):
-    """Valida/agrega líneas, bloquea productos y calcula la demanda total."""
+    """
+    Valida/agrega líneas (producto simple, bundle o producto con variante),
+    bloquea filas en orden determinístico y calcula la demanda total.
+    """
     if not isinstance(items_data, list) or not items_data:
         raise InventoryError("La orden debe tener al menos un producto.")
+
     quantities = Counter()
+    variant_ids = set()
+    product_ids = set()
+
     for item in items_data:
         if not isinstance(item, Mapping):
             raise InventoryError("Cada producto debe indicar su ID y cantidad.")
@@ -34,6 +51,15 @@ def prepare_inventory(items_data):
             product_id = UUID(str(item.get("product", "")))
         except (ValueError, TypeError, AttributeError):
             raise InventoryError("ID de producto inválido.") from None
+
+        raw_variant = item.get("variant") or item.get("variant_id")
+        variant_id = None
+        if raw_variant not in (None, ""):
+            try:
+                variant_id = UUID(str(raw_variant))
+            except (ValueError, TypeError, AttributeError):
+                raise InventoryError("ID de variante inválido.") from None
+
         value = item.get("quantity")
         # Acepta enteros y strings decimales usados por formularios, no bool/float.
         if isinstance(value, bool) or not isinstance(value, (int, str)):
@@ -44,27 +70,53 @@ def prepare_inventory(items_data):
             quantity = int(value)
         except (ValueError, TypeError):
             raise InventoryError("La cantidad debe ser un entero positivo.") from None
-        quantities[product_id] += quantity
-        if quantity < 1 or quantities[product_id] > 2147483647:
+
+        key = (product_id, variant_id)
+        quantities[key] += quantity
+        product_ids.add(product_id)
+        if variant_id is not None:
+            variant_ids.add(variant_id)
+        if quantity < 1 or quantities[key] > 2147483647:
             raise InventoryError("Cantidad de producto fuera de rango.")
 
     # Descubrir IDs antes de bloquear evita tomar primero un kit y luego sus
     # componentes en un orden diferente al de otra compra.
-    component_ids = set(BundleItem.objects.filter(bundle_id__in=quantities)
-                        .values_list("component_id", flat=True))
-    products = _lock_products(set(quantities) | component_ids)
+    component_ids = set(
+        BundleItem.objects.filter(bundle_id__in=product_ids)
+        .values_list("component_id", flat=True)
+    )
+    products = _lock_products(product_ids | component_ids)
+    variants = _lock_variants(variant_ids)
+
     components = {}
-    for item in BundleItem.objects.filter(bundle_id__in=quantities).order_by("pk"):
+    for item in BundleItem.objects.filter(bundle_id__in=product_ids).order_by("pk"):
         if item.component_id not in products:
             raise InventoryError("El kit cambió durante la compra. Actualiza e intenta nuevamente.")
         components.setdefault(item.bundle_id, []).append(item)
 
+    # Detectar qué productos tienen variantes activas registradas
+    products_with_variants = set(
+        ProductVariant.objects.filter(product_id__in=product_ids, is_active=True)
+        .values_list("product_id", flat=True)
+    )
+
     demand = Counter()
     lines = []
-    for product_id, quantity in quantities.items():
+    for (product_id, variant_id), quantity in quantities.items():
         product = products.get(product_id)
         if product is None or not product.is_active:
             raise InventoryError("Uno de los productos ya no está disponible.")
+
+        variant = None
+        if variant_id is not None:
+            variant = variants.get(variant_id)
+            if variant is None or not variant.is_active or variant.product_id != product.pk:
+                raise InventoryError(f"La variante seleccionada para {product.name} no está disponible.")
+            if product.product_type == Product.ProductType.BUNDLE:
+                raise InventoryError("Un kit/combo no admite selección directa de variante.")
+        elif product.pk in products_with_variants:
+            raise InventoryError(f"Debes seleccionar una variante para {product.name}.")
+
         if product.product_type == Product.ProductType.BUNDLE:
             parts = components.get(product_id, [])
             if not parts:
@@ -80,44 +132,74 @@ def prepare_inventory(items_data):
                 elif component.product_type not in (Product.ProductType.PREORDER, Product.ProductType.ON_DEMAND):
                     raise InventoryError("El kit tiene un tipo de componente inválido.")
         elif product.product_type == Product.ProductType.STOCK:
-            demand[product_id] += quantity
+            if variant is not None:
+                demand[f"variant:{variant.pk}"] += quantity
+            else:
+                demand[product_id] += quantity
         elif product.product_type not in (Product.ProductType.PREORDER, Product.ProductType.ON_DEMAND):
             raise InventoryError("Tipo de producto inválido.")
-        lines.append({"product": product, "quantity": quantity})
 
-    for product_id, quantity in demand.items():
-        if products[product_id].stock < quantity:
-            raise InventoryError(f"Stock insuficiente para {products[product_id].name}.")
+        lines.append({"product": product, "variant": variant, "quantity": quantity})
+
+    for target_key, quantity in demand.items():
+        if isinstance(target_key, str) and target_key.startswith("variant:"):
+            vid = UUID(target_key.split(":", 1)[1])
+            v = variants[vid]
+            if v.stock < quantity:
+                raise InventoryError(f"Stock insuficiente para {v.product.name} ({v.name}).")
+        else:
+            if products[target_key].stock < quantity:
+                raise InventoryError(f"Stock insuficiente para {products[target_key].name}.")
+
     return lines, demand
 
 
 def deduct_inventory(demand):
-    """Los productos siguen bloqueados por prepare_inventory hasta el commit."""
-    for product_id in sorted(demand):
-        quantity = demand[product_id]
-        updated = Product.objects.filter(pk=product_id, stock__gte=quantity).update(stock=F("stock") - quantity)
+    """Los productos y variantes siguen bloqueados por prepare_inventory hasta el commit."""
+    for target_key in sorted(demand, key=str):
+        quantity = demand[target_key]
+        if isinstance(target_key, str) and target_key.startswith("variant:"):
+            vid = UUID(target_key.split(":", 1)[1])
+            updated = ProductVariant.objects.filter(pk=vid, stock__gte=quantity).update(stock=F("stock") - quantity)
+        else:
+            updated = Product.objects.filter(pk=target_key, stock__gte=quantity).update(stock=F("stock") - quantity)
         if updated != 1:
             raise InventoryError("El stock cambió durante la compra. Intenta nuevamente.")
 
 
 def restore_inventory(order):
     """Reponer la reserva; el llamador debe bloquear la orden y cambiar su estado."""
+    product_demand = Counter()
+    variant_demand = Counter()
+
     if order.stock_deductions is not None:
-        demand = {UUID(product_id): quantity for product_id, quantity in order.stock_deductions.items()}
+        for raw_key, quantity in order.stock_deductions.items():
+            if isinstance(raw_key, str) and raw_key.startswith("variant:"):
+                variant_demand[UUID(raw_key.split(":", 1)[1])] += quantity
+            else:
+                product_demand[UUID(str(raw_key))] += quantity
     else:
         # Pedidos anteriores al patch no guardaban el desglose. Mantener el
         # criterio histórico, con agregación y bloqueo, sin inventar un snapshot.
-        demand = Counter()
-        for item in order.items.select_related("product").all():
+        for item in order.items.select_related("product", "variant").all():
+            if item.variant_id:
+                if item.product and item.product.product_type == Product.ProductType.STOCK:
+                    variant_demand[item.variant_id] += item.quantity
+                continue
             product = item.product
             if product is None:
                 continue
             if product.product_type == Product.ProductType.BUNDLE:
                 for part in product.bundle_components.select_related("component").all():
                     if part.component.product_type == Product.ProductType.STOCK:
-                        demand[part.component_id] += part.quantity * item.quantity
+                        product_demand[part.component_id] += part.quantity * item.quantity
             elif product.product_type == Product.ProductType.STOCK:
-                demand[product.pk] += item.quantity
-    products = _lock_products(demand)
+                product_demand[product.pk] += item.quantity
+
+    products = _lock_products(product_demand.keys())
+    variants = _lock_variants(variant_demand.keys())
+
     for product_id in sorted(products):
-        Product.objects.filter(pk=product_id).update(stock=F("stock") + demand[product_id])
+        Product.objects.filter(pk=product_id).update(stock=F("stock") + product_demand[product_id])
+    for variant_id in sorted(variants):
+        ProductVariant.objects.filter(pk=variant_id).update(stock=F("stock") + variant_demand[variant_id])

@@ -216,8 +216,9 @@ export default function Checkout() {
         loyalty_points_redeemed: currency === "CLP" ? (pointsToRedeem || 0) : 0,
         items: items.map(i => ({
           product:      i.product.id,
+          variant:      i.variant?.id || null,
           product_name: i.product.name,
-          price:        i.product.prices?.[currency] ?? i.product.price,
+          price:        (i.variant || i.product).prices?.[currency] ?? i.variant?.price ?? i.product.price,
           quantity:     i.quantity,
         })),
       })
@@ -493,23 +494,27 @@ export default function Checkout() {
 
               <div style={{ display: "flex", flexDirection: "column",
                 gap: "10px", marginBottom: "16px" }}>
-                {items.map(item => (
-                  <div key={item.product.id} style={{ display: "flex",
-                    justifyContent: "space-between", fontSize: "13px",
-                    alignItems: "center", gap: "8px" }}>
-                    <span style={{ color: "var(--text-2)", overflow: "hidden",
-                      textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
-                      {item.product.name}
-                      <span style={{ color: "var(--text-3)" }}> ×{item.quantity}</span>
-                    </span>
-                    <span style={{ flexShrink: 0, color: "var(--text-2)", fontWeight: 600,
-                      fontVariantNumeric: "tabular-nums" }}>
-                      {item.product.prices?.[currency] == null && currency !== "CLP"
-                        ? "—"
-                        : format(Number(item.product.prices?.[currency] ?? item.product.price) * item.quantity)}
-                    </span>
-                  </div>
-                ))}
+                {items.map(item => {
+                  const src = item.variant || item.product
+                  const p = src?.prices?.[currency] ?? (currency === "CLP" ? (src?.price ?? item.product.price) : null)
+                  return (
+                    <div key={`${item.product.id}-${item.variant?.id || "base"}`} style={{ display: "flex",
+                      justifyContent: "space-between", fontSize: "13px",
+                      alignItems: "center", gap: "8px" }}>
+                      <span style={{ color: "var(--text-2)", overflow: "hidden",
+                        textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+                        {item.product.name}{item.variant ? ` (${item.variant.name})` : ""}
+                        <span style={{ color: "var(--text-3)" }}> ×{item.quantity}</span>
+                      </span>
+                      <span style={{ flexShrink: 0, color: "var(--text-2)", fontWeight: 600,
+                        fontVariantNumeric: "tabular-nums" }}>
+                        {p == null
+                          ? "—"
+                          : format(Number(p) * item.quantity)}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
 
               <div style={{ borderTop: "1px solid var(--border)", paddingTop: "16px",

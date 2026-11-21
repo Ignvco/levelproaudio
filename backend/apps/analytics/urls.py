@@ -63,6 +63,15 @@ from .views_audit import (
     audit_catalog_view,
     audit_export_view,
 )
+from apps.products.admin_pim_views import (
+    admin_product_variants,
+    admin_product_variant_detail,
+    admin_technical_attributes_catalog,
+    admin_product_technical_specs,
+    admin_products_bulk_preview,
+    admin_products_bulk_apply,
+    admin_products_export,
+)
 
 router = DefaultRouter()
 router.register("orders",          AdminOrderViewSet,   basename="admin-orders")
@@ -123,8 +132,15 @@ urlpatterns = [
     path("bookings/<uuid:pk>/status/",  update_booking_status,   name="admin-booking-status"),
     path("requests/<uuid:pk>/status/",  update_request_status,   name="admin-request-status"),
 
-    # Productos — importación
+    # Productos — importación, exportación, edición masiva, variantes y specs (GATE 2 PIM)
     path("products/import/",   import_products,    name="admin-products-import"),
+    path("products/export/",   admin_products_export, name="admin-products-export"),
+    path("products/bulk-preview/", admin_products_bulk_preview, name="admin-products-bulk-preview"),
+    path("products/bulk-apply/",   admin_products_bulk_apply,   name="admin-products-bulk-apply"),
+    path("products/technical-attributes/", admin_technical_attributes_catalog, name="admin-technical-attributes"),
+    path("products/<uuid:product_id>/variants/", admin_product_variants, name="admin-product-variants"),
+    path("products/<uuid:product_id>/variants/<uuid:variant_id>/", admin_product_variant_detail, name="admin-product-variant-detail"),
+    path("products/<uuid:product_id>/technical-specs/", admin_product_technical_specs, name="admin-product-technical-specs"),
     path("brands/import/",     import_brands,      name="admin-brands-import"),
     path("courses/import/",    import_courses,     name="admin-courses-import"),
     path("products/template/", download_template,  name="admin-products-template"),

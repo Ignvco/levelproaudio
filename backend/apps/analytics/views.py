@@ -4,7 +4,8 @@ from django.db import IntegrityError
 from core.api_errors import AdminInputError, api_error_response
 # apps/analytics/views.py — VERSION LIMPIA SIN DUPLICADOS
 
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, renderer_classes
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action
@@ -225,12 +226,19 @@ class CourseAdminSerializer(drf_serializers.ModelSerializer):
 class AdminProductDetailSerializer(SensitiveDataSerializerMixin, ProductDetailSerializer):
     """
     Mismo serializer que usa el público, pero con los campos internos
-    que el admin sí necesita ver (costo real, umbral de stock mínimo).
+    que el admin sí necesita ver (costo real, umbral de stock mínimo, variantes completas).
     Separado a propósito del público — cost_price nunca debe viajar a
     un endpoint que cualquiera pueda pedir sin login, y se enmascara para roles sin permiso.
     """
+    admin_variants = drf_serializers.SerializerMethodField()
+
     class Meta(ProductDetailSerializer.Meta):
-        fields = ProductDetailSerializer.Meta.fields + ["cost_price", "stock_min"]
+        fields = ProductDetailSerializer.Meta.fields + ["cost_price", "stock_min", "admin_variants"]
+
+    def get_admin_variants(self, obj):
+        from apps.products.admin_pim_views import AdminProductVariantSerializer
+        qs = obj.variants.all().order_by("order", "created_at")
+        return AdminProductVariantSerializer(qs, many=True, context=self.context).data
 
 
 class AdminProductWriteSerializer(SensitiveDataSerializerMixin, drf_serializers.ModelSerializer):
@@ -452,7 +460,9 @@ class AdminProductViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = Product.objects.select_related(
             "category", "brand"
-        ).prefetch_related("images").all()
+        ).prefetch_related(
+            "images", "variants", "technical_specs__attribute"
+        ).all()
 
         # Filtros por querystring
         is_active_param = self.request.query_params.get("is_active")
@@ -462,6 +472,14 @@ class AdminProductViewSet(viewsets.ModelViewSet):
         cat_slug = self.request.query_params.get("category__slug")
         if cat_slug:
             qs = qs.filter(category__slug=cat_slug)
+
+        brand_id = self.request.query_params.get("brand")
+        if brand_id:
+            qs = qs.filter(brand_id=brand_id)
+
+        product_type = self.request.query_params.get("product_type")
+        if product_type:
+            qs = qs.filter(product_type=product_type)
 
         return qs
 
@@ -2497,41 +2515,54 @@ def analytics_full(request):
 
 @rbac_endpoint(
     module=MODULE_CATALOG,
-    capability=[PERM_EDIT_PRICES, PERM_EDIT_COSTS],
+    capability=[PERM_EDIT_PRICES],
 )
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 def import_products(request):
     """
     POST /api/v1/admin/products/import/
-    Acepta .xlsx o .csv y crea/actualiza productos masivamente.
+    Importador PIM profesional .xlsx / .csv con soporte de dry_run (simulación),
+    confirmación explícita, idempotencia y reporte por fila.
     """
+    from apps.products.pim_io import process_pim_import
+
     file = request.FILES.get("file")
     if not file:
         return Response({"error": "No se envió ningún archivo."}, status=400)
 
-    name = file.name.lower()
-    if name.endswith(".xlsx") or name.endswith(".xls"):
-        result = import_from_excel(file)
-    elif name.endswith(".csv"):
-        result = import_from_csv(file)
+    dry_run_raw = request.data.get("dry_run") or request.query_params.get("dry_run")
+    confirm_raw = request.data.get("confirm") or request.query_params.get("confirm")
+    if dry_run_raw is not None:
+        dry_run = str(dry_run_raw).strip().lower() in ("true", "1", "yes")
+    elif confirm_raw is not None:
+        dry_run = not (str(confirm_raw).strip().lower() in ("true", "1", "yes"))
     else:
-        return Response({"error": "Formato no soportado. Usa .xlsx o .csv."}, status=400)
+        dry_run = False
 
-    if "error" in result:
-        return Response(result, status=400)
-
-    record_audit_event(
-        module=MODULE_CATALOG,
-        action="BULK_PRODUCTS_IMPORTED",
-        event_category=CATEGORY_BULK_OPERATION,
-        resource_type="Product",
-        resource_repr=f"Importación masiva de productos ({file.name})",
-        actor=request.user,
-        metadata=result,
-        mandatory=True,
+    idem_key = (
+        request.headers.get("Idempotency-Key")
+        or request.data.get("idempotency_key")
+        or ""
     )
 
+    try:
+        file_bytes = file.read()
+        result = process_pim_import(
+            user=request.user,
+            file_bytes=file_bytes,
+            filename=file.name,
+            dry_run=dry_run,
+            idempotency_key=idem_key,
+        )
+    except DjangoPermissionDenied as exc:
+        return Response({"error": str(exc)}, status=403)
+    except ValueError as exc:
+        return Response({"error": str(exc)}, status=400)
+
+    # Compatibilidad con consumidores antiguos que leen result.created / result.updated
+    result["created"] = [r for r in result["rows"] if r["status"] == "new"]
+    result["updated"] = [r for r in result["rows"] if r["status"] == "updated"]
     return Response(result, status=200)
 
 
@@ -2614,105 +2645,21 @@ def import_courses(request):
 @permission_classes([IsAdminOrStaff])
 def download_template(request):
     """
-    GET /api/v1/admin/products/template/
-    Descarga el Excel plantilla con todas las columnas y ejemplos.
+    GET /api/v1/admin/products/template/?format=xlsx|csv
+    Descarga la plantilla oficial PIM con productos, variantes y especificaciones técnicas.
     """
-    
+    from apps.products.pim_io import build_pim_template_bytes
 
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "Productos"
-
-    headers = [
-        "nombre", "descripcion_corta", "descripcion", "precio",
-        "precio_comparacion", "stock", "sku", "categoria",
-        "marca", "peso", "destacado", "activo", "tipo",
-        "imagen_url", "seo_titulo", "seo_descripcion",
-    ]
-
-    # Estilos encabezado
-    header_font  = Font(bold=True, color="000000", size=11)
-    header_fill  = PatternFill("solid", fgColor="1AFF6E")
-    header_align = Alignment(horizontal="center", vertical="center")
-    thin_border  = Border(
-        bottom=Side(style="thin", color="CCCCCC")
-    )
-
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(row=1, column=col, value=header)
-        cell.font      = header_font
-        cell.fill      = header_fill
-        cell.alignment = header_align
-        cell.border    = thin_border
-        ws.column_dimensions[cell.column_letter].width = max(16, len(header) + 4)
-
-    # Fila de ejemplo
-    examples = [
-        "Shure SM58",
-        "Micrófono vocal dinámico profesional",
-        "El Shure SM58 es el micrófono vocal más utilizado en escenarios del mundo.",
-        "150000",
-        "180000",
-        "10",
-        "SM58-LC",
-        "Micrófonos",
-        "Shure",
-        "0.3",
-        "Si",
-        "Si",
-        "stock",
-        "https://ejemplo.com/imagen.jpg",
-        "Shure SM58 - Micrófono Vocal Profesional",
-        "Compra el Shure SM58, el micrófono más confiable del mercado.",
-    ]
-
-    example_font = Font(color="555555", size=10, italic=True)
-    for col, val in enumerate(examples, 1):
-        cell = ws.cell(row=2, column=col, value=val)
-        cell.font = example_font
-
-    # Hoja de instrucciones
-    ws2 = wb.create_sheet("Instrucciones")
-    instrucciones = [
-        ("INSTRUCCIONES DE USO", True),
-        ("", False),
-        ("COLUMNAS REQUERIDAS (obligatorias):", True),
-        ("• nombre       → Nombre del producto (debe ser único)", False),
-        ("• precio       → Precio en pesos, sin puntos ni $. Ej: 150000", False),
-        ("• stock        → Cantidad disponible. Ej: 10", False),
-        ("", False),
-        ("COLUMNAS OPCIONALES:", True),
-        ("• descripcion_corta   → Texto breve para listados", False),
-        ("• descripcion         → Descripción completa del producto", False),
-        ("• precio_comparacion  → Precio tachado (precio original antes del descuento)", False),
-        ("• sku                 → Código interno del producto", False),
-        ("• categoria           → Nombre de categoría. Para subcategoría: Audio Pro > Mezcladores", False),
-        ("• marca               → Nombre de la marca", False),
-        ("• peso                → Peso en kg. Ej: 0.5", False),
-        ("• destacado           → Si / No (muestra en home)", False),
-        ("• activo              → Si / No (visible en tienda)", False),
-        ("• tipo                → stock (en stock) / preorder (preventa) / on_demand (a pedido)", False),
-        ("• imagen_url          → URL de imagen principal", False),
-        ("• seo_titulo          → Título para Google (máx 70 caracteres)", False),
-        ("• seo_descripcion     → Descripción para Google (máx 160 caracteres)", False),
-        ("", False),
-        ("COMPORTAMIENTO:", True),
-        ("• Si el producto ya existe (mismo nombre), se ACTUALIZA.", False),
-        ("• Si no existe, se CREA.", False),
-        ("• Las categorías y marcas se crean automáticamente si no existen.", False),
-        ("• Puedes subir el archivo cuantas veces quieras, es seguro.", False),
-    ]
-
-    ws2.column_dimensions["A"].width = 70
-    for row_num, (text, bold) in enumerate(instrucciones, 1):
-        cell = ws2.cell(row=row_num, column=1, value=text)
-        cell.font = Font(bold=bold, size=10 if not bold else 12)
-
-    response = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    response["Content-Disposition"] = 'attachment; filename="plantilla_productos_levelproaudio.xlsx"'
-    wb.save(response)
+    fmt = (
+        request.query_params.get("export_format")
+        or request.query_params.get("format")
+        or "xlsx"
+    ).lower()
+    if fmt not in ("xlsx", "csv"):
+        fmt = "xlsx"
+    content, content_type, filename = build_pim_template_bytes(fmt=fmt)
+    response = HttpResponse(content, content_type=content_type)
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 
 @rbac_endpoint(module=MODULE_CATALOG)

@@ -1,7 +1,11 @@
 # apps/products/serializers.py
 from rest_framework import serializers
 from decimal import Decimal
-from .models import Category, Brand, Product, ProductImage
+from .models import (
+    Category, Brand, Product, ProductImage,
+    ProductVariant, TechnicalAttributeDefinition,
+    CategoryTechnicalTemplate, ProductTechnicalSpec,
+)
 from core.media import media_url as _media_url
 
 
@@ -86,6 +90,61 @@ class ProductImageSerializer(serializers.ModelSerializer):
         return _media_url(obj.image)
 
 
+class ProductVariantPublicSerializer(serializers.ModelSerializer):
+    """Serializer público de variante (sin cost_price ni datos internos)."""
+    price = serializers.DecimalField(source="effective_price", max_digits=12, decimal_places=2, read_only=True)
+    compare_price = serializers.DecimalField(source="effective_compare_price", max_digits=12, decimal_places=2, read_only=True, allow_null=True)
+    weight = serializers.DecimalField(source="effective_weight", max_digits=6, decimal_places=2, read_only=True, allow_null=True)
+    prices = serializers.SerializerMethodField()
+    in_stock = serializers.BooleanField(read_only=True)
+    image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ProductVariant
+        fields = [
+            "id", "sku", "barcode", "name", "attributes",
+            "price", "compare_price", "prices",
+            "stock", "in_stock", "weight",
+            "image", "image_url", "is_active", "is_default", "order",
+        ]
+
+    def get_prices(self, obj):
+        rates = _get_exchange_rates(self.context)
+        p = obj.prices_by_currency(rates["usd_to_clp"], rates["usd_to_ars"])
+        return {k: str(v) for k, v in p.items()}
+
+    def get_image_url(self, obj):
+        if obj.image and obj.image.image:
+            return _media_url(obj.image.image)
+        return None
+
+
+class TechnicalAttributeDefinitionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = TechnicalAttributeDefinition
+        fields = [
+            "id", "key", "label", "data_type", "unit", "options",
+            "min_value", "max_value", "is_comparable", "is_filterable", "order",
+        ]
+
+
+class ProductTechnicalSpecSerializer(serializers.ModelSerializer):
+    key = serializers.CharField(source="attribute.key", read_only=True)
+    label = serializers.CharField(source="attribute.label", read_only=True)
+    unit = serializers.CharField(source="attribute.unit", read_only=True)
+    data_type = serializers.CharField(source="attribute.data_type", read_only=True)
+    is_comparable = serializers.BooleanField(source="attribute.is_comparable", read_only=True)
+    display_value = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = ProductTechnicalSpec
+        fields = [
+            "id", "attribute", "key", "label", "unit", "data_type",
+            "is_comparable", "value_text", "value_number", "value_json",
+            "display_value", "notes",
+        ]
+
+
 class ProductListSerializer(serializers.ModelSerializer):
     primary_image = serializers.SerializerMethodField()
     images        = serializers.SerializerMethodField()
@@ -96,6 +155,9 @@ class ProductListSerializer(serializers.ModelSerializer):
     badge_display = serializers.CharField(source="get_badge_display", read_only=True)
     is_low_stock  = serializers.SerializerMethodField()
     prices        = serializers.SerializerMethodField()
+    has_variants  = serializers.SerializerMethodField()
+    variants_count = serializers.SerializerMethodField()
+    effective_stock = serializers.IntegerField(read_only=True)
 
     class Meta:
         model  = Product
@@ -103,11 +165,18 @@ class ProductListSerializer(serializers.ModelSerializer):
             "id", "name", "slug", "price", "compare_price",
             "price_usd", "price_ars", "prices",
             "short_description",
-            "stock", "in_stock", "is_featured",
+            "stock", "effective_stock", "in_stock", "is_featured",
+            "has_variants", "variants_count",
             "badge", "badge_display", "is_low_stock", "product_type",
             "primary_image", "images", "brand_name", "brand_logo",
             "has_discount", "discount_percentage", "is_favorited",
         ]
+
+    def get_has_variants(self, obj):
+        return obj.variants.filter(is_active=True).exists()
+
+    def get_variants_count(self, obj):
+        return obj.variants.filter(is_active=True).count()
 
     def get_prices(self, obj):
         rates = _get_exchange_rates(self.context)
@@ -158,6 +227,10 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     related_products    = ProductListSerializer(many=True, read_only=True)
     bundle_items        = serializers.SerializerMethodField()
     prices              = serializers.SerializerMethodField()
+    variants            = serializers.SerializerMethodField()
+    technical_specs     = serializers.SerializerMethodField()
+    has_variants        = serializers.SerializerMethodField()
+    effective_stock     = serializers.IntegerField(read_only=True)
 
     class Meta:
         model  = Product
@@ -168,11 +241,25 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             "price", "compare_price",
             "price_usd", "price_ars", "prices",
             "has_discount", "discount_percentage",
-            "stock", "in_stock", "is_active", "is_featured",
+            "stock", "effective_stock", "in_stock", "is_active", "is_featured",
+            "has_variants", "variants", "technical_specs",
             "badge", "badge_display", "is_low_stock", "product_type",
+            "weight",
             "primary_image", "images", "related_products", "bundle_items",
+            "seo_title", "seo_description",
             "created_at", "updated_at",
         ]
+
+    def get_has_variants(self, obj):
+        return obj.variants.filter(is_active=True).exists()
+
+    def get_variants(self, obj):
+        qs = obj.variants.filter(is_active=True).select_related("image").order_by("order", "created_at")
+        return ProductVariantPublicSerializer(qs, many=True, context=self.context).data
+
+    def get_technical_specs(self, obj):
+        qs = obj.technical_specs.select_related("attribute").order_by("attribute__order", "attribute__label")
+        return ProductTechnicalSpecSerializer(qs, many=True, context=self.context).data
 
     def get_prices(self, obj):
         rates = _get_exchange_rates(self.context)

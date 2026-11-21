@@ -79,16 +79,38 @@ class CartItem(TimeStampedModel):
         on_delete=models.CASCADE
     )
 
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="cart_items",
+    )
+
     quantity = models.PositiveIntegerField(default=1)
 
     class Meta:
-        unique_together = ("cart", "product")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["cart", "product"],
+                condition=models.Q(variant__isnull=True),
+                name="uniq_cart_product_no_variant",
+            ),
+            models.UniqueConstraint(
+                fields=["cart", "product", "variant"],
+                condition=models.Q(variant__isnull=False),
+                name="uniq_cart_product_variant",
+            ),
+        ]
 
     def __str__(self):
-        return f"{self.product.name} x {self.quantity}"
+        label = f"{self.product.name} ({self.variant.name})" if self.variant else self.product.name
+        return f"{label} x {self.quantity}"
 
     @property
     def price(self):
+        if self.variant_id:
+            return self.variant.effective_price
         return self.product.price
 
     @property
@@ -238,7 +260,17 @@ class OrderItem(TimeStampedModel):
         null=True
     )
 
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="order_items",
+    )
+
     product_name = models.CharField(max_length=300)
+    variant_name = models.CharField(max_length=250, blank=True, default="")
+    variant_sku  = models.CharField(max_length=100, blank=True, default="")
 
     price = models.DecimalField(
         max_digits=12,
@@ -303,6 +335,7 @@ class B2BQuote(TimeStampedModel):
 class B2BQuoteItem(TimeStampedModel):
     quote        = models.ForeignKey(B2BQuote, on_delete=models.CASCADE, related_name="items")
     product      = models.ForeignKey("products.Product", on_delete=models.SET_NULL, null=True, blank=True)
+    variant      = models.ForeignKey("products.ProductVariant", on_delete=models.SET_NULL, null=True, blank=True)
     product_name = models.CharField(max_length=300)
     unit_price   = models.DecimalField(max_digits=12, decimal_places=2)
     quantity     = models.PositiveIntegerField(default=1)

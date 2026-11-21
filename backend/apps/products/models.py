@@ -227,6 +227,32 @@ class Product(TimeStampedModel):
         return 0
 
     @property
+    def has_variants(self):
+        return self.variants.filter(is_active=True).exists()
+
+    @property
+    def effective_stock(self):
+        """
+        Stock efectivo para vitrina/listado:
+        - Si es bundle: calculado desde componentes.
+        - Si tiene variantes activas: suma de stock de variantes activas.
+        - Si es producto simple legacy: self.stock.
+        """
+        if self.product_type == self.ProductType.BUNDLE:
+            items = self.bundle_components.select_related("component").all()
+            if not items:
+                return 0
+            counts = []
+            for it in items:
+                if it.component.product_type == self.ProductType.STOCK:
+                    counts.append(it.component.stock // max(1, it.quantity))
+            return min(counts) if counts else 99
+        active_variants = list(self.variants.filter(is_active=True).values_list("stock", flat=True))
+        if active_variants:
+            return sum(active_variants)
+        return self.stock
+
+    @property
     def in_stock(self):
         if self.product_type == self.ProductType.BUNDLE:
             # Un kit está disponible solo si TODOS sus componentes tienen
@@ -239,6 +265,11 @@ class Product(TimeStampedModel):
                 or it.component.stock >= it.quantity
                 for it in items
             )
+        active_variants = self.variants.filter(is_active=True)
+        if active_variants.exists():
+            if self.product_type != self.ProductType.STOCK:
+                return True
+            return active_variants.filter(stock__gt=0).exists()
         return self.stock > 0
 
 
@@ -373,3 +404,300 @@ class SpecialOrderRequest(TimeStampedModel):
 
     def __str__(self):
         return f"{self.name} — {self.equipment}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# LEVELPRO OS V4.0 — GATE 2: ADVANCED PIM (VARIANTES & CATÁLOGO TÉCNICO)
+# ═══════════════════════════════════════════════════════════════════════════════
+
+class ProductVariant(TimeStampedModel):
+    """
+    Variante comercial de un producto maestro (BF-14).
+    Soporta ejes como impedancia, color, conexión, tamaño y configuración,
+    con SKU único, código de barras, precios independientes (o heredados)
+    y stock propio compatible con reservas y futuros Gate 3/4.
+    """
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="variants",
+        verbose_name="Producto maestro",
+    )
+    sku = models.CharField(
+        max_length=100,
+        unique=True,
+        verbose_name="SKU único de variante",
+    )
+    barcode = models.CharField(
+        max_length=100,
+        blank=True,
+        default="",
+        db_index=True,
+        verbose_name="Código de barras (EAN/UPC)",
+    )
+    name = models.CharField(
+        max_length=250,
+        verbose_name="Nombre de variante",
+        help_text="Ej: 250 Ohm / Negro, XLR 3m",
+    )
+    # Ejes estructurados: {"impedance": "250 Ohm", "color": "Negro", "connection": "XLR", ...}
+    attributes = models.JSONField(default=dict, blank=True)
+
+    # Precios independientes (si son None, heredan del producto maestro)
+    price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        verbose_name="Precio CLP (opcional, hereda si vacío)",
+    )
+    compare_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    price_usd = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    price_ars = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    cost_price = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+
+    # Stock y logística por variante
+    stock = models.PositiveIntegerField(default=0)
+    stock_min = models.PositiveIntegerField(default=3)
+    weight = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        null=True,
+        blank=True,
+    )
+
+    image = models.ForeignKey(
+        ProductImage,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="variant_assignments",
+    )
+
+    is_active = models.BooleanField(default=True, db_index=True)
+    is_default = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Variante de producto"
+        verbose_name_plural = "Variantes de producto"
+        ordering = ["order", "created_at"]
+        indexes = [
+            models.Index(fields=["product", "is_active"], name="prod_variant_prod_active_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.product.name} — {self.name} ({self.sku})"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        super().clean()
+        if not self.sku or not str(self.sku).strip():
+            raise ValidationError({"sku": "Toda variante requiere un SKU único."})
+        self.sku = str(self.sku).strip()
+
+        # Prevenir colisión global de SKU con productos maestros
+        if Product.objects.filter(sku=self.sku).exclude(pk=self.product_id).exists():
+            raise ValidationError({"sku": f"El SKU '{self.sku}' ya pertenece a un producto maestro."})
+        if Product.objects.filter(pk=self.product_id, sku=self.sku).exists():
+            raise ValidationError({"sku": f"El SKU '{self.sku}' coincide con el SKU del producto maestro."})
+
+    def save(self, *args, **kwargs):
+        if self.sku:
+            self.sku = str(self.sku).strip()
+        if self.is_default and self.product_id:
+            ProductVariant.objects.filter(
+                product_id=self.product_id, is_default=True
+            ).exclude(pk=self.pk).update(is_default=False)
+        super().save(*args, **kwargs)
+
+    @property
+    def effective_price(self):
+        return self.price if self.price is not None else self.product.price
+
+    @property
+    def effective_compare_price(self):
+        if self.compare_price is not None:
+            return self.compare_price
+        if self.price is None:
+            return self.product.compare_price
+        return None
+
+    @property
+    def effective_cost_price(self):
+        return self.cost_price if self.cost_price is not None else self.product.cost_price
+
+    @property
+    def effective_weight(self):
+        return self.weight if self.weight is not None else self.product.weight
+
+    @property
+    def in_stock(self):
+        if not self.is_active:
+            return False
+        if self.product.product_type != Product.ProductType.STOCK:
+            return True
+        return self.stock > 0
+
+    def prices_by_currency(self, usd_to_clp=None, usd_to_ars=None):
+        """
+        Precios CLP/USD/ARS de la variante con herencia controlada:
+        - Si la variante define precio propio en la divisa, lo usa.
+        - Si la variante NO redefine `price` CLP, hereda `price_usd`/`price_ars` del maestro si existen.
+        - En otro caso convierte desde `effective_price` CLP con ROUND_HALF_UP.
+        """
+        from decimal import ROUND_HALF_UP
+
+        usd_to_clp = usd_to_clp or Decimal("950")
+        usd_to_ars = usd_to_ars or Decimal("1000")
+
+        clp = self.effective_price
+
+        if self.price_usd is not None:
+            usd = self.price_usd
+        elif self.price is None and self.product.price_usd is not None:
+            usd = self.product.price_usd
+        else:
+            usd = (clp / usd_to_clp).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP) if usd_to_clp else Decimal("0")
+
+        if self.price_ars is not None:
+            ars = self.price_ars
+        elif self.price is None and self.product.price_ars is not None:
+            ars = self.product.price_ars
+        else:
+            ars = (usd * usd_to_ars).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
+
+        return {
+            "CLP": clp,
+            "USD": usd,
+            "ARS": ars,
+        }
+
+
+class TechnicalAttributeDefinition(TimeStampedModel):
+    """
+    Definición maestra de un atributo técnico estructurado de audio pro (BF-44).
+    """
+    class DataType(models.TextChoices):
+        TEXT = "text", "Texto"
+        NUMBER = "number", "Entero"
+        DECIMAL = "decimal", "Decimal"
+        SELECT = "select", "Selección única"
+        MULTISELECT = "multiselect", "Selección múltiple"
+        BOOLEAN = "boolean", "Booleano"
+
+    key = models.SlugField(max_length=100, unique=True)
+    label = models.CharField(max_length=150)
+    data_type = models.CharField(max_length=20, choices=DataType.choices, default=DataType.TEXT)
+    unit = models.CharField(max_length=30, blank=True, default="")
+    options = models.JSONField(default=list, blank=True)
+    min_value = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    max_value = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    is_comparable = models.BooleanField(default=True)
+    is_filterable = models.BooleanField(default=False)
+    is_active = models.BooleanField(default=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Definición de atributo técnico"
+        verbose_name_plural = "Definiciones de atributos técnicos"
+        ordering = ["order", "label"]
+
+    def __str__(self):
+        return f"{self.label} ({self.key})"
+
+
+class CategoryTechnicalTemplate(TimeStampedModel):
+    """
+    Asociación de atributos técnicos por categoría sin imponer las mismas
+    especificaciones a todo el catálogo.
+    """
+    category = models.ForeignKey(
+        Category,
+        on_delete=models.CASCADE,
+        related_name="technical_templates",
+    )
+    attribute = models.ForeignKey(
+        TechnicalAttributeDefinition,
+        on_delete=models.CASCADE,
+        related_name="category_templates",
+    )
+    is_required = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        unique_together = ("category", "attribute")
+        verbose_name = "Plantilla técnica de categoría"
+        verbose_name_plural = "Plantillas técnicas de categoría"
+        ordering = ["order", "attribute__order"]
+
+    def __str__(self):
+        return f"{self.category.name} → {self.attribute.label}"
+
+
+class ProductTechnicalSpec(TimeStampedModel):
+    """
+    Valor técnico estructurado de un producto para un atributo dado (BF-44).
+    """
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name="technical_specs",
+    )
+    attribute = models.ForeignKey(
+        TechnicalAttributeDefinition,
+        on_delete=models.PROTECT,
+        related_name="product_values",
+    )
+    value_text = models.CharField(max_length=500, blank=True, default="")
+    value_number = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    value_json = models.JSONField(null=True, blank=True)
+    notes = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        unique_together = ("product", "attribute")
+        verbose_name = "Especificación técnica de producto"
+        verbose_name_plural = "Especificaciones técnicas de producto"
+        ordering = ["attribute__order", "attribute__label"]
+
+    def __str__(self):
+        return f"{self.product.name} · {self.attribute.label}: {self.display_value}"
+
+    @property
+    def display_value(self):
+        unit = (self.attribute.unit or "").strip()
+        val = (self.value_text or "").strip()
+        if not val:
+            return ""
+        if unit and self.attribute.data_type in ("number", "decimal"):
+            return f"{val} {unit}"
+        if unit and unit.lower() not in val.lower() and "hz" not in val.lower():
+            return f"{val} {unit}"
+        return val
+

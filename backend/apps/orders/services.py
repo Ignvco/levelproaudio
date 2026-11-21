@@ -16,27 +16,38 @@ def create_order_from_cart(cart, user, email, shipping_address):
         if not cart.is_active:
             raise InventoryError("El carrito ya fue procesado.")
         lines, demand = prepare_inventory([
-            {"product": str(item.product_id), "quantity": item.quantity}
+            {
+                "product": str(item.product_id),
+                "variant": str(item.variant_id) if item.variant_id else None,
+                "quantity": item.quantity,
+            }
             for item in cart.items.all()
         ])
+
+        def _line_price(line):
+            v = line.get("variant")
+            return v.effective_price if v is not None else line["product"].price
 
         order = Order.objects.create(
             user=user,
             email=email,
             shipping_address=shipping_address,
             status=OrderStatus.PENDING,
-            total=sum(line["product"].price * line["quantity"] for line in lines),
+            total=sum(_line_price(line) * line["quantity"] for line in lines),
             stock_deductions={str(pk): quantity for pk, quantity in demand.items()},
         )
 
         for item in lines:
-
+            variant = item.get("variant")
             OrderItem.objects.create(
                 order=order,
                 product=item["product"],
+                variant=variant,
                 product_name=item["product"].name,
-                price=item["product"].price,
-                quantity=item["quantity"]
+                variant_name=variant.name if variant else "",
+                variant_sku=variant.sku if variant else "",
+                price=_line_price(item),
+                quantity=item["quantity"],
             )
 
         deduct_inventory(demand)
