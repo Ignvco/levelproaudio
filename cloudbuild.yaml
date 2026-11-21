@@ -102,13 +102,60 @@ steps:
   - name: "gcr.io/cloud-builders/docker"
     id: "push-backend"
     waitFor: ["build-backend"]
-    args: ["push", "--all-tags", "${_REPO}/backend"]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        docker push "${_REPO}/backend:$COMMIT_SHA"
+        docker push "${_REPO}/backend:${_TAG}"
+        # Extraer digest inmutable de Artifact Registry / GCR
+        BACKEND_DIGEST=$$(docker inspect --format='{{index .RepoDigests 0}}' "${_REPO}/backend:$COMMIT_SHA" 2>/dev/null || echo "${_REPO}/backend:$COMMIT_SHA")
+        echo "[DIGEST] Backend immutable digest: $${BACKEND_DIGEST}"
+        echo "$${BACKEND_DIGEST}" > /workspace/backend_digest.txt
 
   # ── 4. Push Frontend ─────────────────────────────────────────
   - name: "gcr.io/cloud-builders/docker"
     id: "push-frontend"
     waitFor: ["build-frontend"]
-    args: ["push", "--all-tags", "${_REPO}/frontend"]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        docker push "${_REPO}/frontend:$COMMIT_SHA"
+        docker push "${_REPO}/frontend:${_TAG}"
+        FRONTEND_DIGEST=$$(docker inspect --format='{{index .RepoDigests 0}}' "${_REPO}/frontend:$COMMIT_SHA" 2>/dev/null || echo "${_REPO}/frontend:$COMMIT_SHA")
+        echo "[DIGEST] Frontend immutable digest: $${FRONTEND_DIGEST}"
+        echo "$${FRONTEND_DIGEST}" > /workspace/frontend_digest.txt
+
+  # ── 4.3. Concurrency & Out-of-Order Release Check ───────────
+  # Previene que un build retrasado o concurrente sobreescriba un release posterior.
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "verify-release-ordering"
+    waitFor: ["push-backend"]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        echo "[RELEASE_GUARD] Verificando orden de despliegue y prevención de regresión..."
+        ACTIVE_COMMIT=$$(gcloud run services describe "${_BACKEND_SERVICE}" \
+          --region="${_REGION}" \
+          --format='value(metadata.labels["commit-sha"])' 2>/dev/null || echo "")
+        if [ -n "$$ACTIVE_COMMIT" ] && [ "$$ACTIVE_COMMIT" != "$COMMIT_SHA" ]; then
+          echo "[RELEASE_GUARD] Commit en producción activa: $$ACTIVE_COMMIT"
+          echo "[RELEASE_GUARD] Commit en este pipeline:     $COMMIT_SHA"
+          if git merge-base --is-ancestor "$$ACTIVE_COMMIT" "$COMMIT_SHA" 2>/dev/null; then
+            echo "[RELEASE_GUARD] ✓ Avance válido hacia adelante (Fast-forward/descendant)."
+          else
+            echo "[RELEASE_GUARD] ⚠️ ALERTA: Despliegue fuera de orden detectado. El commit activo en producción ($$ACTIVE_COMMIT) no es ancestro del commit a desplegar ($COMMIT_SHA)."
+            echo "[RELEASE_GUARD] Abortando despliegue para prevenir regresión de código o migraciones."
+            exit 1
+          fi
+        else
+          echo "[RELEASE_GUARD] ✓ Servicio inicial o re-despliegue del mismo commit."
+        fi
 
   # ── 4.5. Run Database Migrations (Decoupled Cloud Run Job) ───
   # LEVELPRO OS V4.0 — GATE 1.3: DECOUPLED MIGRATION RUNNER
@@ -116,17 +163,17 @@ steps:
   #    correspondiente al release exacto que se desplegará antes de ejecutarlo.
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "update-migrator-job"
-    waitFor: ["push-backend"]
+    waitFor: ["verify-release-ordering"]
     entrypoint: bash
     args:
       - -c
       - |
         set -euo pipefail
-        IMAGE_URI="${_REPO}/backend:$COMMIT_SHA"
+        IMMUTABLE_DIGEST=$$(cat /workspace/backend_digest.txt)
         echo "[MIGRATOR] Verificando e inyectando imagen inmutable de release en ${_MIGRATOR_JOB}..."
-        echo "[MIGRATOR] Target image: $${IMAGE_URI}"
+        echo "[MIGRATOR] Target immutable digest: $${IMMUTABLE_DIGEST}"
         gcloud run jobs update "${_MIGRATOR_JOB}" \
-          --image="$${IMAGE_URI}" \
+          --image="$${IMMUTABLE_DIGEST}" \
           --region="${_REGION}"
   # 2. Ejecutar el Job con la imagen verificada y esperar su terminación exitosa.
   #    Si la migración falla, el deploy del backend se detiene inmediatamente.
@@ -147,54 +194,51 @@ steps:
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "deploy-backend"
     waitFor: ["run-migrations", "push-frontend"]
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - "${_BACKEND_SERVICE}"
-      - --image=${_REPO}/backend:$COMMIT_SHA
-      - --region=${_REGION}
-      - --platform=managed
-      - --allow-unauthenticated
-      - --port=8080
-      - --memory=512Mi
-      - --cpu=1
-      - --min-instances=1
-      - --max-instances=5
-      - --service-account=${_SA_EMAIL}
-      - --set-cloudsql-instances=${_SQL_INSTANCE}
-      - --set-env-vars=DJANGO_SETTINGS_MODULE=config.settings.production
-      - --set-env-vars=CLOUD_SQL_CONNECTION_NAME=${_SQL_INSTANCE}
-      # ── Config de pagos (no secreta) ──
-      - --set-env-vars=FRONTEND_URL=https://levelproaudio.com
-      - --set-env-vars=SITE_URL=https://levelproaudio.com
-      - --set-env-vars=BACKEND_URL=https://levelproaudio.com
-      - --set-env-vars=PAYPAL_MODE=live
-      - --set-env-vars=USD_CLP_RATE=950
-      - --update-secrets=DJANGO_SECRET_KEY=DJANGO_SECRET_KEY:latest
-      - --update-secrets=SECRET_KEY=DJANGO_SECRET_KEY:latest
-      - --update-secrets=DB_NAME=DB_NAME:latest
-      - --update-secrets=DB_USER=DB_USER:latest
-      - --update-secrets=DB_PASSWORD=DB_PASSWORD:latest
-      - --update-secrets=GCS_BUCKET_NAME=levelproaudio-gcs-bucket:latest
-      - --update-secrets=GCS_PROJECT_ID=levelproaudio-gcs-project:latest
-      - --update-secrets=DJANGO_ALLOWED_HOSTS=DJANGO_ALLOWED_HOSTS:latest
-      # ── Credenciales de pago (Secret Manager) ──
-      - --update-secrets=MP_CL_ACCESS_TOKEN=MP_CL_ACCESS_TOKEN:latest
-      - --update-secrets=MP_CL_PUBLIC_KEY=MP_CL_PUBLIC_KEY:latest
-      # Crear y dar acceso ANTES del push: docs/patches/03-webhooks.md.
-      - --update-secrets=MP_CL_WEBHOOK_SECRET=MP_CL_WEBHOOK_SECRET:latest
-      - --update-secrets=PAYPAL_CLIENT_ID=PAYPAL_CLIENT_ID:latest
-      - --update-secrets=PAYPAL_CLIENT_SECRET=PAYPAL_CLIENT_SECRET:latest
-      # Argentina opera con Ualá Bis (ARS) en lugar de MercadoPago AR.
-      - --update-secrets=UALA_USERNAME=UALA_USERNAME:latest
-      - --update-secrets=UALA_CLIENT_ID=UALA_CLIENT_ID:latest
-      - --update-secrets=UALA_CLIENT_SECRET=UALA_CLIENT_SECRET:latest
-      # UALA_WEBHOOK_SECRET es opcional (el webhook consulta el estado autoritativo a la API de Ualá)
-      # - --update-secrets=UALA_WEBHOOK_SECRET=UALA_WEBHOOK_SECRET:latest
-      # Resend (emails). Remitente de marca con dominio verificado.
-      - --set-env-vars=RESEND_FROM_EMAIL=LevelPro Audio <no-responder@levelproaudio.com>
-      - --update-secrets=RESEND_API_KEY=RESEND_API_KEY:latest
+      - -c
+      - |
+        set -euo pipefail
+        IMMUTABLE_DIGEST=$$(cat /workspace/backend_digest.txt)
+        echo "[DEPLOY] Desplegando backend con digest inmutable verificado: $${IMMUTABLE_DIGEST}"
+        gcloud run deploy "${_BACKEND_SERVICE}" \
+          --image="$${IMMUTABLE_DIGEST}" \
+          --region="${_REGION}" \
+          --platform=managed \
+          --allow-unauthenticated \
+          --set-labels="commit-sha=$COMMIT_SHA" \
+          --port=8080 \
+          --memory=512Mi \
+          --cpu=1 \
+          --min-instances=1 \
+          --max-instances=5 \
+          --service-account="${_SA_EMAIL}" \
+          --set-cloudsql-instances="${_SQL_INSTANCE}" \
+          --set-env-vars=DJANGO_SETTINGS_MODULE=config.settings.production \
+          --set-env-vars=CLOUD_SQL_CONNECTION_NAME="${_SQL_INSTANCE}" \
+          --set-env-vars=FRONTEND_URL=https://levelproaudio.com \
+          --set-env-vars=SITE_URL=https://levelproaudio.com \
+          --set-env-vars=BACKEND_URL=https://levelproaudio.com \
+          --set-env-vars=PAYPAL_MODE=live \
+          --set-env-vars=USD_CLP_RATE=950 \
+          --update-secrets=DJANGO_SECRET_KEY=DJANGO_SECRET_KEY:latest \
+          --update-secrets=SECRET_KEY=DJANGO_SECRET_KEY:latest \
+          --update-secrets=DB_NAME=DB_NAME:latest \
+          --update-secrets=DB_USER=DB_USER:latest \
+          --update-secrets=DB_PASSWORD=DB_PASSWORD:latest \
+          --update-secrets=GCS_BUCKET_NAME=levelproaudio-gcs-bucket:latest \
+          --update-secrets=GCS_PROJECT_ID=levelproaudio-gcs-project:latest \
+          --update-secrets=DJANGO_ALLOWED_HOSTS=DJANGO_ALLOWED_HOSTS:latest \
+          --update-secrets=MP_CL_ACCESS_TOKEN=MP_CL_ACCESS_TOKEN:latest \
+          --update-secrets=MP_CL_PUBLIC_KEY=MP_CL_PUBLIC_KEY:latest \
+          --update-secrets=MP_CL_WEBHOOK_SECRET=MP_CL_WEBHOOK_SECRET:latest \
+          --update-secrets=PAYPAL_CLIENT_ID=PAYPAL_CLIENT_ID:latest \
+          --update-secrets=PAYPAL_CLIENT_SECRET=PAYPAL_CLIENT_SECRET:latest \
+          --update-secrets=UALA_USERNAME=UALA_USERNAME:latest \
+          --update-secrets=UALA_CLIENT_ID=UALA_CLIENT_ID:latest \
+          --update-secrets=UALA_CLIENT_SECRET=UALA_CLIENT_SECRET:latest \
+          --set-env-vars="RESEND_FROM_EMAIL=LevelPro Audio <no-responder@levelproaudio.com>" \
+          --update-secrets=RESEND_API_KEY=RESEND_API_KEY:latest
 
   # ── 6. Deploy Frontend ───────────────────────────────────────
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"

@@ -18,20 +18,36 @@ logger = logging.getLogger("levelpro.audit")
 
 @receiver(post_save, sender=Payment)
 def update_order_status(sender, instance, **kwargs):
-    """Cuando un pago es aprobado, cambia el estado del pedido a pagado."""
+    """Cuando un pago es aprobado, reconcilia el estado del pedido a través de los contratos de negocio."""
     if instance.status == "approved":
-        order = instance.order
-        if order.status == "pending":
-            order.status = "paid"
-            order.save(update_fields=["status"])  # ← update_fields evita loops
+        from core.contracts.reconciliation import PaymentReconciliationContractService
+
+        try:
+            result = PaymentReconciliationContractService.reconcile_payment(instance.order, instance)
+        except Exception as exc:
+            logger.critical(
+                "AUDIT_ALERT_CRITICAL: Falló conciliación de pago para Orden #%s (Payment #%s): %s",
+                instance.order_id,
+                instance.id,
+                exc,
+                extra={
+                    "order_id": str(instance.order_id),
+                    "payment_id": str(instance.id),
+                    "signal": "update_order_status",
+                },
+                exc_info=True,
+            )
+            return
+
+        if result and result.is_fully_paid:
             try:
                 record_audit_event(
                     module="orders",
                     action="ORDER_STATUS_CHANGED",
                     event_category=CATEGORY_ORDER_STATUS,
                     resource_type="Order",
-                    resource_id=str(order.id),
-                    resource_repr=f"Orden #{order.id}",
+                    resource_id=str(instance.order_id),
+                    resource_repr=f"Orden #{instance.order_id}",
                     actor_type=ACTOR_SYSTEM,
                     previous_values={"status": "pending"},
                     new_values={"status": "paid"},
@@ -45,11 +61,11 @@ def update_order_status(sender, instance, **kwargs):
                 # Nunca silenciar con pass; garantiza trazabilidad y monitoreo operacional
                 logger.critical(
                     "AUDIT_ALERT_CRITICAL: Falló registro de auditoría en señal de pago para Orden #%s (Payment #%s): %s",
-                    order.id,
+                    instance.order_id,
                     instance.id,
                     exc,
                     extra={
-                        "order_id": str(order.id),
+                        "order_id": str(instance.order_id),
                         "payment_id": str(instance.id),
                         "signal": "update_order_status",
                     },

@@ -29,7 +29,6 @@ class DistributionCategory(TimeStampedModel):
     icon       = models.CharField(max_length=10, default="💰")
     order      = models.PositiveIntegerField(default=0)
     is_active  = models.BooleanField(default=True)
-    description = models.CharField(max_length=255, blank=True, default="", help_text="Descripción operativa de la categoría")
 
     class Meta:
         ordering = ["order"]

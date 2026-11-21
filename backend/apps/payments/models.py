@@ -89,6 +89,12 @@ class Payment(TimeStampedModel):
     def is_approved(self):
         return self.status == PaymentStatus.APPROVED
 
+    @property
+    def money(self):
+        """Contrato de moneda tipado y aislado para LevelPro OS V4.0."""
+        from core.contracts.money import Money
+        return Money(self.amount, self.currency)
+
 class PaymentMethodConfig(TimeStampedModel):
     """
     Configuración de un método de pago, editable desde el admin. Permite
