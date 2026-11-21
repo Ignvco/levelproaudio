@@ -269,11 +269,23 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     def get_bundle_items(self, obj):
         if obj.product_type != Product.ProductType.BUNDLE:
             return []
-        items = obj.bundle_components.select_related("component").all()
-        return [{
-            "quantity":  bi.quantity,
-            "product":   ProductListSerializer(bi.component, context=self.context).data,
-        } for bi in items]
+        items = obj.bundle_components.select_related("component", "variant").all()
+        result = []
+        for bi in items:
+            entry = {
+                "quantity": bi.quantity,
+                "product": ProductListSerializer(bi.component, context=self.context).data,
+                "variant": None,
+            }
+            if bi.variant_id:
+                entry["variant"] = {
+                    "id": str(bi.variant.id),
+                    "sku": bi.variant.sku,
+                    "name": bi.variant.name,
+                    "attributes": bi.variant.attributes or {},
+                }
+            result.append(entry)
+        return result
 
     def get_is_low_stock(self, obj):
         return obj.product_type == Product.ProductType.STOCK and 0 < obj.stock <= obj.stock_min

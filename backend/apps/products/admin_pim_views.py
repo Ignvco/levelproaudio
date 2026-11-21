@@ -83,6 +83,7 @@ from core.audit.constants import (
 
 class AdminProductVariantSerializer(SensitiveDataSerializerMixin, serializers.ModelSerializer):
     effective_price = serializers.DecimalField(max_digits=12, decimal_places=2, read_only=True)
+    prices = serializers.SerializerMethodField()
     in_stock = serializers.BooleanField(read_only=True)
 
     class Meta:
@@ -90,11 +91,17 @@ class AdminProductVariantSerializer(SensitiveDataSerializerMixin, serializers.Mo
         fields = [
             "id", "product", "sku", "barcode", "name", "attributes",
             "price", "effective_price", "compare_price", "price_usd", "price_ars",
-            "cost_price", "stock", "stock_min", "weight", "image",
+            "prices", "cost_price", "stock", "stock_min", "weight", "image",
             "is_active", "is_default", "in_stock", "order",
             "created_at", "updated_at",
         ]
         read_only_fields = ["id", "product", "created_at", "updated_at"]
+
+    def get_prices(self, obj):
+        from apps.products.serializers import _get_exchange_rates
+        rates = _get_exchange_rates(self.context)
+        p = obj.prices_by_currency(rates["usd_to_clp"], rates["usd_to_ars"])
+        return {k: str(v) for k, v in p.items()}
 
 
 def _validate_variant_write_permissions(user, data):
@@ -197,20 +204,34 @@ def admin_product_variant_detail(request, product_id, variant_id):
         vid = str(variant.id)
         vsku = variant.sku
         vname = f"{variant.product.name} — {variant.name}"
-        variant.delete()
+        before_active = variant.is_active
+        variant.is_active = False
+        variant.is_default = False
+        variant.save(update_fields=["is_active", "is_default", "updated_at"])
         record_audit_event(
             module=MODULE_CATALOG,
-            action="PRODUCT_VARIANT_DELETED",
+            action="PRODUCT_VARIANT_DEACTIVATED",
             event_category=CATEGORY_DELETION,
             resource_type="ProductVariant",
             resource_id=vid,
             resource_repr=vname,
-            previous_values={"sku": vsku, "name": vname},
+            previous_values={"sku": vsku, "name": vname, "is_active": before_active},
+            new_values={"is_active": False},
+            changed_fields=["is_active"],
             actor=request.user,
             severity=SEVERITY_WARNING,
             mandatory=True,
         )
-        return Response(status=status.HTTP_204_NO_CONTENT)
+        return Response(
+            {
+                "id": vid,
+                "sku": vsku,
+                "is_active": False,
+                "deactivated": True,
+                "detail": "Variante desactivada lógicamente para preservar referencias y reservas.",
+            },
+            status=status.HTTP_200_OK,
+        )
 
     before_state = {
         "sku": variant.sku,

@@ -21,9 +21,9 @@ import re
 from decimal import Decimal, InvalidOperation
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.utils.text import slugify
-from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
+from django.core.exceptions import PermissionDenied as DjangoPermissionDenied, ValidationError as DjangoValidationError
 
 from apps.products.models import (
     Product,
@@ -579,7 +579,22 @@ def _process_product_row(row_idx, row_dict, spec_inputs, attr_defs, sku, existin
                 cand = f"{base_slug}-{counter}"
                 counter += 1
             target.slug = cand
-        target.save()
+        try:
+            with transaction.atomic():
+                if not is_new:
+                    locked = Product.objects.select_for_update().get(pk=target.pk)
+                    model_fields = [k for k in changes.keys() if not k.startswith("spec:")]
+                    for mf in model_fields:
+                        setattr(locked, mf, getattr(target, mf))
+                    if model_fields:
+                        locked.clean()
+                        locked.save(update_fields=model_fields + ["updated_at"])
+                    target = locked
+                else:
+                    target.clean()
+                    target.save()
+        except (IntegrityError, DjangoValidationError) as exc:
+            raise ValueError(f"Error de integridad/SKU al guardar producto '{sku or target.name}': {exc}") from exc
         if target.sku:
             existing_products[target.sku] = target
         for adef, val_tuple in validated_specs:
@@ -717,7 +732,25 @@ def _process_variant_row(row_idx, row_dict, sku, parent_sku, existing_variants, 
         }
 
     if not dry_run:
-        target.save()
+        try:
+            with transaction.atomic():
+                if not is_new:
+                    locked = ProductVariant.objects.select_for_update().get(pk=target.pk)
+                    model_fields = [
+                        ("name" if k == "variant_name" else k)
+                        for k in changes.keys()
+                    ]
+                    for mf in model_fields:
+                        setattr(locked, mf, getattr(target, mf))
+                    if model_fields:
+                        locked.clean()
+                        locked.save(update_fields=model_fields + ["updated_at"])
+                    target = locked
+                else:
+                    target.clean()
+                    target.save()
+        except (IntegrityError, DjangoValidationError) as exc:
+            raise ValueError(f"Error de integridad/SKU al guardar variante '{sku}': {exc}") from exc
         existing_variants[target.sku] = target
 
     return {

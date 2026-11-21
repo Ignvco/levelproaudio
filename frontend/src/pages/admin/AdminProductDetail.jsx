@@ -220,14 +220,14 @@ export default function AdminProductDetail() {
   }
 
   const handleDeleteVariant = async (variantId) => {
-    if (!window.confirm("¿Eliminar esta variante?")) return
+    if (!window.confirm("¿Desactivar esta variante? Se conservarán sus referencias históricas y reservas.")) return
     try {
       await deleteAdminProductVariant(id, variantId)
       refetchVariants()
       refetch()
-      showToast("Variante eliminada")
+      showToast("Variante desactivada")
     } catch {
-      showToast("No se pudo eliminar la variante", "error")
+      showToast("No se pudo desactivar la variante", "error")
     }
   }
 
@@ -345,7 +345,11 @@ export default function AdminProductDetail() {
               </div>
               <div>
                 <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--admin-text-secondary)" }}>Precio USD (opcional)</label>
-                <input type="number" step="0.01" value={variantForm.price_usd} onChange={e => setVariantForm(f => ({ ...f, price_usd: e.target.value }))} style={bentoInput} />
+                <input data-testid="variant-price-usd-input" type="number" step="0.01" value={variantForm.price_usd} onChange={e => setVariantForm(f => ({ ...f, price_usd: e.target.value }))} placeholder={product.price_usd != null ? String(product.price_usd) : ""} style={bentoInput} />
+              </div>
+              <div>
+                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--admin-text-secondary)" }}>Precio ARS (opcional)</label>
+                <input data-testid="variant-price-ars-input" type="number" step="1" value={variantForm.price_ars} onChange={e => setVariantForm(f => ({ ...f, price_ars: e.target.value }))} placeholder={product.price_ars != null ? String(product.price_ars) : ""} style={bentoInput} />
               </div>
               <div>
                 <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--admin-text-secondary)" }}>Stock *</label>
@@ -386,11 +390,13 @@ export default function AdminProductDetail() {
                     display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px",
                   }}>
                     <div>
-                      <p style={{ fontSize: "13.5px", fontWeight: 700, color: "#F8FAFC" }}>
-                        {v.name} {v.is_default && <StatusBadge tone="success">Default</StatusBadge>}
+                      <p style={{ fontSize: "13.5px", fontWeight: 700, color: "#F8FAFC", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                        {v.name}
+                        {v.is_default && <StatusBadge tone="success">Default</StatusBadge>}
+                        {!v.is_active && <StatusBadge tone="danger">Inactiva</StatusBadge>}
                       </p>
                       <p style={{ fontSize: "11.5px", fontFamily: "var(--font-mono)", color: "#94A3B8", marginTop: "3px" }}>
-                        SKU: {v.sku} · {formatCurrency(v.effective_price, "CLP")} · Stock: {v.stock}
+                        SKU: {v.sku} · {formatCurrency(v.prices?.CLP ?? v.effective_price, "CLP")} · {formatCurrency(v.prices?.USD ?? v.price_usd, "USD")} · {formatCurrency(v.prices?.ARS ?? v.price_ars, "ARS")} · Stock: {v.stock}
                       </p>
                     </div>
                     <div style={{ display: "flex", gap: "6px" }}>

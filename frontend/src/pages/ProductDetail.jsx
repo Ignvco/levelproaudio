@@ -14,7 +14,7 @@ import { useCompareStore } from "../store/compareStore"
 import { useScrollReveal } from "../hooks/useScrollReveal"
 import { mediaUrl } from "../utils/mediaUrl"
 import { showToast } from "../utils/toast"
-import ProductCard from "../components/product/ProductCard"
+import { resolveEffectiveSpecs } from "../utils/variantSpecs"
 import { RichText } from "../components/ui/RichText"
 import Seo from "../components/Seo"
 import Button from "../components/ui/Button"
@@ -443,7 +443,10 @@ export default function ProductDetail() {
           </a>
 
           {/* Especificaciones Técnicas Profesionales (BF-44) */}
-          {product.technical_specs?.length > 0 && (
+          {(() => {
+            const effectiveSpecs = resolveEffectiveSpecs(product.technical_specs, selectedVariant)
+            if (effectiveSpecs.length === 0) return null
+            return (
             <div data-testid="product-technical-specs" style={{ paddingTop: "22px", borderTop: "1px solid var(--border)" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginBottom: "14px" }}>
                 <p style={{ ...eyebrowSt, display: "inline-flex", alignItems: "center", gap: "8px" }}>
@@ -475,8 +478,8 @@ export default function ProductDetail() {
                 </button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "10px" }}>
-                {product.technical_specs.map(spec => (
-                  <div key={spec.id} style={{
+                {effectiveSpecs.map(spec => (
+                  <div key={spec.id || spec.key} data-testid={`spec-item-${spec.key}`} style={{
                     padding: "12px 14px", borderRadius: "14px",
                     background: "#121212", border: "1px solid rgba(255,255,255,0.06)",
                   }}>
@@ -490,7 +493,8 @@ export default function ProductDetail() {
                 ))}
               </div>
             </div>
-          )}
+            )
+          })()}
 
           {/* Descripción completa */}
           {product.description && (

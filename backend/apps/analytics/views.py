@@ -517,8 +517,9 @@ class AdminProductViewSet(viewsets.ModelViewSet):
             if field in data:
                 val = data[field]
                 # SKU vacío → None (respeta UNIQUE)
-                if field == "sku" and val == "":
-                    val = None
+                if field == "sku":
+                    val = str(val).strip() if val is not None else ""
+                    val = val or None
                 setattr(product, field, val)
 
         # product_type: antes se guardaba como texto libre sin validar —
@@ -603,6 +604,7 @@ class AdminProductViewSet(viewsets.ModelViewSet):
             brand_id = data["brand"]
             product.brand_id = brand_id if brand_id else None
 
+        product.clean()
         product.save()
 
         # M2M — se asigna DESPUÉS de guardar (el producto necesita
@@ -613,9 +615,9 @@ class AdminProductViewSet(viewsets.ModelViewSet):
             product.related_products.set([i for i in ids if str(i) != str(product.id)])
 
         # Componentes del kit (solo para product_type=bundle). Payload:
-        # bundle_items = [{"product_id": "...", "quantity": 2}, ...]
+        # bundle_items = [{"product_id": "...", "variant_id": "...", "quantity": 2}, ...]
         if "bundle_items" in data:
-            from apps.products.models import BundleItem
+            from apps.products.models import BundleItem, ProductVariant
             items = data["bundle_items"] or []
             # Reemplazo completo: borro los actuales y recreo
             product.bundle_components.all().delete()
@@ -623,9 +625,26 @@ class AdminProductViewSet(viewsets.ModelViewSet):
                 comp_id = it.get("product_id") or it.get("product")
                 if not comp_id or str(comp_id) == str(product.id):
                     continue  # un kit no se contiene a sí mismo
+                var_id = it.get("variant_id") or it.get("variant") or None
+                if var_id:
+                    var_obj = ProductVariant.objects.filter(
+                        pk=var_id, product_id=comp_id, is_active=True
+                    ).first()
+                    if var_obj is None:
+                        raise AdminInputError(
+                            "La variante seleccionada para el componente del kit no existe, está inactiva o no pertenece al producto."
+                        )
+                elif ProductVariant.objects.filter(product_id=comp_id, is_active=True).exists():
+                    raise AdminInputError(
+                        "El producto componente posee variantes activas; debe indicar explícitamente 'variant_id'."
+                    )
                 qty = int(it.get("quantity") or 1)
                 BundleItem.objects.create(
-                    bundle=product, component_id=comp_id, quantity=max(1, qty))
+                    bundle=product,
+                    component_id=comp_id,
+                    variant_id=var_id,
+                    quantity=max(1, qty),
+                )
 
         return product
 
@@ -754,11 +773,49 @@ class AdminProductViewSet(viewsets.ModelViewSet):
 
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
-        product = self.get_object()
+        from apps.orders.models import OrderItem, B2BQuoteItem
+        from apps.products.models import BundleItem
+
+        product = Product.objects.select_for_update().get(pk=self.get_object().pk)
         pid = str(product.id)
         pname = product.name
         psku = product.sku
         pprice = str(product.price)
+
+        has_protected_refs = (
+            product.variants.exists()
+            or OrderItem.objects.filter(Q(product=product) | Q(variant__product=product)).exists()
+            or B2BQuoteItem.objects.filter(Q(product=product) | Q(variant__product=product)).exists()
+            or BundleItem.objects.filter(Q(bundle=product) | Q(component=product)).exists()
+        )
+        if has_protected_refs:
+            product.is_active = False
+            product.save(update_fields=["is_active", "updated_at"])
+            product.variants.filter(is_active=True).update(is_active=False, is_default=False)
+            record_audit_event(
+                module=MODULE_CATALOG,
+                action="PRODUCT_DEACTIVATED",
+                event_category=CATEGORY_DELETION,
+                resource_type="Product",
+                resource_id=pid,
+                resource_repr=pname,
+                previous_values={"name": pname, "sku": psku, "is_active": True},
+                new_values={"is_active": False},
+                changed_fields=["is_active"],
+                actor=request.user,
+                severity=SEVERITY_WARNING,
+                mandatory=True,
+            )
+            return Response(
+                {
+                    "id": pid,
+                    "is_active": False,
+                    "deactivated": True,
+                    "detail": "El producto posee variantes, órdenes, cotizaciones o kits asociados; se desactivó lógicamente para preservar referencias y reservas.",
+                },
+                status=status.HTTP_200_OK,
+            )
+
         res = super().destroy(request, *args, **kwargs)
         record_audit_event(
             module=MODULE_CATALOG,

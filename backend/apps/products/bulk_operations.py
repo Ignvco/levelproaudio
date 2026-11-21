@@ -395,7 +395,8 @@ def apply_bulk_update(user, payload: dict, idempotency_key: str = "") -> dict:
                         with transaction.atomic():
                             for k, v in updates.items():
                                 setattr(obj, k, v)
-                            obj.save()
+                            if updates:
+                                obj.save(update_fields=list(updates.keys()) + ["updated_at"])
                             applied.append(preview_item)
                     except Exception as exc:
                         failed.append({
@@ -406,7 +407,8 @@ def apply_bulk_update(user, payload: dict, idempotency_key: str = "") -> dict:
                 else:
                     for k, v in updates.items():
                         setattr(obj, k, v)
-                    obj.save()
+                    if updates:
+                        obj.save(update_fields=list(updates.keys()) + ["updated_at"])
                     applied.append(preview_item)
 
             if atomic_mode == "all_or_nothing" and failed:

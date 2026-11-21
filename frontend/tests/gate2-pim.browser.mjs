@@ -193,6 +193,15 @@ test("Gate 2 PIM Browser E2E: variantes en tienda, edición masiva, ficha PIM e 
     const skuText = await page.getByTestId("product-detail-sku").textContent()
     assert.match(skuText, /DT770-80/)
     await page.getByTestId("product-technical-specs").waitFor()
+    const imp80 = await page.getByTestId("spec-item-impedance_ohm").textContent()
+    assert.match(imp80, /80\s*Ω/)
+    await page.getByTestId("variant-option-DT770-250").click()
+    const imp250 = await page.getByTestId("spec-item-impedance_ohm").textContent()
+    assert.match(imp250, /250\s*Ω/)
+    assert.doesNotMatch(imp250, /80\s*Ω/)
+    const freqText = await page.getByTestId("spec-item-frequency_response").textContent()
+    assert.match(freqText, /5 Hz – 35 kHz/)
+    await page.getByTestId("variant-option-DT770-80").click()
     await page.screenshot({ path: path.join(ARTIFACT_DIR, "gate2-01-storefront-variants-specs.png"), fullPage: false })
 
     // 2. Admin Productos + Bulk Edit Modal
@@ -204,9 +213,10 @@ test("Gate 2 PIM Browser E2E: variantes en tienda, edición masiva, ficha PIM e 
     await page.getByTestId("bulk-preview-table").waitFor()
     await page.screenshot({ path: path.join(ARTIFACT_DIR, "gate2-02-admin-bulk-edit-preview.png"), fullPage: false })
 
-    // 3. Admin Ficha PIM (Variantes + Specs)
+    // 3. Admin Ficha PIM (Variantes + Specs + ARS)
     await page.goto(`${baseURL}/admin/products/${SAMPLE_PRODUCT.id}`, { waitUntil: "domcontentloaded" })
     await page.getByTestId("variant-row-DT770-250").waitFor({ timeout: 15000 })
+    await page.getByTestId("variant-price-ars-input").waitFor()
     await page.screenshot({ path: path.join(ARTIFACT_DIR, "gate2-03-admin-pim-variants.png"), fullPage: false })
 
     await page.getByTestId("pim-tab-specs").click()

@@ -80,23 +80,26 @@ def prepare_inventory(items_data):
             raise InventoryError("Cantidad de producto fuera de rango.")
 
     # Descubrir IDs antes de bloquear evita tomar primero un kit y luego sus
-    # componentes en un orden diferente al de otra compra.
-    component_ids = set(
-        BundleItem.objects.filter(bundle_id__in=product_ids)
-        .values_list("component_id", flat=True)
+    # componentes/variantes en un orden diferente al de otra compra.
+    bundle_items_list = list(
+        BundleItem.objects.filter(bundle_id__in=product_ids).order_by("pk")
     )
+    component_ids = {item.component_id for item in bundle_items_list}
+    bundle_variant_ids = {item.variant_id for item in bundle_items_list if item.variant_id is not None}
+
     products = _lock_products(product_ids | component_ids)
-    variants = _lock_variants(variant_ids)
+    variants = _lock_variants(variant_ids | bundle_variant_ids)
 
     components = {}
-    for item in BundleItem.objects.filter(bundle_id__in=product_ids).order_by("pk"):
+    for item in bundle_items_list:
         if item.component_id not in products:
             raise InventoryError("El kit cambió durante la compra. Actualiza e intenta nuevamente.")
         components.setdefault(item.bundle_id, []).append(item)
 
-    # Detectar qué productos tienen variantes activas registradas
+    # Detectar qué productos (directos o componentes de bundle) tienen variantes activas registradas
+    all_checked_product_ids = product_ids | component_ids
     products_with_variants = set(
-        ProductVariant.objects.filter(product_id__in=product_ids, is_active=True)
+        ProductVariant.objects.filter(product_id__in=all_checked_product_ids, is_active=True)
         .values_list("product_id", flat=True)
     )
 
@@ -123,14 +126,31 @@ def prepare_inventory(items_data):
                 raise InventoryError(f"El kit {product.name} no tiene componentes configurados.")
             for part in parts:
                 component = products[part.component_id]
+                if not component.is_active:
+                    raise InventoryError(f"El componente {component.name} del kit {product.name} ya no está disponible.")
                 if component.product_type == Product.ProductType.BUNDLE:
                     raise InventoryError("Los kits no pueden contener otros kits.")
                 if part.quantity < 1:
                     raise InventoryError("El kit tiene una cantidad de componentes inválida.")
-                if component.product_type == Product.ProductType.STOCK:
-                    demand[component.pk] += part.quantity * quantity
-                elif component.product_type not in (Product.ProductType.PREORDER, Product.ProductType.ON_DEMAND):
-                    raise InventoryError("El kit tiene un tipo de componente inválido.")
+                if part.variant_id is not None:
+                    comp_variant = variants.get(part.variant_id)
+                    if comp_variant is None or not comp_variant.is_active or comp_variant.product_id != component.pk:
+                        raise InventoryError(
+                            f"La variante configurada para {component.name} en el kit {product.name} no está disponible."
+                        )
+                    if component.product_type == Product.ProductType.STOCK:
+                        demand[f"variant:{comp_variant.pk}"] += part.quantity * quantity
+                    elif component.product_type not in (Product.ProductType.PREORDER, Product.ProductType.ON_DEMAND):
+                        raise InventoryError("El kit tiene un tipo de componente inválido.")
+                else:
+                    if component.pk in products_with_variants:
+                        raise InventoryError(
+                            f"El kit {product.name} requiere una variante explícita para {component.name}."
+                        )
+                    if component.product_type == Product.ProductType.STOCK:
+                        demand[component.pk] += part.quantity * quantity
+                    elif component.product_type not in (Product.ProductType.PREORDER, Product.ProductType.ON_DEMAND):
+                        raise InventoryError("El kit tiene un tipo de componente inválido.")
         elif product.product_type == Product.ProductType.STOCK:
             if variant is not None:
                 demand[f"variant:{variant.pk}"] += quantity
@@ -190,9 +210,12 @@ def restore_inventory(order):
             if product is None:
                 continue
             if product.product_type == Product.ProductType.BUNDLE:
-                for part in product.bundle_components.select_related("component").all():
+                for part in product.bundle_components.select_related("component", "variant").all():
                     if part.component.product_type == Product.ProductType.STOCK:
-                        product_demand[part.component_id] += part.quantity * item.quantity
+                        if part.variant_id:
+                            variant_demand[part.variant_id] += part.quantity * item.quantity
+                        else:
+                            product_demand[part.component_id] += part.quantity * item.quantity
             elif product.product_type == Product.ProductType.STOCK:
                 product_demand[product.pk] += item.quantity
 

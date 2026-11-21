@@ -1,8 +1,9 @@
 # apps/products/models.py
 
 from decimal import Decimal
-from django.db import models
+from django.db import models, transaction
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.utils.text import slugify
 from core.models import TimeStampedModel
@@ -178,13 +179,40 @@ class Product(TimeStampedModel):
     def __str__(self):
         return self.name
 
+    def clean(self):
+        super().clean()
+        if self.sku is not None:
+            cleaned = str(self.sku).strip()
+            self.sku = cleaned or None
+        if self.sku:
+            if Product.objects.filter(sku=self.sku).exclude(pk=self.pk).exists():
+                raise ValidationError({"sku": f"El SKU '{self.sku}' ya pertenece a otro producto."})
+            if ProductVariant.objects.filter(sku=self.sku).exists():
+                raise ValidationError({"sku": f"El SKU '{self.sku}' ya pertenece a una variante de producto."})
+            if SkuRegistry.objects.filter(sku=self.sku).exclude(product_id=self.pk).exists():
+                raise ValidationError({"sku": f"El SKU '{self.sku}' ya está registrado en el catálogo."})
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = slugify(self.name)
         # Convierte SKU vacío a None para respetar UNIQUE
-        if self.sku == "":
-            self.sku = None
-        super().save(*args, **kwargs)
+        if self.sku is not None:
+            self.sku = str(self.sku).strip() or None
+
+        update_fields = kwargs.get("update_fields")
+        sync_sku = self.pk is None or update_fields is None or "sku" in update_fields
+        if not sync_sku:
+            super().save(*args, **kwargs)
+            return
+
+        with transaction.atomic():
+            super().save(*args, **kwargs)
+            if self.sku:
+                updated = SkuRegistry.objects.filter(product=self).update(sku=self.sku)
+                if not updated:
+                    SkuRegistry.objects.create(sku=self.sku, product=self)
+            else:
+                SkuRegistry.objects.filter(product=self).delete()
 
     
 
@@ -239,13 +267,21 @@ class Product(TimeStampedModel):
         - Si es producto simple legacy: self.stock.
         """
         if self.product_type == self.ProductType.BUNDLE:
-            items = self.bundle_components.select_related("component").all()
+            items = self.bundle_components.select_related("component", "variant").all()
             if not items:
                 return 0
             counts = []
             for it in items:
-                if it.component.product_type == self.ProductType.STOCK:
-                    counts.append(it.component.stock // max(1, it.quantity))
+                if it.variant_id:
+                    if not it.variant.is_active:
+                        return 0
+                    if it.component.product_type == self.ProductType.STOCK:
+                        counts.append(it.variant.stock // max(1, it.quantity))
+                else:
+                    if it.component.variants.filter(is_active=True).exists():
+                        return 0
+                    if it.component.product_type == self.ProductType.STOCK:
+                        counts.append(it.component.stock // max(1, it.quantity))
             return min(counts) if counts else 99
         active_variants = list(self.variants.filter(is_active=True).values_list("stock", flat=True))
         if active_variants:
@@ -256,15 +292,22 @@ class Product(TimeStampedModel):
     def in_stock(self):
         if self.product_type == self.ProductType.BUNDLE:
             # Un kit está disponible solo si TODOS sus componentes tienen
-            # stock suficiente para la cantidad que el kit requiere.
-            items = self.bundle_components.select_related("component").all()
+            # stock suficiente (y variante explícita si el componente usa variantes).
+            items = self.bundle_components.select_related("component", "variant").all()
             if not items:
                 return False
-            return all(
-                it.component.product_type != self.ProductType.STOCK
-                or it.component.stock >= it.quantity
-                for it in items
-            )
+            for it in items:
+                if it.variant_id:
+                    if not it.variant.is_active:
+                        return False
+                    if it.component.product_type == self.ProductType.STOCK and it.variant.stock < it.quantity:
+                        return False
+                else:
+                    if it.component.variants.filter(is_active=True).exists():
+                        return False
+                    if it.component.product_type == self.ProductType.STOCK and it.component.stock < it.quantity:
+                        return False
+            return True
         active_variants = self.variants.filter(is_active=True)
         if active_variants.exists():
             if self.product_type != self.ProductType.STOCK:
@@ -275,8 +318,8 @@ class Product(TimeStampedModel):
 
 class BundleItem(TimeStampedModel):
     """
-    Un componente de un kit/combo, con su cantidad. Ej: el kit "Set de
-    grabación" lleva 1 micrófono + 2 cables + 1 pedestal.
+    Un componente de un kit/combo, con su cantidad y variante explícita opcional.
+    Ej: el kit "Set de grabación" lleva 1 micrófono + 2 cables (variante XLR 3m).
     """
     bundle = models.ForeignKey(
         Product, on_delete=models.CASCADE, related_name="bundle_components",
@@ -286,15 +329,45 @@ class BundleItem(TimeStampedModel):
         Product, on_delete=models.CASCADE, related_name="component_of",
         verbose_name="Producto componente",
     )
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="in_bundle_items",
+        verbose_name="Variante específica del componente",
+    )
     quantity = models.PositiveIntegerField(default=1)
 
     class Meta:
-        unique_together = ("bundle", "component")
+        constraints = [
+            models.UniqueConstraint(
+                fields=["bundle", "component"],
+                condition=models.Q(variant__isnull=True),
+                name="uniq_bundle_component_no_variant",
+            ),
+            models.UniqueConstraint(
+                fields=["bundle", "component", "variant"],
+                condition=models.Q(variant__isnull=False),
+                name="uniq_bundle_component_variant",
+            ),
+        ]
         verbose_name = "Componente de kit"
         verbose_name_plural = "Componentes de kit"
 
+    def clean(self):
+        super().clean()
+        if self.variant_id and self.variant.product_id != self.component_id:
+            raise ValidationError({"variant": "La variante seleccionada no pertenece al producto componente."})
+        if not self.variant_id and self.component_id:
+            if ProductVariant.objects.filter(product_id=self.component_id, is_active=True).exists():
+                raise ValidationError({
+                    "variant": f"El componente '{self.component.name}' posee variantes activas; debe seleccionar una variante explícita."
+                })
+
     def __str__(self):
-        return f"{self.bundle.name}: {self.quantity}× {self.component.name}"
+        var_label = f" ({self.variant.name})" if self.variant_id else ""
+        return f"{self.bundle.name}: {self.quantity}× {self.component.name}{var_label}"
 
 
 class ProductImage(TimeStampedModel):
@@ -515,27 +588,34 @@ class ProductVariant(TimeStampedModel):
         return f"{self.product.name} — {self.name} ({self.sku})"
 
     def clean(self):
-        from django.core.exceptions import ValidationError
-
         super().clean()
         if not self.sku or not str(self.sku).strip():
             raise ValidationError({"sku": "Toda variante requiere un SKU único."})
         self.sku = str(self.sku).strip()
 
-        # Prevenir colisión global de SKU con productos maestros
-        if Product.objects.filter(sku=self.sku).exclude(pk=self.product_id).exists():
+        # Prevenir colisión global de SKU con productos maestros y registro maestro
+        if ProductVariant.objects.filter(sku=self.sku).exclude(pk=self.pk).exists():
+            raise ValidationError({"sku": f"El SKU '{self.sku}' ya pertenece a otra variante."})
+        if Product.objects.filter(sku=self.sku).exists():
             raise ValidationError({"sku": f"El SKU '{self.sku}' ya pertenece a un producto maestro."})
-        if Product.objects.filter(pk=self.product_id, sku=self.sku).exists():
-            raise ValidationError({"sku": f"El SKU '{self.sku}' coincide con el SKU del producto maestro."})
+        if SkuRegistry.objects.filter(sku=self.sku).exclude(variant_id=self.pk).exists():
+            raise ValidationError({"sku": f"El SKU '{self.sku}' ya está registrado en el catálogo."})
 
     def save(self, *args, **kwargs):
         if self.sku:
             self.sku = str(self.sku).strip()
-        if self.is_default and self.product_id:
-            ProductVariant.objects.filter(
-                product_id=self.product_id, is_default=True
-            ).exclude(pk=self.pk).update(is_default=False)
-        super().save(*args, **kwargs)
+        update_fields = kwargs.get("update_fields")
+        sync_sku = self.pk is None or update_fields is None or "sku" in update_fields
+        with transaction.atomic():
+            if self.is_default and self.product_id:
+                ProductVariant.objects.filter(
+                    product_id=self.product_id, is_default=True
+                ).exclude(pk=self.pk).update(is_default=False)
+            super().save(*args, **kwargs)
+            if sync_sku and self.sku:
+                updated = SkuRegistry.objects.filter(variant=self).update(sku=self.sku)
+                if not updated:
+                    SkuRegistry.objects.create(sku=self.sku, variant=self)
 
     @property
     def effective_price(self):
@@ -700,4 +780,45 @@ class ProductTechnicalSpec(TimeStampedModel):
         if unit and unit.lower() not in val.lower() and "hz" not in val.lower():
             return f"{val} {unit}"
         return val
+
+
+class SkuRegistry(TimeStampedModel):
+    """
+    Registro maestro único de SKUs a nivel de catálogo (Product + ProductVariant).
+    Garantiza unicidad transaccional global en PostgreSQL mediante índice UNIQUE
+    sobre `sku`, evitando colisiones en escrituras concurrentes y preparando
+    la identidad comercial para relaciones de proveedores e inventario (Gate 3+).
+    """
+    sku = models.CharField(max_length=100, unique=True)
+    product = models.OneToOneField(
+        Product,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="sku_registry",
+    )
+    variant = models.OneToOneField(
+        ProductVariant,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="sku_registry",
+    )
+
+    class Meta:
+        verbose_name = "Registro global de SKU"
+        verbose_name_plural = "Registro global de SKUs"
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    (models.Q(product__isnull=False) & models.Q(variant__isnull=True))
+                    | (models.Q(product__isnull=True) & models.Q(variant__isnull=False))
+                ),
+                name="sku_registry_exactly_one_owner",
+            ),
+        ]
+
+    def __str__(self):
+        owner = self.product or self.variant
+        return f"{self.sku} → {owner}"
 
