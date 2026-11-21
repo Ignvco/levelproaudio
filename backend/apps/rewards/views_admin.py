@@ -21,7 +21,17 @@ from rest_framework.response import Response
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 
-from core.admin_permissions import IsAdminOrStaff
+from core.admin_permissions import IsAdminOrStaff, rbac_endpoint
+from core.rbac.constants import (
+    MODULE_MARKETING,
+    MODULE_ORDERS,
+    PERM_EXPORT_DATA,
+    PERM_VIEW_FINANCES,
+    ROLE_SUPER_ADMIN,
+    ROLE_MANAGEMENT,
+    ROLE_MARKETING,
+)
+from core.rbac.permissions import is_effective_super_admin, user_has_capability, user_has_module_access
 from apps.orders.models import Order, OrderItem
 
 from .models      import Campaign, RewardProduct, Entry, Winner, CampaignStatus
@@ -32,6 +42,17 @@ from .serializers import (
     AdminEntrySerializer,
     AdminWinnerSerializer,
 )
+from core.audit.services import record_audit_event
+from core.audit.sanitizer import sanitize_csv_cell
+from core.audit.constants import (
+    CATEGORY_CREATION,
+    CATEGORY_MODIFICATION,
+    CATEGORY_DELETION,
+    CATEGORY_EXPORT,
+    SEVERITY_INFO,
+    SEVERITY_WARNING,
+    RESULT_SUCCESS,
+)
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -40,6 +61,16 @@ from .serializers import (
 
 class AdminCampaignViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_MARKETING
+    rbac_allowed_roles_by_method = {
+        "create": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "partial_update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "duplicate": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "finish": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "draw": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+        "destroy": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+    }
     serializer_class   = AdminCampaignSerializer
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
@@ -50,6 +81,50 @@ class AdminCampaignViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Campaign.objects.all().order_by("-created_at")
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_CAMPAIGN_CREATED",
+            event_category=CATEGORY_CREATION,
+            resource_type="Campaign",
+            resource_id=str(instance.id),
+            resource_repr=f"Campaña {instance.name}",
+            actor=self.request.user,
+            new_values={"name": instance.name, "status": instance.status},
+            mandatory=True,
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_CAMPAIGN_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="Campaign",
+            resource_id=str(instance.id),
+            resource_repr=f"Campaña {instance.name}",
+            actor=self.request.user,
+            new_values={"name": instance.name, "status": instance.status},
+            mandatory=True,
+        )
+
+    def perform_destroy(self, instance):
+        cid = str(instance.id)
+        name = instance.name
+        instance.delete()
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_CAMPAIGN_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="Campaign",
+            resource_id=cid,
+            resource_repr=f"Campaña {name}",
+            actor=self.request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
+
     @action(detail=True, methods=["post"])
     def draw(self, request, pk=None):
         """POST /admin/rewards/campaigns/{id}/draw/ → sortea la campaña."""
@@ -58,6 +133,20 @@ class AdminCampaignViewSet(viewsets.ModelViewSet):
             winners = run_draw(campaign, request.user)
         except DrawError as e:
             return Response({"error": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_CAMPAIGN_DRAWN",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="Campaign",
+            resource_id=str(campaign.id),
+            resource_repr=f"Sorteo ejecutado en Campaña {campaign.name}",
+            actor=request.user,
+            severity=SEVERITY_WARNING,
+            metadata={"winners_count": len(winners)},
+            mandatory=True,
+        )
+
         return Response(
             {
                 "detail": f"Sorteo ejecutado. {len(winners)} ganador(es).",
@@ -89,6 +178,17 @@ class AdminCampaignViewSet(viewsets.ModelViewSet):
                 is_active            = rp.is_active,
             )
 
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_CAMPAIGN_DUPLICATED",
+            event_category=CATEGORY_CREATION,
+            resource_type="Campaign",
+            resource_id=str(original.id),
+            resource_repr=f"Campaña clonada: {original.name}",
+            actor=request.user,
+            mandatory=True,
+        )
+
         return Response(AdminCampaignSerializer(original).data,
                         status=status.HTTP_201_CREATED)
 
@@ -98,6 +198,19 @@ class AdminCampaignViewSet(viewsets.ModelViewSet):
         campaign = self.get_object()
         campaign.status = CampaignStatus.FINISHED
         campaign.save(update_fields=["status"])
+
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_CAMPAIGN_FINISHED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="Campaign",
+            resource_id=str(campaign.id),
+            resource_repr=f"Campaña finalizada: {campaign.name}",
+            actor=request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
+
         return Response({"status": campaign.status})
 
 
@@ -107,6 +220,13 @@ class AdminCampaignViewSet(viewsets.ModelViewSet):
 
 class AdminRewardProductViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_MARKETING
+    rbac_allowed_roles_by_method = {
+        "create": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "partial_update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "destroy": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+    }
     serializer_class   = AdminRewardProductSerializer
     parser_classes     = [JSONParser]
 
@@ -117,6 +237,48 @@ class AdminRewardProductViewSet(viewsets.ModelViewSet):
             qs = qs.filter(campaign_id=campaign_id)
         return qs
 
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_PRODUCT_CREATED",
+            event_category=CATEGORY_CREATION,
+            resource_type="RewardProduct",
+            resource_id=str(instance.id),
+            resource_repr=f"Producto Reward #{instance.id} (Campaña {instance.campaign.name})",
+            actor=self.request.user,
+            mandatory=True,
+        )
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_PRODUCT_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="RewardProduct",
+            resource_id=str(instance.id),
+            resource_repr=f"Producto Reward #{instance.id} (Campaña {instance.campaign.name})",
+            actor=self.request.user,
+            mandatory=True,
+        )
+
+    def perform_destroy(self, instance):
+        rpid = str(instance.id)
+        cname = instance.campaign.name
+        instance.delete()
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_PRODUCT_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="RewardProduct",
+            resource_id=rpid,
+            resource_repr=f"Producto Reward #{rpid} eliminado de {cname}",
+            actor=self.request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
+
 
 # ═══════════════════════════════════════════════════════════════
 # ENTRIES
@@ -124,6 +286,10 @@ class AdminRewardProductViewSet(viewsets.ModelViewSet):
 
 class AdminEntryViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_MARKETING
+    rbac_capability_by_method = {
+        "export_csv": PERM_EXPORT_DATA,
+    }
     serializer_class   = AdminEntrySerializer
     filter_backends    = [filters.SearchFilter, filters.OrderingFilter]
     search_fields      = ["unique_code", "user__email"]
@@ -160,14 +326,27 @@ class AdminEntryViewSet(viewsets.ReadOnlyModelViewSet):
                          "Orden", "Producto", "Fecha"])
         for e in qs.iterator(chunk_size=500):
             writer.writerow([
-                e.unique_code,
-                e.campaign.name,
-                f"{e.user.first_name} {e.user.last_name}".strip(),
-                e.user.email,
-                str(e.order.id)[:8].upper(),
-                e.product.name if e.product else "—",
-                e.created_at.strftime("%Y-%m-%d %H:%M"),
+                sanitize_csv_cell(e.unique_code),
+                sanitize_csv_cell(e.campaign.name),
+                sanitize_csv_cell(f"{e.user.first_name} {e.user.last_name}".strip()),
+                sanitize_csv_cell(e.user.email),
+                sanitize_csv_cell(str(e.order.id)[:8].upper()),
+                sanitize_csv_cell(e.product.name if e.product else "—"),
+                sanitize_csv_cell(e.created_at.strftime("%Y-%m-%d %H:%M")),
             ])
+
+        record_audit_event(
+            module="marketing",
+            action="SENSITIVE_DATA_EXPORTED",
+            event_category=CATEGORY_EXPORT,
+            resource_type="RewardEntries",
+            resource_id="participaciones.csv",
+            resource_repr="Exportación CSV de participaciones Rewards",
+            actor=request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
+
         return resp
 
 
@@ -177,6 +356,12 @@ class AdminEntryViewSet(viewsets.ReadOnlyModelViewSet):
 
 class AdminWinnerViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAdminOrStaff]
+    rbac_module        = MODULE_MARKETING
+    rbac_allowed_roles_by_method = {
+        "create": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "partial_update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+        "destroy": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+    }
     serializer_class   = AdminWinnerSerializer
     parser_classes     = [MultiPartParser, FormParser, JSONParser]
     http_method_names  = ["get", "patch", "delete", "head", "options"]
@@ -188,11 +373,25 @@ class AdminWinnerViewSet(viewsets.ModelViewSet):
             qs = qs.filter(campaign_id=campaign_id)
         return qs.order_by("campaign", "backup_position")
 
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        record_audit_event(
+            module="marketing",
+            action="REWARDS_WINNER_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="Winner",
+            resource_id=str(instance.id),
+            resource_repr=f"Ganador #{instance.id} (Campaña {instance.campaign.name})",
+            actor=self.request.user,
+            mandatory=True,
+        )
+
 
 # ═══════════════════════════════════════════════════════════════
 # DASHBOARD (KPIs Admin)
 # ═══════════════════════════════════════════════════════════════
 
+@rbac_endpoint(module=MODULE_MARKETING)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def rewards_dashboard(request):
@@ -252,14 +451,16 @@ def rewards_dashboard(request):
         remaining = current.draw_date - now
         current_data["seconds_remaining"] = max(0, int(remaining.total_seconds()))
 
+    can_see_finances = is_effective_super_admin(request.user) or user_has_capability(request.user, PERM_VIEW_FINANCES)
+
     return Response({
         "currency": currency,
-        "related_revenue_by_currency": related_revenue_by_currency,
+        "related_revenue_by_currency": related_revenue_by_currency if can_see_finances else None,
         "totals": {
             "campaigns":        total_campaigns,
             "entries":          total_entries,
             "participants":     total_participants,
-            "related_revenue":  float(related_revenue),
+            "related_revenue":  float(related_revenue) if can_see_finances else None,
         },
         "current_campaign": current_data,
         "recent_campaigns": [

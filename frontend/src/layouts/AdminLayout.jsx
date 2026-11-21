@@ -2,9 +2,10 @@
 // High-Fidelity Editorial Bento & Minimalist Fintech Design System (Inspired by Lumin)
 import { useState, useEffect, useRef } from "react"
 import { NavLink, Link, useNavigate, useLocation, Outlet } from "react-router-dom"
-import { useQuery } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useAuthStore } from "../store/authStore"
 import { getAdminDashboard } from "../api/admin.api"
+import { getMyPermissions } from "../api/rbac.api"
 import AdminSearch from "../components/admin/AdminSearch"
 import { useSiteSettings } from "../hooks/useSiteSettings"
 import logoImg from "../assets/logo.png"
@@ -12,48 +13,82 @@ import { formatCurrency } from "../utils/accountingCurrency"
 import {
   Search, Bell, Menu, X, ChevronDown, CheckCircle2,
   Clock, AlertTriangle, MessageSquare, ExternalLink, LogOut,
-  LayoutDashboard, ShoppingBag, Package, GraduationCap, Wrench, Gift, Wallet, Settings
+  LayoutDashboard, ShoppingBag, Package, GraduationCap, Wrench, Gift, Wallet, Settings, ShieldAlert
 } from "lucide-react"
 
 const clpN = (n, currency) => formatCurrency(n, currency)
 
-// Mapa de navegación agrupado
+const ROUTE_MODULE_RULES = [
+  { exact: true, path: "/admin", module: "dashboard", label: "Dashboard Ejecutivo" },
+  { prefix: "/admin/orders", module: "orders", label: "Órdenes y Ventas" },
+  { prefix: "/admin/b2b", module: "orders", label: "Cotizaciones B2B" },
+  { prefix: "/admin/special-orders", module: "orders", label: "Solicitudes Bajo Pedido" },
+  { prefix: "/admin/payments", module: "orders", altModule: "finances", label: "Pagos" },
+  { prefix: "/admin/payment-methods", module: "finances", label: "Métodos de Pago y Cuentas Bancarias" },
+  { prefix: "/admin/billing", module: "finances", label: "Documentación Tributaria (SII)" },
+  { prefix: "/admin/products/import", module: "catalog", capability: "edit_prices", label: "Importación Masiva de Catálogo" },
+  { prefix: "/admin/products", module: "catalog", label: "Catálogo de Productos" },
+  { prefix: "/admin/brands", module: "catalog", label: "Marcas" },
+  { prefix: "/admin/categories", module: "catalog", label: "Categorías" },
+  { prefix: "/admin/inventory", module: "inventory", label: "Inventario y Bodega" },
+  { prefix: "/admin/academy", module: "academy", label: "Academia y Cursos" },
+  { prefix: "/admin/services", module: "services", label: "Servicios Técnicos" },
+  { prefix: "/admin/loyalty", module: "marketing", label: "Fidelización y Loyalty" },
+  { prefix: "/admin/rewards", module: "marketing", label: "Campañas Rewards" },
+  { prefix: "/admin/finance", module: "finances", capability: "view_finances", label: "Módulo Financiero" },
+  { prefix: "/admin/users", module: "dashboard", altModule: "roles", altModule2: "orders", label: "Usuarios y Clientes" },
+  { prefix: "/admin/roles", module: "roles", capability: "manage_roles", label: "Roles y Control de Acceso (RBAC)" },
+  { prefix: "/admin/audit", module: "audit", capability: "view_audit", label: "Registro de Actividad y Auditoría" },
+  { prefix: "/admin/settings", module: "settings", capability: "manage_settings", label: "Personalización y Configuración del Sistema" },
+]
+
+function resolveRouteGuard(pathname) {
+  for (const rule of ROUTE_MODULE_RULES) {
+    if (rule.exact && pathname === rule.path) return rule
+    if (rule.prefix && (pathname === rule.prefix || pathname.startsWith(rule.prefix + "/"))) return rule
+  }
+  return null
+}
+
+// Mapa de navegación agrupado con asignación de módulos RBAC
 const navGroups = [
-  { key: "inicio", label: "Dashboard", to: "/admin", end: true },
-  { key: "ventas", label: "Ventas", items: [
-    { to: "/admin/orders",          label: "Órdenes" },
-    { to: "/admin/b2b",             label: "Cotizaciones B2B" },
-    { to: "/admin/special-orders",  label: "Bajo pedido" },
-    { to: "/admin/payments",        label: "Pagos" },
-    { to: "/admin/payment-methods", label: "Métodos de pago" },
-    { to: "/admin/billing",         label: "Doc. tributaria" },
+  { key: "inicio", label: "Dashboard", to: "/admin", end: true, module: "dashboard" },
+  { key: "ventas", label: "Ventas", module: "orders", items: [
+    { to: "/admin/orders",          label: "Órdenes", module: "orders" },
+    { to: "/admin/b2b",             label: "Cotizaciones B2B", module: "orders" },
+    { to: "/admin/special-orders",  label: "Bajo pedido", module: "orders" },
+    { to: "/admin/payments",        label: "Pagos", module: "orders" },
+    { to: "/admin/payment-methods", label: "Métodos de pago", module: "finances" },
+    { to: "/admin/billing",         label: "Doc. tributaria", module: "finances" },
   ]},
-  { key: "catalogo", label: "Catálogo", items: [
-    { to: "/admin/products",        label: "Catálogo" },
-    { to: "/admin/brands",          label: "Marcas" },
-    { to: "/admin/categories",      label: "Categorías" },
-    { to: "/admin/products/import", label: "Importar" },
-    { to: "/admin/inventory",       label: "Inventario" },
+  { key: "catalogo", label: "Catálogo", module: "catalog", items: [
+    { to: "/admin/products",        label: "Catálogo", module: "catalog" },
+    { to: "/admin/brands",          label: "Marcas", module: "catalog" },
+    { to: "/admin/categories",      label: "Categorías", module: "catalog" },
+    { to: "/admin/products/import", label: "Importar", module: "catalog", capability: "edit_prices" },
+    { to: "/admin/inventory",       label: "Inventario", module: "inventory" },
   ]},
-  { key: "academia", label: "Academia", items: [
-    { to: "/admin/academy",                label: "Cursos" },
-    { to: "/admin/academy/modules",        label: "Módulos" },
-    { to: "/admin/academy/lessons",        label: "Lecciones" },
-    { to: "/admin/academy/enrollments",    label: "Inscripciones" },
-    { to: "/admin/academy/certifications", label: "Certificaciones" },
+  { key: "academia", label: "Academia", module: "academy", items: [
+    { to: "/admin/academy",                label: "Cursos", module: "academy" },
+    { to: "/admin/academy/modules",        label: "Módulos", module: "academy" },
+    { to: "/admin/academy/lessons",        label: "Lecciones", module: "academy" },
+    { to: "/admin/academy/enrollments",    label: "Inscripciones", module: "academy" },
+    { to: "/admin/academy/certifications", label: "Certificaciones", module: "academy" },
   ]},
-  { key: "servicios", label: "Servicios", to: "/admin/services" },
-  { key: "fidelizacion", label: "Fidelización", items: [
-    { to: "/admin/loyalty",           label: "Puntos y niveles" },
-    { to: "/admin/rewards",           label: "Rewards" },
-    { to: "/admin/rewards/campaigns", label: "Campañas" },
-    { to: "/admin/rewards/entries",   label: "Participaciones" },
-    { to: "/admin/rewards/winners",   label: "Ganadores" },
+  { key: "servicios", label: "Servicios", to: "/admin/services", module: "services" },
+  { key: "fidelizacion", label: "Fidelización", module: "marketing", items: [
+    { to: "/admin/loyalty",           label: "Puntos y niveles", module: "marketing" },
+    { to: "/admin/rewards",           label: "Rewards", module: "marketing" },
+    { to: "/admin/rewards/campaigns", label: "Campañas", module: "marketing" },
+    { to: "/admin/rewards/entries",   label: "Participaciones", module: "marketing" },
+    { to: "/admin/rewards/winners",   label: "Ganadores", module: "marketing" },
   ]},
   { key: "negocio", label: "Negocio", items: [
-    { to: "/admin/finance",  label: "Finanzas" },
-    { to: "/admin/users",    label: "Clientes" },
-    { to: "/admin/settings", label: "Personalización" },
+    { to: "/admin/finance",  label: "Finanzas", module: "finances", capability: "view_finances" },
+    { to: "/admin/users",    label: "Clientes", module: "dashboard" },
+    { to: "/admin/roles",    label: "Roles y Permisos", module: "roles", capability: "manage_roles" },
+    { to: "/admin/audit",    label: "Registro de Actividad", module: "audit", capability: "view_audit" },
+    { to: "/admin/settings", label: "Personalización", module: "settings", capability: "manage_settings" },
   ]},
 ]
 
@@ -302,12 +337,95 @@ export default function AdminLayout() {
   const { siteName, logoUrl } = useSiteSettings()
   const navigate = useNavigate()
   const location = useLocation()
+  const queryClient = useQueryClient()
   const [openFlyout, setOpenFlyout] = useState(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const flyoutTimeout = useRef(null)
   const userMenuRef = useRef(null)
+
+  const prevPermSig = useRef(null)
+
+  const handleLogout = () => {
+    queryClient.cancelQueries()
+    queryClient.clear()
+    logout()
+    navigate("/admin/login")
+  }
+
+  const { data: myPerms, isLoading: permsLoading } = useQuery({
+    queryKey: ["my-permissions", user?.id || user?.email || "anon"],
+    queryFn: getMyPermissions,
+    staleTime: 60 * 1000,
+  })
+
+  // Si los permisos/roles efectivos del usuario cambian o son revocados en caliente,
+  // cancelar peticiones pendientes y purgar de la caché cualquier consulta de otros módulos.
+  useEffect(() => {
+    if (!myPerms) return
+    const sig = JSON.stringify({
+      id: myPerms.id,
+      roles: myPerms.roles,
+      modules: myPerms.modules,
+      capabilities: myPerms.capabilities,
+    })
+    if (prevPermSig.current && prevPermSig.current !== sig) {
+      queryClient.cancelQueries({
+        predicate: (q) => q.queryKey?.[0] !== "my-permissions",
+      })
+      queryClient.removeQueries({
+        predicate: (q) => q.queryKey?.[0] !== "my-permissions",
+      })
+    }
+    prevPermSig.current = sig
+  }, [myPerms, queryClient])
+
+  const canAccessModule = (mod, cap = null) => {
+    if (myPerms?.is_superuser) return true
+    // Legacy compatibility: if myPerms hasn't returned modules yet (e.g., unit mock without RBAC endpoint),
+    // only allow when user is explicitly superuser or myPerms is undefined & not loading.
+    if (!myPerms) return !permsLoading
+    if (cap && myPerms.capabilities && myPerms.capabilities[cap] === false) return false
+    if (!mod) return true
+    if (!Array.isArray(myPerms.modules)) return true
+    return myPerms.modules.includes(mod)
+  }
+
+  const canAccessRouteRule = (rule) => {
+    if (!rule) return true
+    if (myPerms?.is_superuser) return true
+    if (!myPerms || !Array.isArray(myPerms.modules)) return true
+    if (rule.capability && myPerms.capabilities && myPerms.capabilities[rule.capability] === false) {
+      return false
+    }
+    const allowedMods = [rule.module, rule.altModule, rule.altModule2].filter(Boolean)
+    if (allowedMods.length === 0) return true
+    return allowedMods.some((m) => myPerms.modules.includes(m))
+  }
+
+  const activeRouteRule = resolveRouteGuard(location.pathname)
+  const isRouteAuthorized = canAccessRouteRule(activeRouteRule)
+  const primaryLandingRoute = (() => {
+    if (!myPerms || myPerms.is_superuser || !Array.isArray(myPerms.modules)) return "/admin"
+    if (myPerms.modules.includes("dashboard")) return "/admin"
+    if (myPerms.modules.includes("inventory")) return "/admin/inventory"
+    if (myPerms.modules.includes("orders")) return "/admin/orders"
+    if (myPerms.modules.includes("catalog")) return "/admin/products"
+    if (myPerms.modules.includes("services")) return "/admin/services"
+    if (myPerms.modules.includes("academy")) return "/admin/academy"
+    return "/"
+  })()
+
+  const filteredNavGroups = navGroups.map((group) => {
+    if (group.items) {
+      const visibleItems = group.items.filter((it) => canAccessModule(it.module, it.capability))
+      if (visibleItems.length === 0) return null
+      return { ...group, items: visibleItems }
+    }
+    if (!canAccessModule(group.module, group.capability)) return null
+    return group
+  }).filter(Boolean)
 
   useEffect(() => {
     const onKey = (e) => {
@@ -350,7 +468,7 @@ export default function AdminLayout() {
       <div style={{ display: "none" }} data-testid="admin-sidebar" aria-hidden="true">
         <Link to="/admin/settings" data-testid="admin-nav-settings">Configuración</Link>
         <Link to="/" data-testid="admin-view-site">Ver sitio</Link>
-        <button type="button" data-testid="admin-logout" onClick={() => { logout(); navigate("/admin/login") }}>Logout</button>
+        <button type="button" data-testid="admin-logout" onClick={handleLogout}>Logout</button>
       </div>
 
       {/* Floating Top Navigation Header (Inspired by Lumin) */}
@@ -370,7 +488,7 @@ export default function AdminLayout() {
 
           {/* Navigation Pills (Desktop) */}
           <nav className="v3-nav-pills" aria-label="Navegación principal">
-            {navGroups.map((group) => {
+            {filteredNavGroups.map((group) => {
               const active = isGroupActive(group, location.pathname)
               const hasItems = !!group.items
 
@@ -490,21 +608,23 @@ export default function AdminLayout() {
                     <ExternalLink size={14} /> Ver tienda pública
                   </Link>
 
-                  <Link
-                    to="/admin/settings"
-                    className="v3-flyout-item"
-                    data-testid="admin-nav-settings"
-                    onClick={() => setUserMenuOpen(false)}
-                  >
-                    <Settings size={14} /> Personalización
-                  </Link>
+                  {canAccessModule("settings", "manage_settings") && (
+                    <Link
+                      to="/admin/settings"
+                      className="v3-flyout-item"
+                      data-testid="admin-nav-settings"
+                      onClick={() => setUserMenuOpen(false)}
+                    >
+                      <Settings size={14} /> Personalización
+                    </Link>
+                  )}
 
                   <button
                     type="button"
                     className="v3-flyout-item"
                     style={{ width: "100%", border: "none", background: "none", cursor: "pointer", color: "#EF4444" }}
                     data-testid="admin-logout"
-                    onClick={() => { logout(); navigate("/admin/login") }}
+                    onClick={handleLogout}
                   >
                     <LogOut size={14} /> Cerrar sesión
                   </button>
@@ -555,7 +675,7 @@ export default function AdminLayout() {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
-              {navGroups.map((g) => {
+              {filteredNavGroups.map((g) => {
                 if (g.to) {
                   return (
                     <NavLink
@@ -597,7 +717,7 @@ export default function AdminLayout() {
                 className="v3-flyout-item"
                 style={{ width: "100%", border: "none", background: "none", color: "#EF4444", cursor: "pointer" }}
                 data-testid="admin-logout-mobile"
-                onClick={() => { logout(); navigate("/admin/login") }}
+                onClick={handleLogout}
               >
                 <LogOut size={15} /> Cerrar sesión
               </button>
@@ -608,7 +728,128 @@ export default function AdminLayout() {
 
       {/* Main Content Workspace */}
       <main id="admin-main" style={{ width: "100%", minHeight: "calc(100vh - 88px)" }}>
-        <Outlet />
+        {!isRouteAuthorized ? (
+          <div
+            className="au-page"
+            data-testid="admin-access-denied"
+            style={{
+              maxWidth: 680,
+              margin: "48px auto",
+              padding: "36px 32px",
+              borderRadius: 20,
+              background: "#0C0D0E",
+              color: "#FFFFFF",
+              border: "1px solid rgba(255,255,255,0.1)",
+              boxShadow: "0 24px 60px rgba(0,0,0,0.16)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+              <div
+                style={{
+                  width: 44,
+                  height: 44,
+                  borderRadius: 12,
+                  background: "rgba(239, 68, 68, 0.14)",
+                  border: "1px solid rgba(239, 68, 68, 0.35)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "#EF4444",
+                }}
+              >
+                <ShieldAlert size={22} />
+              </div>
+              <div>
+                <span
+                  style={{
+                    fontFamily: "var(--font-mono)",
+                    fontSize: 11,
+                    letterSpacing: "0.08em",
+                    textTransform: "uppercase",
+                    color: "#1AFF6E",
+                    display: "block",
+                  }}
+                >
+                  LEVELPRO OS V4.0 · SECURITY CORE · HTTP 403
+                </span>
+                <h1 style={{ fontSize: 22, fontWeight: 800, margin: "2px 0 0", color: "#FFFFFF" }}>
+                  Acceso Restringido por Rol (RBAC)
+                </h1>
+              </div>
+            </div>
+
+            <p style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.78)", marginBottom: 20 }}>
+              Tu cuenta (<strong style={{ color: "#FFFFFF", fontFamily: "var(--font-mono)" }}>{user?.email}</strong>) no posee
+              los privilegios necesarios para acceder al módulo{" "}
+              <strong style={{ color: "#1AFF6E" }}>{activeRouteRule?.label || location.pathname}</strong>.
+              Por política de Segregación de Funciones y Denegación por Defecto, este recurso ha sido bloqueado.
+            </p>
+
+            <div
+              style={{
+                padding: "14px 16px",
+                borderRadius: 12,
+                background: "rgba(255,255,255,0.04)",
+                border: "1px solid rgba(255,255,255,0.08)",
+                marginBottom: 24,
+                fontFamily: "var(--font-mono)",
+                fontSize: 12,
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ color: "rgba(255,255,255,0.5)" }}>ROLES ACTIVOS:</span>
+                <span style={{ color: "#1AFF6E", fontWeight: 700 }}>
+                  {myPerms?.roles?.length ? myPerms.roles.join(", ") : "Sin rol asignado"}
+                </span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ color: "rgba(255,255,255,0.5)" }}>MÓDULO REQUERIDO:</span>
+                <span style={{ color: "#FFFFFF" }}>{activeRouteRule?.module || "classified"}</span>
+              </div>
+              {activeRouteRule?.capability && (
+                <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ color: "rgba(255,255,255,0.5)" }}>CAPACIDAD SENSIBLE:</span>
+                  <span style={{ color: "#F59E0B" }}>{activeRouteRule.capability}</span>
+                </div>
+              )}
+            </div>
+
+            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+              <button
+                type="button"
+                onClick={() => navigate(primaryLandingRoute)}
+                style={{
+                  padding: "10px 18px",
+                  borderRadius: 999,
+                  background: "#1AFF6E",
+                  color: "#0C0D0E",
+                  fontWeight: 800,
+                  fontSize: 13,
+                  border: "none",
+                  cursor: "pointer",
+                }}
+              >
+                Ir a mi módulo autorizado
+              </button>
+              <Link
+                to="/"
+                style={{
+                  padding: "10px 18px",
+                  borderRadius: 999,
+                  background: "rgba(255,255,255,0.08)",
+                  color: "#FFFFFF",
+                  fontWeight: 600,
+                  fontSize: 13,
+                  textDecoration: "none",
+                }}
+              >
+                Volver a la tienda pública
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <Outlet />
+        )}
       </main>
 
       <AdminSearch open={searchOpen} onClose={() => setSearchOpen(false)} />

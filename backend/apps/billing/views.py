@@ -6,14 +6,24 @@
 
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
 from decimal import Decimal, InvalidOperation
 
+from core.admin_permissions import IsAdminOrStaff, rbac_endpoint
+from core.rbac.constants import (
+    MODULE_FINANCES,
+    PERM_VIEW_FINANCES,
+    PERM_MANAGE_FINANCES,
+    ROLE_SUPER_ADMIN,
+    ROLE_MANAGEMENT,
+    ROLE_FINANCE,
+)
+from core.audit.services import record_audit_event
+from core.audit.constants import (
+    CATEGORY_FINANCIAL_OPERATION,
+    SEVERITY_INFO,
+    RESULT_SUCCESS,
+)
 from .models import TributaryDocument
-
-
-def _is_admin(user):
-    return user.is_staff or user.is_superuser
 
 
 def _serialize(d):
@@ -37,8 +47,13 @@ def _serialize(d):
 
 
 # ── Tablero: todas las órdenes pagadas + su documento (si existe) ──
+@rbac_endpoint(
+    module=MODULE_FINANCES,
+    capability=PERM_VIEW_FINANCES,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_FINANCE],
+)
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminOrStaff])
 def tax_dashboard(request):
     """
     GET /api/v1/billing/dashboard/
@@ -47,9 +62,6 @@ def tax_dashboard(request):
     de seguimiento del admin.
     Soporta paginación (?page=1&page_size=50) y filtros por ?currency=, ?doc_estado=, ?tipo=, ?status=.
     """
-    if not _is_admin(request.user):
-        return Response(status=403)
-
     from apps.orders.models import Order
 
     qs = (
@@ -132,8 +144,9 @@ def tax_dashboard(request):
 
 
 # ── Registrar / actualizar el documento de una orden ──────────────
+@rbac_endpoint(module=MODULE_FINANCES, capability=PERM_MANAGE_FINANCES)
 @api_view(["POST", "PATCH"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminOrStaff])
 def upsert_document(request):
     """
     POST/PATCH /api/v1/billing/record/
@@ -141,9 +154,6 @@ def upsert_document(request):
     número REAL emitido en el SII. No genera nada, solo guarda lo que el
     admin ingresa.
     """
-    if not _is_admin(request.user):
-        return Response(status=403)
-
     from apps.orders.models import Order
 
     order_id = request.data.get("order_id")
@@ -189,17 +199,35 @@ def upsert_document(request):
                 return Response({"error": "Monto inválido."}, status=400)
 
     doc.save()
+
+    record_audit_event(
+        module="billing",
+        action="TRIBUTARY_DOCUMENT_UPSERTED",
+        event_category=CATEGORY_FINANCIAL_OPERATION,
+        resource_type="TributaryDocument",
+        resource_id=str(doc.id),
+        resource_repr=f"Doc Tributario {doc.tipo} #{doc.numero_externo or doc.id}",
+        actor=request.user,
+        result=RESULT_SUCCESS,
+        severity=SEVERITY_INFO,
+        new_values={
+            "tipo": doc.tipo,
+            "estado": doc.estado,
+            "numero_externo": doc.numero_externo,
+            "monto": str(doc.monto) if doc.monto is not None else None,
+        },
+        mandatory=True,
+    )
+
     return Response(_serialize(doc), status=200)
 
 
 # ── Subir el PDF real del SII (opcional) ──────────────────────────
+@rbac_endpoint(module=MODULE_FINANCES, capability=PERM_MANAGE_FINANCES)
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminOrStaff])
 def upload_document_pdf(request, doc_id):
     """POST /api/v1/billing/record/<id>/pdf/ — sube el PDF oficial del SII."""
-    if not _is_admin(request.user):
-        return Response(status=403)
-
     try:
         doc = TributaryDocument.objects.get(id=doc_id)
     except TributaryDocument.DoesNotExist:
@@ -210,4 +238,19 @@ def upload_document_pdf(request, doc_id):
         return Response({"error": "No se envió ningún archivo."}, status=400)
 
     doc.pdf_externo.save(pdf.name, pdf, save=True)
+
+    record_audit_event(
+        module="billing",
+        action="TRIBUTARY_DOCUMENT_PDF_UPLOADED",
+        event_category=CATEGORY_FINANCIAL_OPERATION,
+        resource_type="TributaryDocument",
+        resource_id=str(doc.id),
+        resource_repr=f"PDF Doc Tributario {doc.tipo} #{doc.numero_externo or doc.id}",
+        actor=request.user,
+        result=RESULT_SUCCESS,
+        severity=SEVERITY_INFO,
+        new_values={"filename": pdf.name},
+        mandatory=True,
+    )
+
     return Response(_serialize(doc))

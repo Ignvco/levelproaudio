@@ -166,9 +166,13 @@ def test_methods_return_payoneer_accounts_without_transfer_enabled(transfer):
 
 
 def test_admin_can_assign_account_to_payoneer(transfer):
+    from django.contrib.auth.models import Group
+    from core.rbac.constants import ROLE_MANAGEMENT
     client, order, _, account = transfer
     order.user.is_staff = True
     order.user.save(update_fields=["is_staff"])
+    group, _ = Group.objects.get_or_create(name=ROLE_MANAGEMENT)
+    order.user.groups.add(group)
     client.force_authenticate(order.user)
     response = client.patch(f"/api/v1/payments/admin/bank-accounts/{account.pk}/", {"payment_method": "payoneer"}, format="json")
     assert response.status_code == 200

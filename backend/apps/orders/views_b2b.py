@@ -16,7 +16,24 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
-from core.admin_permissions import IsAdminOrStaff
+from core.admin_permissions import IsAdminOrStaff, rbac_endpoint
+from core.rbac.constants import (
+    MODULE_ORDERS,
+    PERM_APPLY_DISCOUNTS,
+    PERM_EDIT_PRICES,
+    MAX_UNAPPROVED_DISCOUNT_PERCENT,
+    ROLE_SUPER_ADMIN,
+    ROLE_MANAGEMENT,
+    ROLE_SALES,
+)
+from core.rbac.permissions import is_effective_super_admin, user_has_capability
+from core.audit.services import record_audit_event
+from core.audit.constants import (
+    CATEGORY_MODIFICATION,
+    CATEGORY_ORDER_STATUS,
+    SEVERITY_INFO,
+    RESULT_SUCCESS,
+)
 from apps.products.models import Product
 from apps.site_settings.models import SiteSettings
 from .models import Order, OrderItem, B2BQuote, B2BQuoteItem, B2BQuoteStatus
@@ -145,6 +162,7 @@ def b2b_quote_create(request):
 
 
 @extend_schema(responses={200: OpenApiTypes.OBJECT})
+@rbac_endpoint(module=MODULE_ORDERS)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_b2b_quotes(request):
@@ -195,6 +213,10 @@ def admin_b2b_quotes(request):
 
 
 @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
+@rbac_endpoint(
+    module=MODULE_ORDERS,
+    allowed_roles_by_method={"PATCH": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_SALES]},
+)
 @api_view(["GET", "PATCH"])
 @permission_classes([IsAdminOrStaff])
 @transaction.atomic
@@ -237,8 +259,40 @@ def admin_b2b_quote_detail(request, quote_id):
             } for it in quote.items.all()],
         })
 
-    # PATCH
+    # PATCH — Validar descuentos y límites de política antes de mutar
     data = request.data
+    d_pct = None
+    d_amt = None
+    if "discount_percent" in data:
+        try:
+            d_pct = max(Decimal("0.00"), min(Decimal("100.00"), Decimal(str(data["discount_percent"]))))
+        except (ValueError, TypeError):
+            d_pct = None
+    elif "discount_amount" in data:
+        try:
+            d_amt = max(Decimal("0.00"), Decimal(str(data["discount_amount"])))
+            if quote.subtotal and quote.subtotal > Decimal("0.00"):
+                d_pct = (d_amt / quote.subtotal * Decimal("100.00")).quantize(Decimal("0.01"))
+            else:
+                d_pct = Decimal("0.00")
+        except (ValueError, TypeError):
+            d_pct = None
+
+    if d_pct is not None and d_pct > Decimal("0.00") and not is_effective_super_admin(request.user):
+        if not (
+            user_has_capability(request.user, PERM_APPLY_DISCOUNTS)
+            and user_has_capability(request.user, PERM_EDIT_PRICES)
+        ):
+            return Response(
+                {
+                    "error": (
+                        "Política comercial: los descuentos en cotizaciones B2B requieren autorización "
+                        "de Gerencia / Administración o Super Admin."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
     new_status = data.get("status")
     if new_status and new_status in B2BQuoteStatus.values:
         quote.status = new_status
@@ -246,18 +300,33 @@ def admin_b2b_quote_detail(request, quote_id):
     if "admin_notes" in data:
         quote.admin_notes = data["admin_notes"]
 
-    if "discount_percent" in data:
-        try:
-            d_pct = max(Decimal("0.00"), min(Decimal("100.00"), Decimal(str(data["discount_percent"]))))
-            quote.discount_percent = d_pct
-            quote.discount_amount = (quote.subtotal * d_pct / Decimal("100")).quantize(Decimal("0.01"))
-        except (ValueError, TypeError):
-            pass
+    if "discount_percent" in data and d_pct is not None:
+        quote.discount_percent = d_pct
+        quote.discount_amount = (quote.subtotal * d_pct / Decimal("100")).quantize(Decimal("0.01"))
+    elif "discount_amount" in data and d_amt is not None:
+        quote.discount_amount = min(quote.subtotal, d_amt)
+        quote.discount_percent = d_pct if d_pct is not None else Decimal("0.00")
 
     net_after_discount = max(Decimal("0.00"), quote.subtotal - quote.discount_amount)
     quote.tax_amount = (net_after_discount * Decimal("0.19")).quantize(Decimal("0.01")) if quote.currency == "CLP" else Decimal("0.00")
     quote.total = net_after_discount + quote.tax_amount
     quote.save()
+
+    record_audit_event(
+        module="orders",
+        action="B2B_QUOTE_UPDATED",
+        event_category=CATEGORY_MODIFICATION,
+        resource_type="B2BQuote",
+        resource_id=str(quote.id),
+        resource_repr=f"Cotización B2B #{str(quote.id)[:8].upper()} - {quote.company_name}",
+        actor=request.user,
+        new_values={
+            "status": quote.status,
+            "discount_percent": str(quote.discount_percent),
+            "total": str(quote.total),
+        },
+        mandatory=True,
+    )
 
     return Response({
         "id": str(quote.id),
@@ -270,6 +339,10 @@ def admin_b2b_quote_detail(request, quote_id):
 
 
 @extend_schema(request=None, responses={201: OpenApiTypes.OBJECT})
+@rbac_endpoint(
+    module=MODULE_ORDERS,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_SALES],
+)
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 @transaction.atomic
@@ -327,6 +400,18 @@ def admin_b2b_quote_convert(request, quote_id):
     quote.converted_order = order
     quote.status = B2BQuoteStatus.CONVERTED
     quote.save(update_fields=["converted_order", "status"])
+
+    record_audit_event(
+        module="orders",
+        action="B2B_QUOTE_CONVERTED",
+        event_category=CATEGORY_ORDER_STATUS,
+        resource_type="B2BQuote",
+        resource_id=str(quote.id),
+        resource_repr=f"Cotización B2B #{str(quote.id)[:8].upper()} convertida en Orden #{order.id}",
+        actor=request.user,
+        new_values={"order_id": str(order.id), "total": str(order.total)},
+        mandatory=True,
+    )
 
     return Response({
         "order_id": str(order.id),

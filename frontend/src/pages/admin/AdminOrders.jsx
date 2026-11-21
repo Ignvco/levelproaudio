@@ -5,6 +5,8 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   getAdminOrders, updateOrderStatus, updateOrderShipping,
 } from "../../api/admin.api"
+import { getMyPermissions } from "../../api/rbac.api"
+import { useAuthStore } from "../../store/authStore"
 import { Eye, Inbox, Truck, FileText, ShoppingBag, CheckCircle2, Clock3, PackageCheck, X } from "lucide-react"
 import {
   DataTable, StatusBadge, AdminPageHeader, StatCard,
@@ -26,7 +28,7 @@ const TONE = {
   cancelled:"danger", approved:"success", rejected:"danger", refunded:"info",
 }
 
-function OrderPanel({ order, onClose }) {
+function OrderPanel({ order, onClose, canViewFinances = true }) {
   const queryClient      = useQueryClient()
   const [carrier, setCarrier]   = useState(order.shipping_carrier || "")
   const [tracking, setTracking] = useState(order.tracking_number || "")
@@ -278,7 +280,7 @@ function OrderPanel({ order, onClose }) {
           )}
 
           {/* Documentación tributaria */}
-          {["paid","shipped","completed"].includes(order.status) && (
+          {canViewFinances && ["paid","shipped","completed"].includes(order.status) && (
             <div style={{ paddingTop:"4px" }}>
               <p style={{ fontSize:"11.5px", color:"var(--admin-text-muted)", fontWeight:600, marginBottom:"8px" }}>
                 Documentación tributaria
@@ -297,6 +299,19 @@ function OrderPanel({ order, onClose }) {
 export default function AdminOrders() {
   const [statusFilter,  setStatusFilter]  = useState("")
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const { user } = useAuthStore()
+
+  const { data: myPerms } = useQuery({
+    queryKey: ["my-permissions", user?.id || user?.email || "anon"],
+    queryFn: getMyPermissions,
+    staleTime: 60 * 1000,
+  })
+
+  const canViewFinances = !myPerms || myPerms.is_superuser || (
+    Array.isArray(myPerms.modules)
+    && myPerms.modules.includes("finances")
+    && myPerms.capabilities?.view_finances !== false
+  )
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ["admin-orders", statusFilter],
@@ -333,7 +348,7 @@ export default function AdminOrders() {
   return (
     <div className="au-page">
       {selectedOrder && (
-        <OrderPanel order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+        <OrderPanel order={selectedOrder} onClose={() => setSelectedOrder(null)} canViewFinances={canViewFinances} />
       )}
 
       <AdminPageHeader
@@ -344,7 +359,7 @@ export default function AdminOrders() {
           <>
             <SecondaryButton to="/admin/special-orders" size="sm">Bajo pedido</SecondaryButton>
             <SecondaryButton to="/admin/payments" size="sm">Pagos</SecondaryButton>
-            <SecondaryButton to="/admin/billing" size="sm">Tributario</SecondaryButton>
+            {canViewFinances && <SecondaryButton to="/admin/billing" size="sm">Tributario</SecondaryButton>}
           </>
         }
       />

@@ -293,6 +293,14 @@ def favorite_ids(request):
 # ── Solicitudes bajo pedido ─────────────────────────────────────────
 from rest_framework import status as drf_status
 from core.admin_permissions import IsAdminOrStaff
+from core.rbac.constants import (
+    MODULE_ORDERS,
+    MODULE_PURCHASES,
+    ROLE_SUPER_ADMIN,
+    ROLE_MANAGEMENT,
+    ROLE_SALES,
+    ROLE_PURCHASING,
+)
 from .models import SpecialOrderRequest
 from .serializers import (
     SpecialOrderRequestSerializer, SpecialOrderRequestAdminSerializer,
@@ -326,3 +334,10 @@ class AdminSpecialOrderViewSet(viewsets.ModelViewSet):
     queryset = SpecialOrderRequest.objects.all()
     serializer_class = SpecialOrderRequestAdminSerializer
     permission_classes = [IsAdminOrStaff]
+    rbac_allowed_modules = [MODULE_ORDERS, MODULE_PURCHASES]
+    rbac_allowed_roles_by_method = {
+        "create": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_SALES, ROLE_PURCHASING],
+        "update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_SALES, ROLE_PURCHASING],
+        "partial_update": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_SALES, ROLE_PURCHASING],
+        "destroy": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+    }

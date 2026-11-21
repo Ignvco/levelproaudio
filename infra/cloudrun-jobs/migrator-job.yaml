@@ -1,0 +1,50 @@
+apiVersion: run.googleapis.com/v1
+kind: Job
+metadata:
+  name: levelproaudio-migrator-job
+  labels:
+    cloud.googleapis.com/location: us-central1
+    app.kubernetes.io/name: levelproaudio-migrator
+    app.kubernetes.io/part-of: levelpro-os-v4
+spec:
+  template:
+    spec:
+      taskCount: 1
+      parallelism: 1
+      template:
+        spec:
+          maxRetries: 1
+          timeoutSeconds: 300
+          serviceAccountName: levelproaudio-migrator@levelproaudio.iam.gserviceaccount.com
+          containers:
+          - image: us-central1-docker.pkg.dev/levelproaudio/levelproaudio-docker/backend:latest
+            command: ["/app/docker/migrator_entrypoint.sh"]
+            resources:
+              limits:
+                cpu: "1"
+                memory: "512Mi"
+            env:
+            - name: DJANGO_SETTINGS_MODULE
+              value: "config.settings.production"
+            - name: CLOUD_SQL_CONNECTION_NAME
+              value: "levelproaudio:us-central1:levelproaudio-db"
+            - name: DB_USER
+              valueFrom:
+                secretKeyRef:
+                  name: DB_MIGRATOR_USER
+                  key: latest
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: DB_MIGRATOR_PASSWORD
+                  key: latest
+            - name: DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: DB_NAME
+                  key: latest
+            - name: DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: DJANGO_SECRET_KEY
+                  key: latest

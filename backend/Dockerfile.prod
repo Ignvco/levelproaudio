@@ -25,9 +25,10 @@ RUN python manage.py collectstatic --noinput \
 
 EXPOSE 8080
 
-# Ejecuta migraciones y crea la tabla de cache automáticamente al iniciar
-# cada instancia de Cloud Run. createcachetable es idempotente (no falla
-# si la tabla ya existe). El socket de Cloud SQL es inyectado por Cloud Run
-# (--add-cloudsql-instances), así que la conexión a la DB está disponible
-# en runtime.
-CMD ["sh", "-c", "python manage.py migrate --noinput && (python manage.py createcachetable || true) && exec gunicorn config.wsgi:application --bind 0.0.0.0:$PORT --workers 2 --threads 4 --timeout 120 --access-logfile - --error-logfile -"]
+# LEVELPRO OS V4.0 — GATE 1.3: DECOUPLED RUNTIME
+# Las migraciones han sido desacopladas del startup web y se ejecutan
+# exclusivamente mediante el Cloud Run Job / contenedor efímero de migración.
+# Esto reduce el cold start a <3s y elimina contenciones DDL en escalado horizontal.
+RUN chmod +x /app/docker/web_entrypoint.sh /app/docker/migrator_entrypoint.sh
+
+ENTRYPOINT ["/app/docker/web_entrypoint.sh"]

@@ -72,6 +72,8 @@ const AdminSpecialOrders            = lazy(() => import("./pages/admin/AdminSpec
 const AdminB2BQuotes               = lazy(() => import("./pages/admin/AdminB2BQuotes"))
 const AdminProducts                = lazy(() => import("./pages/admin/AdminProducts"))
 const AdminUsers                   = lazy(() => import("./pages/admin/AdminUsers"))
+const AdminRoles                   = lazy(() => import("./pages/admin/AdminRoles"))
+const AdminAudit                   = lazy(() => import("./pages/admin/AdminAudit"))
 const AdminPayments                = lazy(() => import("./pages/admin/AdminPayments"))
 const AdminPaymentMethods          = lazy(() => import("./pages/admin/AdminPaymentMethods"))
 const AdminAcademy                 = lazy(() => import("./pages/admin/AdminAcademy"))
@@ -193,6 +195,8 @@ function App() {
           <Route path="brands"     element={<Suspense fallback={<AdminLoading />}><AdminBrands /></Suspense>} />
           <Route path="categories" element={<Suspense fallback={<AdminLoading />}><AdminCategories /></Suspense>} />
           <Route path="users" element={<Suspense fallback={<AdminLoading />}><AdminUsers /></Suspense>} />
+          <Route path="roles" element={<Suspense fallback={<AdminLoading />}><AdminRoles /></Suspense>} />
+          <Route path="audit" element={<Suspense fallback={<AdminLoading />}><AdminAudit /></Suspense>} />
           <Route path="payments" element={<Suspense fallback={<AdminLoading />}><AdminPayments /></Suspense>} />
           <Route path="payment-methods" element={<Suspense fallback={<AdminLoading />}><AdminPaymentMethods /></Suspense>} />
           <Route path="academy" element={<Suspense fallback={<AdminLoading />}><AdminAcademy /></Suspense>} />

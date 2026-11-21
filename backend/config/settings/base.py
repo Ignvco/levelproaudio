@@ -120,6 +120,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'core.audit.middleware.AuditCorrelationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -266,3 +267,8 @@ EMAIL_BACKEND      = "django.core.mail.backends.console.EmailBackend"
 # ── Upload limits (video de Academia hasta 500 MB) ───────────
 DATA_UPLOAD_MAX_MEMORY_SIZE = 524_288_000       # 500 MB
 FILE_UPLOAD_MAX_MEMORY_SIZE = 10_485_760        # 10 MB en memoria, resto a disco
+
+# ── LEVELPRO OS V4.0 — Política de Retención de Auditoría (Gate 1.2) ──
+# Días de conservación de registros de auditoría (no destructivo por defecto;
+# ninguna purga automática ocurre sin ejecución explícita y autorizada).
+AUDIT_RETENTION_DAYS = env.int("AUDIT_RETENTION_DAYS", default=365)

@@ -221,10 +221,14 @@ def test_legacy_order_retains_cancellation_compatibility(client, product, buyer)
 
 @pytest.mark.parametrize("route", ["action", "patch"])
 def test_admin_cancellation_restores_once_and_cannot_reopen(client, product, buyer, route):
+    from django.contrib.auth.models import Group
+    from core.rbac.constants import ROLE_MANAGEMENT
     response = checkout(client, (product, 2))
     order = Order.objects.get(pk=response.data["id"])
     buyer.is_staff = True
     buyer.save(update_fields=["is_staff"])
+    group, _ = Group.objects.get_or_create(name=ROLE_MANAGEMENT)
+    buyer.groups.add(group)
     def status_request(value):
         if route == "action":
             return client.post(f"/api/v1/admin/orders/{order.pk}/update_status/", {"status": value}, format="json")
@@ -343,11 +347,15 @@ def test_refund_of_paid_order_does_not_assume_physical_return(client, product):
 
 
 def test_rejecting_manual_payment_restores_pending_order_stock(client, product, buyer):
+    from django.contrib.auth.models import Group
+    from core.rbac.constants import ROLE_MANAGEMENT
     response = checkout(client, (product, 1))
     order = Order.objects.get(pk=response.data["id"])
     payment = Payment.objects.create(order=order, provider="transfer", amount=1000)
     buyer.is_staff = True
     buyer.save(update_fields=["is_staff"])
+    group, _ = Group.objects.get_or_create(name=ROLE_MANAGEMENT)
+    buyer.groups.add(group)
     response = client.patch(f"/api/v1/admin/payments/{payment.pk}/status/", {"status": "rejected"}, format="json")
     assert response.status_code == 200
     product.refresh_from_db()
@@ -369,10 +377,14 @@ def test_non_object_order_payload_returns_400(client):
 
 
 def test_admin_notification_waits_for_commit(client, product, buyer, django_capture_on_commit_callbacks):
+    from django.contrib.auth.models import Group
+    from core.rbac.constants import ROLE_MANAGEMENT
     response = checkout(client, (product, 1))
     order = Order.objects.get(pk=response.data["id"])
     buyer.is_staff = True
     buyer.save(update_fields=["is_staff"])
+    group, _ = Group.objects.get_or_create(name=ROLE_MANAGEMENT)
+    buyer.groups.add(group)
     with patch("apps.emails.send_order_status_update") as notify:
         with django_capture_on_commit_callbacks(execute=True) as callbacks:
             response = client.post(f"/api/v1/admin/orders/{order.pk}/update_status/", {"status": "cancelled"}, format="json")

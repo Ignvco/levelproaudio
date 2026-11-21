@@ -22,6 +22,11 @@ class Head(HTMLParser):
         self.tags.append((tag, dict(attrs)))
 
 
+@pytest.fixture(autouse=True)
+def canonical_seo_settings(settings):
+    settings.SITE_URL = "https://levelproaudio.com"
+
+
 @pytest.fixture
 def catalog(db):
     category = Category.objects.create(name="Micrófonos", slug="microfonos")

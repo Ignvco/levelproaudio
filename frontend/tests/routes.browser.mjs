@@ -56,8 +56,9 @@ async function openRoute(t, path) {
     if (url.pathname.endsWith(".js")) scripts.push(url.pathname)
     if (!url.pathname.startsWith("/api/")) return route.continue()
     const send = data => route.fulfill({ contentType: "application/json", body: JSON.stringify(data) })
-    // This existing POST is a read-only quote, not an order or payment write.
+    // Read-only calculation/quote endpoints via POST, not an order or payment write.
     if (url.pathname === "/api/v1/rewards/preview/" && request.method() === "POST") return send({ campaigns: [], total_entries: 0 })
+    if (url.pathname === "/api/v1/billing/shipping/estimate/" && request.method() === "POST") return send({ rates: [] })
     if (request.method() !== "GET") writes.push(url.pathname)
     if (url.pathname === "/api/v1/site-settings/") return send({ site_name: "LevelPro Test", seo_title: "Home test", seo_description: "Descripción de prueba", hero_title: "Audio de prueba" })
     if (url.pathname === "/api/v1/auth/profile/") return send({ id: "buyer-1", email: "buyer@example.test", is_staff: false })

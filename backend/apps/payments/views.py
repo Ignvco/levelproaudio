@@ -400,7 +400,14 @@ def transfer_instructions(request, order_id):
 
 # ── Admin: CRUD de métodos de pago y cuentas bancarias ──────────────
 from rest_framework import viewsets
+from django.db import transaction
 from core.admin_permissions import IsAdminOrStaff
+from core.rbac.constants import MODULE_FINANCES, PERM_VIEW_FINANCES, PERM_MANAGE_SETTINGS
+from core.audit.services import record_audit_event
+from core.audit.constants import (
+    CATEGORY_CONFIG_CHANGE,
+    SEVERITY_WARNING,
+)
 from .models import PaymentMethodConfig, BankAccount
 from .serializers import PaymentMethodConfigSerializer, BankAccountSerializer
 
@@ -410,6 +417,64 @@ class AdminPaymentMethodViewSet(viewsets.ModelViewSet):
     queryset = PaymentMethodConfig.objects.all()
     serializer_class = PaymentMethodConfigSerializer
     permission_classes = [IsAdminOrStaff]
+    rbac_module = MODULE_FINANCES
+    rbac_capability_by_method = {
+        "list": PERM_VIEW_FINANCES,
+        "retrieve": PERM_VIEW_FINANCES,
+        "create": PERM_MANAGE_SETTINGS,
+        "update": PERM_MANAGE_SETTINGS,
+        "partial_update": PERM_MANAGE_SETTINGS,
+        "destroy": PERM_MANAGE_SETTINGS,
+    }
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        method_name = instance.label or instance.method
+        record_audit_event(
+            module="finances",
+            action="PAYMENT_METHOD_CREATED",
+            event_category=CATEGORY_CONFIG_CHANGE,
+            resource_type="PaymentMethodConfig",
+            resource_id=str(instance.id),
+            resource_repr=f"Método de pago {method_name}",
+            actor=self.request.user,
+            new_values={"method": instance.method, "label": instance.label, "is_active": instance.is_active},
+            mandatory=True,
+        )
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        method_name = instance.label or instance.method
+        record_audit_event(
+            module="finances",
+            action="PAYMENT_METHOD_UPDATED",
+            event_category=CATEGORY_CONFIG_CHANGE,
+            resource_type="PaymentMethodConfig",
+            resource_id=str(instance.id),
+            resource_repr=f"Método de pago {method_name}",
+            actor=self.request.user,
+            new_values={"method": instance.method, "label": instance.label, "is_active": instance.is_active},
+            mandatory=True,
+        )
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        method_name = instance.label or instance.method
+        iid = str(instance.id)
+        instance.delete()
+        record_audit_event(
+            module="finances",
+            action="PAYMENT_METHOD_DELETED",
+            event_category=CATEGORY_CONFIG_CHANGE,
+            resource_type="PaymentMethodConfig",
+            resource_id=iid,
+            resource_repr=f"Método de pago {method_name}",
+            actor=self.request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
 
 
 class AdminBankAccountViewSet(viewsets.ModelViewSet):
@@ -417,3 +482,65 @@ class AdminBankAccountViewSet(viewsets.ModelViewSet):
     queryset = BankAccount.objects.all()
     serializer_class = BankAccountSerializer
     permission_classes = [IsAdminOrStaff]
+    rbac_module = MODULE_FINANCES
+    rbac_capability_by_method = {
+        "list": PERM_VIEW_FINANCES,
+        "retrieve": PERM_VIEW_FINANCES,
+        "create": PERM_MANAGE_SETTINGS,
+        "update": PERM_MANAGE_SETTINGS,
+        "partial_update": PERM_MANAGE_SETTINGS,
+        "destroy": PERM_MANAGE_SETTINGS,
+    }
+
+    @transaction.atomic
+    def perform_create(self, serializer):
+        instance = serializer.save()
+        acc_raw = str(instance.account_number or "")
+        acc_masked = f"****{acc_raw[-4:]}" if len(acc_raw) >= 4 else "****"
+        record_audit_event(
+            module="finances",
+            action="BANK_ACCOUNT_CREATED",
+            event_category=CATEGORY_CONFIG_CHANGE,
+            resource_type="BankAccount",
+            resource_id=str(instance.id),
+            resource_repr=f"Cuenta {instance.bank_name} {acc_masked}",
+            actor=self.request.user,
+            new_values={"bank": instance.bank_name, "account_number": instance.account_number, "is_active": instance.is_active},
+            mandatory=True,
+        )
+
+    @transaction.atomic
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        acc_raw = str(instance.account_number or "")
+        acc_masked = f"****{acc_raw[-4:]}" if len(acc_raw) >= 4 else "****"
+        record_audit_event(
+            module="finances",
+            action="BANK_ACCOUNT_UPDATED",
+            event_category=CATEGORY_CONFIG_CHANGE,
+            resource_type="BankAccount",
+            resource_id=str(instance.id),
+            resource_repr=f"Cuenta {instance.bank_name} {acc_masked}",
+            actor=self.request.user,
+            new_values={"bank": instance.bank_name, "account_number": instance.account_number, "is_active": instance.is_active},
+            mandatory=True,
+        )
+
+    @transaction.atomic
+    def perform_destroy(self, instance):
+        bank = instance.bank_name
+        acc_raw = str(instance.account_number or "")
+        acc_masked = f"****{acc_raw[-4:]}" if len(acc_raw) >= 4 else "****"
+        iid = str(instance.id)
+        instance.delete()
+        record_audit_event(
+            module="finances",
+            action="BANK_ACCOUNT_DELETED",
+            event_category=CATEGORY_CONFIG_CHANGE,
+            resource_type="BankAccount",
+            resource_id=iid,
+            resource_repr=f"Cuenta {bank} {acc_masked}",
+            actor=self.request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )

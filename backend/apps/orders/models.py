@@ -204,6 +204,18 @@ class Order(TimeStampedModel):
     def items_count(self):
         return sum(item.quantity for item in self.items.all())
 
+    @property
+    def money(self):
+        """Contrato de moneda tipado y aislado para LevelPro OS V4.0."""
+        from core.contracts.money import Money
+        return Money(self.total, self.currency)
+
+    @property
+    def state_contract(self):
+        """Contrato tri-dimensional desacoplado (comercial, financiero, logístico)."""
+        from core.contracts.states import OrderStateContract
+        return OrderStateContract.from_order(self)
+
 
 # ---------------------------------------------------------
 # ORDER ITEM

@@ -1,5 +1,13 @@
 from core.api_errors import api_error_response
 from django.db import transaction
+from core.audit.services import record_audit_event
+from core.audit.constants import (
+    CATEGORY_CONFIG_CHANGE,
+    CATEGORY_FINANCIAL_OPERATION,
+    SEVERITY_INFO,
+    SEVERITY_WARNING,
+    RESULT_SUCCESS,
+)
 # apps/loyalty/views.py
 
 from rest_framework.decorators import api_view, permission_classes
@@ -101,18 +109,25 @@ def redeem_points(request):
 
 
 # ── Vista admin ───────────────────────────────────────────────
+from core.admin_permissions import IsAdminOrStaff, rbac_endpoint
+from core.rbac.constants import (
+    MODULE_MARKETING,
+    PERM_MANAGE_SETTINGS,
+    PERM_APPLY_DISCOUNTS,
+    ROLE_SUPER_ADMIN,
+    ROLE_MANAGEMENT,
+)
 
+
+@rbac_endpoint(module=MODULE_MARKETING)
 @api_view(["GET"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminOrStaff])
 def admin_loyalty_summary(request):
     """
     GET /api/v1/loyalty/admin/summary/
     Devuelve KPIs + lista completa de cuentas con métricas agregadas.
     """
     from django.db.models import Sum, Count, Q
-
-    if not request.user.is_staff:
-        return Response(status=403)
 
     config = LoyaltyConfig.get()
 
@@ -173,13 +188,14 @@ def admin_loyalty_summary(request):
     })
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    capability_by_method={"PATCH": PERM_MANAGE_SETTINGS},
+)
 @api_view(["GET", "PATCH"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminOrStaff])
 def admin_loyalty_config(request):
-    """GET/PATCH /api/v1/admin/loyalty/config/"""
-    if not request.user.is_staff:
-        return Response(status=403)
-
+    """GET/PATCH /api/v1/loyalty/admin/config/"""
     config = LoyaltyConfig.get()
 
     if request.method == "PATCH":
@@ -190,6 +206,18 @@ def admin_loyalty_config(request):
                 setattr(config, f, request.data[f])
         config.save()
 
+        record_audit_event(
+            module="marketing",
+            action="LOYALTY_CONFIG_UPDATED",
+            event_category=CATEGORY_CONFIG_CHANGE,
+            resource_type="LoyaltyConfig",
+            resource_id=str(config.id),
+            resource_repr="Configuración de Loyalty",
+            actor=request.user,
+            new_values={f: request.data[f] for f in fields if f in request.data},
+            mandatory=True,
+        )
+
     return Response({
         "puntos_por_peso":  float(config.puntos_por_peso),
         "peso_por_punto":   float(config.peso_por_punto),
@@ -199,17 +227,19 @@ def admin_loyalty_config(request):
     })
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    capability=PERM_APPLY_DISCOUNTS,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+)
 @api_view(["POST"])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAdminOrStaff])
 @transaction.atomic
 def admin_adjust_points(request):
     """
     POST /api/v1/loyalty/admin/adjust/ — ajuste manual de puntos.
     Acepta `puntos`+`descripcion` o `points`+`reason` (compatibilidad frontend).
     """
-    if not request.user.is_staff:
-        return Response(status=403)
-
     from rest_framework import serializers
     class AdjustmentRequest(serializers.Serializer):
         user_id = serializers.UUIDField()
@@ -248,6 +278,19 @@ def admin_adjust_points(request):
                 descripcion = descripcion,
             )
             account.refresh_from_db()
+
+        record_audit_event(
+            module="marketing",
+            action="LOYALTY_POINTS_ADJUSTED",
+            event_category=CATEGORY_FINANCIAL_OPERATION,
+            resource_type="LoyaltyPoints",
+            resource_id=str(user_id),
+            resource_repr=f"Ajuste de {puntos} puntos para usuario {user.email}",
+            actor=request.user,
+            new_values={"points": puntos, "reason": descripcion, "new_balance": account.puntos_disponibles},
+            mandatory=True,
+        )
+
         return Response({"puntos_disponibles": account.puntos_disponibles})
     except User.DoesNotExist:
         return Response({"error": "Usuario no encontrado"}, status=404)

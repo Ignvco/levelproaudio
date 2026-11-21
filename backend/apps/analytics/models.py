@@ -185,3 +185,121 @@ class WithdrawalDeletionLog(TimeStampedModel):
         ordering = ["-created_at"]
         verbose_name = "Retiro borrado (auditoría)"
         verbose_name_plural = "Retiros borrados (auditoría)"
+
+
+# ── LEVELPRO OS V4.0 — AUDIT TRAIL CORE (Gate 1.2) ───────────────────────────
+import uuid
+from django.core.exceptions import PermissionDenied
+
+
+class AuditEventQuerySet(models.QuerySet):
+    """QuerySet inmutable: prohíbe terminantemente updates y deletes a nivel de ORM."""
+
+    def update(self, **kwargs):
+        raise PermissionDenied("Los registros de auditoría son inmutables (append-only). Operación UPDATE denegada.")
+
+    def delete(self):
+        raise PermissionDenied("Los registros de auditoría son inmutables (append-only). Operación DELETE denegada.")
+
+    def bulk_update(self, objs, fields, **kwargs):
+        raise PermissionDenied("Los registros de auditoría son inmutables (append-only). Operación BULK UPDATE denegada.")
+
+
+class AuditEventManager(models.Manager.from_queryset(AuditEventQuerySet)):
+    """Manager operacional con semántica append-only."""
+    pass
+
+
+class AuditEvent(models.Model):
+    """
+    Entidad central de trazabilidad, eventos de auditoría y análisis forense.
+    Diseñada con semántica append-only e inmutabilidad operacional garantizada por software y base de datos.
+    """
+    ACTOR_TYPE_CHOICES = [
+        ("user", "Usuario"),
+        ("system", "Sistema"),
+        ("integration", "Integración / Webhook"),
+    ]
+
+    RESULT_CHOICES = [
+        ("success", "Éxito"),
+        ("failed", "Fallido"),
+        ("denied", "Acceso denegado"),
+    ]
+
+    SEVERITY_CHOICES = [
+        ("info", "Informativo"),
+        ("warning", "Advertencia"),
+        ("high", "Alto"),
+        ("critical", "Crítico"),
+    ]
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    # Actor snapshot (preservado incluso si el usuario es eliminado o desactivado)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="audit_events",
+    )
+    actor_type = models.CharField(max_length=20, default="user", choices=ACTOR_TYPE_CHOICES)
+    actor_email = models.CharField(max_length=254, blank=True, db_index=True)
+    actor_username = models.CharField(max_length=150, blank=True)
+    actor_roles = models.JSONField(default=list, blank=True)
+
+    # Clasificación y Recurso Afectado
+    module = models.CharField(max_length=50, db_index=True)
+    action = models.CharField(max_length=80, db_index=True)
+    event_category = models.CharField(max_length=50, db_index=True)
+    resource_type = models.CharField(max_length=80, db_index=True)
+    resource_id = models.CharField(max_length=80, blank=True, db_index=True)
+    resource_repr = models.CharField(max_length=255, blank=True)
+
+    # Resultado y Criticidad
+    result = models.CharField(max_length=20, default="success", db_index=True, choices=RESULT_CHOICES)
+    severity = models.CharField(max_length=20, default="info", db_index=True, choices=SEVERITY_CHOICES)
+
+    # Payloads de Cambio y Estado (Sanitizados)
+    previous_values = models.JSONField(default=dict, blank=True)
+    new_values = models.JSONField(default=dict, blank=True)
+    changed_fields = models.JSONField(default=list, blank=True)
+
+    # Trazabilidad Distribuida y Contexto
+    correlation_id = models.CharField(max_length=64, blank=True, db_index=True)
+    source = models.CharField(max_length=50, default="api")
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    user_agent = models.TextField(blank=True)
+    metadata = models.JSONField(default=dict, blank=True)
+    schema_version = models.CharField(max_length=10, default="1.0")
+
+    objects = AuditEventManager()
+
+    class Meta:
+        db_table = "audit_events"
+        ordering = ["-created_at"]
+        verbose_name = "Evento de auditoría"
+        verbose_name_plural = "Registro de actividad (Auditoría)"
+        indexes = [
+            models.Index(fields=["-created_at", "module"], name="idx_audit_created_mod"),
+            models.Index(fields=["event_category", "-created_at"], name="idx_audit_cat_created"),
+            models.Index(fields=["result", "-created_at"], name="idx_audit_res_created"),
+            models.Index(fields=["resource_type", "resource_id"], name="idx_audit_resource"),
+            models.Index(fields=["actor_email", "-created_at"], name="idx_audit_act_created"),
+            models.Index(fields=["correlation_id"], name="idx_audit_corr_id"),
+        ]
+
+    def __str__(self):
+        return f"[{self.created_at.strftime('%Y-%m-%d %H:%M:%S')}] {self.module.upper()} - {self.action} ({self.result})"
+
+    def save(self, *args, **kwargs):
+        # Inmutabilidad a nivel de instancia del modelo: prohíbe UPDATE posterior a la creación.
+        if not self._state.adding and self.pk:
+            raise PermissionDenied("Los registros de auditoría son inmutables: no se permite su modificación.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        # Inmutabilidad a nivel de instancia del modelo: prohíbe DELETE.
+        raise PermissionDenied("Los registros de auditoría son inmutables: no se permite su eliminación.")

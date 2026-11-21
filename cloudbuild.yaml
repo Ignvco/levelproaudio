@@ -1,10 +1,11 @@
 # cloudbuild.yaml — raíz del repo
 
 substitutions:
-  _REGION:           "us-central1"
-  _BACKEND_SERVICE:  "levelproaudio-backend"
-  _FRONTEND_SERVICE: "levelproaudio-frontend"
-  _SQL_INSTANCE:     "levelproaudio:us-central1:levelproaudio-db"
+  _REGION:              "us-central1"
+  _BACKEND_SERVICE:     "levelproaudio-backend"
+  _FRONTEND_SERVICE:    "levelproaudio-frontend"
+  _MIGRATOR_JOB:        "levelproaudio-migrator-job"
+  _SQL_INSTANCE:        "levelproaudio:us-central1:levelproaudio-db"
   # Cuenta de servicio de RUNTIME — permisos mínimos (cloudsql, secretos,
   # storage del bucket de medios). Separada de la cuenta que usa este
   # mismo build para construir/pushear/desplegar (esa la maneja Cloud
@@ -12,23 +13,28 @@ substitutions:
   # no necesita estar acá). Antes esta variable apuntaba a
   # levelproaudio-run, la misma cuenta amplia usada para todo — quedó
   # separada tras la auditoría de permisos.
-  _SA_EMAIL:         "levelproaudio-app@levelproaudio.iam.gserviceaccount.com"
-  _TAG:              "latest"
-  _REPO:             "us-central1-docker.pkg.dev/levelproaudio/levelproaudio-docker"
+  _SA_EMAIL:                            "levelproaudio-app@levelproaudio.iam.gserviceaccount.com"
+  _TAG:                                 "latest"
+  _REPO:                                "us-central1-docker.pkg.dev/levelproaudio/levelproaudio-docker"
+  _RELEASE_LOCK_BUCKET:                 "levelproaudio_cloudbuild"
+  _RELEASE_LOCK_OBJECT:                 "locks/release_coordinator.lock"
+  _RELEASE_LOCK_TTL_SECONDS:            "900"
+  _RELEASE_LOCK_RENEW_INTERVAL_SECONDS: "60"
+  _RELEASE_LOCK_WAIT_TIMEOUT_SECONDS:   "600"
   # Client ID de Google Sign-In — es público (va en el JS del frontend,
   # no es un secreto), por eso alcanza con una substitution simple en
   # vez de pasarlo por Secret Manager.
-  _GOOGLE_CLIENT_ID: "147540000801-hpvtbt57k27bpa1un5brevnjipoqgita.apps.googleusercontent.com"
+  _GOOGLE_CLIENT_ID:    "147540000801-hpvtbt57k27bpa1un5brevnjipoqgita.apps.googleusercontent.com"
   # Branding del index.html (title, meta tags de redes sociales, GA) —
   # se inyecta en el build porque esas etiquetas las leen bots que no
   # ejecutan JS (WhatsApp, Facebook), así que no alcanza con el <Seo>
   # dinámico de React. Para un cliente nuevo, esto es lo que cambia al
   # "clonar y personalizar" antes del primer deploy.
-  _SITE_NAME:        "LevelPro Audio"
-  _SITE_TAGLINE:     "Equipamiento, Academia y Servicios de Audio"
-  _SITE_DESCRIPTION: "LevelPro Audio: tienda de equipamiento profesional, academia con cursos y certificaciones, servicios y sorteos exclusivos. Envíos en Chile y Argentina."
-  _SITE_URL:         "https://levelproaudio.com"
-  _GA_ID:            "G-34L6J30WM5"
+  _SITE_NAME:           "LevelPro Audio"
+  _SITE_TAGLINE:        "Equipamiento, Academia y Servicios de Audio"
+  _SITE_DESCRIPTION:    "LevelPro Audio: tienda de equipamiento profesional, academia con cursos y certificaciones, servicios y sorteos exclusivos. Envíos en Chile y Argentina."
+  _SITE_URL:            "https://levelproaudio.com"
+  _GA_ID:               "G-34L6J30WM5"
 
 steps:
 
@@ -66,6 +72,8 @@ steps:
       - build
       - -t
       - "${_REPO}/backend:${_TAG}"
+      - -t
+      - "${_REPO}/backend:$COMMIT_SHA"
       - -f
       - backend/Dockerfile.prod
       - ./backend
@@ -77,6 +85,8 @@ steps:
       - build
       - -t
       - "${_REPO}/frontend:${_TAG}"
+      - -t
+      - "${_REPO}/frontend:$COMMIT_SHA"
       - --build-arg
       - "VITE_GOOGLE_CLIENT_ID=${_GOOGLE_CLIENT_ID}"
       - --build-arg
@@ -97,92 +107,105 @@ steps:
   - name: "gcr.io/cloud-builders/docker"
     id: "push-backend"
     waitFor: ["build-backend"]
-    args: ["push", "${_REPO}/backend:${_TAG}"]
+    entrypoint: bash
+    args:
+      - -c
+      - |
+        set -euo pipefail
+        echo "[PUSH] Publicando imagen backend en Artifact Registry..."
+        docker push "${_REPO}/backend:$COMMIT_SHA"
+        docker push "${_REPO}/backend:${_TAG}"
+
+        # Extraer digest inmutable estricto: formato imagen@sha256:<64 hex>
+        # Se elimina todo fallback que sustituya silenciosamente un digest por un tag
+        BACKEND_DIGEST=$$(docker inspect --format='{{range .RepoDigests}}{{println .}}{{end}}' "${_REPO}/backend:$COMMIT_SHA" 2>/dev/null | grep -E '^.+@sha256:[a-f0-9]{64}$$' | head -n 1 || true)
+        if [ -z "$${BACKEND_DIGEST}" ]; then
+          BACKEND_DIGEST=$$(docker inspect --format='{{index .RepoDigests 0}}' "${_REPO}/backend:$COMMIT_SHA" 2>/dev/null || true)
+        fi
+
+        DIGEST_REGEX='^[a-zA-Z0-9._/-]+@sha256:[a-f0-9]{64}$$'
+        if [ -z "$${BACKEND_DIGEST}" ] || ! echo "$${BACKEND_DIGEST}" | grep -Eq "$${DIGEST_REGEX}"; then
+          echo "[DIGEST_ERROR] ❌ No se pudo obtener un digest inmutable válido para backend."
+          echo "[DIGEST_ERROR] Valor obtenido: '$${BACKEND_DIGEST}'"
+          echo "[DIGEST_ERROR] Formato requerido: imagen@sha256:<64_hex_chars>"
+          echo "[DIGEST_ERROR] Abortando pipeline: PROHIBIDO desplegar tags mutables en producción."
+          exit 1
+        fi
+
+        echo "[DIGEST] ✓ Backend digest inmutable verificado: $${BACKEND_DIGEST}"
+        echo "$${BACKEND_DIGEST}" > /workspace/backend_digest.txt
 
   # ── 4. Push Frontend ─────────────────────────────────────────
   - name: "gcr.io/cloud-builders/docker"
     id: "push-frontend"
     waitFor: ["build-frontend"]
-    args: ["push", "${_REPO}/frontend:${_TAG}"]
-
-  # ── 5. Deploy Backend ────────────────────────────────────────
-  # Ambos deploys esperan las dos imágenes: si falla el build o push
-  # del frontend, el backend tampoco empieza a desplegarse.
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    id: "deploy-backend"
-    waitFor: ["push-backend", "push-frontend"]
-    entrypoint: gcloud
+    entrypoint: bash
     args:
-      - run
-      - deploy
-      - "${_BACKEND_SERVICE}"
-      - --image=${_REPO}/backend:${_TAG}
-      - --region=${_REGION}
-      - --platform=managed
-      - --allow-unauthenticated
-      - --port=8080
-      - --memory=512Mi
-      - --cpu=1
-      - --min-instances=1
-      - --max-instances=5
-      - --service-account=${_SA_EMAIL}
-      - --set-cloudsql-instances=${_SQL_INSTANCE}
-      - --set-env-vars=DJANGO_SETTINGS_MODULE=config.settings.production
-      - --set-env-vars=CLOUD_SQL_CONNECTION_NAME=${_SQL_INSTANCE}
-      # ── Config de pagos (no secreta) ──
-      - --set-env-vars=FRONTEND_URL=https://levelproaudio.com
-      - --set-env-vars=SITE_URL=https://levelproaudio.com
-      - --set-env-vars=BACKEND_URL=https://levelproaudio.com
-      - --set-env-vars=PAYPAL_MODE=live
-      - --set-env-vars=USD_CLP_RATE=950
-      - --update-secrets=DJANGO_SECRET_KEY=DJANGO_SECRET_KEY:latest
-      - --update-secrets=SECRET_KEY=DJANGO_SECRET_KEY:latest
-      - --update-secrets=DB_NAME=DB_NAME:latest
-      - --update-secrets=DB_USER=DB_USER:latest
-      - --update-secrets=DB_PASSWORD=DB_PASSWORD:latest
-      - --update-secrets=GCS_BUCKET_NAME=levelproaudio-gcs-bucket:latest
-      - --update-secrets=GCS_PROJECT_ID=levelproaudio-gcs-project:latest
-      - --update-secrets=DJANGO_ALLOWED_HOSTS=DJANGO_ALLOWED_HOSTS:latest
-      # ── Credenciales de pago (Secret Manager) ──
-      - --update-secrets=MP_CL_ACCESS_TOKEN=MP_CL_ACCESS_TOKEN:latest
-      - --update-secrets=MP_CL_PUBLIC_KEY=MP_CL_PUBLIC_KEY:latest
-      # Crear y dar acceso ANTES del push: docs/patches/03-webhooks.md.
-      - --update-secrets=MP_CL_WEBHOOK_SECRET=MP_CL_WEBHOOK_SECRET:latest
-      - --update-secrets=PAYPAL_CLIENT_ID=PAYPAL_CLIENT_ID:latest
-      - --update-secrets=PAYPAL_CLIENT_SECRET=PAYPAL_CLIENT_SECRET:latest
-      # Argentina opera con Ualá Bis (ARS) en lugar de MercadoPago AR.
-      - --update-secrets=UALA_USERNAME=UALA_USERNAME:latest
-      - --update-secrets=UALA_CLIENT_ID=UALA_CLIENT_ID:latest
-      - --update-secrets=UALA_CLIENT_SECRET=UALA_CLIENT_SECRET:latest
-      # UALA_WEBHOOK_SECRET es opcional (el webhook consulta el estado autoritativo a la API de Ualá)
-      # - --update-secrets=UALA_WEBHOOK_SECRET=UALA_WEBHOOK_SECRET:latest
-      # Resend (emails). Remitente de marca con dominio verificado.
-      - --set-env-vars=RESEND_FROM_EMAIL=LevelPro Audio <no-responder@levelproaudio.com>
-      - --update-secrets=RESEND_API_KEY=RESEND_API_KEY:latest
+      - -c
+      - |
+        set -euo pipefail
+        echo "[PUSH] Publicando imagen frontend en Artifact Registry..."
+        docker push "${_REPO}/frontend:$COMMIT_SHA"
+        docker push "${_REPO}/frontend:${_TAG}"
 
-  # ── 6. Deploy Frontend ───────────────────────────────────────
+        # Extraer digest inmutable estricto: formato imagen@sha256:<64 hex>
+        # Se elimina todo fallback que sustituya silenciosamente un digest por un tag
+        FRONTEND_DIGEST=$$(docker inspect --format='{{range .RepoDigests}}{{println .}}{{end}}' "${_REPO}/frontend:$COMMIT_SHA" 2>/dev/null | grep -E '^.+@sha256:[a-f0-9]{64}$$' | head -n 1 || true)
+        if [ -z "$${FRONTEND_DIGEST}" ]; then
+          FRONTEND_DIGEST=$$(docker inspect --format='{{index .RepoDigests 0}}' "${_REPO}/frontend:$COMMIT_SHA" 2>/dev/null || true)
+        fi
+
+        DIGEST_REGEX='^[a-zA-Z0-9._/-]+@sha256:[a-f0-9]{64}$$'
+        if [ -z "$${FRONTEND_DIGEST}" ] || ! echo "$${FRONTEND_DIGEST}" | grep -Eq "$${DIGEST_REGEX}"; then
+          echo "[DIGEST_ERROR] ❌ No se pudo obtener un digest inmutable válido para frontend."
+          echo "[DIGEST_ERROR] Valor obtenido: '$${FRONTEND_DIGEST}'"
+          echo "[DIGEST_ERROR] Formato requerido: imagen@sha256:<64_hex_chars>"
+          echo "[DIGEST_ERROR] Abortando pipeline: PROHIBIDO desplegar tags mutables en producción."
+          exit 1
+        fi
+
+        echo "[DIGEST] ✓ Frontend digest inmutable verificado: $${FRONTEND_DIGEST}"
+        echo "$${FRONTEND_DIGEST}" > /workspace/frontend_digest.txt
+
+  # ── 5. Coordinated Release (Lock Atómico + Migraciones + Deploy Backend & Frontend) ─
+  # Ejecuta toda la sección crítica bajo un único orquestador Python (`scripts/release_coordinator.py`)
+  # garantizando:
+  # - Lock distribuido GCS condicionado por generación (`--if-generation-match`) vía `gcloud storage`.
+  # - Renovación activa periódica (heartbeat) para builds > 15 minutos y recuperación atómica de huérfanos.
+  # - Liberación garantizada verificada por propietario/generación en `finally` y ante señales SIGTERM/SIGINT.
+  # - Validación fail-closed de historial Git (incluyendo unshallow automático), digests inmutables,
+  #   migraciones desacopladas y despliegue secuencial backend -> frontend para el mismo COMMIT_SHA.
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    id: "deploy-frontend"
+    id: "coordinated-release"
     waitFor: ["push-backend", "push-frontend"]
-    entrypoint: gcloud
+    entrypoint: python3
     args:
-      - run
-      - deploy
-      - "${_FRONTEND_SERVICE}"
-      - --image=${_REPO}/frontend:${_TAG}
-      - --region=${_REGION}
-      - --platform=managed
-      - --allow-unauthenticated
-      - --port=8080
-      - --memory=256Mi
-      - --cpu=1
-      - --min-instances=0
-      - --max-instances=3
-      - --service-account=${_SA_EMAIL}
+      - "scripts/release_coordinator.py"
+    env:
+      - "BUILD_ID=$BUILD_ID"
+      - "COMMIT_SHA=$COMMIT_SHA"
+      - "PROJECT_ID=$PROJECT_ID"
+      - "REGION=${_REGION}"
+      - "BACKEND_SERVICE=${_BACKEND_SERVICE}"
+      - "FRONTEND_SERVICE=${_FRONTEND_SERVICE}"
+      - "MIGRATOR_JOB=${_MIGRATOR_JOB}"
+      - "SQL_INSTANCE=${_SQL_INSTANCE}"
+      - "SA_EMAIL=${_SA_EMAIL}"
+      - "RELEASE_LOCK_BUCKET=${_RELEASE_LOCK_BUCKET}"
+      - "RELEASE_LOCK_OBJECT=${_RELEASE_LOCK_OBJECT}"
+      - "RELEASE_LOCK_TTL_SECONDS=${_RELEASE_LOCK_TTL_SECONDS}"
+      - "RELEASE_LOCK_RENEW_INTERVAL_SECONDS=${_RELEASE_LOCK_RENEW_INTERVAL_SECONDS}"
+      - "RELEASE_LOCK_WAIT_TIMEOUT_SECONDS=${_RELEASE_LOCK_WAIT_TIMEOUT_SECONDS}"
+      - "BACKEND_DIGEST_FILE=/workspace/backend_digest.txt"
+      - "FRONTEND_DIGEST_FILE=/workspace/frontend_digest.txt"
 
 images:
   - "${_REPO}/backend:${_TAG}"
+  - "${_REPO}/backend:$COMMIT_SHA"
   - "${_REPO}/frontend:${_TAG}"
+  - "${_REPO}/frontend:$COMMIT_SHA"
 
 options:
   logging: CLOUD_LOGGING_ONLY
+
+timeout: "2400s"

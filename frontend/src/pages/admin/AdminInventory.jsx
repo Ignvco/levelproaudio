@@ -2,10 +2,11 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
-  getInventorySummary, getInventoryAlerts, getInventoryRotation,
+  getInventorySummary, getInventoryAlerts, getInventoryRotation, getAdminProducts,
 } from "../../api/admin.api"
-import { getAdminProducts } from "../../api/admin.api"
-import { Coins, Tag, TrendingUp, Boxes, Ban, AlertTriangle } from "lucide-react"
+import { getMyPermissions } from "../../api/rbac.api"
+import { useAuthStore } from "../../store/authStore"
+import { Coins, Tag, TrendingUp, Boxes, Ban, AlertTriangle, Lock } from "lucide-react"
 import { StatCard, AdminPageHeader, SecondaryButton, StatusBadge, SectionCard, ErrorState } from "../../components/admin/ui"
 import { formatCurrency } from "../../utils/accountingCurrency"
 import { asInventoryRows, normalizeInventoryRotation, inventoryPreview, groupInventoryPreview } from "../../utils/inventoryViewData"
@@ -24,6 +25,23 @@ function KPI({ label, value, sub, Icon, variant = "light" }) {
 export default function AdminInventory() {
   const [tab, setTab] = useState(0)
   const [rotationCurrency, setRotationCurrency] = useState("CLP")
+  const { user } = useAuthStore()
+
+  const { data: myPerms } = useQuery({
+    queryKey: ["my-permissions", user?.id || user?.email || "anon"],
+    queryFn: getMyPermissions,
+    staleTime: 60 * 1000,
+  })
+
+  const canAccessCatalog = !myPerms || myPerms.is_superuser || (Array.isArray(myPerms.modules) && myPerms.modules.includes("catalog"))
+  const canImportCatalog = !myPerms || myPerms.is_superuser || (
+    canAccessCatalog
+    && myPerms.capabilities?.edit_prices !== false
+    && myPerms.capabilities?.edit_costs !== false
+  )
+  const canViewCosts = !myPerms || myPerms.is_superuser || myPerms.capabilities?.view_costs !== false
+  const canViewMargins = !myPerms || myPerms.is_superuser || (canViewCosts && myPerms.capabilities?.view_margins !== false)
+  const canViewFinances = !myPerms || myPerms.is_superuser || myPerms.capabilities?.view_finances !== false
 
   const { data:summary, isLoading, isError:summaryError, refetch:refetchSummary } = useQuery({
     queryKey:["admin-inventory-summary"],
@@ -33,26 +51,31 @@ export default function AdminInventory() {
   const { data:alerts, isError:alertsError, refetch:refetchAlerts } = useQuery({
     queryKey:["admin-inventory-alerts"],
     queryFn: getInventoryAlerts,
-    enabled: tab === 1,
+    enabled: tab === 1 || !canAccessCatalog,
   })
   const { data:rotation, isError:rotationError, refetch:refetchRotation } = useQuery({
     queryKey:["admin-inventory-rotation", rotationCurrency],
     queryFn: () => getInventoryRotation(rotationCurrency),
     enabled: tab === 2,
   })
-  // Productos reales para Resumen y Por Categoría
+  // Productos reales para Resumen y Por Categoría (solo cuando el rol posee acceso a Catálogo)
   const { data:productsData, isError:productsError, refetch:refetchProducts } = useQuery({
     queryKey:["admin-products-inventory"],
     queryFn: () => getAdminProducts({ page_size: 200 }),
-    enabled: tab === 0 || tab === 3,
+    enabled: (tab === 0 || tab === 3) && canAccessCatalog,
   })
 
   const alertsList = asInventoryRows(alerts)
   const rotationList = normalizeInventoryRotation(rotation)
-  const { products, count: productCount, incomplete } = inventoryPreview(productsData)
+  const { products, count: productCount, incomplete } = canAccessCatalog
+    ? inventoryPreview(productsData)
+    : { products: alertsList, count: alertsList.length, incomplete: false }
   const categoryList = groupInventoryPreview(products)
   const maxUnitsSold = Math.max(1, ...rotationList.map(p => p.units ?? 0))
   const partialLabel = productCount != null ? `${products.length} de ${productCount}` : `${products.length}`
+  const isCostRestricted = Boolean(summary?.costs_restricted_rbac || !canViewCosts)
+  const isMarginRestricted = Boolean(summary?.margins_restricted_rbac || !canViewMargins)
+  const isSaleValueRestricted = Boolean(isCostRestricted && !canViewFinances)
 
   return (
     <div className="au-page">
@@ -61,10 +84,12 @@ export default function AdminInventory() {
         title="Inventario"
         description="Control de stock, valorización financiera, alertas y rotación de productos"
         actions={
-          <>
-            <SecondaryButton to="/admin/products" size="sm">Productos</SecondaryButton>
-            <SecondaryButton to="/admin/products/import" size="sm">Importar .xlsx</SecondaryButton>
-          </>
+          (canAccessCatalog || canImportCatalog) ? (
+            <>
+              {canAccessCatalog && <SecondaryButton to="/admin/products" size="sm">Productos</SecondaryButton>}
+              {canImportCatalog && <SecondaryButton to="/admin/products/import" size="sm">Importar .xlsx</SecondaryButton>}
+            </>
+          ) : null
         }
       />
 
@@ -107,17 +132,35 @@ export default function AdminInventory() {
           <>
             <div className="lp-kpi-strip">
               <KPI variant="ink" label="Valor en inventario"
-                value={fmt(summary?.valor_inventario)}
-                sub={summary?.cost_missing_count > 0 ? `${summary.cost_missing_count} productos con costo pendiente · CLP` : "Costo conocido del stock · CLP"}
-                Icon={Coins} />
+                value={isCostRestricted ? "Restringido" : fmt(summary?.valor_inventario)}
+                sub={
+                  isCostRestricted
+                    ? "Restringido por permisos del rol (RBAC)"
+                    : summary?.cost_missing_count > 0
+                      ? `${summary.cost_missing_count} productos con costo pendiente · CLP`
+                      : "Costo conocido del stock · CLP"
+                }
+                Icon={isCostRestricted ? Lock : Coins} />
               <KPI variant="light" label="Valor a precio de venta"
-                value={fmt(summary?.valor_venta)}
-                sub="Valorización catálogo CLP"
-                Icon={Tag} />
+                value={isSaleValueRestricted ? "Restringido" : fmt(summary?.valor_venta)}
+                sub={isSaleValueRestricted ? "Restringido por permisos del rol (RBAC)" : "Valorización catálogo CLP"}
+                Icon={isSaleValueRestricted ? Lock : Tag} />
               <KPI variant="primary" label="Ganancia potencial"
-                value={summary?.profit_calculable === false ? "Por completar" : fmt(summary?.ganancia_potencial)}
-                sub={summary?.profit_calculable === false ? "Faltan costos para calcular una ganancia coherente" : "Estimación venta − costo · CLP"}
-                Icon={TrendingUp} />
+                value={
+                  isMarginRestricted
+                    ? "Restringido"
+                    : summary?.profit_calculable === false
+                      ? "Por completar"
+                      : fmt(summary?.ganancia_potencial)
+                }
+                sub={
+                  isMarginRestricted
+                    ? "Restringido por permisos del rol (RBAC)"
+                    : summary?.profit_calculable === false
+                      ? "Faltan costos para calcular una ganancia coherente"
+                      : "Estimación venta − costo · CLP"
+                }
+                Icon={isMarginRestricted ? Lock : TrendingUp} />
               <KPI variant="light" label="Total productos"
                 value={summary?.total_productos||0}
                 sub="SKUs controlados"
@@ -177,10 +220,10 @@ export default function AdminInventory() {
                             {p.stock_min ?? 3}
                           </td>
                           <td style={{ textAlign: "right", color: "var(--admin-text-secondary)", fontFamily: "var(--font-mono)" }}>
-                            {p.cost_price != null ? fmt(p.cost_price) : "—"}
+                            {isCostRestricted ? "Restringido" : p.cost_price != null ? fmt(p.cost_price) : "Sin dato"}
                           </td>
                           <td style={{ textAlign: "right", fontWeight: 700, fontFamily: "var(--font-mono)" }}>
-                            {p.cost_price != null ? fmt(p.cost_price * p.stock) : "—"}
+                            {isCostRestricted ? "Restringido" : p.cost_price != null ? fmt(p.cost_price * p.stock) : "Sin dato"}
                           </td>
                         </tr>
                       ))}

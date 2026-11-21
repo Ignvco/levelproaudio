@@ -9,10 +9,11 @@ import { cloneElement, isValidElement, useEffect, useId, useRef } from "react"
 import { PrimaryButton, SecondaryButton } from "./Buttons"
 
 export function FormModal({
-  open, title, children, onClose, onSave,
+  open: openProp, isOpen: isOpenProp, title, children, onClose, onSave,
   saving = false, saveDisabled = false, saveLabel = "Guardar", cancelLabel = "Cancelar",
   error, maxWidth = "440px", scrollableBody = false, testId,
 }) {
+  const open = openProp ?? isOpenProp
   const titleId = useId()
   const dialogRef = useRef(null)
   const actionRef = useRef(onClose)
