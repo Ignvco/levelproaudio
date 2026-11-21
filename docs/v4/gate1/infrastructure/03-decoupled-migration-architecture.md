@@ -119,7 +119,7 @@ El archivo de configuración maestro de Cloud Build integra el paso de migració
 | Métrica / Atributo | Arquitectura Previa (Gate 1.2) | Arquitectura Desacoplada (Gate 1.3) |
 |---|---|---|
 | **Lugar de Ejecución DDL** | En cada contenedor web (`CMD` de Docker) | En Cloud Run Job efímero dedicado |
-| **Tiempo de Cold Start Web** | 15 - 25 segundos | **2.27 segundos** |
+| **Tiempo de Inicio WSGI / Cold Start Web** | 15 - 25 segundos (bloqueado por DDL) | **2.28s (WSGI boot) / ~5s (servicio completo)** |
 | **Riesgo en Escalado Horizontal** | Colisión de bloqueos y duplicados en `django_migrations` | **Cero riesgo** (las réplicas no tocan DDL) |
 | **Privilegios de DB del Servidor Web** | DDL completo (CREATE, DROP, TRUNCATE) | **DML estricto** (SELECT, INSERT, UPDATE, DELETE) |
 | **Fallo en Migración** | Crash loop en runtime web tras actualización | **Aborto anticipado en CI/CD**, servicio web intacto |

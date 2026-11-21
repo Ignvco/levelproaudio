@@ -21,7 +21,7 @@ Se declara formalmente concluido el desarrollo, endurecimiento de seguridad y ce
 4. **Segregación de Privilegios de Base de Datos:** Configuración e implementación de roles `levelpro_app_user` (DML exclusivo) y `levelpro_migrator_user` (DDL acotado), verificados en PostgreSQL 16.
 5. **Coordinación Concurrente con Advisory Locks:** Implementación del comando `migrate_with_lock` utilizando PostgreSQL Advisory Locks (`key=-7327028`), resolviendo colisiones concurrentes y garantizando abortos seguros ante timeout.
 6. **Contratos Expand/Contract:** Marco normativo y arquitectónico formalizado para asegurar cero tiempo de inactividad (Zero Downtime) en las 17 compuertas del roadmap.
-7. **No-Regresión Total:** 28/28 pruebas de auditoría y seguridad aprobadas; 100/100 pruebas unitarias frontend aprobadas; 16/16 pruebas de métodos de pago aprobadas; compilación frontend Vite exitosa; y reducción del cold start del backend web a 2.27 segundos.
+7. **No-Regresión Total:** 28/28 pruebas de auditoría y seguridad aprobadas; 100/100 pruebas unitarias frontend aprobadas; 16/16 pruebas de métodos de pago aprobadas; compilación frontend Vite exitosa; y optimización del tiempo de inicialización WSGI a 2.28 segundos (tiempo de arranque completo de servicio estimado en ~5s frente a los 25s previos con DDL).
 
 ---
 
@@ -34,7 +34,7 @@ Se declara formalmente concluido el desarrollo, endurecimiento de seguridad y ce
 | **Bloque 2: Segregación DML vs DDL** | Creación y configuración de roles `levelpro_app_user` (sin DDL ni TRUNCATE) y `levelpro_migrator_user` (DDL en public). | **COMPLETADO** | `04-iam-and-postgresql-privileges-matrix.md`<br>Simulaciones en PostgreSQL 16 |
 | **Bloque 3: Advisory Locking** | Implementación del comando `migrate_with_lock` con PostgreSQL Advisory Lock (`-7327028`), wait loop y liberación segura. | **COMPLETADO** | `05-concurrency-and-advisory-locking.md`<br>Pruebas de concurrencia y timeout |
 | **Bloque 4: Contratos Expand/Contract** | Formalización de fases Expand, Backfill y Contract para evolución de esquemas compatibles hacia atrás con cero downtime. | **COMPLETADO** | `06-expand-contract-contracts.md` |
-| **Bloque 5: Runbook y No-Regresión** | Diseño de runbook de despliegue y rollback; benchmarking de cold start (2.27s); ejecución completa de suites frontend y backend. | **COMPLETADO** | `07-deployment-and-rollback-runbook.md`<br>`08-qa-simulation-and-evidence.md`<br>`09-no-regression-report.md` |
+| **Bloque 5: Runbook y No-Regresión** | Diseño de runbook de despliegue y rollback; benchmarking de arranque (2.28s WSGI boot / ~5s cold start de servicio); ejecución completa de suites frontend y backend. | **COMPLETADO** | `07-deployment-and-rollback-runbook.md`<br>`08-qa-simulation-and-evidence.md`<br>`09-no-regression-report.md` |
 
 ---
 

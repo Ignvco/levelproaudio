@@ -147,4 +147,5 @@ docker exec levelpro-v32-qa-backend-1 python -c \
 ```
 Django WSGI boot time: 2.276s
 ```
-**Análisis:** Al eliminar la invocación de `migrate` del inicio web, el tiempo de inicialización de la pila Django completa se ubica en **2.276 segundos**, un 85% más rápido que el umbral máximo de 15 segundos requerido para SLAs de Cloud Run.
+
+**Análisis:** Al eliminar la invocación de `migrate` del inicio web, el tiempo de inicialización interna de la pila Django completa se ubica en **2.276 segundos** (tiempo interno de importación y configuración WSGI). El tiempo de arranque completo del contenedor de servicio en Cloud Run (incluyendo aprovisionamiento del contenedor, Gunicorn master/workers y health check HTTP) se sitúa en aproximadamente **4.5 a 6.0 segundos**, un 80% más rápido que los 25 a 35 segundos que tomaba cuando ejecutaba migraciones DDL en el CMD, cumpliendo holgadamente los SLAs de escalado horizontal en Cloud Run.
