@@ -13,10 +13,14 @@ substitutions:
   # no necesita estar acá). Antes esta variable apuntaba a
   # levelproaudio-run, la misma cuenta amplia usada para todo — quedó
   # separada tras la auditoría de permisos.
-  _SA_EMAIL:            "levelproaudio-app@levelproaudio.iam.gserviceaccount.com"
-  _TAG:                 "latest"
-  _REPO:                "us-central1-docker.pkg.dev/levelproaudio/levelproaudio-docker"
-  _RELEASE_LOCK_BUCKET: "levelproaudio-gcs-bucket"
+  _SA_EMAIL:                            "levelproaudio-app@levelproaudio.iam.gserviceaccount.com"
+  _TAG:                                 "latest"
+  _REPO:                                "us-central1-docker.pkg.dev/levelproaudio/levelproaudio-docker"
+  _RELEASE_LOCK_BUCKET:                 "levelproaudio_cloudbuild"
+  _RELEASE_LOCK_OBJECT:                 "locks/release_coordinator.lock"
+  _RELEASE_LOCK_TTL_SECONDS:            "900"
+  _RELEASE_LOCK_RENEW_INTERVAL_SECONDS: "60"
+  _RELEASE_LOCK_WAIT_TIMEOUT_SECONDS:   "600"
   # Client ID de Google Sign-In — es público (va en el JS del frontend,
   # no es un secreto), por eso alcanza con una substitution simple en
   # vez de pasarlo por Secret Manager.
@@ -163,354 +167,37 @@ steps:
         echo "[DIGEST] ✓ Frontend digest inmutable verificado: $${FRONTEND_DIGEST}"
         echo "$${FRONTEND_DIGEST}" > /workspace/frontend_digest.txt
 
-  # ── 4.3. Concurrency & Out-of-Order Release Check ───────────
-  # Previene colisiones concurrentes en el migrador y despliegues fuera de orden.
-  # Adquiere lock de coordinación y valida no regresión respecto a producción.
+  # ── 5. Coordinated Release (Lock Atómico + Migraciones + Deploy Backend & Frontend) ─
+  # Ejecuta toda la sección crítica bajo un único orquestador Python (`scripts/release_coordinator.py`)
+  # garantizando:
+  # - Lock distribuido GCS condicionado por generación (`--if-generation-match`) vía `gcloud storage`.
+  # - Renovación activa periódica (heartbeat) para builds > 15 minutos y recuperación atómica de huérfanos.
+  # - Liberación garantizada verificada por propietario/generación en `finally` y ante señales SIGTERM/SIGINT.
+  # - Validación fail-closed de historial Git (incluyendo unshallow automático), digests inmutables,
+  #   migraciones desacopladas y despliegue secuencial backend -> frontend para el mismo COMMIT_SHA.
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    id: "verify-release-ordering"
+    id: "coordinated-release"
     waitFor: ["push-backend", "push-frontend"]
-    entrypoint: bash
+    entrypoint: python3
     args:
-      - -c
-      - |
-        set -euo pipefail
-        CURRENT_BUILD_ID="${BUILD_ID:-local}"
-
-        echo "[RELEASE_GUARD] 1. Verificando concurrencia de pipelines activos..."
-        if [ "$$CURRENT_BUILD_ID" != "local" ]; then
-          query_concurrent_builds() {
-            local out exit_code
-            set +e
-            out=$$(gcloud builds list --filter="status=WORKING AND id!=$$CURRENT_BUILD_ID" --format="value(id,createTime)" 2>&1)
-            exit_code=$$?
-            set -e
-            if [ $$exit_code -ne 0 ]; then
-              echo "[RELEASE_GUARD] ❌ Error consultando Cloud Build API: $$out" >&2
-              return 1
-            fi
-            echo "$$out"
-          }
-
-          CONCURRENT_BUILDS=""
-          RETRIES=3
-          for attempt in $$(seq 1 $$RETRIES); do
-            if CONCURRENT_BUILDS=$$(query_concurrent_builds); then
-              break
-            fi
-            echo "[RELEASE_GUARD] Reintentando consulta a Cloud Build API ($$attempt/$$RETRIES)..."
-            sleep 3
-            if [ "$$attempt" -eq "$$RETRIES" ]; then
-              echo "[RELEASE_GUARD] ❌ ERROR CRÍTICO: Falló la consulta a Cloud Build API tras $$RETRIES intentos."
-              echo "[RELEASE_GUARD] Fail-closed: No se interpreta un error de consulta a la API de GCP como ausencia de concurrencia."
-              exit 1
-            fi
-          done
-
-          if [ -n "$$CONCURRENT_BUILDS" ]; then
-            echo "[RELEASE_GUARD] ⚠️ Se detectaron builds concurrentes en progreso:"
-            echo "$$CONCURRENT_BUILDS"
-            echo "[RELEASE_GUARD] Esperando liberación de builds concurrentes previos (máx 180s)..."
-            MAX_WAIT=18
-            for i in $$(seq 1 $$MAX_WAIT); do
-              sleep 10
-              if ! REMAINING=$$(query_concurrent_builds); then
-                echo "[RELEASE_GUARD] ❌ Error consultando builds activos durante espera. Fail-closed."
-                exit 1
-              fi
-              if [ -z "$$REMAINING" ]; then
-                echo "[RELEASE_GUARD] ✓ Builds concurrentes finalizados. Continuando."
-                break
-              fi
-              echo "[RELEASE_GUARD] Esperando liberación de build concurrente... ($$i/$$MAX_WAIT)"
-              if [ "$$i" -eq "$$MAX_WAIT" ]; then
-                echo "[RELEASE_GUARD] ❌ Timeout esperando liberación de builds concurrentes. Abortando para prevenir colisión."
-                exit 1
-              fi
-            done
-          fi
-
-          # Adquisición de lock de coordinación distribuido con recuperación de stale locks
-          if command -v gsutil >/dev/null 2>&1; then
-            LOCK_URI="gs://${_RELEASE_LOCK_BUCKET}/locks/release_coordinator.lock"
-            echo "[RELEASE_LOCK] Coordinando exclusión mutua de release en $$LOCK_URI..."
-            LOCK_ACQUIRED=0
-            MAX_LOCK_ATTEMPTS=12
-            for attempt in $$(seq 1 $$MAX_LOCK_ATTEMPTS); do
-              EXISTING_LOCK=""
-              set +e
-              EXISTING_LOCK=$$(gsutil cat "$$LOCK_URI" 2>/dev/null)
-              STAT_EXIT=$$?
-              set -e
-
-              if [ $$STAT_EXIT -ne 0 ] || [ -z "$$EXISTING_LOCK" ]; then
-                LOCK_PAYLOAD="build_id=$$CURRENT_BUILD_ID commit=$COMMIT_SHA timestamp=$$(date +%s)"
-                if echo "$$LOCK_PAYLOAD" | gsutil -q -h "x-goog-if-generation-match:0" cp - "$$LOCK_URI" 2>/dev/null; then
-                  echo "[RELEASE_LOCK] ✓ Lock de coordinación adquirido exitosamente."
-                  LOCK_ACQUIRED=1
-                  break
-                fi
-              else
-                PREV_BUILD_ID=$$(echo "$$EXISTING_LOCK" | grep -o 'build_id=[^ ]*' | cut -d= -f2 || true)
-                PREV_TIMESTAMP=$$(echo "$$EXISTING_LOCK" | grep -o 'timestamp=[^ ]*' | cut -d= -f2 || true)
-                CURRENT_TS=$$(date +%s)
-                LOCK_AGE=$$(( CURRENT_TS - PREV_TIMESTAMP ))
-
-                IS_STALE=0
-                if [ -n "$$PREV_BUILD_ID" ] && [ "$$PREV_BUILD_ID" != "$$CURRENT_BUILD_ID" ]; then
-                  set +e
-                  PREV_STATUS=$$(gcloud builds describe "$$PREV_BUILD_ID" --format="value(status)" 2>/dev/null)
-                  set -e
-                  if [ "$$PREV_STATUS" = "FAILURE" ] || [ "$$PREV_STATUS" = "CANCELLED" ] || [ "$$PREV_STATUS" = "TIMEOUT" ] || [ "$$PREV_STATUS" = "SUCCESS" ]; then
-                    echo "[RELEASE_LOCK] ⚠️ Lock previo pertenecía a build '$$PREV_BUILD_ID' con estado '$$PREV_STATUS'."
-                    IS_STALE=1
-                  elif [ $$LOCK_AGE -gt 900 ]; then
-                    echo "[RELEASE_LOCK] ⚠️ Lock previo superó TTL de 15m ($${LOCK_AGE}s)."
-                    IS_STALE=1
-                  fi
-                elif [ $$LOCK_AGE -gt 900 ]; then
-                  IS_STALE=1
-                fi
-
-                if [ $$IS_STALE -eq 1 ]; then
-                  echo "[RELEASE_LOCK] ✓ Reclamando lock huérfano/stale de forma segura..."
-                  gsutil rm -f "$$LOCK_URI" 2>/dev/null || true
-                  LOCK_PAYLOAD="build_id=$$CURRENT_BUILD_ID commit=$COMMIT_SHA timestamp=$$(date +%s)"
-                  if echo "$$LOCK_PAYLOAD" | gsutil -q cp - "$$LOCK_URI" 2>/dev/null; then
-                    echo "[RELEASE_LOCK] ✓ Lock adquirido exitosamente tras recuperación de release previo."
-                    LOCK_ACQUIRED=1
-                    break
-                  fi
-                fi
-              fi
-
-              echo "[RELEASE_LOCK] Sección crítica ocupada ($$attempt/$$MAX_LOCK_ATTEMPTS). Esperando 10s..."
-              sleep 10
-            done
-
-            if [ $$LOCK_ACQUIRED -ne 1 ]; then
-              echo "[RELEASE_LOCK] ❌ No se pudo adquirir lock de coordinación. Abortando release para prevenir colisión."
-              exit 1
-            fi
-          fi
-        fi
-
-        echo "[RELEASE_GUARD] 2. Verificando orden de despliegue y prevención de regresión..."
-        ACTIVE_COMMIT=""
-        set +e
-        ACTIVE_COMMIT=$$(gcloud run services describe "${_BACKEND_SERVICE}" \
-          --region="${_REGION}" \
-          --format='value(metadata.labels["commit-sha"])' 2>&1)
-        ACTIVE_EXIT=$$?
-        set -e
-
-        if [ $$ACTIVE_EXIT -ne 0 ]; then
-          if echo "$$ACTIVE_COMMIT" | grep -qi "not found"; then
-            echo "[RELEASE_GUARD] Servicio backend no existe aún. Primer despliegue permitido."
-            ACTIVE_COMMIT=""
-          else
-            echo "[RELEASE_GUARD] ❌ Error consultando servicio ${_BACKEND_SERVICE}: $$ACTIVE_COMMIT"
-            echo "[RELEASE_GUARD] Fail-closed: No se puede validar la versión activa en producción. Abortando."
-            exit 1
-          fi
-        fi
-
-        echo "$${ACTIVE_COMMIT}" > /workspace/base_commit.txt
-
-        if [ -n "$$ACTIVE_COMMIT" ] && [ "$$ACTIVE_COMMIT" != "$COMMIT_SHA" ]; then
-          echo "[RELEASE_GUARD] Commit en producción activa: $$ACTIVE_COMMIT"
-          echo "[RELEASE_GUARD] Commit en este pipeline:     $COMMIT_SHA"
-          if git merge-base --is-ancestor "$$ACTIVE_COMMIT" "$COMMIT_SHA" 2>/dev/null; then
-            echo "[RELEASE_GUARD] ✓ Avance válido hacia adelante (Fast-forward/descendant)."
-          else
-            echo "[RELEASE_GUARD] ❌ ALERTA: Despliegue fuera de orden detectado. El commit activo en producción ($$ACTIVE_COMMIT) no es ancestro del commit a desplegar ($COMMIT_SHA)."
-            echo "[RELEASE_GUARD] Abortando despliegue para prevenir regresión de código o migraciones."
-            exit 1
-          fi
-        else
-          echo "[RELEASE_GUARD] ✓ Servicio inicial o re-despliegue del mismo commit."
-        fi
-
-  # ── 4.5. Run Database Migrations (Decoupled Cloud Run Job) ───
-  # LEVELPRO OS V4.0 — GATE 1.3: DECOUPLED MIGRATION RUNNER
-  # 1. Configurar y actualizar la definición del Cloud Run Job con el digest inmutable
-  #    correspondiente al release exacto que se desplegará antes de ejecutarlo.
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    id: "update-migrator-job"
-    waitFor: ["verify-release-ordering"]
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        set -euo pipefail
-        IMMUTABLE_DIGEST=$$(cat /workspace/backend_digest.txt)
-        DIGEST_REGEX='^[a-zA-Z0-9._/-]+@sha256:[a-f0-9]{64}$$'
-        if [ -z "$$IMMUTABLE_DIGEST" ] || ! echo "$$IMMUTABLE_DIGEST" | grep -Eq "$$DIGEST_REGEX"; then
-          echo "[MIGRATOR_ERROR] ❌ Digest inmutable inválido para migrador: '$$IMMUTABLE_DIGEST'"
-          exit 1
-        fi
-        echo "[MIGRATOR] Verificando e inyectando imagen inmutable de release en ${_MIGRATOR_JOB}..."
-        echo "[MIGRATOR] Target immutable digest: $${IMMUTABLE_DIGEST}"
-        gcloud run jobs update "${_MIGRATOR_JOB}" \
-          --image="$${IMMUTABLE_DIGEST}" \
-          --region="${_REGION}"
-
-  # 2. Ejecutar el Job con la imagen verificada y esperar su terminación exitosa.
-  #    Si la migración falla, el deploy del backend y frontend se detiene inmediatamente.
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    id: "run-migrations"
-    waitFor: ["update-migrator-job"]
-    entrypoint: gcloud
-    args:
-      - run
-      - jobs
-      - execute
-      - "${_MIGRATOR_JOB}"
-      - --region=${_REGION}
-      - --wait
-
-  # ── 5. Deploy Backend ────────────────────────────────────────
-  # Despliega el backend web con la MISMA imagen inmutable verificada por el migrador.
-  # Revalida la versión activa inmediatamente antes de publicar para detectar intervenciones concurrentes.
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    id: "deploy-backend"
-    waitFor: ["run-migrations"]
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        set -euo pipefail
-        IMMUTABLE_DIGEST=$$(cat /workspace/backend_digest.txt)
-        DIGEST_REGEX='^[a-zA-Z0-9._/-]+@sha256:[a-f0-9]{64}$$'
-        if [ -z "$$IMMUTABLE_DIGEST" ] || ! echo "$$IMMUTABLE_DIGEST" | grep -Eq "$$DIGEST_REGEX"; then
-          echo "[DEPLOY_ERROR] ❌ Digest inmutable inválido para backend: '$$IMMUTABLE_DIGEST'"
-          exit 1
-        fi
-
-        # Revalidar versión activa inmediatamente antes de publicar
-        BASE_COMMIT=""
-        if [ -f /workspace/base_commit.txt ]; then
-          BASE_COMMIT=$$(cat /workspace/base_commit.txt)
-        fi
-        if [ -n "$$BASE_COMMIT" ]; then
-          echo "[DEPLOY_GUARD] Revalidando versión activa en Cloud Run inmediatamente antes de publicar..."
-          PRE_DEPLOY_COMMIT=$$(gcloud run services describe "${_BACKEND_SERVICE}" \
-            --region="${_REGION}" \
-            --format='value(metadata.labels["commit-sha"])' 2>/dev/null || true)
-          if [ -n "$$PRE_DEPLOY_COMMIT" ] && [ "$$PRE_DEPLOY_COMMIT" != "$$BASE_COMMIT" ] && [ "$$PRE_DEPLOY_COMMIT" != "$COMMIT_SHA" ]; then
-            echo "[DEPLOY_GUARD] ⚠️ DIVERGENCIA DETECTADA: La versión activa en Cloud Run cambió a '$$PRE_DEPLOY_COMMIT' durante migraciones."
-            if ! git merge-base --is-ancestor "$$PRE_DEPLOY_COMMIT" "$COMMIT_SHA" 2>/dev/null; then
-              echo "[DEPLOY_GUARD] ❌ ERROR: '$$PRE_DEPLOY_COMMIT' no es ancestro de $COMMIT_SHA. Abortando deploy para prevenir sobreescritura."
-              exit 1
-            fi
-            echo "[DEPLOY_GUARD] ✓ Versión divergente '$$PRE_DEPLOY_COMMIT' es ancestro válido de $COMMIT_SHA."
-          fi
-        fi
-
-        echo "[DEPLOY] Desplegando backend con digest inmutable verificado: $${IMMUTABLE_DIGEST}"
-        gcloud run deploy "${_BACKEND_SERVICE}" \
-          --image="$${IMMUTABLE_DIGEST}" \
-          --region="${_REGION}" \
-          --platform=managed \
-          --allow-unauthenticated \
-          --set-labels="commit-sha=$COMMIT_SHA" \
-          --port=8080 \
-          --memory=512Mi \
-          --cpu=1 \
-          --min-instances=1 \
-          --max-instances=5 \
-          --service-account="${_SA_EMAIL}" \
-          --set-cloudsql-instances="${_SQL_INSTANCE}" \
-          --set-env-vars=DJANGO_SETTINGS_MODULE=config.settings.production \
-          --set-env-vars=CLOUD_SQL_CONNECTION_NAME="${_SQL_INSTANCE}" \
-          --set-env-vars=FRONTEND_URL=https://levelproaudio.com \
-          --set-env-vars=SITE_URL=https://levelproaudio.com \
-          --set-env-vars=BACKEND_URL=https://levelproaudio.com \
-          --set-env-vars=PAYPAL_MODE=live \
-          --set-env-vars=USD_CLP_RATE=950 \
-          --update-secrets=DJANGO_SECRET_KEY=DJANGO_SECRET_KEY:latest \
-          --update-secrets=SECRET_KEY=DJANGO_SECRET_KEY:latest \
-          --update-secrets=DB_NAME=DB_NAME:latest \
-          --update-secrets=DB_USER=DB_USER:latest \
-          --update-secrets=DB_PASSWORD=DB_PASSWORD:latest \
-          --update-secrets=GCS_BUCKET_NAME=levelproaudio-gcs-bucket:latest \
-          --update-secrets=GCS_PROJECT_ID=levelproaudio-gcs-project:latest \
-          --update-secrets=DJANGO_ALLOWED_HOSTS=DJANGO_ALLOWED_HOSTS:latest \
-          --update-secrets=MP_CL_ACCESS_TOKEN=MP_CL_ACCESS_TOKEN:latest \
-          --update-secrets=MP_CL_PUBLIC_KEY=MP_CL_PUBLIC_KEY:latest \
-          --update-secrets=MP_CL_WEBHOOK_SECRET=MP_CL_WEBHOOK_SECRET:latest \
-          --update-secrets=PAYPAL_CLIENT_ID=PAYPAL_CLIENT_ID:latest \
-          --update-secrets=PAYPAL_CLIENT_SECRET=PAYPAL_CLIENT_SECRET:latest \
-          --update-secrets=UALA_USERNAME=UALA_USERNAME:latest \
-          --update-secrets=UALA_CLIENT_ID=UALA_CLIENT_ID:latest \
-          --update-secrets=UALA_CLIENT_SECRET=UALA_CLIENT_SECRET:latest \
-          --set-env-vars="RESEND_FROM_EMAIL=LevelPro Audio <no-responder@levelproaudio.com>" \
-          --update-secrets=RESEND_API_KEY=RESEND_API_KEY:latest
-
-  # ── 6. Deploy Frontend ───────────────────────────────────────
-  # Despliega el frontend web ÚNICAMENTE tras el éxito total de migraciones
-  # y despliegue del backend (waitFor: deploy-backend).
-  # Garantiza que el frontend utilice el digest inmutable verificado y que
-  # el backend de producción ya esté corriendo activamente el mismo COMMIT_SHA.
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    id: "deploy-frontend"
-    waitFor: ["deploy-backend"]
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        set -euo pipefail
-        # 1. Validar digest inmutable de frontend
-        FRONTEND_DIGEST=$$(cat /workspace/frontend_digest.txt)
-        DIGEST_REGEX='^[a-zA-Z0-9._/-]+@sha256:[a-f0-9]{64}$$'
-        if [ -z "$$FRONTEND_DIGEST" ] || ! echo "$$FRONTEND_DIGEST" | grep -Eq "$$DIGEST_REGEX"; then
-          echo "[DEPLOY_FRONTEND] ❌ Digest inmutable inválido o ausente para frontend: '$$FRONTEND_DIGEST'"
-          echo "[DEPLOY_FRONTEND] Formato requerido: imagen@sha256:<64_hex_chars>. Abortando."
-          exit 1
-        fi
-
-        # 2. Revalidar que el backend activo en producción corresponde exactamente a este release
-        echo "[DEPLOY_FRONTEND] Verificando que backend activo corresponda al release $COMMIT_SHA..."
-        BACKEND_ACTIVE_SHA=$$(gcloud run services describe "${_BACKEND_SERVICE}" \
-          --region="${_REGION}" \
-          --format='value(metadata.labels["commit-sha"])' 2>/dev/null || true)
-        if [ "$$BACKEND_ACTIVE_SHA" != "$COMMIT_SHA" ]; then
-          echo "[DEPLOY_FRONTEND] ❌ El backend activo en producción ($$BACKEND_ACTIVE_SHA) no coincide con el release actual ($COMMIT_SHA)."
-          echo "[DEPLOY_FRONTEND] Abortando despliegue de frontend: backend y frontend deben ser del mismo release."
-          exit 1
-        fi
-        echo "[DEPLOY_FRONTEND] ✓ Backend activo verificado en commit $COMMIT_SHA."
-
-        # 3. Desplegar frontend con digest inmutable verificado
-        echo "[DEPLOY_FRONTEND] Desplegando frontend con digest inmutable: $$FRONTEND_DIGEST"
-        gcloud run deploy "${_FRONTEND_SERVICE}" \
-          --image="$$FRONTEND_DIGEST" \
-          --region="${_REGION}" \
-          --platform=managed \
-          --allow-unauthenticated \
-          --set-labels="commit-sha=$COMMIT_SHA" \
-          --port=8080 \
-          --memory=256Mi \
-          --cpu=1 \
-          --min-instances=0 \
-          --max-instances=3 \
-          --service-account="${_SA_EMAIL}"
-
-  # ── 7. Release Coordination Lock ─────────────────────────────
-  # Libera de forma segura el lock de coordinación al finalizar exitosamente ambos despliegues.
-  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
-    id: "release-coordination-lock"
-    waitFor: ["deploy-frontend"]
-    entrypoint: bash
-    args:
-      - -c
-      - |
-        set -euo pipefail
-        echo "[RELEASE_LOCK] Despliegues de backend y frontend finalizados con éxito."
-        echo "[RELEASE_LOCK] Liberando lock de coordinación de release..."
-        if [ "${BUILD_ID:-local}" != "local" ] && command -v gsutil >/dev/null 2>&1; then
-          gsutil rm -f "gs://${_RELEASE_LOCK_BUCKET}/locks/release_coordinator.lock" 2>/dev/null || true
-        fi
-        echo "[RELEASE_LOCK] ✓ Lock de coordinación liberado exitosamente."
+      - "scripts/release_coordinator.py"
+    env:
+      - "BUILD_ID=$BUILD_ID"
+      - "COMMIT_SHA=$COMMIT_SHA"
+      - "PROJECT_ID=$PROJECT_ID"
+      - "REGION=${_REGION}"
+      - "BACKEND_SERVICE=${_BACKEND_SERVICE}"
+      - "FRONTEND_SERVICE=${_FRONTEND_SERVICE}"
+      - "MIGRATOR_JOB=${_MIGRATOR_JOB}"
+      - "SQL_INSTANCE=${_SQL_INSTANCE}"
+      - "SA_EMAIL=${_SA_EMAIL}"
+      - "RELEASE_LOCK_BUCKET=${_RELEASE_LOCK_BUCKET}"
+      - "RELEASE_LOCK_OBJECT=${_RELEASE_LOCK_OBJECT}"
+      - "RELEASE_LOCK_TTL_SECONDS=${_RELEASE_LOCK_TTL_SECONDS}"
+      - "RELEASE_LOCK_RENEW_INTERVAL_SECONDS=${_RELEASE_LOCK_RENEW_INTERVAL_SECONDS}"
+      - "RELEASE_LOCK_WAIT_TIMEOUT_SECONDS=${_RELEASE_LOCK_WAIT_TIMEOUT_SECONDS}"
+      - "BACKEND_DIGEST_FILE=/workspace/backend_digest.txt"
+      - "FRONTEND_DIGEST_FILE=/workspace/frontend_digest.txt"
 
 images:
   - "${_REPO}/backend:${_TAG}"
@@ -520,3 +207,5 @@ images:
 
 options:
   logging: CLOUD_LOGGING_ONLY
+
+timeout: "2400s"
