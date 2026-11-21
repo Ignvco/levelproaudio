@@ -4,6 +4,7 @@ substitutions:
   _REGION:           "us-central1"
   _BACKEND_SERVICE:  "levelproaudio-backend"
   _FRONTEND_SERVICE: "levelproaudio-frontend"
+  _MIGRATOR_JOB:     "levelproaudio-migrator-job"
   _SQL_INSTANCE:     "levelproaudio:us-central1:levelproaudio-db"
   # Cuenta de servicio de RUNTIME — permisos mínimos (cloudsql, secretos,
   # storage del bucket de medios). Separada de la cuenta que usa este
@@ -105,12 +106,29 @@ steps:
     waitFor: ["build-frontend"]
     args: ["push", "${_REPO}/frontend:${_TAG}"]
 
+  # ── 4.5. Run Database Migrations (Decoupled Cloud Run Job) ───
+  # LEVELPRO OS V4.0 — GATE 1.3: DECOUPLED MIGRATION RUNNER
+  # Ejecuta las migraciones en un trabajo efímero aislado antes de desplegar
+  # el backend web. Si la migración falla, el deploy del backend se detiene
+  # inmediatamente sin afectar las instancias de producción activas.
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    id: "run-migrations"
+    waitFor: ["push-backend"]
+    entrypoint: gcloud
+    args:
+      - run
+      - jobs
+      - execute
+      - "${_MIGRATOR_JOB}"
+      - --region=${_REGION}
+      - --wait
+
   # ── 5. Deploy Backend ────────────────────────────────────────
-  # Ambos deploys esperan las dos imágenes: si falla el build o push
-  # del frontend, el backend tampoco empieza a desplegarse.
+  # Despliega el backend web únicamente si las migraciones concluyeron
+  # con éxito (waitFor: run-migrations) y ambas imágenes están listas.
   - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
     id: "deploy-backend"
-    waitFor: ["push-backend", "push-frontend"]
+    waitFor: ["run-migrations", "push-frontend"]
     entrypoint: gcloud
     args:
       - run

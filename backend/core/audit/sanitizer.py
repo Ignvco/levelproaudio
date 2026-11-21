@@ -120,7 +120,11 @@ def mask_payload_financial_data(
         "margin", "margen", "profit", "ganancia", "utilidad",
         "net_profit", "utilidad_neta",
     }
-    finance_keys = {"withdrawal_amount", "distributions"}
+    finance_keys = {
+        "withdrawal_amount", "distributions", "destination",
+        "account_number", "bank_account", "numero_cuenta", "bank",
+        "cuenta", "account", "monto", "amount",
+    }
 
     for k, v in payload.items():
         str_k = str(k).lower()
@@ -141,6 +145,24 @@ def mask_payload_financial_data(
         else:
             masked[k] = v
 
+    return masked
+
+
+def mask_sensitive_resource_repr(resource_repr: str, can_view_finances: bool = True) -> str:
+    """
+    Enmascara montos monetarios y secuencias de dígitos de cuentas bancarias en la representación
+    legible de recursos para usuarios sin capacidades financieras (view_finances / view_financial_audit).
+    """
+    if not resource_repr:
+        return ""
+    if can_view_finances:
+        return resource_repr
+
+    import re
+    # Enmascarar montos monetarios ($XXXX) a $[RESTRINGIDO]
+    masked = re.sub(r'(\$\d+([\.,]\d+)?)', '$[RESTRINGIDO]', resource_repr)
+    # Enmascarar números largos de cuenta bancaria dejando solo los últimos 4 dígitos
+    masked = re.sub(r'\b\d{5,}\b', lambda m: f"****{m.group(0)[-4:]}", masked)
     return masked
 
 

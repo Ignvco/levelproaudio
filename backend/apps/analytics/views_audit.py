@@ -43,7 +43,11 @@ from core.audit.constants import (
     SEVERITY_WARNING,
     RESULT_SUCCESS,
 )
-from core.audit.sanitizer import mask_payload_financial_data, sanitize_csv_cell
+from core.audit.sanitizer import (
+    mask_payload_financial_data,
+    mask_sensitive_resource_repr,
+    sanitize_csv_cell,
+)
 from core.audit.services import (
     get_audit_events_queryset,
     get_audit_summary,
@@ -103,7 +107,7 @@ def _serialize_audit_event(event: AuditEvent, user):
         "category_label": CATEGORY_LABELS.get(event.event_category, event.event_category),
         "resource_type": event.resource_type,
         "resource_id": event.resource_id,
-        "resource_repr": event.resource_repr,
+        "resource_repr": mask_sensitive_resource_repr(event.resource_repr, can_view_finances=can_finances),
         "result": event.result,
         "result_label": RESULT_LABELS.get(event.result, event.result),
         "severity": event.severity,
@@ -288,6 +292,8 @@ def audit_export_view(request):
         "Campos Modificados",
     ])
 
+    can_finances = _can_view_financials(request.user)
+
     for ev in qs:
         writer.writerow([
             sanitize_csv_cell(str(ev.id)),
@@ -300,7 +306,7 @@ def audit_export_view(request):
             sanitize_csv_cell(CATEGORY_LABELS.get(ev.event_category, ev.event_category)),
             sanitize_csv_cell(ev.resource_type),
             sanitize_csv_cell(ev.resource_id),
-            sanitize_csv_cell(ev.resource_repr),
+            sanitize_csv_cell(mask_sensitive_resource_repr(ev.resource_repr, can_view_finances=can_finances)),
             sanitize_csv_cell(RESULT_LABELS.get(ev.result, ev.result)),
             sanitize_csv_cell(SEVERITY_LABELS.get(ev.severity, ev.severity)),
             sanitize_csv_cell(ev.correlation_id),

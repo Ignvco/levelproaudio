@@ -48,6 +48,9 @@ User = get_user_model()
 
 def _resolve_actor_info(actor=None, actor_type=None):
     """Resuelve la información y snapshot de roles del actor."""
+    if actor_type == ACTOR_SYSTEM and actor is None:
+        return None, ACTOR_SYSTEM, "system@levelproaudio.com", "system", ["Sistema"]
+
     resolved_actor = actor if actor is not None else get_current_user()
 
     if resolved_actor and getattr(resolved_actor, "is_authenticated", False):
@@ -315,4 +318,97 @@ def get_audit_summary(user):
         "denied_events": denied_count,
         "by_module": modules_breakdown,
         "by_severity": severities_breakdown,
+    }
+
+
+def reconcile_missing_payment_audit_events() -> dict:
+    """
+    Procedimiento de recuperación durable e idempotente de eventos de auditoría de pagos.
+    Inspecciona registros de Payment y PaymentWebhookEvent para identificar pagos confirmados
+    o rechazados que carezcan de AuditEvent correspondiente (por ejemplo, ante caídas transitorias
+    o alertas críticas de seguridad).
+
+    Garantiza idempotencia absoluta: si el evento ya existe, se omite sin duplicar.
+    No duplica pagos ni altera la semántica transaccional ni el estado de órdenes.
+    """
+    from apps.payments.models import Payment, PaymentStatus
+    from .constants import (
+        CATEGORY_PAYMENT_OPERATION,
+        SEVERITY_INFO,
+        SEVERITY_WARNING,
+        RESULT_SUCCESS,
+        RESULT_FAILED,
+        ACTOR_SYSTEM,
+    )
+
+    reconciled_count = 0
+    scanned_count = 0
+    skipped_count = 0
+
+    payments = Payment.objects.filter(status__in=[
+        PaymentStatus.APPROVED,
+        PaymentStatus.REJECTED,
+        PaymentStatus.REFUNDED,
+        PaymentStatus.CANCELLED,
+    ]).select_related("order")
+
+    for p in payments.iterator(chunk_size=100):
+        scanned_count += 1
+        expected_action = (
+            "PAYMENT_APPROVED" if p.status == PaymentStatus.APPROVED
+            else ("PAYMENT_REJECTED" if p.status == PaymentStatus.REJECTED
+            else f"PAYMENT_STATUS_{p.status.upper()}")
+        )
+
+        existing = AuditEvent.objects.filter(
+            resource_type="Payment",
+            resource_id=str(p.id),
+            action=expected_action,
+        ).exists()
+
+        if existing:
+            skipped_count += 1
+            continue
+
+        sev = SEVERITY_WARNING if p.status in [PaymentStatus.REJECTED, PaymentStatus.CANCELLED] else SEVERITY_INFO
+        res = RESULT_FAILED if p.status in [PaymentStatus.REJECTED, PaymentStatus.CANCELLED] else RESULT_SUCCESS
+
+        record_audit_event(
+            module="finances",
+            action=expected_action,
+            event_category=CATEGORY_PAYMENT_OPERATION,
+            resource_type="Payment",
+            resource_id=str(p.id),
+            resource_repr=f"Pago #{p.id} (${p.amount} {p.currency or 'CLP'})",
+            actor_type=ACTOR_SYSTEM,
+            result=res,
+            severity=sev,
+            new_values={
+                "status": p.status,
+                "amount": str(p.amount),
+                "provider": p.provider,
+                "paid_at": p.paid_at.isoformat() if p.paid_at else None,
+            },
+            metadata={
+                "reconciled": True,
+                "reconciliation_reason": "audit_trail_gap_recovery",
+                "external_id": str(p.external_id or ""),
+                "order_id": str(p.order_id or ""),
+            },
+            source="audit_reconciler",
+            mandatory=False,
+        )
+        reconciled_count += 1
+
+    logger.info(
+        "Reconciliación de auditoría de pagos completada: escaneados=%d, reconciliados=%d, omitidos=%d",
+        scanned_count,
+        reconciled_count,
+        skipped_count,
+    )
+
+    return {
+        "scanned": scanned_count,
+        "reconciled": reconciled_count,
+        "skipped": skipped_count,
     }

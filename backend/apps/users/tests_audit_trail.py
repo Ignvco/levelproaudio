@@ -32,26 +32,29 @@ from unittest.mock import patch
 from django.test import TransactionTestCase
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group, Permission
+import re
 from django.core.exceptions import PermissionDenied
 from django.db import connection, transaction
-from django.db.utils import InternalError
+from django.db.utils import InternalError, OperationalError
 from django.db.backends.base.operations import BaseDatabaseOperations
 
 _orig_execute_sql_flush = BaseDatabaseOperations.execute_sql_flush
 
 
-def _audit_aware_execute_sql_flush(self, sql_list):
-    if self.connection.vendor == "postgresql":
-        with self.connection.cursor() as cursor:
-            cursor.execute("SET levelpro.allow_audit_truncate = 'on';")
-            try:
-                return _orig_execute_sql_flush(self, sql_list)
-            finally:
-                cursor.execute("SET levelpro.allow_audit_truncate = 'off';")
-    return _orig_execute_sql_flush(self, sql_list)
+def _audit_preserving_execute_sql_flush(self, sql_list):
+    """
+    Durante el vaciado de tablas de pruebas (sql_flush), activa temporalmente el token de mantenimiento
+    de sesión para permitir el vaciado coordinado con integridad referencial, y luego lo resetea de inmediato.
+    """
+    with self.connection.cursor() as cursor:
+        cursor.execute("SET levelpro.maintenance_audit_maintenance_active = 'active_authorized_maintenance';")
+        try:
+            return _orig_execute_sql_flush(self, sql_list)
+        finally:
+            cursor.execute("RESET levelpro.maintenance_audit_maintenance_active;")
 
 
-BaseDatabaseOperations.execute_sql_flush = _audit_aware_execute_sql_flush
+BaseDatabaseOperations.execute_sql_flush = _audit_preserving_execute_sql_flush
 from rest_framework.test import APIClient
 from rest_framework import status
 
@@ -127,6 +130,8 @@ class AuditTrailComprehensiveTestSuite(TransactionTestCase):
 
     def setUp(self):
         super().setUp()
+        from core.audit.context import clear_current_audit_context
+        clear_current_audit_context()
         self.client = APIClient()
 
         from django.core.management import call_command
@@ -741,14 +746,22 @@ class AuditTrailComprehensiveTestSuite(TransactionTestCase):
         self.product.refresh_from_db()
         self.assertEqual(self.product.price, initial_price)
 
-    # 23. PostgreSQL trigger blocks raw SQL TRUNCATE
+    # 23. PostgreSQL trigger blocks raw SQL TRUNCATE (Incondicional para usuarios de aplicación)
     def test_postgresql_trigger_blocks_sql_truncate(self):
         if connection.vendor != "postgresql":
             self.skipTest("Prueba específica para base de datos PostgreSQL")
 
-        with self.assertRaises(InternalError):
+        # 1. Intento directo de TRUNCATE sin token de mantenimiento
+        with self.assertRaises((InternalError, OperationalError)):
             with transaction.atomic():
                 with connection.cursor() as cursor:
+                    cursor.execute("TRUNCATE TABLE audit_events")
+
+        # 2. Intento de bypass configurando parámetros obsoletos/inválidos: el trigger lo bloquea
+        with self.assertRaises((InternalError, OperationalError)):
+            with transaction.atomic():
+                with connection.cursor() as cursor:
+                    cursor.execute("SET levelpro.allow_audit_truncate = 'on';")
                     cursor.execute("TRUNCATE TABLE audit_events")
 
     # 24. Prevention of CSV formula injection (CWE-1236)
@@ -816,3 +829,79 @@ class AuditTrailComprehensiveTestSuite(TransactionTestCase):
         self.assertEqual(resp_exp.status_code, status.HTTP_200_OK)
         exp_content = resp_exp.content.decode("utf-8")
         self.assertNotIn(str(sec_event.id), exp_content)
+
+    # 27. Idempotent payment audit reconciliation
+    def test_reconcile_missing_payment_audit_events_is_idempotent(self):
+        from core.audit.services import reconcile_missing_payment_audit_events
+        order = Order.objects.create(
+            user=self.sales_user,
+            total=Decimal("75000.00"),
+            currency="CLP",
+            status="pending",
+        )
+        payment = Payment.objects.create(
+            order=order,
+            provider="transfer",
+            status="approved",
+            amount=Decimal("75000.00"),
+        )
+        # Eliminar deliberadamente cualquier evento de auditoría previo para este pago
+        AuditEvent.objects.filter(resource_type="Payment", resource_id=str(payment.id)).delete_without_trigger() if hasattr(AuditEvent.objects, 'delete_without_trigger') else None
+        # O consultar el conteo actual antes de reconciliar
+        prior_reconciled = AuditEvent.objects.filter(resource_type="Payment", resource_id=str(payment.id), action="PAYMENT_APPROVED").count()
+
+        # Primera ejecución: reconcilia y crea el evento faltante
+        res1 = reconcile_missing_payment_audit_events()
+        self.assertGreaterEqual(res1["scanned"], 1)
+
+        event = AuditEvent.objects.filter(resource_type="Payment", resource_id=str(payment.id), action="PAYMENT_APPROVED").first()
+        self.assertIsNotNone(event)
+        self.assertEqual(event.module, "finances")
+
+        # Segunda ejecución inmediata: idempotente al 100%, 0 eventos nuevos creados
+        res2 = reconcile_missing_payment_audit_events()
+        self.assertGreaterEqual(res2["skipped"], 1)
+        after_count = AuditEvent.objects.filter(resource_type="Payment", resource_id=str(payment.id), action="PAYMENT_APPROVED").count()
+        self.assertEqual(after_count, 1)
+
+    # 28. Protection of banking information in representation and serializers
+    def test_bank_account_masking_in_repr_and_serializers(self):
+        from apps.payments.models import BankAccount
+        bank_acc = BankAccount.objects.create(
+            bank_name="Banco de Chile",
+            account_number="123456789012",
+            account_type="corriente",
+            is_active=True,
+        )
+        event = AuditEvent.objects.create(
+            module="finances",
+            action="BANK_ACCOUNT_CREATED",
+            event_category="config_change",
+            resource_type="BankAccount",
+            resource_id=str(bank_acc.id),
+            resource_repr=f"Cuenta {bank_acc.bank_name} ****9012",
+            new_values={"bank": bank_acc.bank_name, "account_number": "123456789012", "is_active": True},
+        )
+        # Super Admin puede ver la cuenta completa en new_values
+        self.client.force_authenticate(user=self.super_admin)
+        resp_su = self.client.get(f"/api/v1/admin/audit/events/{event.id}/")
+        self.assertEqual(resp_su.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp_su.data["new_values"]["account_number"], "123456789012")
+
+        # Remover temporalmente permisos financieros del grupo ROLE_MANAGEMENT para probar enmascaramiento
+        mgmt_group = Group.objects.get(name=ROLE_MANAGEMENT)
+        fin_perms = Permission.objects.filter(
+            codename__in=[PERM_VIEW_FINANCES, PERM_VIEW_FINANCIAL_AUDIT],
+            content_type__app_label="users",
+        )
+        for p in fin_perms:
+            mgmt_group.permissions.remove(p)
+
+        # Usuario sin capacidades financieras ve account_number enmascarado
+        self.client.force_authenticate(user=self.management_user)
+        resp_mgmt = self.client.get(f"/api/v1/admin/audit/events/{event.id}/")
+        self.assertEqual(resp_mgmt.status_code, status.HTTP_200_OK)
+        self.assertEqual(resp_mgmt.data["new_values"]["account_number"], "[RESTRINGIDO]")
+        # El resource_repr solo contiene los últimos 4 dígitos
+        self.assertIn("****9012", resp_mgmt.data["resource_repr"])
+        self.assertNotIn("123456789012", resp_mgmt.data["resource_repr"])

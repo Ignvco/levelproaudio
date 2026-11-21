@@ -430,36 +430,38 @@ class AdminPaymentMethodViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def perform_create(self, serializer):
         instance = serializer.save()
+        method_name = instance.label or instance.method
         record_audit_event(
             module="finances",
             action="PAYMENT_METHOD_CREATED",
             event_category=CATEGORY_CONFIG_CHANGE,
             resource_type="PaymentMethodConfig",
             resource_id=str(instance.id),
-            resource_repr=f"Método de pago {instance.name}",
+            resource_repr=f"Método de pago {method_name}",
             actor=self.request.user,
-            new_values={"name": instance.name, "is_active": instance.is_active},
+            new_values={"method": instance.method, "label": instance.label, "is_active": instance.is_active},
             mandatory=True,
         )
 
     @transaction.atomic
     def perform_update(self, serializer):
         instance = serializer.save()
+        method_name = instance.label or instance.method
         record_audit_event(
             module="finances",
             action="PAYMENT_METHOD_UPDATED",
             event_category=CATEGORY_CONFIG_CHANGE,
             resource_type="PaymentMethodConfig",
             resource_id=str(instance.id),
-            resource_repr=f"Método de pago {instance.name}",
+            resource_repr=f"Método de pago {method_name}",
             actor=self.request.user,
-            new_values={"name": instance.name, "is_active": instance.is_active},
+            new_values={"method": instance.method, "label": instance.label, "is_active": instance.is_active},
             mandatory=True,
         )
 
     @transaction.atomic
     def perform_destroy(self, instance):
-        name = instance.name
+        method_name = instance.label or instance.method
         iid = str(instance.id)
         instance.delete()
         record_audit_event(
@@ -468,7 +470,7 @@ class AdminPaymentMethodViewSet(viewsets.ModelViewSet):
             event_category=CATEGORY_CONFIG_CHANGE,
             resource_type="PaymentMethodConfig",
             resource_id=iid,
-            resource_repr=f"Método de pago {name}",
+            resource_repr=f"Método de pago {method_name}",
             actor=self.request.user,
             severity=SEVERITY_WARNING,
             mandatory=True,
@@ -493,37 +495,42 @@ class AdminBankAccountViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def perform_create(self, serializer):
         instance = serializer.save()
+        acc_raw = str(instance.account_number or "")
+        acc_masked = f"****{acc_raw[-4:]}" if len(acc_raw) >= 4 else "****"
         record_audit_event(
             module="finances",
             action="BANK_ACCOUNT_CREATED",
             event_category=CATEGORY_CONFIG_CHANGE,
             resource_type="BankAccount",
             resource_id=str(instance.id),
-            resource_repr=f"Cuenta {instance.bank_name} {instance.account_number}",
+            resource_repr=f"Cuenta {instance.bank_name} {acc_masked}",
             actor=self.request.user,
-            new_values={"bank": instance.bank_name, "is_active": instance.is_active},
+            new_values={"bank": instance.bank_name, "account_number": instance.account_number, "is_active": instance.is_active},
             mandatory=True,
         )
 
     @transaction.atomic
     def perform_update(self, serializer):
         instance = serializer.save()
+        acc_raw = str(instance.account_number or "")
+        acc_masked = f"****{acc_raw[-4:]}" if len(acc_raw) >= 4 else "****"
         record_audit_event(
             module="finances",
             action="BANK_ACCOUNT_UPDATED",
             event_category=CATEGORY_CONFIG_CHANGE,
             resource_type="BankAccount",
             resource_id=str(instance.id),
-            resource_repr=f"Cuenta {instance.bank_name} {instance.account_number}",
+            resource_repr=f"Cuenta {instance.bank_name} {acc_masked}",
             actor=self.request.user,
-            new_values={"bank": instance.bank_name, "is_active": instance.is_active},
+            new_values={"bank": instance.bank_name, "account_number": instance.account_number, "is_active": instance.is_active},
             mandatory=True,
         )
 
     @transaction.atomic
     def perform_destroy(self, instance):
         bank = instance.bank_name
-        acc = instance.account_number
+        acc_raw = str(instance.account_number or "")
+        acc_masked = f"****{acc_raw[-4:]}" if len(acc_raw) >= 4 else "****"
         iid = str(instance.id)
         instance.delete()
         record_audit_event(
@@ -532,7 +539,7 @@ class AdminBankAccountViewSet(viewsets.ModelViewSet):
             event_category=CATEGORY_CONFIG_CHANGE,
             resource_type="BankAccount",
             resource_id=iid,
-            resource_repr=f"Cuenta {bank} {acc}",
+            resource_repr=f"Cuenta {bank} {acc_masked}",
             actor=self.request.user,
             severity=SEVERITY_WARNING,
             mandatory=True,

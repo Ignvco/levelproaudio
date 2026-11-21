@@ -13,6 +13,7 @@ from .sanitizer import (
     sanitize_audit_payload,
     compute_state_diff,
     mask_payload_financial_data,
+    mask_sensitive_resource_repr,
     sanitize_csv_cell,
 )
 from .services import (
@@ -30,6 +31,7 @@ __all__ = [
     "sanitize_audit_payload",
     "compute_state_diff",
     "mask_payload_financial_data",
+    "mask_sensitive_resource_repr",
     "sanitize_csv_cell",
     "record_audit_event",
     "record_out_of_band_audit_event",

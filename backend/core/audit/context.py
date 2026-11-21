@@ -38,5 +38,13 @@ def get_current_user_agent() -> str:
     return _user_agent_ctx.get() or ""
 
 
+def clear_current_audit_context():
+    """Limpia las variables de contexto de auditoría para el hilo/coroutine actual."""
+    _correlation_id_ctx.set("")
+    _ip_address_ctx.set("")
+    _user_agent_ctx.set("")
+    _current_user_ctx.set(None)
+
+
 def get_current_user():
     return _current_user_ctx.get()
