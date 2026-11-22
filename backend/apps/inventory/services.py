@@ -66,6 +66,11 @@ def sync_legacy_stock_projection(product: Product, variant: ProductVariant = Non
     Proyecta la disponibilidad online elegible desde WarehouseStock hacia los campos legacy
     Product.stock / ProductVariant.stock para compatibilidad de lectura sin motores divergentes.
     """
+    if variant is not None:
+        ProductVariant.objects.select_for_update().filter(pk=variant.pk).exists()
+    else:
+        Product.objects.select_for_update().filter(pk=product.pk).exists()
+
     rows = WarehouseStock.objects.filter(
         product=product,
         variant=variant,
@@ -159,6 +164,19 @@ def adjust_stock(
     if idempotency_key:
         existing_mov = InventoryMovement.objects.filter(idempotency_key=idempotency_key).first()
         if existing_mov:
+            expected_variant_id = variant.id if variant else None
+            expected_serials = [str(s).strip() for s in (serial_numbers or []) if str(s).strip()]
+            actual_phys_delta = (existing_mov.affected_dimensions or {}).get("physical")
+            if (
+                existing_mov.warehouse_id != warehouse.id
+                or existing_mov.product_id != product.id
+                or existing_mov.variant_id != expected_variant_id
+                or actual_phys_delta != int(delta_physical)
+                or list(existing_mov.serial_numbers or []) != expected_serials
+            ):
+                raise InventoryServiceError(
+                    "Conflicto de idempotencia: la clave ya fue utilizada con un payload diferente."
+                )
             ws = WarehouseStock.objects.get(warehouse=warehouse, product=product, variant=variant)
             return ws, existing_mov
 
@@ -194,9 +212,78 @@ def adjust_stock(
     if delta_physical == 0 and delta_non_sellable == 0:
         return ws, None
 
+    cleaned_sns = [str(s).strip() for s in (serial_numbers or []) if str(s).strip()]
+    db_serialization_mode = Product.objects.values_list("serialization_mode", flat=True).get(pk=product.pk)
+    if db_serialization_mode == Product.SerializationMode.REQUIRED and int(delta_physical) != 0:
+        expected_count = abs(int(delta_physical))
+        if len(cleaned_sns) != expected_count or len(set(cleaned_sns)) != expected_count:
+            raise InventoryServiceError(
+                f"El producto '{product.name}' requiere exactamente {expected_count} serial(es) únicos para este ajuste."
+            )
+        if int(delta_physical) > 0:
+            for sn in cleaned_sns:
+                existing_sn = SerialNumberTrack.objects.select_for_update().filter(
+                    product=product, variant=variant, serial_number=sn
+                ).first()
+                if existing_sn is not None:
+                    if (
+                        movement_type == InventoryMovement.MovementType.RETURN_IN
+                        and existing_sn.status == SerialNumberTrack.Status.DISPATCHED
+                    ):
+                        existing_sn.status = SerialNumberTrack.Status.IN_STOCK
+                        existing_sn.warehouse = warehouse
+                        existing_sn.order = None
+                        existing_sn.reservation = None
+                        existing_sn.save(update_fields=["status", "warehouse", "order", "reservation", "updated_at"])
+                    else:
+                        raise InventoryServiceError(f"El número de serie '{sn}' ya existe para este SKU.")
+                else:
+                    sn_obj = SerialNumberTrack(
+                        serial_number=sn,
+                        product=product,
+                        variant=variant,
+                        warehouse=warehouse,
+                        status=SerialNumberTrack.Status.IN_STOCK,
+                        notes=reason[:255],
+                    )
+                    sn_obj.full_clean()
+                    sn_obj.save()
+        else:
+            for sn in cleaned_sns:
+                sn_obj = SerialNumberTrack.objects.select_for_update().filter(
+                    warehouse=warehouse,
+                    product=product,
+                    variant=variant,
+                    serial_number=sn,
+                    status=SerialNumberTrack.Status.IN_STOCK,
+                ).first()
+                if sn_obj is None:
+                    raise InventoryServiceError(
+                        f"El serial '{sn}' no está disponible en bodega '{warehouse.code}' para ajuste negativo."
+                    )
+                sn_obj.status = SerialNumberTrack.Status.DECOMMISSIONED
+                sn_obj.warehouse = None
+                sn_obj.save(update_fields=["status", "warehouse", "updated_at"])
+
     ws.physical_quantity = new_phys
     ws.non_sellable_quantity = new_non_sell
     ws.save(update_fields=["physical_quantity", "non_sellable_quantity", "updated_at"])
+
+    if db_serialization_mode == Product.SerializationMode.REQUIRED:
+        tracked_count = SerialNumberTrack.objects.filter(
+            warehouse=warehouse,
+            product=product,
+            variant=variant,
+            status__in=[
+                SerialNumberTrack.Status.IN_STOCK,
+                SerialNumberTrack.Status.RESERVED,
+                SerialNumberTrack.Status.DAMAGED,
+            ],
+        ).count()
+        if tracked_count != new_phys:
+            raise InventoryServiceError(
+                f"Inconsistencia de paridad serial en '{warehouse.code}': físico={new_phys}, seriales={tracked_count}."
+            )
 
     avail_after = ws.available_quantity
     if not movement_type:
@@ -242,6 +329,45 @@ def adjust_stock(
         mandatory=False,
     )
     return ws, mov
+
+
+@transaction.atomic
+def receive_stock_into_warehouse(
+    *,
+    warehouse: Warehouse,
+    product: Product,
+    variant: ProductVariant = None,
+    quantity: int,
+    serial_numbers=None,
+    movement_type: str = InventoryMovement.MovementType.MANUAL_IN,
+    reason: str = "Recepción de inventario en bodega",
+    source_document_type: str = "RECEIPT",
+    source_document_id: str = "",
+    actor=None,
+    correlation_id=None,
+    idempotency_key: str = None,
+) -> tuple[WarehouseStock, InventoryMovement | None]:
+    """
+    Contrato reutilizable de recepción física de inventario (preparado para Gate 5),
+    con validación atómica de seriales REQUIRED, Kardex e idempotencia.
+    """
+    qty = int(quantity)
+    if qty <= 0:
+        raise InventoryServiceError("La cantidad a recepcionar debe ser mayor a cero.")
+    return adjust_stock(
+        warehouse=warehouse,
+        product=product,
+        variant=variant,
+        delta_physical=qty,
+        movement_type=movement_type,
+        reason=reason,
+        source_document_type=source_document_type,
+        source_document_id=source_document_id,
+        actor=actor,
+        correlation_id=correlation_id,
+        idempotency_key=idempotency_key,
+        serial_numbers=serial_numbers,
+    )
 
 
 @transaction.atomic
@@ -480,62 +606,126 @@ def sync_target_stock_to_wms(
     *,
     product: Product,
     variant: ProductVariant = None,
-    target_stock: int,
+    target_stock: int = None,
+    delta_stock: int = None,
+    warehouse: Warehouse = None,
     previous_legacy_stock: int = 0,
     reason: str = "Ajuste de stock PIM",
     source_document_type: str = "PIM",
     source_document_id: str = "",
     actor=None,
+    serial_numbers=None,
 ) -> None:
     """
-    Enruta mutaciones de stock objetivo (bulk edit, importador PIM, etc.) por el
-    motor WMS (WarehouseStock + InventoryMovement + proyección legacy).
+    Enruta mutaciones de stock (bulk edit, importador PIM, etc.) por el motor WMS
+    respetando consistencia dimensional multi-bodega sin sumar existencias entre bodegas.
     """
-    wh = get_default_warehouse()
-    ws = (
-        WarehouseStock.objects.select_for_update()
-        .filter(warehouse=wh, product=product, variant=variant)
-        .first()
+    all_ws = list(
+        WarehouseStock.objects.select_for_update(of=("self",))
+        .select_related("warehouse")
+        .filter(product=product, variant=variant)
+        .order_by("warehouse_id", "pk")
     )
-    if ws is None:
-        prev = int(previous_legacy_stock or 0)
-        if prev > 0:
+
+    if warehouse is not None:
+        ws_wh = next((r for r in all_ws if r.warehouse_id == warehouse.id), None)
+        if delta_stock is not None:
+            delta = int(delta_stock)
+        else:
+            current_avail = int(ws_wh.available_quantity) if ws_wh else 0
+            delta = int(target_stock) - current_avail
+        if delta != 0:
+            m_type = (
+                InventoryMovement.MovementType.OPENING
+                if ws_wh is None and delta > 0
+                else (InventoryMovement.MovementType.ADJUST_POS if delta > 0 else InventoryMovement.MovementType.ADJUST_NEG)
+            )
             adjust_stock(
-                warehouse=wh,
+                warehouse=warehouse,
                 product=product,
                 variant=variant,
-                delta_physical=prev,
-                movement_type=InventoryMovement.MovementType.OPENING,
-                reason="Apertura automática previa a ajuste PIM",
+                delta_physical=delta,
+                movement_type=m_type,
+                reason=reason,
                 source_document_type=source_document_type,
                 source_document_id=source_document_id,
                 actor=actor,
+                serial_numbers=serial_numbers,
             )
-        current_avail = prev
-    else:
-        current_avail = int(ws.available_quantity)
-
-    delta = int(target_stock) - current_avail
-    if delta != 0:
-        if ws is None and int(previous_legacy_stock or 0) == 0 and delta > 0:
-            m_type = InventoryMovement.MovementType.OPENING
-        elif delta > 0:
-            m_type = InventoryMovement.MovementType.ADJUST_POS
         else:
-            m_type = InventoryMovement.MovementType.ADJUST_NEG
+            sync_legacy_stock_projection(product, variant)
+        return
+
+    global_sellable_avail = sum(
+        max(0, int(r.available_quantity))
+        for r in all_ws
+        if r.warehouse.is_active and r.warehouse.is_sellable_online
+    )
+
+    if not all_ws and int(previous_legacy_stock or 0) > 0:
+        default_wh = get_default_warehouse()
         adjust_stock(
-            warehouse=wh,
+            warehouse=default_wh,
             product=product,
             variant=variant,
-            delta_physical=delta,
-            movement_type=m_type,
-            reason=reason,
+            delta_physical=int(previous_legacy_stock),
+            movement_type=InventoryMovement.MovementType.OPENING,
+            reason="Apertura automática previa a ajuste PIM",
             source_document_type=source_document_type,
             source_document_id=source_document_id,
             actor=actor,
+            serial_numbers=serial_numbers,
         )
+        global_sellable_avail = int(previous_legacy_stock)
+        all_ws = list(
+            WarehouseStock.objects.select_for_update(of=("self",))
+            .select_related("warehouse")
+            .filter(product=product, variant=variant)
+            .order_by("warehouse_id", "pk")
+        )
+
+    if delta_stock is not None:
+        delta = int(delta_stock)
     else:
+        delta = int(target_stock) - global_sellable_avail
+
+    if delta == 0:
         sync_legacy_stock_projection(product, variant)
+        return
+
+    active_sellable_with_stock = [
+        r for r in all_ws if r.warehouse.is_active and r.warehouse.is_sellable_online and r.physical_quantity > 0
+    ]
+    if len(active_sellable_with_stock) > 1:
+        raise InventoryServiceError(
+            "El SKU tiene existencias distribuidas en múltiples bodegas; seleccione una bodega explícita para ajustar."
+        )
+
+    target_wh = (
+        active_sellable_with_stock[0].warehouse
+        if len(active_sellable_with_stock) == 1
+        else get_default_warehouse()
+    )
+    is_new_row = not any(r.warehouse_id == target_wh.id for r in all_ws)
+    if is_new_row and delta > 0:
+        m_type = InventoryMovement.MovementType.OPENING
+    elif delta > 0:
+        m_type = InventoryMovement.MovementType.ADJUST_POS
+    else:
+        m_type = InventoryMovement.MovementType.ADJUST_NEG
+
+    adjust_stock(
+        warehouse=target_wh,
+        product=product,
+        variant=variant,
+        delta_physical=delta,
+        movement_type=m_type,
+        reason=reason,
+        source_document_type=source_document_type,
+        source_document_id=source_document_id,
+        actor=actor,
+        serial_numbers=serial_numbers,
+    )
 
 
 @transaction.atomic
@@ -616,13 +806,24 @@ def expire_stale_reservations(*, now=None) -> int:
 
 
 @transaction.atomic
-def dispatch_order_reservations(order, *, serial_assignments: dict = None, actor=None) -> list[InventoryMovement]:
+def dispatch_order_reservations(
+    order,
+    *,
+    serial_assignments: dict = None,
+    actor=None,
+    allow_from_order_save: bool = False,
+) -> list[InventoryMovement]:
     """
     Consume reservas (CONSOLIDATED o TEMPORARY) al despachar físicamente el pedido.
     - Descuenta physical_quantity y reserved_quantity simultáneamente (sin doble descuento).
-    - Valida seriales obligatorios para productos con serialization_mode=REQUIRED.
+    - Valida estado comercial, demanda física sin reserva, seriales únicos/obligatorios y despachos multi-bodega.
     - Vincula cada SerialNumberTrack despachado al pedido y cliente.
     """
+    if order.status == "cancelled":
+        raise InventoryServiceError(
+            f"Estado comercial incompatible para despacho ('{order.status}')."
+        )
+
     serial_assignments = serial_assignments or {}
     reservations = list(
         StockReservation.objects.select_for_update(of=("self",))
@@ -631,15 +832,74 @@ def dispatch_order_reservations(order, *, serial_assignments: dict = None, actor
         .order_by("warehouse_id", "pk")
     )
     if not reservations:
+        if StockReservation.objects.filter(order=order, status=StockReservation.Status.CONSUMED).exists():
+            existing_dispatches = list(
+                InventoryMovement.objects.filter(
+                    source_document_type="ORDER",
+                    source_document_id=str(order.id),
+                    movement_type=InventoryMovement.MovementType.DISPATCH,
+                ).order_by("recorded_at")
+            )
+            if serial_assignments:
+                already_dispatched = sorted(
+                    sn for m in existing_dispatches for sn in (m.serial_numbers or [])
+                )
+                requested = sorted(
+                    str(s).strip()
+                    for vals in serial_assignments.values()
+                    for s in (vals or [])
+                    if str(s).strip()
+                )
+                if requested != already_dispatched:
+                    raise InventoryServiceError(
+                        "La orden ya fue despachada con otra asignación de seriales."
+                    )
+            return existing_dispatches
+
+        has_physical_demand = False
+        for item in order.items.select_related("product").all():
+            p = item.product
+            if p is None:
+                continue
+            if p.product_type == Product.ProductType.STOCK:
+                has_physical_demand = True
+                break
+            if p.product_type == Product.ProductType.BUNDLE:
+                if p.bundle_components.filter(component__product_type=Product.ProductType.STOCK).exists():
+                    has_physical_demand = True
+                    break
+        if has_physical_demand and (
+            order.stock_deductions is not None or StockReservation.objects.filter(order=order).exists()
+        ):
+            raise InventoryServiceError(
+                "La orden posee demanda física pero no tiene reservas activas asignadas para despacho."
+            )
         return []
 
+    from collections import Counter
+
+    unit_key_counts = Counter(
+        f"variant:{r.variant_id}" if r.variant_id else str(r.product_id) for r in reservations
+    )
     corr_id = uuid.uuid4()
     movements = []
+    used_serials_in_dispatch = set()
     now = timezone.now()
 
     for res in reservations:
         unit_key = f"variant:{res.variant_id}" if res.variant_id else str(res.product_id)
-        provided_serials = list(serial_assignments.get(unit_key) or serial_assignments.get(str(res.id)) or [])
+        if str(res.id) in serial_assignments:
+            provided_serials = [str(s).strip() for s in (serial_assignments.get(str(res.id)) or []) if str(s).strip()]
+        else:
+            if unit_key_counts[unit_key] > 1 and unit_key in serial_assignments:
+                raise InventoryServiceError(
+                    "Despacho distribuido en múltiples bodegas requiere asignar seriales por ID de reserva."
+                )
+            provided_serials = [str(s).strip() for s in (serial_assignments.get(unit_key) or []) if str(s).strip()]
+
+        if len(set(provided_serials)) != len(provided_serials):
+            raise InventoryServiceError("No se permiten números de serie duplicados en la solicitud de despacho.")
+
         ser_mode = res.product.serialization_mode
 
         if ser_mode == Product.SerializationMode.REQUIRED:
@@ -652,8 +912,12 @@ def dispatch_order_reservations(order, *, serial_assignments: dict = None, actor
             raise InventoryServiceError("La cantidad de seriales supera la cantidad de la reserva.")
 
         dispatched_sn_objs = []
-        for raw_sn in provided_serials:
-            sn_clean = str(raw_sn).strip()
+        for sn_clean in provided_serials:
+            if sn_clean in used_serials_in_dispatch:
+                raise InventoryServiceError(
+                    f"El serial '{sn_clean}' está duplicado entre reservas del mismo despacho."
+                )
+            used_serials_in_dispatch.add(sn_clean)
             sn_obj = SerialNumberTrack.objects.select_for_update().filter(
                 product=res.product,
                 variant=res.variant,

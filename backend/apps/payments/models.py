@@ -83,6 +83,20 @@ class Payment(TimeStampedModel):
                 self.status = PaymentStatus.IN_REVIEW
                 if kwargs.get("update_fields") is not None:
                     kwargs["update_fields"] = set(kwargs["update_fields"]) | {"status"}
+            elif self.status == PaymentStatus.APPROVED and self.order.status == OrderStatus.PENDING:
+                from apps.inventory.models import StockReservation
+
+                has_expired = StockReservation.objects.filter(
+                    order=self.order, status=StockReservation.Status.EXPIRED
+                ).exists()
+                has_active = StockReservation.objects.filter(
+                    order=self.order,
+                    status__in=[StockReservation.Status.TEMPORARY, StockReservation.Status.CONSOLIDATED],
+                ).exists()
+                if has_expired and not has_active:
+                    self.status = PaymentStatus.IN_REVIEW
+                    if kwargs.get("update_fields") is not None:
+                        kwargs["update_fields"] = set(kwargs["update_fields"]) | {"status"}
             return super().save(*args, **kwargs)
 
     @property

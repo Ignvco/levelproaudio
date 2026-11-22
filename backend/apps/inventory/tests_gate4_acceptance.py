@@ -390,13 +390,7 @@ class Gate4AcceptanceSuiteTest(TransactionTestCase):
             movement_type=InventoryMovement.MovementType.OPENING,
             reason="Ingreso V1",
             actor=self.admin,
-        )
-        register_serials(
-            warehouse=wh,
-            product=p,
-            variant=v1,
             serial_numbers=["SN-V1-001", "SN-V1-002"],
-            actor=self.admin,
         )
         adjust_stock(
             warehouse=wh,
@@ -406,13 +400,7 @@ class Gate4AcceptanceSuiteTest(TransactionTestCase):
             movement_type=InventoryMovement.MovementType.OPENING,
             reason="Ingreso V2",
             actor=self.admin,
-        )
-        register_serials(
-            warehouse=wh,
-            product=p,
-            variant=v2,
             serial_numbers=["SN-V2-001"],
-            actor=self.admin,
         )
 
         # Duplicate serial on same SKU/variant must be rejected

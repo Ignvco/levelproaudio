@@ -270,6 +270,7 @@ def admin_wms_adjust(request):
         reason = (request.data.get("reason") or "Ajuste operativo de inventario").strip()
         mov_type = request.data.get("movement_type") or None
         idem = request.headers.get("Idempotency-Key") or request.data.get("idempotency_key") or None
+        serial_numbers = request.data.get("serial_numbers") or None
 
         ws, mov = adjust_stock(
             warehouse=wh,
@@ -282,6 +283,7 @@ def admin_wms_adjust(request):
             source_document_type="ADMIN_ADJUSTMENT",
             actor=request.user,
             idempotency_key=idem,
+            serial_numbers=serial_numbers,
         )
         return Response({
             "stock": WarehouseStockSerializer(ws).data,

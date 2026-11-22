@@ -260,10 +260,7 @@ def restore_inventory(order, reason="Liberación por cancelación de orden", act
     from apps.inventory.models import InventoryMovement, StockReservation, WarehouseStock
     from apps.inventory.services import adjust_stock, get_default_warehouse, release_order_reservations
 
-    if StockReservation.objects.filter(
-        order=order,
-        status__in=[StockReservation.Status.TEMPORARY, StockReservation.Status.CONSOLIDATED],
-    ).exists():
+    if StockReservation.objects.filter(order=order).exists():
         release_order_reservations(order, reason=reason, actor=actor)
         return
 
@@ -286,6 +283,23 @@ def restore_inventory(order, reason="Liberación por cancelación de orden", act
             if product is None:
                 continue
             if product.product_type == Product.ProductType.BUNDLE:
+                if order.stock_deductions is None:
+                    from core.audit.constants import SEVERITY_WARNING
+                    from core.audit.services import record_audit_event
+
+                    record_audit_event(
+                        module="inventory",
+                        action="LEGACY_BUNDLE_DISCREPANCY_PENDING",
+                        event_category="RECONCILIATION",
+                        resource_type="Order",
+                        resource_id=str(order.id),
+                        resource_repr=f"Order #{order.id} (bundle sin snapshot)",
+                        actor=actor,
+                        severity=SEVERITY_WARNING,
+                        metadata={"bundle_id": str(product.id), "quantity": item.quantity},
+                        mandatory=True,
+                    )
+                    continue
                 for part in product.bundle_components.select_related("component", "variant").all():
                     if part.component.product_type == Product.ProductType.STOCK:
                         if part.variant_id:
