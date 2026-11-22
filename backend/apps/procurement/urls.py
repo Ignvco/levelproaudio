@@ -16,6 +16,21 @@ from apps.procurement.views import (
     admin_product_supplier_select_preferred,
     admin_product_supplier_price_history,
 )
+from apps.procurement.po_views import (
+    admin_purchase_orders_list,
+    admin_purchase_order_detail,
+    admin_purchase_order_approve,
+    admin_purchase_order_issue,
+    admin_purchase_order_cancel,
+    admin_purchase_order_close,
+    admin_purchase_order_pdf,
+    admin_purchase_order_link_special_orders,
+    admin_purchase_order_documents,
+    admin_customs_document_download,
+    admin_goods_receipts_list,
+    admin_goods_receipt_detail,
+    admin_goods_receipt_confirm,
+)
 
 urlpatterns = [
     path("suppliers/", admin_suppliers_list, name="admin-suppliers-list"),
@@ -32,4 +47,18 @@ urlpatterns = [
     path("products/<uuid:product_id>/suppliers/", admin_product_suppliers, name="admin-product-suppliers"),
     path("products/<uuid:product_id>/suppliers/<uuid:link_id>/select-preferred/", admin_product_supplier_select_preferred, name="admin-product-supplier-select-preferred"),
     path("products/<uuid:product_id>/supplier-price-history/", admin_product_supplier_price_history, name="admin-product-supplier-price-history"),
+    # GATE 5: Purchase Orders (BF-03), Customs Docs (BF-42) & Goods Receipts (BF-04)
+    path("purchase-orders/", admin_purchase_orders_list, name="admin-purchase-orders-list"),
+    path("purchase-orders/<uuid:po_id>/", admin_purchase_order_detail, name="admin-purchase-order-detail"),
+    path("purchase-orders/<uuid:po_id>/approve/", admin_purchase_order_approve, name="admin-purchase-order-approve"),
+    path("purchase-orders/<uuid:po_id>/issue/", admin_purchase_order_issue, name="admin-purchase-order-issue"),
+    path("purchase-orders/<uuid:po_id>/cancel/", admin_purchase_order_cancel, name="admin-purchase-order-cancel"),
+    path("purchase-orders/<uuid:po_id>/close/", admin_purchase_order_close, name="admin-purchase-order-close"),
+    path("purchase-orders/<uuid:po_id>/pdf/", admin_purchase_order_pdf, name="admin-purchase-order-pdf"),
+    path("purchase-orders/<uuid:po_id>/special-orders/", admin_purchase_order_link_special_orders, name="admin-purchase-order-special-orders"),
+    path("purchase-orders/<uuid:po_id>/documents/", admin_purchase_order_documents, name="admin-purchase-order-documents"),
+    path("purchase-orders/<uuid:po_id>/documents/<uuid:doc_id>/download/", admin_customs_document_download, name="admin-customs-document-download"),
+    path("goods-receipts/", admin_goods_receipts_list, name="admin-goods-receipts-list"),
+    path("goods-receipts/<uuid:gr_id>/", admin_goods_receipt_detail, name="admin-goods-receipt-detail"),
+    path("goods-receipts/<uuid:gr_id>/confirm/", admin_goods_receipt_confirm, name="admin-goods-receipt-confirm"),
 ]

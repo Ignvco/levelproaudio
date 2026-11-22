@@ -166,6 +166,9 @@ export default function AdminSupplierDetail() {
         ]}
         actions={
           <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
+            <SecondaryButton size="sm" onClick={() => navigate(`/admin/procurement?supplier=${id}`)}>
+              Ver Órdenes de Compra
+            </SecondaryButton>
             <a
               href={getSupplierPriceListsExportUrl("xlsx", id)}
               className="au-btn au-btn--secondary au-btn--sm"

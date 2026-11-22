@@ -497,3 +497,355 @@ class SupplierPriceHistory(TimeStampedModel):
 
     def delete(self, *args, **kwargs):
         raise PermissionDenied("Los registros históricos de costos son inmutables: no se permite su eliminación.")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GATE 5: PURCHASE ORDERS (BF-03), GOODS RECEIPTS (BF-04), CUSTOMS DOCS (BF-42)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class PurchaseOrder(TimeStampedModel):
+    """Orden de compra formal a proveedor nacional o internacional (BF-03)."""
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Borrador"
+        APPROVED = "approved", "Aprobada"
+        ISSUED = "issued", "Emitida"
+        PARTIALLY_RECEIVED = "partially_received", "Recibida parcialmente"
+        RECEIVED = "received", "Recibida completa"
+        CLOSED = "closed", "Cerrada"
+        CANCELLED = "cancelled", "Cancelada"
+
+    po_number = models.CharField(
+        max_length=40,
+        unique=True,
+        verbose_name="Número de orden",
+    )
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.PROTECT,
+        related_name="purchase_orders",
+    )
+    destination_warehouse = models.ForeignKey(
+        "inventory.Warehouse",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="purchase_orders",
+    )
+    status = models.CharField(
+        max_length=25,
+        choices=Status.choices,
+        default=Status.DRAFT,
+        db_index=True,
+    )
+    currency = models.CharField(
+        max_length=3,
+        choices=Supplier.Currency.choices,
+        default=Supplier.Currency.USD,
+    )
+    payment_terms_snapshot = models.CharField(max_length=150, blank=True, default="")
+    incoterm_snapshot = models.CharField(max_length=40, blank=True, default="")
+    tax_basis_snapshot = models.CharField(max_length=40, blank=True, default="net")
+    delivery_address_snapshot = models.TextField(blank=True, default="")
+    expected_delivery_date = models.DateField(null=True, blank=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+    issued_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_purchase_orders",
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_purchase_orders",
+    )
+    issued_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="issued_purchase_orders",
+    )
+    internal_notes = models.TextField(blank=True, default="")
+    external_notes = models.TextField(blank=True, default="")
+    subtotal_amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    total_amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    revision_number = models.PositiveIntegerField(default=1)
+    issued_pdf_version = models.PositiveIntegerField(default=0)
+    issued_pdf_bytes = models.BinaryField(null=True, blank=True)
+    issued_pdf_filename = models.CharField(max_length=150, blank=True, default="")
+    special_order_requests = models.ManyToManyField(
+        "products.SpecialOrderRequest",
+        blank=True,
+        related_name="purchase_orders",
+    )
+
+    class Meta:
+        verbose_name = "Orden de compra"
+        verbose_name_plural = "Órdenes de compra"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["status", "-created_at"], name="proc_po_status_created_idx"),
+            models.Index(fields=["supplier", "status"], name="proc_po_sup_status_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.po_number} ({self.supplier.internal_code})"
+
+
+class PurchaseOrderItem(TimeStampedModel):
+    """Línea de orden de compra con snapshot comercial y control de pendientes (BF-03)."""
+
+    purchase_order = models.ForeignKey(
+        PurchaseOrder,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    product = models.ForeignKey(
+        "products.Product",
+        on_delete=models.PROTECT,
+        related_name="purchase_order_items",
+    )
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="purchase_order_items",
+    )
+    sku_registry = models.ForeignKey(
+        "products.SkuRegistry",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="purchase_order_items",
+    )
+    product_supplier = models.ForeignKey(
+        ProductSupplier,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="purchase_order_items",
+    )
+    internal_sku_snapshot = models.CharField(max_length=100, blank=True, default="")
+    supplier_sku_snapshot = models.CharField(max_length=100, blank=True, default="")
+    description_snapshot = models.CharField(max_length=350)
+    quantity_ordered = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    quantity_received = models.PositiveIntegerField(default=0)
+    unit_cost_snapshot = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    currency = models.CharField(
+        max_length=3,
+        choices=Supplier.Currency.choices,
+        default=Supplier.Currency.USD,
+    )
+    tax_basis_snapshot = models.CharField(max_length=30, blank=True, default="net")
+    line_subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+
+    class Meta:
+        verbose_name = "Línea de orden de compra"
+        verbose_name_plural = "Líneas de orden de compra"
+        ordering = ["created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(quantity_ordered__gte=1),
+                name="proc_poi_qty_ord_gte_1",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantity_received__gte=0),
+                name="proc_poi_qty_rec_gte_0",
+            ),
+        ]
+
+    @property
+    def quantity_pending(self) -> int:
+        return max(0, int(self.quantity_ordered) - int(self.quantity_received))
+
+    def clean(self):
+        super().clean()
+        if self.variant_id and self.variant.product_id != self.product_id:
+            raise ValidationError("La variante no pertenece al producto indicado.")
+        if self.quantity_received > self.quantity_ordered:
+            raise ValidationError("La cantidad recibida no puede superar la cantidad solicitada sin autorización.")
+
+
+class GoodsReceipt(TimeStampedModel):
+    """Recepción física de mercadería desacoplada de la emisión de PO (BF-04)."""
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Borrador"
+        CONFIRMED = "confirmed", "Confirmada"
+        CANCELLED = "cancelled", "Anulada"
+
+    receipt_number = models.CharField(max_length=40, unique=True)
+    purchase_order = models.ForeignKey(
+        PurchaseOrder,
+        on_delete=models.PROTECT,
+        related_name="goods_receipts",
+    )
+    warehouse = models.ForeignKey(
+        "inventory.Warehouse",
+        on_delete=models.PROTECT,
+        related_name="goods_receipts",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.DRAFT,
+        db_index=True,
+    )
+    received_at = models.DateTimeField(null=True, blank=True)
+    confirmed_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_goods_receipts",
+    )
+    confirmed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="confirmed_goods_receipts",
+    )
+    delivery_note_number = models.CharField(max_length=100, blank=True, default="")
+    notes = models.TextField(blank=True, default="")
+    discrepancy_notes = models.TextField(blank=True, default="")
+    idempotency_key = models.CharField(max_length=120, unique=True, null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Recepción de mercadería"
+        verbose_name_plural = "Recepciones de mercadería"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["purchase_order", "status"], name="proc_gr_po_status_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.receipt_number} ({self.purchase_order.po_number})"
+
+
+class GoodsReceiptItem(TimeStampedModel):
+    """Detalle por línea de recepción física, mermas, rechazos y seriales (BF-04)."""
+
+    goods_receipt = models.ForeignKey(
+        GoodsReceipt,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    purchase_order_item = models.ForeignKey(
+        PurchaseOrderItem,
+        on_delete=models.PROTECT,
+        related_name="receipt_items",
+    )
+    quantity_arrived = models.PositiveIntegerField(default=0)
+    quantity_accepted = models.PositiveIntegerField(default=0)
+    quantity_damaged = models.PositiveIntegerField(default=0)
+    quantity_rejected = models.PositiveIntegerField(default=0)
+    serial_numbers = models.JSONField(default=list, blank=True)
+    damaged_serial_numbers = models.JSONField(default=list, blank=True)
+    discrepancy_reason = models.CharField(max_length=255, blank=True, default="")
+    inventory_movement = models.ForeignKey(
+        "inventory.InventoryMovement",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="goods_receipt_items",
+    )
+
+    class Meta:
+        verbose_name = "Línea de recepción"
+        verbose_name_plural = "Líneas de recepción"
+        ordering = ["created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["goods_receipt", "purchase_order_item"],
+                name="proc_gri_unique_gr_poi",
+            ),
+        ]
+
+    @property
+    def quantity_physical_received(self) -> int:
+        return int(self.quantity_accepted) + int(self.quantity_damaged)
+
+    def clean(self):
+        super().clean()
+        if self.quantity_accepted + self.quantity_damaged + self.quantity_rejected != self.quantity_arrived:
+            raise ValidationError(
+                "La suma de unidades aceptadas, dañadas y rechazadas debe igualar la cantidad llegada."
+            )
+        if self.quantity_physical_received <= 0 and self.quantity_rejected <= 0:
+            raise ValidationError("Debe registrar al menos una unidad llegada.")
+
+
+class CustomsDocument(TimeStampedModel):
+    """Repositorio documental aduanero y comercial vinculado a PO (BF-42)."""
+
+    class DocumentType(models.TextChoices):
+        COMMERCIAL_INVOICE = "commercial_invoice", "Factura comercial"
+        BILL_OF_LADING = "bill_of_lading", "Bill of Lading (BL)"
+        AIR_WAYBILL = "air_waybill", "Air Waybill (AWB)"
+        CUSTOMS_DUS = "customs_dus", "Documento Aduanero / DUS"
+        PACKING_LIST = "packing_list", "Packing List"
+        CERTIFICATE = "certificate", "Certificado / Anexo comercial"
+
+    class Status(models.TextChoices):
+        UPLOADED = "uploaded", "Cargado"
+        VERIFIED = "verified", "Revisado"
+        SUPERSEDED = "superseded", "Reemplazado"
+        ARCHIVED = "archived", "Archivado"
+
+    purchase_order = models.ForeignKey(
+        PurchaseOrder,
+        on_delete=models.CASCADE,
+        related_name="customs_documents",
+    )
+    document_type = models.CharField(
+        max_length=30,
+        choices=DocumentType.choices,
+        db_index=True,
+    )
+    document_identifier = models.CharField(max_length=120)
+    document_date = models.DateField(null=True, blank=True)
+    filename = models.CharField(max_length=255)
+    content_type = models.CharField(max_length=100, default="application/pdf")
+    file_size = models.PositiveIntegerField(default=0)
+    file_sha256 = models.CharField(max_length=64, blank=True, default="")
+    file_bytes = models.BinaryField()
+    version = models.PositiveIntegerField(default=1)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.UPLOADED,
+        db_index=True,
+    )
+    notes = models.TextField(blank=True, default="")
+    uploaded_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="uploaded_customs_documents",
+    )
+
+    class Meta:
+        verbose_name = "Documento aduanero"
+        verbose_name_plural = "Documentos aduaneros"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["purchase_order", "document_type", "-version"], name="proc_doc_po_type_ver_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.document_type} {self.document_identifier} v{self.version}"
