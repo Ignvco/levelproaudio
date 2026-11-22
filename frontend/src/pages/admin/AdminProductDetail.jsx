@@ -16,9 +16,10 @@ import {
   saveAdminProductSpecs,
 } from "../../api/admin.api"
 import { AdminPageHeader, SectionCard, PrimaryButton, SecondaryButton, StatusBadge } from "../../components/admin/ui"
+import ProductSuppliersTab from "../../components/admin/ProductSuppliersTab"
 import { showToast } from "../../utils/toast"
 import { formatCurrency } from "../../utils/accountingCurrency"
-import { Plus, Trash2, Save, SlidersHorizontal, Layers, Package } from "lucide-react"
+import { Plus, Trash2, Save, SlidersHorizontal, Layers, Package, Truck } from "lucide-react"
 
 const bentoInput = {
   width: "100%",
@@ -281,6 +282,7 @@ export default function AdminProductDetail() {
         {[
           { key: "variants", label: `Variantes (${variants.length})`, Icon: Layers },
           { key: "specs", label: `Especificaciones Técnicas (${product.technical_specs?.length || 0})`, Icon: SlidersHorizontal },
+          { key: "suppliers", label: "Proveedores", Icon: Truck },
           { key: "general", label: "General & Precios", Icon: Package },
         ].map(({ key, label, Icon }) => (
           <button
@@ -473,6 +475,11 @@ export default function AdminProductDetail() {
             ))}
           </div>
         </SectionCard>
+      )}
+
+      {/* TAB PROVEEDORES (GATE 3: BF-02) */}
+      {tab === "suppliers" && (
+        <ProductSuppliersTab product={product} variants={variants} />
       )}
 
       {/* TAB GENERAL */}

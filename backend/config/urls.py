@@ -36,6 +36,7 @@ urlpatterns = [
     # Autenticación
     path("api/v1/auth/", include("apps.users.urls")),
     path("api/v1/admin/", include("apps.analytics.urls")),
+    path("api/v1/admin/", include("apps.procurement.urls")),
 
     # Catálogo
     path("api/v1/", include("apps.products.urls")),

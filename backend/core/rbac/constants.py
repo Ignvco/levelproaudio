@@ -57,9 +57,9 @@ MODULE_IMPLEMENTATION_STATUS = {
         "description": "Resumen de inventario, alertas de stock, rotación y valorización.",
     },
     MODULE_PURCHASES: {
-        "status": "partial_reserved",
+        "status": "implemented",
         "gate": "Gate 3 (Suppliers) & Gate 5 (Procurement)",
-        "description": "Cubre solicitudes bajo pedido y gestión de costos de catálogo; proveedores y OC reservados para Gates 3 y 5.",
+        "description": "Directorio de proveedores, relaciones producto-proveedor, historial de costos y comparación por SKU.",
     },
     MODULE_LOGISTICS: {
         "status": "partial_reserved",
