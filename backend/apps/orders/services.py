@@ -50,7 +50,7 @@ def create_order_from_cart(cart, user, email, shipping_address):
                 quantity=item["quantity"],
             )
 
-        deduct_inventory(demand)
+        deduct_inventory(demand, order=order, actor=user)
         cart.is_active = False
         cart.save()
 

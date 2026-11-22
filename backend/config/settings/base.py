@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'apps.rewards',
     'apps.seo',
     'apps.procurement',
+    'apps.inventory',
 ]
 
 # DRF — ahora con JWT como autenticación por defecto

@@ -337,6 +337,7 @@ def process_pim_import(user, file_bytes: bytes, filename: str, dry_run: bool = T
                             existing_variants=existing_variants_by_sku,
                             products_by_sku=staged_products_by_sku,
                             dry_run=dry_run,
+                            user=user,
                         )
                     else:
                         res = _process_product_row(
@@ -348,6 +349,7 @@ def process_pim_import(user, file_bytes: bytes, filename: str, dry_run: bool = T
                             existing_products=staged_products_by_sku,
                             existing_variants=existing_variants_by_sku,
                             dry_run=dry_run,
+                            user=user,
                         )
                     counts[res["status"]] += 1
                     report_rows.append(res)
@@ -412,7 +414,7 @@ class _nullcontext:
         return False
 
 
-def _process_product_row(row_idx, row_dict, spec_inputs, attr_defs, sku, existing_products, existing_variants, dry_run):
+def _process_product_row(row_idx, row_dict, spec_inputs, attr_defs, sku, existing_products, existing_variants, dry_run, user=None):
     if sku and sku in existing_variants:
         raise ValueError(f"El SKU '{sku}' pertenece a una variante existente. Especifica 'parent_sku' para actualizarla.")
 
@@ -581,18 +583,45 @@ def _process_product_row(row_idx, row_dict, spec_inputs, attr_defs, sku, existin
             target.slug = cand
         try:
             with transaction.atomic():
+                from apps.inventory.services import sync_target_stock_to_wms
+
                 if not is_new:
                     locked = Product.objects.select_for_update().get(pk=target.pk)
-                    model_fields = [k for k in changes.keys() if not k.startswith("spec:")]
+                    prev_stock = int(locked.stock or 0)
+                    model_fields = [k for k in changes.keys() if not k.startswith("spec:") and k != "stock"]
                     for mf in model_fields:
                         setattr(locked, mf, getattr(target, mf))
                     if model_fields:
                         locked.clean()
                         locked.save(update_fields=model_fields + ["updated_at"])
                     target = locked
+                    if "stock" in changes:
+                        sync_target_stock_to_wms(
+                            product=target,
+                            variant=None,
+                            target_stock=int(changes["stock"]),
+                            previous_legacy_stock=prev_stock,
+                            reason="Importación PIM (actualización)",
+                            source_document_type="PIM_IMPORT",
+                            source_document_id=str(target.pk),
+                            actor=user,
+                        )
                 else:
+                    initial_stock = int(target.stock or 0) if "stock" in changes else 0
+                    target.stock = 0
                     target.clean()
                     target.save()
+                    if initial_stock > 0:
+                        sync_target_stock_to_wms(
+                            product=target,
+                            variant=None,
+                            target_stock=initial_stock,
+                            previous_legacy_stock=0,
+                            reason="Importación PIM (creación)",
+                            source_document_type="PIM_IMPORT",
+                            source_document_id=str(target.pk),
+                            actor=user,
+                        )
         except (IntegrityError, DjangoValidationError) as exc:
             raise ValueError(f"Error de integridad/SKU al guardar producto '{sku or target.name}': {exc}") from exc
         if target.sku:
@@ -620,7 +649,7 @@ def _process_product_row(row_idx, row_dict, spec_inputs, attr_defs, sku, existin
     }
 
 
-def _process_variant_row(row_idx, row_dict, sku, parent_sku, existing_variants, products_by_sku, dry_run):
+def _process_variant_row(row_idx, row_dict, sku, parent_sku, existing_variants, products_by_sku, dry_run, user=None):
     if not sku:
         raise ValueError("Toda fila de variante requiere 'sku' único.")
 
@@ -734,11 +763,15 @@ def _process_variant_row(row_idx, row_dict, sku, parent_sku, existing_variants, 
     if not dry_run:
         try:
             with transaction.atomic():
+                from apps.inventory.services import sync_target_stock_to_wms
+
                 if not is_new:
                     locked = ProductVariant.objects.select_for_update().get(pk=target.pk)
+                    prev_stock = int(locked.stock or 0)
                     model_fields = [
                         ("name" if k == "variant_name" else k)
                         for k in changes.keys()
+                        if k != "stock"
                     ]
                     for mf in model_fields:
                         setattr(locked, mf, getattr(target, mf))
@@ -746,9 +779,33 @@ def _process_variant_row(row_idx, row_dict, sku, parent_sku, existing_variants, 
                         locked.clean()
                         locked.save(update_fields=model_fields + ["updated_at"])
                     target = locked
+                    if "stock" in changes:
+                        sync_target_stock_to_wms(
+                            product=target.product,
+                            variant=target,
+                            target_stock=int(changes["stock"]),
+                            previous_legacy_stock=prev_stock,
+                            reason="Importación PIM variante (actualización)",
+                            source_document_type="PIM_IMPORT",
+                            source_document_id=str(target.pk),
+                            actor=user,
+                        )
                 else:
+                    initial_stock = int(target.stock or 0) if "stock" in changes else 0
+                    target.stock = 0
                     target.clean()
                     target.save()
+                    if initial_stock > 0:
+                        sync_target_stock_to_wms(
+                            product=target.product,
+                            variant=target,
+                            target_stock=initial_stock,
+                            previous_legacy_stock=0,
+                            reason="Importación PIM variante (creación)",
+                            source_document_type="PIM_IMPORT",
+                            source_document_id=str(target.pk),
+                            actor=user,
+                        )
         except (IntegrityError, DjangoValidationError) as exc:
             raise ValueError(f"Error de integridad/SKU al guardar variante '{sku}': {exc}") from exc
         existing_variants[target.sku] = target

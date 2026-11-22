@@ -54,7 +54,13 @@ from core.rbac.constants import (
 from core.rbac.permissions import is_effective_super_admin, user_has_capability
 from core.audit.services import record_audit_event
 from core.audit.sanitizer import compute_state_diff
-from core.audit.constants import CATEGORY_CREATION, CATEGORY_MODIFICATION, SEVERITY_INFO
+from core.audit.constants import (
+    CATEGORY_CREATION,
+    CATEGORY_DELETION,
+    CATEGORY_MODIFICATION,
+    SEVERITY_INFO,
+    SEVERITY_WARNING,
+)
 
 
 class _XlsxRenderer(BaseRenderer):
@@ -248,24 +254,41 @@ def admin_supplier_detail(request, supplier_id):
         })
 
     # PATCH
-    before = {
-        "legal_name": supplier.legal_name,
-        "trade_name": supplier.trade_name,
-        "country": supplier.country,
-        "currency": supplier.currency,
-        "is_active": supplier.is_active,
-    }
+    def _supplier_audit_snapshot(sup):
+        return {
+            "legal_name": sup.legal_name,
+            "trade_name": sup.trade_name,
+            "tax_id": sup.tax_id,
+            "country": sup.country,
+            "address": sup.address,
+            "website": sup.website,
+            "primary_email": sup.primary_email,
+            "primary_phone": sup.primary_phone,
+            "supplier_type": sup.supplier_type,
+            "currency": sup.currency,
+            "default_min_order_qty": sup.default_min_order_qty,
+            "default_lead_time_days": sup.default_lead_time_days,
+            "is_active": sup.is_active,
+            "brands": sorted(str(b) for b in sup.brands.values_list("id", flat=True)),
+            "has_payment_terms": bool(sup.payment_terms),
+            "has_internal_notes": bool(sup.internal_notes),
+        }
+
+    Supplier.objects.select_for_update().filter(pk=supplier.pk).exists()
+    before = _supplier_audit_snapshot(supplier)
+    was_active = supplier.is_active
     try:
         ser = SupplierSerializer(supplier, data=request.data, partial=True, context={"request": request})
         ser.is_valid(raise_exception=True)
         updated = ser.save()
-        after = {
-            "legal_name": updated.legal_name,
-            "trade_name": updated.trade_name,
-            "country": updated.country,
-            "currency": updated.currency,
-            "is_active": updated.is_active,
-        }
+        if was_active and not updated.is_active:
+            ProductSupplier.objects.filter(supplier=updated, is_preferred=True).update(is_preferred=False)
+
+        after = _supplier_audit_snapshot(updated)
+        if "payment_terms" in request.data and request.data.get("payment_terms") != before.get("has_payment_terms"):
+            after["payment_terms_modified"] = True
+        if "internal_notes" in request.data:
+            after["internal_notes_modified"] = True
         prev_vals, new_vals, changed = compute_state_diff(before, after)
         if changed:
             record_audit_event(
@@ -329,6 +352,23 @@ def admin_supplier_contacts(request, supplier_id):
     ser = SupplierContactSerializer(data=request.data)
     ser.is_valid(raise_exception=True)
     contact = SupplierContact.objects.create(supplier=supplier, **ser.validated_data)
+    record_audit_event(
+        module=MODULE_PURCHASES,
+        action="SUPPLIER_CONTACT_CREATED",
+        event_category=CATEGORY_CREATION,
+        resource_type="SupplierContact",
+        resource_id=str(contact.id),
+        resource_repr=f"{supplier.internal_code} · {contact.full_name}",
+        new_values={
+            "supplier": supplier.internal_code,
+            "full_name": contact.full_name,
+            "role_title": contact.role_title,
+            "is_primary": contact.is_primary,
+        },
+        actor=request.user,
+        severity=SEVERITY_INFO,
+        mandatory=True,
+    )
     return Response(SupplierContactSerializer(contact).data, status=status.HTTP_201_CREATED)
 
 
@@ -345,17 +385,62 @@ def admin_supplier_contacts(request, supplier_id):
 def admin_supplier_contact_detail(request, supplier_id, contact_id):
     """PATCH/DELETE /api/v1/admin/suppliers/<supplier_id>/contacts/<contact_id>/"""
     try:
-        contact = SupplierContact.objects.get(pk=contact_id, supplier_id=supplier_id)
+        contact = SupplierContact.objects.select_related("supplier").get(pk=contact_id, supplier_id=supplier_id)
     except SupplierContact.DoesNotExist:
         return Response({"error": "Contacto no encontrado."}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == "DELETE":
+        cid = str(contact.id)
+        sup_code = contact.supplier.internal_code
+        cname = contact.full_name
         contact.delete()
+        record_audit_event(
+            module=MODULE_PURCHASES,
+            action="SUPPLIER_CONTACT_DELETED",
+            event_category=CATEGORY_DELETION,
+            resource_type="SupplierContact",
+            resource_id=cid,
+            resource_repr=f"{sup_code} · {cname}",
+            previous_values={"supplier": sup_code, "full_name": cname},
+            actor=request.user,
+            severity=SEVERITY_INFO,
+            mandatory=True,
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
+    before_c = {
+        "full_name": contact.full_name,
+        "role_title": contact.role_title,
+        "is_primary": contact.is_primary,
+        "has_email": bool(contact.email),
+        "has_phone": bool(contact.phone),
+    }
     ser = SupplierContactSerializer(contact, data=request.data, partial=True)
     ser.is_valid(raise_exception=True)
-    ser.save()
+    updated_c = ser.save()
+    after_c = {
+        "full_name": updated_c.full_name,
+        "role_title": updated_c.role_title,
+        "is_primary": updated_c.is_primary,
+        "has_email": bool(updated_c.email),
+        "has_phone": bool(updated_c.phone),
+    }
+    prev_vals, new_vals, changed = compute_state_diff(before_c, after_c)
+    if changed:
+        record_audit_event(
+            module=MODULE_PURCHASES,
+            action="SUPPLIER_CONTACT_UPDATED",
+            event_category=CATEGORY_MODIFICATION,
+            resource_type="SupplierContact",
+            resource_id=str(updated_c.id),
+            resource_repr=f"{updated_c.supplier.internal_code} · {updated_c.full_name}",
+            previous_values=prev_vals,
+            new_values=new_vals,
+            changed_fields=changed,
+            actor=request.user,
+            severity=SEVERITY_INFO,
+            mandatory=True,
+        )
     return Response(ser.data)
 
 
@@ -471,9 +556,24 @@ def admin_supplier_product_detail(request, supplier_id, link_id):
         return Response({"error": "Relación producto-proveedor no encontrada."}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == "DELETE":
+        was_preferred = link.is_preferred
         link.is_active = False
         link.is_preferred = False
         link.save(update_fields=["is_active", "is_preferred", "updated_at"])
+        record_audit_event(
+            module=MODULE_PURCHASES,
+            action="PRODUCT_SUPPLIER_DEACTIVATED",
+            event_category=CATEGORY_DELETION,
+            resource_type="ProductSupplier",
+            resource_id=str(link.id),
+            resource_repr=str(link),
+            previous_values={"is_active": True, "is_preferred": was_preferred},
+            new_values={"is_active": False, "is_preferred": False},
+            changed_fields=["is_active", "is_preferred"] if was_preferred else ["is_active"],
+            actor=request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
         return Response({"id": str(link.id), "is_active": False, "deactivated": True})
 
     try:

@@ -609,6 +609,33 @@ class AdminProductViewSet(viewsets.ModelViewSet):
 
         # M2M — se asigna DESPUÉS de guardar (el producto necesita
         # existir en la DB antes de poder tener relaciones M2M)
+        if "stock" in data and product.product_type == Product.ProductType.STOCK:
+            from apps.products.models import ProductVariant
+            if not ProductVariant.objects.filter(product_id=product.id).exists():
+                from apps.inventory.models import InventoryMovement, WarehouseStock
+                from apps.inventory.services import adjust_stock, get_default_warehouse
+                default_wh = get_default_warehouse()
+                ws = WarehouseStock.objects.filter(warehouse=default_wh, product=product, variant=None).first()
+                cur_avail = ws.available_quantity if ws else 0
+                target_avail = int(product.stock or 0)
+                delta = target_avail - cur_avail
+                if delta != 0:
+                    adjust_stock(
+                        warehouse=default_wh,
+                        product=product,
+                        variant=None,
+                        delta_physical=delta,
+                        movement_type=(
+                            InventoryMovement.MovementType.OPENING
+                            if ws is None and delta > 0
+                            else None
+                        ),
+                        reason="Ajuste de stock desde Ficha de Producto",
+                        source_document_type="ADMIN_PRODUCT",
+                        source_document_id=str(product.id),
+                        actor=request.user,
+                    )
+
         if "related_products" in data:
             ids = data["related_products"] or []
             # nunca un producto "complementa" a sí mismo
@@ -773,8 +800,16 @@ class AdminProductViewSet(viewsets.ModelViewSet):
 
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
+        from django.db.models import ProtectedError
         from apps.orders.models import OrderItem, B2BQuoteItem
         from apps.products.models import BundleItem
+        from apps.procurement.models import ProductSupplier, SupplierPriceHistory
+        from apps.inventory.models import (
+            InventoryMovement,
+            SerialNumberTrack,
+            StockReservation,
+            WarehouseStock,
+        )
 
         product = Product.objects.select_for_update().get(pk=self.get_object().pk)
         pid = str(product.id)
@@ -787,6 +822,12 @@ class AdminProductViewSet(viewsets.ModelViewSet):
             or OrderItem.objects.filter(Q(product=product) | Q(variant__product=product)).exists()
             or B2BQuoteItem.objects.filter(Q(product=product) | Q(variant__product=product)).exists()
             or BundleItem.objects.filter(Q(bundle=product) | Q(component=product)).exists()
+            or ProductSupplier.objects.filter(Q(product=product) | Q(variant__product=product)).exists()
+            or SupplierPriceHistory.objects.filter(Q(product=product) | Q(variant__product=product)).exists()
+            or WarehouseStock.objects.filter(Q(product=product) | Q(variant__product=product)).exists()
+            or InventoryMovement.objects.filter(Q(product=product) | Q(variant__product=product)).exists()
+            or SerialNumberTrack.objects.filter(Q(product=product) | Q(variant__product=product)).exists()
+            or StockReservation.objects.filter(Q(product=product) | Q(variant__product=product)).exists()
         )
         if has_protected_refs:
             product.is_active = False
@@ -811,12 +852,25 @@ class AdminProductViewSet(viewsets.ModelViewSet):
                     "id": pid,
                     "is_active": False,
                     "deactivated": True,
-                    "detail": "El producto posee variantes, órdenes, cotizaciones o kits asociados; se desactivó lógicamente para preservar referencias y reservas.",
+                    "detail": "El producto posee variantes, órdenes, cotizaciones, kits o relaciones de proveedores/inventario asociados; se desactivó lógicamente para preservar referencias e historial.",
                 },
                 status=status.HTTP_200_OK,
             )
 
-        res = super().destroy(request, *args, **kwargs)
+        try:
+            res = super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            product.is_active = False
+            product.save(update_fields=["is_active", "updated_at"])
+            return Response(
+                {
+                    "id": pid,
+                    "is_active": False,
+                    "deactivated": True,
+                    "detail": "El producto posee referencias protegidas; se desactivó lógicamente para preservar la integridad histórica.",
+                },
+                status=status.HTTP_200_OK,
+            )
         record_audit_event(
             module=MODULE_CATALOG,
             action="PRODUCT_DELETED",

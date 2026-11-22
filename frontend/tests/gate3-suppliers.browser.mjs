@@ -1,10 +1,18 @@
 import test from "node:test"
 import assert from "node:assert/strict"
+import fs from "node:fs"
+import os from "node:os"
 import path from "node:path"
 import { preview } from "vite"
 import { chromium } from "playwright"
 
-const ARTIFACT_DIR = "/Users/levelproaudio/.gemini/antigravity/brain/11ba077a-d7d1-492e-b2b9-3bee19137a13"
+// Nota: Prueba visual UI con interceptación de rutas API y fixtures sintéticos en Chromium
+// (no sustituye la integración E2E contra API + PostgreSQL real).
+const ARTIFACT_DIR =
+  process.env.GATE3_SCREENSHOT_DIR ||
+  process.env.TEST_ARTIFACT_DIR ||
+  path.join(os.tmpdir(), "levelpro-gate3-artifacts")
+fs.mkdirSync(ARTIFACT_DIR, { recursive: true })
 
 const SAMPLE_PRODUCT = {
   id: "22222222-2222-2222-2222-222222222222",
@@ -179,7 +187,7 @@ async function setupRoutes(context, baseURL) {
   })
 }
 
-test("Gate 3 Suppliers Browser E2E: directorio, ficha proveedor, comparación producto e importador", async () => {
+test("Gate 3 Suppliers Visual UI Smoke [Mocked API Fixtures]: directorio, ficha proveedor, comparación producto e importador", async () => {
   const testServer = await preview({ configFile: false, preview: { host: "127.0.0.1", port: 0 } })
   const baseURL = `http://127.0.0.1:${testServer.httpServer.address().port}`
   const browser = await chromium.launch({ headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage"] })

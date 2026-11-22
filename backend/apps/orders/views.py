@@ -243,7 +243,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                 quantity     = item["quantity"],
             )
         try:
-            deduct_inventory(stock_demand)
+            deduct_inventory(stock_demand, order=order, actor=request.user)
         except InventoryError as exc:
             transaction.set_rollback(True)
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
