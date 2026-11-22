@@ -725,6 +725,11 @@ def confirm_goods_receipt(
         locked_po.status = PurchaseOrder.Status.PARTIALLY_RECEIVED
     locked_po.save(update_fields=["status", "updated_at"])
 
+    # GATE 6 (BF-09): Generar atómicamente las capas de costo provisionales, SerialCostUnit y WAC
+    from apps.procurement.costing_services import create_cost_layers_for_confirmed_receipt
+
+    create_cost_layers_for_confirmed_receipt(locked_gr, actor=actor)
+
     record_audit_event(
         module=MODULE_PROCUREMENT,
         action="GOODS_RECEIPT_CONFIRMED",

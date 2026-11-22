@@ -71,3 +71,58 @@ export async function confirmGoodsReceipt(grId, idempotencyKey = "") {
   const res = await api.post(`/admin/goods-receipts/${grId}/confirm/`, {}, { headers })
   return res.data
 }
+
+// ── GATE 6: Cost & Pricing Intelligence (BF-09 & BF-18) ─────────────────────
+
+export async function listLandedCostAllocations(params = {}) {
+  const res = await api.get("/admin/costing/landed-cost/", { params })
+  return res.data
+}
+
+export async function getLandedCostAllocation(allocId) {
+  const res = await api.get(`/admin/costing/landed-cost/${allocId}/`)
+  return res.data
+}
+
+export async function createLandedCostAllocation(payload, idempotencyKey = "") {
+  const headers = idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}
+  const res = await api.post("/admin/costing/landed-cost/", payload, { headers })
+  return res.data
+}
+
+export async function finalizeLandedCostAllocation(allocId, idempotencyKey = "") {
+  const headers = idempotencyKey ? { "Idempotency-Key": idempotencyKey } : {}
+  const res = await api.post(`/admin/costing/landed-cost/${allocId}/finalize/`, {}, { headers })
+  return res.data
+}
+
+export async function getCostLayersDashboard(params = {}) {
+  const res = await api.get("/admin/costing/layers/", { params })
+  return res.data
+}
+
+export async function getPricingMarginsReport(params = {}) {
+  const res = await api.get("/admin/pricing/margins/", { params })
+  return res.data
+}
+
+export async function createMarginPolicy(payload) {
+  const res = await api.post("/admin/pricing/margins/", payload)
+  return res.data
+}
+
+export async function runPricingSimulation(payload) {
+  const res = await api.post("/admin/pricing/simulator/", payload)
+  return res.data
+}
+
+export async function listPricingProposals() {
+  const res = await api.get("/admin/pricing/simulator/")
+  return res.data
+}
+
+export async function approvePricingProposal(proposalId) {
+  const res = await api.post(`/admin/pricing/proposals/${proposalId}/approve/`, {})
+  return res.data
+}
+

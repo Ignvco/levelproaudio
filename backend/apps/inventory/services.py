@@ -1018,6 +1018,14 @@ def dispatch_order_reservations(
         movements.append(mov)
         sync_legacy_stock_projection(res.product, res.variant)
 
+    # GATE 6 (BF-09 & BF-18): Congelar atómicamente el costo de venta (COGS) en OrderItem al despachar
+    from apps.procurement.costing_services import CostingServiceError, freeze_order_cogs_on_dispatch
+
+    try:
+        freeze_order_cogs_on_dispatch(order, movements=movements, actor=actor)
+    except CostingServiceError as exc:
+        raise InventoryServiceError(str(exc)) from exc
+
     return movements
 
 

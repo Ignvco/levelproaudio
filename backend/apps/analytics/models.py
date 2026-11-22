@@ -65,43 +65,144 @@ class IncomeRecord(TimeStampedModel):
 
     def create_distributions(self):
         """
-        Distribuye el ingreso entre categorías.
-        Primero los costos fijos (capital = cost_price de cada producto),
-        luego los porcentajes sobre el precio de venta,
-        finalmente el remainder = utilidad neta real.
-
-        Importante: el remainder SIEMPRE se calcula al final, sin importar
-        en qué orden se hayan creado las categorías (antes dependía del
-        campo `order`, que se autoasigna por secuencia de creación y no
-        se puede editar desde el admin — si alguien creaba la categoría
-        "Utilidad neta" antes que las demás, el cálculo salía mal).
+        Distribuye el ingreso entre categorías (Gate 6 — Sección 13):
+        - Preserva historial existente: si este IncomeRecord ya posee distribuciones, no recalcula ni sobrescribe.
+        - Aislamiento monetario: opera en CLP, USD o ARS únicamente cuando el costo real de los ítems
+          está en la misma moneda del ingreso. Prohibido mezclar CLP cost_price con ventas USD/ARS.
+        - Utiliza snapshots reales de costo (OrderItem.total_cost_snapshot / unit_cost_snapshot o WAC/CostLayer)
+          y congela el snapshot en OrderItem para que cambios futuros en Product.cost_price jamás alteren históricos.
+        - Soporta pagos parciales y previene duplicación de costo capital entre múltiples IncomeRecord de una misma orden.
         """
-        # Product cost_price is stored in CLP. A foreign-currency sale cannot
-        # be allocated against CLP cost without an explicit documented FX rate.
-        # Keep the gross sale record, but do not invent category profits.
-        if (self.currency or "").upper() != "CLP":
+        from decimal import ROUND_HALF_UP
+        from django.db.models import Sum
+
+        if self.distributions.exists():
             return
-        categories = DistributionCategory.objects.filter(is_active=True).order_by("order")
+
+        inc_curr = (self.currency or "").strip().upper()
+        if inc_curr not in ("CLP", "USD", "ARS"):
+            return
+
+        categories = list(DistributionCategory.objects.filter(is_active=True).order_by("order"))
+        if not categories:
+            return
         fixed_and_percent = [c for c in categories if c.cat_type in ("fixed", "percent")]
         remainder_cats    = [c for c in categories if c.cat_type == "remainder"]
+
+        order_capital_cost = Decimal("0.00")
+        if self.order_id and self.order:
+            from apps.procurement.models import CostLayer, WeightedAverageCostState
+
+            order_items = list(self.order.items.select_related("product", "variant").all())
+            if inc_curr != "CLP" and not order_items:
+                return
+
+            for item in order_items:
+                if item.unit_cost_snapshot is not None or item.total_cost_snapshot is not None:
+                    item_curr = (item.cost_currency or "CLP").strip().upper()
+                    if item_curr != inc_curr:
+                        # Aislamiento monetario: no mezclar costo en otra moneda sin conversión explícita
+                        return
+                    item_cost = (
+                        item.total_cost_snapshot
+                        if item.total_cost_snapshot is not None
+                        else (item.unit_cost_snapshot * Decimal(item.quantity)).quantize(
+                            Decimal("0.01"), rounding=ROUND_HALF_UP
+                        )
+                    )
+                    order_capital_cost += item_cost
+                else:
+                    wac = (
+                        WeightedAverageCostState.objects.filter(
+                            product=item.product,
+                            variant=item.variant,
+                            currency=inc_curr,
+                            average_unit_cost__gt=0,
+                        ).first()
+                        if item.product_id
+                        else None
+                    )
+                    layer = (
+                        CostLayer.objects.filter(
+                            product=item.product,
+                            variant=item.variant,
+                            valuation_currency=inc_curr,
+                        )
+                        .order_by("-effective_date", "-created_at")
+                        .first()
+                        if (wac is None and item.product_id)
+                        else None
+                    )
+                    if wac is not None:
+                        u_cost = wac.average_unit_cost
+                        method_snap = "weighted_average"
+                    elif layer is not None:
+                        u_cost = layer.landed_unit_cost
+                        method_snap = layer.costing_method
+                    elif inc_curr == "CLP":
+                        raw_cat_cost = (
+                            item.variant.effective_cost_price
+                            if (item.variant_id and item.variant)
+                            else getattr(item.product, "cost_price", None)
+                        ) or Decimal("0.00")
+                        u_cost = Decimal(str(raw_cat_cost)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+                        method_snap = "catalog_fallback"
+                    else:
+                        # Venta en USD/ARS sin snapshot ni capa en esa moneda: no inventar rentabilidad cruzando CLP
+                        return
+
+                    item_cost = (u_cost * Decimal(item.quantity)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                    item.unit_cost_snapshot = u_cost
+                    item.total_cost_snapshot = item_cost
+                    item.cost_currency = inc_curr
+                    item.costing_method_snapshot = method_snap
+                    item.save(
+                        update_fields=[
+                            "unit_cost_snapshot",
+                            "total_cost_snapshot",
+                            "cost_currency",
+                            "costing_method_snapshot",
+                            "updated_at",
+                        ]
+                    )
+                    order_capital_cost += item_cost
+        elif inc_curr != "CLP":
+            return
+
+        # Control de pagos parciales y no duplicación de capital entre múltiples IncomeRecord de la misma orden
+        capital_cost = order_capital_cost
+        if self.order_id and self.order and order_capital_cost > Decimal("0.00"):
+            already_allocated_capital = (
+                IncomeDistribution.objects.filter(
+                    income_record__order_id=self.order_id,
+                    income_record__currency=inc_curr,
+                    category__cat_type="fixed",
+                )
+                .exclude(income_record_id=self.id)
+                .aggregate(t=Sum("amount"))["t"]
+                or Decimal("0.00")
+            )
+            remaining_order_capital = max(Decimal("0.00"), order_capital_cost - already_allocated_capital)
+            order_total = Decimal(str(self.order.total or "0.00"))
+            rec_amount = Decimal(str(self.amount or "0.00"))
+            if order_total > Decimal("0.00") and rec_amount < order_total:
+                ratio = rec_amount / order_total
+                proportional_cap = (order_capital_cost * ratio).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                capital_cost = min(remaining_order_capital, proportional_cap)
+            else:
+                capital_cost = remaining_order_capital
 
         fixed_total   = Decimal("0.00")
         percent_total = Decimal("0.00")
 
-        # Calcula costo capital desde los items de la orden
-        capital_cost = Decimal("0.00")
-        if self.order:
-            for item in self.order.items.select_related("product"):
-                product_cost = getattr(item.product, "cost_price", None) or Decimal("0.00")
-                capital_cost += product_cost * item.quantity
-
         for cat in fixed_and_percent:
             if cat.cat_type == "fixed":
-                # Costo capital = lo que realmente costaron los productos
                 amount = capital_cost
                 fixed_total += amount
             else:  # percent
-                amount = (self.amount * cat.percentage / 100).quantize(Decimal("0.01"))
+                amount = (Decimal(str(self.amount)) * cat.percentage / Decimal("100")).quantize(
+                    Decimal("0.01"), rounding=ROUND_HALF_UP
+                )
                 percent_total += amount
 
             IncomeDistribution.objects.create(
@@ -110,11 +211,7 @@ class IncomeRecord(TimeStampedModel):
                 amount        = amount,
             )
 
-        # Remainder al final, ya con fixed_total y percent_total completos.
-        # Si hay más de una categoría "remainder" activa (caso raro), se
-        # reparte todo en la primera y las demás quedan en 0 — evita
-        # duplicar la utilidad neta contándola dos veces.
-        restante = max(self.amount - fixed_total - percent_total, Decimal("0.00"))
+        restante = max(Decimal(str(self.amount)) - fixed_total - percent_total, Decimal("0.00"))
         for i, cat in enumerate(remainder_cats):
             amount = restante if i == 0 else Decimal("0.00")
             IncomeDistribution.objects.create(

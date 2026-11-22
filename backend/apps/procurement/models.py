@@ -912,3 +912,944 @@ class CustomsDocument(TimeStampedModel):
         elif not self.sensitivity_level:
             self.sensitivity_level = self.SensitivityLevel.OPERATIONAL
         super().save(*args, **kwargs)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# GATE 6: COST & PRICING INTELLIGENCE (BF-09 COST LAYERS & BF-18 LANDED COST)
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class ExchangeRateSnapshot(TimeStampedModel):
+    """
+    Snapshot inmutable de tipo de cambio aplicado en una operación de costeo o conversión (Sección 8).
+    No utiliza tasas comerciales constantes ni recalcula históricos.
+    """
+
+    objects = AppendOnlyManager()
+
+    source_currency = models.CharField(max_length=3, choices=Supplier.Currency.choices)
+    target_currency = models.CharField(max_length=3, choices=Supplier.Currency.choices)
+    rate = models.DecimalField(
+        max_digits=16,
+        decimal_places=6,
+        validators=[MinValueValidator(Decimal("0.000001"))],
+    )
+    rate_source = models.CharField(max_length=120)
+    effective_date = models.DateField(db_index=True)
+    rounding_policy = models.CharField(max_length=30, default="ROUND_HALF_UP")
+    original_amount = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    converted_amount = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_fx_snapshots",
+    )
+
+    class Meta:
+        verbose_name = "Snapshot de tipo de cambio"
+        verbose_name_plural = "Snapshots de tipos de cambio"
+        ordering = ["-effective_date", "-created_at"]
+
+    def __str__(self):
+        return f"{self.source_currency}->{self.target_currency} @ {self.rate} ({self.rate_source})"
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding and self.pk:
+            raise PermissionDenied("Los snapshots de tipo de cambio son inmutables (append-only).")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise PermissionDenied("Los snapshots de tipo de cambio son inmutables y no pueden eliminarse.")
+
+
+class CostLayer(TimeStampedModel):
+    """
+    BF-09: Capa histórica de costos por lote/recepción de mercadería.
+    Preserva costo original de adquisición, gastos landed asignados, costo unitario definitivo,
+    disponibilidad de la capa, consumo acumulado y estado de finalización.
+    """
+
+    class CostingMethod(models.TextChoices):
+        SPECIFIC_SERIAL = "specific_serial", "Identificación específica por serial"
+        WEIGHTED_AVERAGE = "weighted_average", "Promedio ponderado móvil"
+
+    class Status(models.TextChoices):
+        PROVISIONAL = "provisional", "Provisional (Recepción física)"
+        FINALIZED = "finalized", "Finalizada (Landed Cost definitivo)"
+        ADJUSTED = "adjusted", "Ajustada con gasto tardío"
+        DEPLETED = "depleted", "Agotada"
+
+    layer_code = models.CharField(max_length=40, unique=True, db_index=True)
+    costing_method = models.CharField(
+        max_length=24,
+        choices=CostingMethod.choices,
+        default=CostingMethod.WEIGHTED_AVERAGE,
+        db_index=True,
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PROVISIONAL,
+        db_index=True,
+    )
+    purchase_order = models.ForeignKey(
+        PurchaseOrder,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cost_layers",
+    )
+    goods_receipt = models.ForeignKey(
+        GoodsReceipt,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cost_layers",
+    )
+    goods_receipt_item = models.ForeignKey(
+        GoodsReceiptItem,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cost_layers",
+    )
+    supplier = models.ForeignKey(
+        Supplier,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cost_layers",
+    )
+    product = models.ForeignKey(
+        "products.Product",
+        on_delete=models.PROTECT,
+        related_name="cost_layers",
+    )
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cost_layers",
+    )
+    sku_registry = models.ForeignKey(
+        "products.SkuRegistry",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cost_layers",
+    )
+    sku_snapshot = models.CharField(max_length=100, db_index=True)
+    warehouse = models.ForeignKey(
+        "inventory.Warehouse",
+        on_delete=models.PROTECT,
+        related_name="cost_layers",
+    )
+    inventory_movement = models.ForeignKey(
+        "inventory.InventoryMovement",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cost_layers",
+    )
+    source_document_type = models.CharField(max_length=60, default="GOODS_RECEIPT")
+    source_document_id = models.CharField(max_length=80, blank=True, default="")
+    effective_date = models.DateTimeField(default=timezone.now, db_index=True)
+
+    acquisition_currency = models.CharField(max_length=3, choices=Supplier.Currency.choices)
+    valuation_currency = models.CharField(max_length=3, choices=Supplier.Currency.choices)
+    fx_snapshot = models.ForeignKey(
+        ExchangeRateSnapshot,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cost_layers",
+    )
+
+    quantity_received = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    quantity_damaged = models.PositiveIntegerField(default=0)
+    quantity_available = models.PositiveIntegerField(default=0)
+    quantity_consumed = models.PositiveIntegerField(default=0)
+
+    original_unit_cost = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    base_unit_cost = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    allocated_expenses_total = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        default=Decimal("0.00"),
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    unit_allocated_expense = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    landed_unit_cost = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    total_layer_cost = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    remaining_layer_value = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    serial_numbers = models.JSONField(default=list, blank=True)
+    is_finalized = models.BooleanField(default=False, db_index=True)
+    finalized_at = models.DateTimeField(null=True, blank=True)
+    finalized_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="finalized_cost_layers",
+    )
+    version = models.PositiveIntegerField(default=1)
+    notes = models.TextField(blank=True, default="")
+
+    class Meta:
+        verbose_name = "Capa de costo"
+        verbose_name_plural = "Capas de costos"
+        ordering = ["effective_date", "created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(quantity_received__gte=1),
+                name="chk_cl_qty_rec_gte_1",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(quantity_available__gte=0) & models.Q(quantity_consumed__gte=0),
+                name="chk_cl_qty_avail_cons_non_neg",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(
+                    quantity_available__lte=models.F("quantity_received") - models.F("quantity_consumed")
+                ),
+                name="chk_cl_avail_plus_cons_lte_rec",
+            ),
+            models.CheckConstraint(
+                condition=(
+                    models.Q(original_unit_cost__gte=0)
+                    & models.Q(base_unit_cost__gte=0)
+                    & models.Q(allocated_expenses_total__gte=0)
+                    & models.Q(landed_unit_cost__gte=0)
+                    & models.Q(total_layer_cost__gte=0)
+                    & models.Q(remaining_layer_value__gte=0)
+                ),
+                name="chk_cl_costs_non_negative",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["product", "variant", "valuation_currency", "effective_date"], name="proc_cl_unit_curr_dt_idx"),
+            models.Index(fields=["goods_receipt", "status"], name="proc_cl_gr_status_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.layer_code} · {self.sku_snapshot} ({self.landed_unit_cost} {self.valuation_currency})"
+
+
+class SerialCostUnit(TimeStampedModel):
+    """
+    Sección 9: Costeo por identificación específica para equipos serializados.
+    Vincula cada SerialNumberTrack a su CostLayer, recepción, gastos capitalizados y estado de consumo,
+    impidiendo la asignación duplicada del mismo costo a más de una venta.
+    """
+
+    serial_track = models.OneToOneField(
+        "inventory.SerialNumberTrack",
+        on_delete=models.PROTECT,
+        related_name="cost_unit",
+    )
+    cost_layer = models.ForeignKey(
+        CostLayer,
+        on_delete=models.PROTECT,
+        related_name="serial_units",
+    )
+    purchase_order = models.ForeignKey(
+        PurchaseOrder,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="serial_cost_units",
+    )
+    goods_receipt = models.ForeignKey(
+        GoodsReceipt,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="serial_cost_units",
+    )
+    goods_receipt_item = models.ForeignKey(
+        GoodsReceiptItem,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="serial_cost_units",
+    )
+    product = models.ForeignKey(
+        "products.Product",
+        on_delete=models.PROTECT,
+        related_name="serial_cost_units",
+    )
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="serial_cost_units",
+    )
+    serial_number_snapshot = models.CharField(max_length=120, db_index=True)
+    acquisition_currency = models.CharField(max_length=3, choices=Supplier.Currency.choices)
+    valuation_currency = models.CharField(max_length=3, choices=Supplier.Currency.choices)
+    original_unit_cost = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    base_unit_cost = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    allocated_expense = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    landed_unit_cost = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    is_damaged = models.BooleanField(default=False)
+    is_finalized = models.BooleanField(default=False)
+    is_consumed = models.BooleanField(default=False, db_index=True)
+    consumed_by_order = models.ForeignKey(
+        "orders.Order",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="consumed_serial_costs",
+    )
+    consumed_by_order_item = models.ForeignKey(
+        "orders.OrderItem",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="consumed_serial_costs",
+    )
+    consumed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Costo unitario por serial"
+        verbose_name_plural = "Costos unitarios por serial"
+        ordering = ["serial_number_snapshot"]
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(landed_unit_cost__gte=0) & models.Q(base_unit_cost__gte=0),
+                name="chk_scu_costs_non_negative",
+            ),
+        ]
+
+    def __str__(self):
+        return f"SN {self.serial_number_snapshot} → {self.landed_unit_cost} {self.valuation_currency}"
+
+
+class WeightedAverageCostState(TimeStampedModel):
+    """
+    Sección 10: Estado de costo promedio ponderado móvil (WAC) para inventario fungible,
+    segregado estrictamente por unidad comercial (Product / ProductVariant) y moneda de valuación.
+    """
+
+    product = models.ForeignKey(
+        "products.Product",
+        on_delete=models.PROTECT,
+        related_name="wac_states",
+    )
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="wac_states",
+    )
+    sku_snapshot = models.CharField(max_length=100, db_index=True)
+    currency = models.CharField(max_length=3, choices=Supplier.Currency.choices)
+    total_quantity = models.PositiveIntegerField(default=0)
+    sellable_quantity = models.PositiveIntegerField(default=0)
+    damaged_quantity = models.PositiveIntegerField(default=0)
+    total_value = models.DecimalField(
+        max_digits=16,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    sellable_value = models.DecimalField(
+        max_digits=16,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    damaged_value = models.DecimalField(
+        max_digits=16,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    average_unit_cost = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        default=Decimal("0.0000"),
+        validators=[MinValueValidator(Decimal("0"))],
+    )
+    last_movement = models.ForeignKey(
+        "inventory.InventoryMovement",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+
+    class Meta:
+        verbose_name = "Estado de promedio ponderado (WAC)"
+        verbose_name_plural = "Estados de promedio ponderado (WAC)"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["product", "currency"],
+                condition=models.Q(variant__isnull=True),
+                name="uniq_wac_product_currency",
+            ),
+            models.UniqueConstraint(
+                fields=["product", "variant", "currency"],
+                condition=models.Q(variant__isnull=False),
+                name="uniq_wac_variant_currency",
+            ),
+            models.CheckConstraint(
+                condition=models.Q(total_value__gte=0) & models.Q(average_unit_cost__gte=0),
+                name="chk_wac_non_negative",
+            ),
+        ]
+
+    def __str__(self):
+        return f"WAC {self.sku_snapshot} [{self.currency}]: qty={self.total_quantity} avg={self.average_unit_cost}"
+
+
+class LandedCostAllocation(TimeStampedModel):
+    """
+    BF-18: Documento de cálculo, distribución y finalización de Landed Cost sobre una recepción o PO.
+    """
+
+    class Status(models.TextChoices):
+        DRAFT = "draft", "Borrador / Simulación"
+        VALIDATED = "validated", "Validado"
+        FINALIZED = "finalized", "Finalizado e Inmutable"
+        CANCELLED = "cancelled", "Anulado"
+
+    allocation_code = models.CharField(max_length=40, unique=True, db_index=True)
+    purchase_order = models.ForeignKey(
+        PurchaseOrder,
+        on_delete=models.PROTECT,
+        related_name="landed_cost_allocations",
+    )
+    goods_receipt = models.ForeignKey(
+        GoodsReceipt,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="landed_cost_allocations",
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.DRAFT,
+        db_index=True,
+    )
+    valuation_currency = models.CharField(
+        max_length=3,
+        choices=Supplier.Currency.choices,
+        default=Supplier.Currency.USD,
+    )
+    po_to_valuation_fx = models.ForeignKey(
+        ExchangeRateSnapshot,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="landed_allocations",
+    )
+    total_cif_base = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    total_capitalizable_expenses = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    total_non_capitalizable_taxes = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    total_landed_cost = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    rounding_policy = models.CharField(max_length=50, default="ROUND_HALF_UP_MAX_BASE_RESIDUAL")
+    calculation_snapshot = models.JSONField(default=dict, blank=True)
+    idempotency_key = models.CharField(max_length=120, unique=True, null=True, blank=True)
+    version = models.PositiveIntegerField(default=1)
+    is_late_adjustment = models.BooleanField(default=False)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_landed_allocations",
+    )
+    validated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="validated_landed_allocations",
+    )
+    finalized_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="finalized_landed_allocations",
+    )
+    validated_at = models.DateTimeField(null=True, blank=True)
+    finalized_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True, default="")
+
+    class Meta:
+        verbose_name = "Asignación de Landed Cost"
+        verbose_name_plural = "Asignaciones de Landed Cost"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.allocation_code} ({self.purchase_order.po_number}) [{self.status}]"
+
+
+class LandedCostExpense(TimeStampedModel):
+    """
+    BF-18 (Sección 6): Gasto individual de adquisición, transporte o internación aduanera.
+    """
+
+    class Category(models.TextChoices):
+        INTERNATIONAL_FREIGHT = "international_freight", "Flete internacional"
+        DOMESTIC_FREIGHT = "domestic_freight", "Flete nacional"
+        INSURANCE = "insurance", "Seguro de transporte"
+        CUSTOMS_DUTY = "customs_duty", "Aranceles aduaneros"
+        CUSTOMS_BROKER = "customs_broker", "Gastos de agente de aduana"
+        WAREHOUSING = "warehousing", "Almacenaje"
+        HANDLING = "handling", "Manipulación"
+        RECOVERABLE_TAX = "recoverable_tax", "Impuesto recuperable (No capitalizable)"
+        NON_RECOVERABLE_TAX = "non_recoverable_tax", "Impuesto no recuperable (Capitalizable)"
+        OTHER_CAPITALIZABLE = "other_capitalizable", "Otros gastos capitalizables autorizados"
+
+    class ProrationMethod(models.TextChoices):
+        BY_CIF_VALUE = "by_cif_value", "Proporcional al valor CIF"
+        BY_WEIGHT = "by_weight", "Proporcional al peso"
+        BY_QUANTITY = "by_quantity", "Proporcional a la cantidad"
+        SPECIFIC_LINE = "specific_line", "Asignación directa a partida específica"
+
+    class ValidationStatus(models.TextChoices):
+        PENDING = "pending", "Pendiente"
+        VALIDATED = "validated", "Validado"
+        REJECTED = "rejected", "Rechazado"
+
+    allocation = models.ForeignKey(
+        LandedCostAllocation,
+        on_delete=models.CASCADE,
+        related_name="expenses",
+    )
+    category = models.CharField(max_length=32, choices=Category.choices, db_index=True)
+    proration_method = models.CharField(
+        max_length=24,
+        choices=ProrationMethod.choices,
+        default=ProrationMethod.BY_CIF_VALUE,
+    )
+    source_document_type = models.CharField(max_length=60, default="INVOICE")
+    source_document_number = models.CharField(max_length=120)
+    expense_date = models.DateField(default=timezone.localdate)
+    amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    currency = models.CharField(max_length=3, choices=Supplier.Currency.choices)
+    fx_snapshot = models.ForeignKey(
+        ExchangeRateSnapshot,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="landed_expenses",
+    )
+    converted_amount = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        validators=[MinValueValidator(Decimal("0.01"))],
+    )
+    is_capitalizable = models.BooleanField(default=True)
+    is_recoverable_tax = models.BooleanField(default=False)
+    target_purchase_order_item = models.ForeignKey(
+        PurchaseOrderItem,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="specific_landed_expenses",
+    )
+    target_goods_receipt_item = models.ForeignKey(
+        GoodsReceiptItem,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="specific_landed_expenses",
+    )
+    validation_status = models.CharField(
+        max_length=20,
+        choices=ValidationStatus.choices,
+        default=ValidationStatus.VALIDATED,
+    )
+    responsible = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="responsible_landed_expenses",
+    )
+    notes = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        verbose_name = "Gasto de Landed Cost"
+        verbose_name_plural = "Gastos de Landed Cost"
+        ordering = ["created_at", "pk"]
+
+    def __str__(self):
+        return f"{self.category} ({self.source_document_number}): {self.amount} {self.currency}"
+
+
+class LandedCostLineAllocation(TimeStampedModel):
+    """
+    BF-18 (Sección 7): Resultado de prorrateo por partida recibida, registrando base CIF, peso,
+    desglose por gasto, ajuste determinista de redondeo y costo definitivo unitario y total.
+    """
+
+    allocation = models.ForeignKey(
+        LandedCostAllocation,
+        on_delete=models.CASCADE,
+        related_name="line_allocations",
+    )
+    purchase_order_item = models.ForeignKey(
+        PurchaseOrderItem,
+        on_delete=models.PROTECT,
+        related_name="landed_line_allocations",
+    )
+    goods_receipt_item = models.ForeignKey(
+        GoodsReceiptItem,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="landed_line_allocations",
+    )
+    cost_layer = models.ForeignKey(
+        CostLayer,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="landed_line_allocations",
+    )
+    product = models.ForeignKey(
+        "products.Product",
+        on_delete=models.PROTECT,
+        related_name="landed_line_allocations",
+    )
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="landed_line_allocations",
+    )
+    sku_snapshot = models.CharField(max_length=100)
+    quantity_allocated = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    unit_weight_snapshot = models.DecimalField(max_digits=10, decimal_places=4, null=True, blank=True)
+    total_weight_snapshot = models.DecimalField(max_digits=12, decimal_places=4, null=True, blank=True)
+    cif_base_unit = models.DecimalField(max_digits=14, decimal_places=4)
+    cif_base_total = models.DecimalField(max_digits=14, decimal_places=2)
+    allocated_expenses_total = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    allocated_expense_unit = models.DecimalField(max_digits=14, decimal_places=4, default=Decimal("0.0000"))
+    rounding_adjustment = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal("0.0000"))
+    landed_total_cost = models.DecimalField(max_digits=14, decimal_places=2)
+    landed_unit_cost = models.DecimalField(max_digits=14, decimal_places=4)
+    expense_breakdown = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        verbose_name = "Línea de distribución Landed Cost"
+        verbose_name_plural = "Líneas de distribución Landed Cost"
+        ordering = ["created_at", "pk"]
+
+
+class CostConsumptionRecord(TimeStampedModel):
+    """
+    Sección 12 y 16: Registro histórico append-only de consumo de capas/seriales/WAC
+    al despachar o vender mercadería.
+    """
+
+    objects = AppendOnlyManager()
+
+    order = models.ForeignKey(
+        "orders.Order",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cost_consumptions",
+    )
+    order_item = models.ForeignKey(
+        "orders.OrderItem",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cost_consumptions",
+    )
+    inventory_movement = models.ForeignKey(
+        "inventory.InventoryMovement",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cost_consumptions",
+    )
+    cost_layer = models.ForeignKey(
+        CostLayer,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="consumptions",
+    )
+    serial_cost_unit = models.ForeignKey(
+        SerialCostUnit,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="consumptions",
+    )
+    product = models.ForeignKey(
+        "products.Product",
+        on_delete=models.PROTECT,
+        related_name="cost_consumptions",
+    )
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cost_consumptions",
+    )
+    warehouse = models.ForeignKey(
+        "inventory.Warehouse",
+        on_delete=models.PROTECT,
+        related_name="cost_consumptions",
+    )
+    quantity = models.PositiveIntegerField(validators=[MinValueValidator(1)])
+    unit_cost = models.DecimalField(max_digits=14, decimal_places=4, validators=[MinValueValidator(Decimal("0"))])
+    total_cost = models.DecimalField(max_digits=14, decimal_places=2, validators=[MinValueValidator(Decimal("0"))])
+    currency = models.CharField(max_length=3, choices=Supplier.Currency.choices)
+    costing_method = models.CharField(max_length=30)
+    serial_number = models.CharField(max_length=120, blank=True, default="")
+    idempotency_key = models.CharField(max_length=160, unique=True)
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+    recorded_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Consumo histórico de costo"
+        verbose_name_plural = "Consumos históricos de costos"
+        ordering = ["-recorded_at"]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding and self.pk:
+            raise PermissionDenied("Los registros de consumo de costo son inmutables (append-only).")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise PermissionDenied("Los registros de consumo de costo son inmutables y no pueden eliminarse.")
+
+
+class CostAdjustmentEntry(TimeStampedModel):
+    """
+    Sección 11: Ajuste de costo versionado y trazable para gastos tardíos posteriores a la recepción.
+    Si parte o toda la capa ya fue vendida, preserva intacto el snapshot histórico de venta
+    y registra por separado la variación atribuible a unidades ya consumidas.
+    """
+
+    objects = AppendOnlyManager()
+
+    adjustment_code = models.CharField(max_length=40, unique=True, db_index=True)
+    cost_layer = models.ForeignKey(
+        CostLayer,
+        on_delete=models.PROTECT,
+        related_name="adjustments",
+    )
+    allocation = models.ForeignKey(
+        LandedCostAllocation,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="cost_adjustments",
+    )
+    version = models.PositiveIntegerField(default=1)
+    currency = models.CharField(max_length=3, choices=Supplier.Currency.choices)
+    total_adjustment_amount = models.DecimalField(max_digits=14, decimal_places=2)
+    quantity_on_hand_at_adjustment = models.PositiveIntegerField()
+    quantity_already_consumed = models.PositiveIntegerField()
+    capitalized_to_inventory_amount = models.DecimalField(max_digits=14, decimal_places=2)
+    variance_on_consumed_amount = models.DecimalField(max_digits=14, decimal_places=2)
+    previous_unit_cost = models.DecimalField(max_digits=14, decimal_places=4)
+    new_unit_cost = models.DecimalField(max_digits=14, decimal_places=4)
+    reason = models.CharField(max_length=255)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_cost_adjustments",
+    )
+    recorded_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        verbose_name = "Ajuste versionado de costo"
+        verbose_name_plural = "Ajustes versionados de costos"
+        ordering = ["-recorded_at"]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding and self.pk:
+            raise PermissionDenied("Los ajustes históricos de costo son inmutables (append-only).")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise PermissionDenied("Los ajustes históricos de costo son inmutables y no pueden eliminarse.")
+
+
+class MarginPolicy(TimeStampedModel):
+    """
+    Sección 14: Política de margen mínimo de seguridad y margen objetivo configurable
+    a nivel global, por marca, categoría o producto.
+    """
+
+    name = models.CharField(max_length=120)
+    brand = models.ForeignKey(
+        "products.Brand",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="margin_policies",
+    )
+    category = models.ForeignKey(
+        "products.Category",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="margin_policies",
+    )
+    product = models.ForeignKey(
+        "products.Product",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="margin_policies",
+    )
+    min_margin_percent = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=Decimal("20.00"),
+        validators=[MinValueValidator(Decimal("0"))],
+        help_text="Margen bruto mínimo sobre ventas ((PrecioNeto - Costo) / PrecioNeto * 100).",
+    )
+    target_margin_percent = models.DecimalField(
+        max_digits=6,
+        decimal_places=2,
+        default=Decimal("35.00"),
+        validators=[MinValueValidator(Decimal("0"))],
+        help_text="Margen bruto objetivo sobre ventas.",
+    )
+    is_active = models.BooleanField(default=True, db_index=True)
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="+",
+    )
+
+    class Meta:
+        verbose_name = "Política de margen"
+        verbose_name_plural = "Políticas de márgenes"
+        ordering = ["-created_at"]
+
+
+class PricingSimulationProposal(TimeStampedModel):
+    """
+    Sección 14: Simulación y propuesta comercial de precios.
+    Jamás modifica automáticamente los precios públicos del catálogo sin confirmación explícita y permiso edit_prices.
+    """
+
+    class Status(models.TextChoices):
+        SIMULATED = "simulated", "Simulación"
+        PROPOSED = "proposed", "Propuesta pendiente de aprobación"
+        APPROVED_APPLIED = "approved_applied", "Aprobada y aplicada al catálogo"
+        REJECTED = "rejected", "Rechazada"
+
+    product = models.ForeignKey(
+        "products.Product",
+        on_delete=models.CASCADE,
+        related_name="pricing_proposals",
+    )
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="pricing_proposals",
+    )
+    currency = models.CharField(max_length=3, choices=Supplier.Currency.choices)
+    base_landed_cost = models.DecimalField(max_digits=14, decimal_places=4)
+    current_net_price = models.DecimalField(max_digits=14, decimal_places=2)
+    proposed_net_price = models.DecimalField(max_digits=14, decimal_places=2)
+    tax_rate_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    proposed_gross_price = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    projected_margin_percent = models.DecimalField(max_digits=7, decimal_places=2)
+    projected_markup_percent = models.DecimalField(max_digits=8, decimal_places=2)
+    projected_gross_profit = models.DecimalField(max_digits=14, decimal_places=2)
+    fx_scenario_rate = models.DecimalField(max_digits=16, decimal_places=6, null=True, blank=True)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.SIMULATED, db_index=True)
+    notes = models.CharField(max_length=255, blank=True, default="")
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_pricing_proposals",
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_pricing_proposals",
+    )
+    approved_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Propuesta de simulación de precios"
+        verbose_name_plural = "Propuestas de simulación de precios"
+        ordering = ["-created_at"]
