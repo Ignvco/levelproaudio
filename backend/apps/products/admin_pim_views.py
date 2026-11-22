@@ -157,6 +157,21 @@ def admin_product_variants(request, product_id):
         variant.full_clean()
         variant.save()
 
+        if product.product_type == Product.ProductType.STOCK and int(variant.stock or 0) > 0:
+            from apps.inventory.models import InventoryMovement
+            from apps.inventory.services import adjust_stock, get_default_warehouse
+            adjust_stock(
+                warehouse=get_default_warehouse(),
+                product=product,
+                variant=variant,
+                delta_physical=int(variant.stock),
+                movement_type=InventoryMovement.MovementType.OPENING,
+                reason="Apertura de stock al crear variante",
+                source_document_type="ADMIN_VARIANT",
+                source_document_id=str(variant.id),
+                actor=request.user,
+            )
+
         record_audit_event(
             module=MODULE_CATALOG,
             action="PRODUCT_VARIANT_CREATED",
@@ -250,6 +265,30 @@ def admin_product_variant_detail(request, product_id, variant_id):
             setattr(variant, k, v)
         variant.full_clean()
         variant.save()
+
+        if "stock" in ser.validated_data and variant.product.product_type == Product.ProductType.STOCK:
+            from apps.inventory.models import InventoryMovement, WarehouseStock
+            from apps.inventory.services import adjust_stock, get_default_warehouse
+            default_wh = get_default_warehouse()
+            ws = WarehouseStock.objects.filter(warehouse=default_wh, product=variant.product, variant=variant).first()
+            cur_avail = ws.available_quantity if ws else 0
+            delta = int(variant.stock or 0) - cur_avail
+            if delta != 0:
+                adjust_stock(
+                    warehouse=default_wh,
+                    product=variant.product,
+                    variant=variant,
+                    delta_physical=delta,
+                    movement_type=(
+                        InventoryMovement.MovementType.OPENING
+                        if ws is None and delta > 0
+                        else None
+                    ),
+                    reason="Ajuste de stock en variante desde PIM",
+                    source_document_type="ADMIN_VARIANT",
+                    source_document_id=str(variant.id),
+                    actor=request.user,
+                )
 
         after_state = {
             "sku": variant.sku,

@@ -218,6 +218,23 @@ class Order(TimeStampedModel):
             if previous.status == OrderStatus.PENDING and self.status == OrderStatus.CANCELLED:
                 from .inventory import restore_inventory
                 restore_inventory(previous)
+            elif previous.status == OrderStatus.PENDING and self.status == OrderStatus.PAID:
+                from apps.inventory.services import consolidate_order_reservations
+                consolidate_order_reservations(previous)
+            elif previous.status in (OrderStatus.PENDING, OrderStatus.PAID) and self.status in (
+                OrderStatus.SHIPPED, OrderStatus.COMPLETED
+            ):
+                from apps.inventory.services import (
+                    InventoryServiceError,
+                    consolidate_order_reservations,
+                    dispatch_order_reservations,
+                )
+                if previous.status == OrderStatus.PENDING:
+                    consolidate_order_reservations(previous)
+                try:
+                    dispatch_order_reservations(previous)
+                except InventoryServiceError as exc:
+                    raise ValidationError({"status": str(exc)}) from exc
             # Las cancelaciones de pedidos ya pagados/enviados no prueban que
             # la mercadería haya regresado: su devolución física sigue siendo manual.
             return super().save(*args, **kwargs)

@@ -121,6 +121,19 @@ class Product(TimeStampedModel):
         max_length=20, choices=ProductType.choices, default=ProductType.STOCK
     )
 
+    class SerializationMode(models.TextChoices):
+        NONE     = "none",     "Sin serialización"
+        OPTIONAL = "optional", "Serialización opcional"
+        REQUIRED = "required", "Serialización obligatoria"
+
+    serialization_mode = models.CharField(
+        max_length=16,
+        choices=SerializationMode.choices,
+        default=SerializationMode.NONE,
+        db_index=True,
+        verbose_name="Modo de serialización",
+    )
+
     # ← declarado UNA sola vez
     stock     = models.PositiveIntegerField(default=0, verbose_name="Stock")
     stock_min = models.PositiveIntegerField(

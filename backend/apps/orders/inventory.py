@@ -165,30 +165,108 @@ def prepare_inventory(items_data):
         if isinstance(target_key, str) and target_key.startswith("variant:"):
             vid = UUID(target_key.split(":", 1)[1])
             v = variants[vid]
-            if v.stock < quantity:
+            avail = _get_sellable_available(v.product, v, legacy_stock=v.stock)
+            if avail < quantity:
                 raise InventoryError(f"Stock insuficiente para {v.product.name} ({v.name}).")
         else:
-            if products[target_key].stock < quantity:
-                raise InventoryError(f"Stock insuficiente para {products[target_key].name}.")
+            p = products[target_key]
+            avail = _get_sellable_available(p, None, legacy_stock=p.stock)
+            if avail < quantity:
+                raise InventoryError(f"Stock insuficiente para {p.name}.")
 
     return lines, demand
 
 
-def deduct_inventory(demand):
-    """Los productos y variantes siguen bloqueados por prepare_inventory hasta el commit."""
+def _get_sellable_available(product, variant, legacy_stock: int) -> int:
+    """
+    Fuente única de verdad: suma available_quantity en bodegas activas y elegibles para venta online.
+    Si el producto/variante aún no tiene filas WarehouseStock (ej. fixture unitario aislado),
+    retorna legacy_stock para compatibilidad controlada.
+    """
+    from apps.inventory.models import WarehouseStock
+
+    qs = WarehouseStock.objects.filter(product=product, variant=variant)
+    if not qs.exists():
+        return int(legacy_stock or 0)
+    sellable_rows = qs.filter(warehouse__is_active=True, warehouse__is_sellable_online=True)
+    return sum(max(0, r.available_quantity) for r in sellable_rows)
+
+
+def deduct_inventory(demand, order=None, actor=None):
+    """
+    Reserva existencias desde WarehouseStock (fuente única de verdad) y sincroniza
+    la proyección legacy Product.stock / ProductVariant.stock.
+    """
+    from apps.inventory.services import (
+        InventoryServiceError,
+        adjust_stock,
+        get_default_warehouse,
+        reserve_stock_for_order,
+    )
+    from apps.inventory.models import InventoryMovement, WarehouseStock
+
+    if order is not None:
+        try:
+            reserve_stock_for_order(order, demand, actor=actor)
+            return
+        except InventoryServiceError as exc:
+            raise InventoryError(str(exc)) from exc
+
+    # Fallback para llamadas directas sin objeto Order (ej. pruebas unitarias de concurrencia/kits)
+    default_wh = get_default_warehouse()
     for target_key in sorted(demand, key=str):
         quantity = demand[target_key]
         if isinstance(target_key, str) and target_key.startswith("variant:"):
             vid = UUID(target_key.split(":", 1)[1])
-            updated = ProductVariant.objects.filter(pk=vid, stock__gte=quantity).update(stock=F("stock") - quantity)
+            variant = ProductVariant.objects.select_related("product").get(pk=vid)
+            product = variant.product
         else:
-            updated = Product.objects.filter(pk=target_key, stock__gte=quantity).update(stock=F("stock") - quantity)
-        if updated != 1:
-            raise InventoryError("El stock cambió durante la compra. Intenta nuevamente.")
+            product = Product.objects.get(pk=target_key)
+            variant = None
+
+        ws = WarehouseStock.objects.select_for_update().filter(
+            warehouse=default_wh, product=product, variant=variant
+        ).first()
+        if ws is None:
+            legacy_val = variant.stock if variant is not None else product.stock
+            if legacy_val < quantity:
+                raise InventoryError("El stock cambió durante la compra. Intenta nuevamente.")
+            ws, _ = adjust_stock(
+                warehouse=default_wh,
+                product=product,
+                variant=variant,
+                delta_physical=legacy_val,
+                movement_type=InventoryMovement.MovementType.OPENING,
+                reason="Apertura automática en bodega por defecto",
+                source_document_type="SYSTEM",
+            )
+        try:
+            adjust_stock(
+                warehouse=ws.warehouse,
+                product=product,
+                variant=variant,
+                delta_physical=-quantity,
+                movement_type=InventoryMovement.MovementType.ADJUST_NEG,
+                reason="Deducción directa de inventario",
+                source_document_type="DIRECT_DEDUCT",
+                actor=actor,
+            )
+        except InventoryServiceError as exc:
+            raise InventoryError("El stock cambió durante la compra. Intenta nuevamente.") from exc
 
 
-def restore_inventory(order):
+def restore_inventory(order, reason="Liberación por cancelación de orden", actor=None):
     """Reponer la reserva; el llamador debe bloquear la orden y cambiar su estado."""
+    from apps.inventory.models import InventoryMovement, StockReservation, WarehouseStock
+    from apps.inventory.services import adjust_stock, get_default_warehouse, release_order_reservations
+
+    if StockReservation.objects.filter(
+        order=order,
+        status__in=[StockReservation.Status.TEMPORARY, StockReservation.Status.CONSOLIDATED],
+    ).exists():
+        release_order_reservations(order, reason=reason, actor=actor)
+        return
+
     product_demand = Counter()
     variant_demand = Counter()
 
@@ -199,8 +277,6 @@ def restore_inventory(order):
             else:
                 product_demand[UUID(str(raw_key))] += quantity
     else:
-        # Pedidos anteriores al patch no guardaban el desglose. Mantener el
-        # criterio histórico, con agregación y bloqueo, sin inventar un snapshot.
         for item in order.items.select_related("product", "variant").all():
             if item.variant_id:
                 if item.product and item.product.product_type == Product.ProductType.STOCK:
@@ -221,8 +297,63 @@ def restore_inventory(order):
 
     products = _lock_products(product_demand.keys())
     variants = _lock_variants(variant_demand.keys())
+    default_wh = get_default_warehouse()
 
     for product_id in sorted(products):
-        Product.objects.filter(pk=product_id).update(stock=F("stock") + product_demand[product_id])
+        qty = product_demand[product_id]
+        if qty > 0:
+            p = products[product_id]
+            if not WarehouseStock.objects.filter(warehouse=default_wh, product=p, variant=None).exists():
+                legacy_val = int(p.stock or 0)
+                if legacy_val > 0:
+                    adjust_stock(
+                        warehouse=default_wh,
+                        product=p,
+                        variant=None,
+                        delta_physical=legacy_val,
+                        movement_type=InventoryMovement.MovementType.OPENING,
+                        reason="Apertura automática previa a restitución legacy",
+                        source_document_type="ORDER",
+                        source_document_id=str(order.id),
+                        actor=actor,
+                    )
+            adjust_stock(
+                warehouse=default_wh,
+                product=p,
+                variant=None,
+                delta_physical=qty,
+                movement_type=InventoryMovement.MovementType.RELEASE,
+                reason=reason,
+                source_document_type="ORDER",
+                source_document_id=str(order.id),
+                actor=actor,
+            )
     for variant_id in sorted(variants):
-        ProductVariant.objects.filter(pk=variant_id).update(stock=F("stock") + variant_demand[variant_id])
+        qty = variant_demand[variant_id]
+        if qty > 0:
+            v = variants[variant_id]
+            if not WarehouseStock.objects.filter(warehouse=default_wh, product=v.product, variant=v).exists():
+                legacy_val = int(v.stock or 0)
+                if legacy_val > 0:
+                    adjust_stock(
+                        warehouse=default_wh,
+                        product=v.product,
+                        variant=v,
+                        delta_physical=legacy_val,
+                        movement_type=InventoryMovement.MovementType.OPENING,
+                        reason="Apertura automática previa a restitución legacy",
+                        source_document_type="ORDER",
+                        source_document_id=str(order.id),
+                        actor=actor,
+                    )
+            adjust_stock(
+                warehouse=default_wh,
+                product=v.product,
+                variant=v,
+                delta_physical=qty,
+                movement_type=InventoryMovement.MovementType.RELEASE,
+                reason=reason,
+                source_document_type="ORDER",
+                source_document_id=str(order.id),
+                actor=actor,
+            )

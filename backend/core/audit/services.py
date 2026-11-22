@@ -52,6 +52,9 @@ def _resolve_actor_info(actor=None, actor_type=None):
         return None, ACTOR_SYSTEM, "system@levelproaudio.com", "system", ["Sistema"]
 
     resolved_actor = actor if actor is not None else get_current_user()
+    if actor is None and resolved_actor and getattr(resolved_actor, "is_authenticated", False):
+        if not User.objects.filter(pk=resolved_actor.pk).exists():
+            resolved_actor = None
 
     if resolved_actor and getattr(resolved_actor, "is_authenticated", False):
         user_obj = resolved_actor

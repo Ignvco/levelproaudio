@@ -164,6 +164,9 @@ urlpatterns = [
     path("academy/lessons/upload-url/",
          admin_lesson_video_upload_url, name="admin-lesson-video-upload-url"),
 
+    # WMS — Bodegas, Stock Dimensional, Kardex, Reservas, Transferencias y Seriales (GATE 4)
+    path("", include("apps.inventory.urls")),
+
     # Router al final
     path("", include(router.urls)),
 ]

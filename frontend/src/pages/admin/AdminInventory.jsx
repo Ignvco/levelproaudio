@@ -10,8 +10,27 @@ import { Coins, Tag, TrendingUp, Boxes, Ban, AlertTriangle, Lock } from "lucide-
 import { StatCard, AdminPageHeader, SecondaryButton, StatusBadge, SectionCard, ErrorState } from "../../components/admin/ui"
 import { formatCurrency } from "../../utils/accountingCurrency"
 import { asInventoryRows, normalizeInventoryRotation, inventoryPreview, groupInventoryPreview } from "../../utils/inventoryViewData"
+import {
+  WmsWarehousesTab,
+  WmsDimensionalStockTab,
+  WmsKardexTab,
+  WmsTransfersTab,
+  WmsReservationsTab,
+  WmsSerialsTab,
+} from "../../components/admin/WmsInventoryTabs"
 
-const TABS = ["Resumen","Alertas","Rotación","Por categoría"]
+const TABS = [
+  "Resumen",
+  "Alertas",
+  "Rotación",
+  "Por categoría",
+  "Stock Dimensional",
+  "Bodegas",
+  "Kardex",
+  "Transferencias",
+  "Reservas",
+  "Seriales",
+]
 const fmt  = n => formatCurrency(n, "CLP")
 
 // ── campos reales backend inventory_summary ──
@@ -42,6 +61,10 @@ export default function AdminInventory() {
   const canViewCosts = !myPerms || myPerms.is_superuser || myPerms.capabilities?.view_costs !== false
   const canViewMargins = !myPerms || myPerms.is_superuser || (canViewCosts && myPerms.capabilities?.view_margins !== false)
   const canViewFinances = !myPerms || myPerms.is_superuser || myPerms.capabilities?.view_finances !== false
+  const canAdjustInventory = !myPerms || myPerms.is_superuser || myPerms.capabilities?.adjust_inventory !== false
+  const canManageWarehouses = !myPerms || myPerms.is_superuser || (
+    Array.isArray(myPerms.roles) && (myPerms.roles.includes("Super Admin") || myPerms.roles.includes("Gerencia / Administración"))
+  )
 
   const { data:summary, isLoading, isError:summaryError, refetch:refetchSummary } = useQuery({
     queryKey:["admin-inventory-summary"],
@@ -432,6 +455,13 @@ export default function AdminInventory() {
           </div>
         )
       )}
+
+      {tab === 4 && <WmsDimensionalStockTab canAdjust={canAdjustInventory} />}
+      {tab === 5 && <WmsWarehousesTab canManage={canManageWarehouses} />}
+      {tab === 6 && <WmsKardexTab />}
+      {tab === 7 && <WmsTransfersTab canAdjust={canAdjustInventory} />}
+      {tab === 8 && <WmsReservationsTab canAdjust={canAdjustInventory} />}
+      {tab === 9 && <WmsSerialsTab canAdjust={canAdjustInventory} />}
     </div>
   )
 }
