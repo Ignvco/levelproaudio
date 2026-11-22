@@ -303,6 +303,9 @@ def restore_inventory(order, reason="Liberación por cancelación de orden", act
         qty = product_demand[product_id]
         if qty > 0:
             p = products[product_id]
+            legacy_idem = f"kardex_legacy_rel:{order.id}:p:{p.id}" if order.stock_deductions is None else None
+            if legacy_idem and InventoryMovement.objects.filter(idempotency_key=legacy_idem).exists():
+                continue
             if not WarehouseStock.objects.filter(warehouse=default_wh, product=p, variant=None).exists():
                 legacy_val = int(p.stock or 0)
                 if legacy_val > 0:
@@ -327,11 +330,15 @@ def restore_inventory(order, reason="Liberación por cancelación de orden", act
                 source_document_type="ORDER",
                 source_document_id=str(order.id),
                 actor=actor,
+                idempotency_key=legacy_idem,
             )
     for variant_id in sorted(variants):
         qty = variant_demand[variant_id]
         if qty > 0:
             v = variants[variant_id]
+            legacy_idem = f"kardex_legacy_rel:{order.id}:v:{v.id}" if order.stock_deductions is None else None
+            if legacy_idem and InventoryMovement.objects.filter(idempotency_key=legacy_idem).exists():
+                continue
             if not WarehouseStock.objects.filter(warehouse=default_wh, product=v.product, variant=v).exists():
                 legacy_val = int(v.stock or 0)
                 if legacy_val > 0:
@@ -356,4 +363,5 @@ def restore_inventory(order, reason="Liberación por cancelación de orden", act
                 source_document_type="ORDER",
                 source_document_id=str(order.id),
                 actor=actor,
+                idempotency_key=legacy_idem,
             )

@@ -476,37 +476,115 @@ def release_order_reservations(
 
 
 @transaction.atomic
+def sync_target_stock_to_wms(
+    *,
+    product: Product,
+    variant: ProductVariant = None,
+    target_stock: int,
+    previous_legacy_stock: int = 0,
+    reason: str = "Ajuste de stock PIM",
+    source_document_type: str = "PIM",
+    source_document_id: str = "",
+    actor=None,
+) -> None:
+    """
+    Enruta mutaciones de stock objetivo (bulk edit, importador PIM, etc.) por el
+    motor WMS (WarehouseStock + InventoryMovement + proyección legacy).
+    """
+    wh = get_default_warehouse()
+    ws = (
+        WarehouseStock.objects.select_for_update()
+        .filter(warehouse=wh, product=product, variant=variant)
+        .first()
+    )
+    if ws is None:
+        prev = int(previous_legacy_stock or 0)
+        if prev > 0:
+            adjust_stock(
+                warehouse=wh,
+                product=product,
+                variant=variant,
+                delta_physical=prev,
+                movement_type=InventoryMovement.MovementType.OPENING,
+                reason="Apertura automática previa a ajuste PIM",
+                source_document_type=source_document_type,
+                source_document_id=source_document_id,
+                actor=actor,
+            )
+        current_avail = prev
+    else:
+        current_avail = int(ws.available_quantity)
+
+    delta = int(target_stock) - current_avail
+    if delta != 0:
+        if ws is None and int(previous_legacy_stock or 0) == 0 and delta > 0:
+            m_type = InventoryMovement.MovementType.OPENING
+        elif delta > 0:
+            m_type = InventoryMovement.MovementType.ADJUST_POS
+        else:
+            m_type = InventoryMovement.MovementType.ADJUST_NEG
+        adjust_stock(
+            warehouse=wh,
+            product=product,
+            variant=variant,
+            delta_physical=delta,
+            movement_type=m_type,
+            reason=reason,
+            source_document_type=source_document_type,
+            source_document_id=source_document_id,
+            actor=actor,
+        )
+    else:
+        sync_legacy_stock_projection(product, variant)
+
+
+@transaction.atomic
 def expire_stale_reservations(*, now=None) -> int:
     """
     Libera exclusivamente reservas TEMPORARY vencidas cuyo pedido asociado NO esté pagado
     (ni consolidado). Nunca toca pedidos PAID ni reservas CONSOLIDATED.
+    Adquiere bloqueos en orden canónico (Order -> StockReservation) para evitar deadlocks.
     """
+    from apps.orders.models import Order
+
     ref_now = now or timezone.now()
-    stale = list(
-        StockReservation.objects.select_for_update(skip_locked=True, of=("self",))
-        .select_related("order")
-        .filter(status=StockReservation.Status.TEMPORARY, expires_at__lte=ref_now)
+    candidates = list(
+        StockReservation.objects.filter(
+            status=StockReservation.Status.TEMPORARY, expires_at__lte=ref_now
+        ).values_list("id", "order_id")
     )
     released_total = 0
-    seen_orders = set()
-    for res in stale:
-        if res.order_id:
-            if res.order.status != "pending":
-                # Salvaguarda: si la orden ya no está pending (e.g. paid), consolidar en lugar de expirar
-                if res.order.status in ("paid", "shipped", "completed"):
-                    res.status = StockReservation.Status.CONSOLIDATED
-                    res.expires_at = None
-                    res.save(update_fields=["status", "expires_at", "updated_at"])
-                continue
-            if res.order_id not in seen_orders:
-                seen_orders.add(res.order_id)
-                released_total += release_order_reservations(
-                    res.order,
-                    reason="Expiración automática de reserva temporal (TTL)",
-                    mark_expired=True,
-                )
-        else:
-            # Reserva de sesión sin orden
+    order_ids = sorted({oid for _, oid in candidates if oid is not None})
+    session_res_ids = [rid for rid, oid in candidates if oid is None]
+
+    for order_id in order_ids:
+        locked_order = Order.objects.select_for_update().filter(pk=order_id).first()
+        if not locked_order:
+            continue
+        if locked_order.status != "pending":
+            # Salvaguarda: si la orden ya no está pending (e.g. paid), consolidar en lugar de expirar
+            if locked_order.status in ("paid", "shipped", "completed"):
+                StockReservation.objects.filter(
+                    order=locked_order,
+                    status=StockReservation.Status.TEMPORARY,
+                ).update(status=StockReservation.Status.CONSOLIDATED, expires_at=None)
+            continue
+        released_total += release_order_reservations(
+            locked_order,
+            reason="Expiración automática de reserva temporal (TTL)",
+            mark_expired=True,
+        )
+
+    if session_res_ids:
+        stale_session = list(
+            StockReservation.objects.select_for_update(skip_locked=True)
+            .filter(
+                pk__in=session_res_ids,
+                status=StockReservation.Status.TEMPORARY,
+                expires_at__lte=ref_now,
+            )
+        )
+        for res in stale_session:
             ws = WarehouseStock.objects.select_for_update().get(
                 warehouse=res.warehouse, product=res.product, variant=res.variant
             )

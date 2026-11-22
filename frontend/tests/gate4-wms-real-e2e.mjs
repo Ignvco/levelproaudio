@@ -101,18 +101,65 @@ test("Gate 4 WMS Real Integration Smoke [Browser -> Real Django API -> PostgreSQ
     const stockText = await page.locator('[data-testid="wms-dimensional-table"]').innerText()
     assert.ok(stockText.includes("BOD-CENTRAL"), "Stock dimensional real debe renderizarse desde PostgreSQL QA")
 
-    // Verificar Kardex real desde PostgreSQL QA
+    // WMS-05: Mutación real desde la UI (Ajuste +1 -> recarga -> verificar API, WarehouseStock y Kardex -> compensar -1)
+    const uniqueReason = `E2E UI Real Mutation ${Date.now()}`
+    const beforeResp = forwardToRealBackend("GET", "/api/v1/admin/inventory/stocks/", { authorization: `Bearer ${realJwt}` }, null)
+    assert.equal(beforeResp.status, 200)
+    const beforeStocks = JSON.parse(Buffer.from(beforeResp.body_b64, "base64").toString("utf8")).results || []
+    assert.ok(beforeStocks.length > 0, "Debe existir al menos una fila en WarehouseStock QA")
+    const targetRow = beforeStocks[0]
+    const initialPhys = Number(targetRow.physical_quantity)
+
+    await page.locator('[data-testid="wms-dimensional-table"] tbody tr').first().getByRole("button", { name: "Ajustar" }).click()
+    const modal = page.locator("form").filter({ hasText: "Ajuste Atómico de Inventario" })
+    await modal.waitFor({ state: "visible", timeout: 5000 })
+    await modal.locator('input[type="number"]').fill("1")
+    await modal.locator('input:not([type="number"])').fill(uniqueReason)
+    const [adjustRes] = await Promise.all([
+      page.waitForResponse(r => r.url().includes("/api/v1/admin/inventory/adjust/") && r.request().method() === "POST"),
+      modal.getByRole("button", { name: "Confirmar en Kardex" }).click(),
+    ])
+    assert.equal(adjustRes.status(), 200, "Mutación real POST /api/v1/admin/inventory/adjust/ debe retornar 200")
+    await modal.waitFor({ state: "hidden", timeout: 5000 })
+
+    // Recargar completamente la página para confirmar persistencia en PostgreSQL QA
+    await page.reload({ waitUntil: "domcontentloaded" })
+    await page.waitForSelector(".lp-seg-tabs", { timeout: 15000 })
+    await page.getByRole("button", { name: "Stock Dimensional" }).click()
+    await page.waitForSelector('[data-testid="wms-dimensional-table"]', { timeout: 15000 })
+
+    const afterResp = forwardToRealBackend("GET", "/api/v1/admin/inventory/stocks/", { authorization: `Bearer ${realJwt}` }, null)
+    const afterStocks = JSON.parse(Buffer.from(afterResp.body_b64, "base64").toString("utf8")).results || []
+    const updatedRow = afterStocks.find(r => r.id === targetRow.id)
+    assert.equal(Number(updatedRow.physical_quantity), initialPhys + 1, "WarehouseStock físico debe persistir +1 tras recarga")
+
+    // Verificar Kardex real desde PostgreSQL QA (incluyendo movimiento recién creado)
     await page.getByRole("button", { name: "Kardex" }).click()
     await page.waitForSelector('[data-testid="wms-kardex-table"]', { timeout: 15000 })
     const kardexText = await page.locator('[data-testid="wms-kardex-table"]').innerText()
     assert.ok(kardexText.includes("Apertura"), "Movimientos de apertura reales deben renderizarse desde PostgreSQL QA")
+    assert.ok(kardexText.includes(uniqueReason), "Nuevo movimiento Kardex debe persistir y mostrarse tras recarga")
+
+    // Compensar (-1) desde la UI para dejar el saldo físico QA idéntico al inicial
+    await page.getByRole("button", { name: "Stock Dimensional" }).click()
+    await page.waitForSelector('[data-testid="wms-dimensional-table"]', { timeout: 15000 })
+    await page.locator('[data-testid="wms-dimensional-table"] tbody tr').first().getByRole("button", { name: "Ajustar" }).click()
+    await modal.waitFor({ state: "visible", timeout: 5000 })
+    await modal.locator('input[type="number"]').fill("-1")
+    await modal.locator('input:not([type="number"])').fill(`${uniqueReason} (compensación)`)
+    const [compRes] = await Promise.all([
+      page.waitForResponse(r => r.url().includes("/api/v1/admin/inventory/adjust/") && r.request().method() === "POST"),
+      modal.getByRole("button", { name: "Confirmar en Kardex" }).click(),
+    ])
+    assert.equal(compRes.status(), 200, "Compensación -1 debe dejar el saldo QA intacto")
+    await modal.waitFor({ state: "hidden", timeout: 5000 })
   } finally {
     await browser.close()
     await new Promise(resolve => server.httpServer.close(resolve))
-    // Limpiar usuario sintético
+    // Desactivar usuario sintético (AuditEvent es append-only con actor PROTECT/SET_NULL bloqueado por trigger)
     execFileSync("docker", [
       "exec", CONTAINER, "python", "manage.py", "shell", "-c",
-      `from apps.users.models import User; User.objects.filter(email='${synthEmail}').delete()`,
+      `from apps.users.models import User; User.objects.filter(email='${synthEmail}').update(is_active=False)`,
     ])
   }
 })

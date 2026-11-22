@@ -161,6 +161,12 @@ def admin_warehouse_detail(request, warehouse_id):
         transaction.set_rollback(True)
         return Response({"error": getattr(exc, "message_dict", str(exc))}, status=status.HTTP_400_BAD_REQUEST)
 
+    if wh.is_active != before["is_active"] or wh.is_sellable_online != before["is_sellable_online"]:
+        from .services import sync_legacy_stock_projection
+
+        for ws in WarehouseStock.objects.filter(warehouse=wh).select_related("product", "variant"):
+            sync_legacy_stock_projection(ws.product, ws.variant)
+
     after = {
         "name": wh.name,
         "warehouse_type": wh.warehouse_type,

@@ -339,6 +339,34 @@ def preview_bulk_update(user, payload: dict) -> dict:
     }
 
 
+def _apply_single_bulk_update(obj, scope: str, updates: dict, operation: str, user) -> None:
+    """Aplica cambios de una entidad en bulk, enrutando stock por WMS y Kardex."""
+    if not updates:
+        return
+    non_stock_updates = {k: v for k, v in updates.items() if k != "stock"}
+    prev_stock = int(getattr(obj, "stock", 0) or 0)
+    if non_stock_updates:
+        for k, v in non_stock_updates.items():
+            setattr(obj, k, v)
+        obj.save(update_fields=list(non_stock_updates.keys()) + ["updated_at"])
+
+    if "stock" in updates:
+        from apps.inventory.services import sync_target_stock_to_wms
+
+        product_obj = obj.product if scope == "variants" else obj
+        variant_obj = obj if scope == "variants" else None
+        sync_target_stock_to_wms(
+            product=product_obj,
+            variant=variant_obj,
+            target_stock=int(updates["stock"]),
+            previous_legacy_stock=prev_stock,
+            reason=f"Edición masiva PIM ({operation})",
+            source_document_type="BULK_PIM",
+            source_document_id=str(obj.pk),
+            actor=user,
+        )
+
+
 def apply_bulk_update(user, payload: dict, idempotency_key: str = "") -> dict:
     """
     Aplica la edición masiva con política explícita ('all_or_nothing' o 'best_effort'),
@@ -393,10 +421,7 @@ def apply_bulk_update(user, payload: dict, idempotency_key: str = "") -> dict:
                 if atomic_mode == "best_effort":
                     try:
                         with transaction.atomic():
-                            for k, v in updates.items():
-                                setattr(obj, k, v)
-                            if updates:
-                                obj.save(update_fields=list(updates.keys()) + ["updated_at"])
+                            _apply_single_bulk_update(obj, scope, updates, operation, user)
                             applied.append(preview_item)
                     except Exception as exc:
                         failed.append({
@@ -405,10 +430,7 @@ def apply_bulk_update(user, payload: dict, idempotency_key: str = "") -> dict:
                             "error": str(exc),
                         })
                 else:
-                    for k, v in updates.items():
-                        setattr(obj, k, v)
-                    if updates:
-                        obj.save(update_fields=list(updates.keys()) + ["updated_at"])
+                    _apply_single_bulk_update(obj, scope, updates, operation, user)
                     applied.append(preview_item)
 
             if atomic_mode == "all_or_nothing" and failed:
