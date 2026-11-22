@@ -30,6 +30,13 @@ from apps.procurement.po_services import (
     upload_customs_document,
 )
 from apps.products.models import SpecialOrderRequest
+from core.audit.constants import (
+    CATEGORY_EXPORT,
+    CATEGORY_SECURITY_DENIED,
+    SEVERITY_INFO,
+    SEVERITY_WARNING,
+)
+from core.audit.services import record_audit_event
 from core.rbac.constants import (
     MODULE_PURCHASES,
     PERM_ADJUST_INVENTORY,
@@ -366,9 +373,14 @@ def admin_purchase_order_documents(request, po_id):
     except PurchaseOrder.DoesNotExist:
         return Response({"error": "Orden de compra no encontrada."}, status=status.HTTP_404_NOT_FOUND)
 
+    include_costs = _can_view_costs(request.user)
     if request.method == "GET":
         docs = CustomsDocument.objects.filter(purchase_order=po).select_related("uploaded_by")
-        return Response({"results": CustomsDocumentSerializer(docs, many=True).data})
+        return Response({
+            "results": CustomsDocumentSerializer(
+                docs, many=True, context={"include_costs": include_costs}
+            ).data
+        })
 
     file_obj = request.FILES.get("file")
     if file_obj is None:
@@ -384,9 +396,13 @@ def admin_purchase_order_documents(request, po_id):
             file_bytes=file_obj.read(),
             document_date=request.data.get("document_date") or None,
             notes=request.data.get("notes") or "",
+            sensitivity_level=request.data.get("sensitivity_level") or None,
             actor=request.user,
         )
-        return Response(CustomsDocumentSerializer(doc).data, status=status.HTTP_201_CREATED)
+        return Response(
+            CustomsDocumentSerializer(doc, context={"include_costs": include_costs}).data,
+            status=status.HTTP_201_CREATED,
+        )
     except ProcurementServiceError as exc:
         transaction.set_rollback(True)
         return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
@@ -399,10 +415,68 @@ def admin_purchase_order_documents(request, po_id):
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def admin_customs_document_download(request, po_id, doc_id):
+    """
+    FIN-PF-03: Descarga controlada de CustomsDocument.
+    - Verifica pertenencia estricta a la PO indicada (impide acceso cruzado por manipulación de URL).
+    - Bloquea documentos con sensibilidad financiera (commercial_invoice, customs_dus o sensitivity_level='financial')
+      a usuarios sin permiso efectivo 'view_costs' (ej. ROLE_WAREHOUSE).
+    - Permite documentos operativos (packing_list, bill_of_lading, air_waybill, certificate) a roles operativos.
+    - Registra auditoría obligatoria tanto en descargas autorizadas como denegadas.
+    - Aplica cabeceras de descarga segura (attachment, nosniff, CSP sandbox, no-store).
+    """
     try:
-        doc = CustomsDocument.objects.get(pk=doc_id, purchase_order_id=po_id)
+        doc = CustomsDocument.objects.select_related("purchase_order").get(pk=doc_id, purchase_order_id=po_id)
     except CustomsDocument.DoesNotExist:
         return Response({"error": "Documento no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+
+    can_view_costs = _can_view_costs(request.user)
+    if doc.is_financial_sensitive and not can_view_costs:
+        record_audit_event(
+            module=MODULE_PURCHASES,
+            action="CUSTOMS_DOCUMENT_DOWNLOAD_DENIED",
+            event_category=CATEGORY_SECURITY_DENIED,
+            resource_type="CustomsDocument",
+            resource_id=str(doc.id),
+            resource_repr=str(doc),
+            result="denied",
+            new_values={
+                "po_number": doc.purchase_order.po_number,
+                "document_type": doc.document_type,
+                "sensitivity_level": doc.sensitivity_level,
+                "filename": doc.filename,
+                "reason": "missing_view_costs_permission",
+            },
+            actor=request.user,
+            severity=SEVERITY_WARNING,
+            mandatory=True,
+        )
+        return Response(
+            {"error": "No posee permiso 'view_costs' para descargar documentación financiera o comercial confidencial."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    record_audit_event(
+        module=MODULE_PURCHASES,
+        action="CUSTOMS_DOCUMENT_DOWNLOADED",
+        event_category=CATEGORY_EXPORT,
+        resource_type="CustomsDocument",
+        resource_id=str(doc.id),
+        resource_repr=str(doc),
+        result="success",
+        new_values={
+            "po_number": doc.purchase_order.po_number,
+            "document_type": doc.document_type,
+            "sensitivity_level": doc.sensitivity_level,
+            "filename": doc.filename,
+        },
+        actor=request.user,
+        severity=SEVERITY_INFO,
+        mandatory=True,
+    )
+
     resp = HttpResponse(bytes(doc.file_bytes), content_type=doc.content_type or "application/octet-stream")
     resp["Content-Disposition"] = f'attachment; filename="{doc.filename}"'
+    resp["X-Content-Type-Options"] = "nosniff"
+    resp["Content-Security-Policy"] = "default-src 'none'; sandbox"
+    resp["Cache-Control"] = "no-store, no-cache, must-revalidate, private"
     return resp

@@ -648,6 +648,39 @@ class PurchaseOrderItem(TimeStampedModel):
         choices=Supplier.Currency.choices,
         default=Supplier.Currency.USD,
     )
+    original_currency_snapshot = models.CharField(
+        max_length=3,
+        blank=True,
+        default="",
+        help_text="Moneda original del costo comercial (ProductSupplier o línea) antes de conversión explícita.",
+    )
+    original_unit_cost_snapshot = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0"))],
+        help_text="Costo unitario en moneda original antes de conversión autorizada.",
+    )
+    fx_rate_snapshot = models.DecimalField(
+        max_digits=16,
+        decimal_places=6,
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(Decimal("0.000001"))],
+        help_text="Tasa de conversión explícita aplicada desde original_currency_snapshot hacia la moneda de la PO.",
+    )
+    fx_rate_source = models.CharField(
+        max_length=120,
+        blank=True,
+        default="",
+        help_text="Fuente documentada del tipo de cambio autorizado.",
+    )
+    fx_effective_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text="Fecha efectiva de la tasa de conversión contractual.",
+    )
     tax_basis_snapshot = models.CharField(max_length=30, blank=True, default="net")
     line_subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
 
@@ -806,6 +839,15 @@ class CustomsDocument(TimeStampedModel):
         SUPERSEDED = "superseded", "Reemplazado"
         ARCHIVED = "archived", "Archivado"
 
+    class SensitivityLevel(models.TextChoices):
+        OPERATIONAL = "operational", "Operativo (Bodega / Logística)"
+        FINANCIAL = "financial", "Financiero / Confidencial (Requiere view_costs)"
+
+    FINANCIAL_DOCUMENT_TYPES = (
+        DocumentType.COMMERCIAL_INVOICE,
+        DocumentType.CUSTOMS_DUS,
+    )
+
     purchase_order = models.ForeignKey(
         PurchaseOrder,
         on_delete=models.CASCADE,
@@ -815,6 +857,13 @@ class CustomsDocument(TimeStampedModel):
         max_length=30,
         choices=DocumentType.choices,
         db_index=True,
+    )
+    sensitivity_level = models.CharField(
+        max_length=20,
+        choices=SensitivityLevel.choices,
+        default=SensitivityLevel.OPERATIONAL,
+        db_index=True,
+        verbose_name="Clasificación de confidencialidad",
     )
     document_identifier = models.CharField(max_length=120)
     document_date = models.DateField(null=True, blank=True)
@@ -849,3 +898,17 @@ class CustomsDocument(TimeStampedModel):
 
     def __str__(self):
         return f"{self.document_type} {self.document_identifier} v{self.version}"
+
+    @property
+    def is_financial_sensitive(self) -> bool:
+        return (
+            self.sensitivity_level == self.SensitivityLevel.FINANCIAL
+            or self.document_type in self.FINANCIAL_DOCUMENT_TYPES
+        )
+
+    def save(self, *args, **kwargs):
+        if self.document_type in self.FINANCIAL_DOCUMENT_TYPES:
+            self.sensitivity_level = self.SensitivityLevel.FINANCIAL
+        elif not self.sensitivity_level:
+            self.sensitivity_level = self.SensitivityLevel.OPERATIONAL
+        super().save(*args, **kwargs)

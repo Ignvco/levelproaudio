@@ -33,6 +33,11 @@ class PurchaseOrderItemSerializer(serializers.ModelSerializer):
             "quantity_pending",
             "unit_cost_snapshot",
             "currency",
+            "original_currency_snapshot",
+            "original_unit_cost_snapshot",
+            "fx_rate_snapshot",
+            "fx_rate_source",
+            "fx_effective_date",
             "tax_basis_snapshot",
             "line_subtotal",
         ]
@@ -41,6 +46,8 @@ class PurchaseOrderItemSerializer(serializers.ModelSerializer):
         data = super().to_representation(instance)
         if not self.context.get("include_costs", True):
             data["unit_cost_snapshot"] = None
+            data["original_unit_cost_snapshot"] = None
+            data["fx_rate_snapshot"] = None
             data["line_subtotal"] = None
         return data
 
@@ -48,6 +55,8 @@ class PurchaseOrderItemSerializer(serializers.ModelSerializer):
 class CustomsDocumentSerializer(serializers.ModelSerializer):
     uploaded_by_email = serializers.EmailField(source="uploaded_by.email", read_only=True, default="")
     document_type_display = serializers.CharField(source="get_document_type_display", read_only=True)
+    is_financial_sensitive = serializers.BooleanField(read_only=True)
+    download_allowed = serializers.SerializerMethodField()
 
     class Meta:
         model = CustomsDocument
@@ -56,6 +65,9 @@ class CustomsDocumentSerializer(serializers.ModelSerializer):
             "purchase_order",
             "document_type",
             "document_type_display",
+            "sensitivity_level",
+            "is_financial_sensitive",
+            "download_allowed",
             "document_identifier",
             "document_date",
             "filename",
@@ -68,6 +80,18 @@ class CustomsDocumentSerializer(serializers.ModelSerializer):
             "uploaded_by_email",
             "created_at",
         ]
+
+    def get_download_allowed(self, obj) -> bool:
+        include_costs = self.context.get("include_costs", True)
+        if obj.is_financial_sensitive and not include_costs:
+            return False
+        return True
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        if instance.is_financial_sensitive and not self.context.get("include_costs", True):
+            data["notes"] = ""
+        return data
 
 
 class GoodsReceiptItemSerializer(serializers.ModelSerializer):
