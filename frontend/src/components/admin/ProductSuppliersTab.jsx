@@ -16,10 +16,10 @@ import { Star, Plus, History } from "lucide-react"
 const bentoInput = {
   width: "100%",
   padding: "9px 12px",
-  background: "#0B0E14",
-  border: "1px solid rgba(255,255,255,0.12)",
+  background: "var(--admin-surface, #FFFFFF)",
+  border: "1px solid var(--admin-border, #CBD5E1)",
   borderRadius: "10px",
-  color: "#F8FAFC",
+  color: "var(--admin-text, #14161A)",
   fontSize: "13px",
   outline: "none",
 }
@@ -141,7 +141,7 @@ export default function ProductSuppliersTab({ product, variants = [] }) {
               <option value="moq">Ordenar por MOQ</option>
               <option value="preferred">Ordenar por preferente</option>
             </select>
-            <label style={{ fontSize: "12px", color: "#CBD5E1", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+            <label style={{ fontSize: "12px", color: "var(--admin-text, #14161A)", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "6px" }}>
               <input type="checkbox" checked={includeRef} onChange={e => setIncludeRef(e.target.checked)} />
               Ref. {targetCurrency}
             </label>
@@ -156,71 +156,71 @@ export default function ProductSuppliersTab({ product, variants = [] }) {
         }
       >
         {comparison?.referential_meta && (
-          <p style={{ fontSize: "11.5px", color: "#94A3B8", marginBottom: "10px" }}>
+          <p style={{ fontSize: "12px", color: "var(--admin-text-muted, #475569)", marginBottom: "12px" }}>
             Conversión referencial informativa ({comparison.referential_meta.source}: 1 USD = {comparison.referential_meta.usd_to_clp} CLP / {comparison.referential_meta.usd_to_ars} ARS). No altera costos originales.
           </p>
         )}
 
         {isLoading ? (
-          <p style={{ color: "#94A3B8", fontSize: "13px" }}>Cargando alternativas de abastecimiento…</p>
+          <p style={{ color: "var(--admin-text-muted, #475569)", fontSize: "13px" }}>Cargando alternativas de abastecimiento…</p>
         ) : alternatives.length === 0 ? (
-          <p style={{ color: "#94A3B8", fontSize: "13px" }}>Este SKU no tiene proveedores vinculados todavía.</p>
+          <p style={{ color: "var(--admin-text-muted, #475569)", fontSize: "13px" }}>Este SKU no tiene proveedores vinculados todavía.</p>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table data-testid="product-suppliers-comparison-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+            <table className="au-table" data-testid="product-suppliers-comparison-table">
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", color: "#94A3B8", fontSize: "11px", textTransform: "uppercase", textAlign: "left" }}>
-                  <th style={{ padding: "8px" }}>Proveedor</th>
-                  <th style={{ padding: "8px" }}>Cód. Prov.</th>
-                  <th style={{ padding: "8px" }}>Costo Original</th>
-                  <th style={{ padding: "8px" }}>Disponibilidad</th>
-                  <th style={{ padding: "8px" }}>MOQ / Plazo</th>
-                  <th style={{ padding: "8px" }}>Vigencia / Pago</th>
-                  <th style={{ padding: "8px" }}>Preferente</th>
+                <tr>
+                  <th>Proveedor</th>
+                  <th>Cód. Prov.</th>
+                  <th>Costo Original</th>
+                  <th>Disponibilidad</th>
+                  <th>MOQ / Plazo</th>
+                  <th>Vigencia / Pago</th>
+                  <th>Preferente</th>
                 </tr>
               </thead>
               <tbody>
                 {alternatives.map(alt => (
-                  <tr key={alt.id} data-testid={`comparison-row-${alt.supplier_code}`} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)" }}>
-                    <td style={{ padding: "10px 8px" }}>
-                      <p style={{ fontWeight: 700, color: "#F8FAFC" }}>{alt.supplier_name}</p>
-                      <p style={{ fontSize: "11px", color: "#94A3B8" }}>{alt.supplier_code} · {alt.supplier_country}</p>
+                  <tr key={alt.id} data-testid={`comparison-row-${alt.supplier_code}`}>
+                    <td>
+                      <p style={{ fontWeight: 700, color: "var(--admin-text, #14161A)" }}>{alt.supplier_name}</p>
+                      <p style={{ fontSize: "11.5px", color: "var(--admin-text-muted, #475569)" }}>{alt.supplier_code} · {alt.supplier_country}</p>
                     </td>
-                    <td style={{ padding: "10px 8px", fontFamily: "var(--font-mono)", color: "#CBD5E1" }}>{alt.supplier_sku || "—"}</td>
-                    <td style={{ padding: "10px 8px", fontFamily: "var(--font-mono)" }}>
+                    <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text, #14161A)" }}>{alt.supplier_sku || "—"}</td>
+                    <td style={{ fontFamily: "var(--font-mono)" }}>
                       {alt.unit_cost != null ? (
                         <div>
-                          <span style={{ color: alt.is_best_comparable_cost ? "#1AFF6E" : "#F8FAFC", fontWeight: 700 }}>
+                          <span style={{ color: alt.is_best_comparable_cost ? "var(--admin-primary-text, #0F9940)" : "var(--admin-text, #14161A)", fontWeight: 700 }}>
                             {formatCurrency(alt.unit_cost, alt.currency)} {alt.currency}
                           </span>
-                          <span style={{ display: "block", fontSize: "11px", color: "#94A3B8" }}>
+                          <span style={{ display: "block", fontSize: "11.5px", color: "var(--admin-text-muted, #475569)" }}>
                             {alt.tax_basis === "net" ? "Neto" : "Imp. incl."}
                             {alt.is_best_comparable_cost ? " · Menor costo comparable" : ""}
                           </span>
                           {alt.referential_conversion && (
-                            <span style={{ display: "block", fontSize: "11px", color: "#38BDF8" }}>
+                            <span style={{ display: "block", fontSize: "11.5px", color: "#0284C7", fontWeight: 600 }}>
                               ≈ {formatCurrency(alt.referential_conversion.converted_amount, alt.referential_conversion.target_currency)} ref.
                             </span>
                           )}
                         </div>
                       ) : (
-                        <span style={{ color: "#94A3B8" }}>Restringido</span>
+                        <span style={{ color: "var(--admin-text-muted, #475569)" }}>Restringido</span>
                       )}
                     </td>
-                    <td style={{ padding: "10px 8px", color: "#CBD5E1" }}>
+                    <td style={{ color: "var(--admin-text, #14161A)", fontWeight: 600 }}>
                       {AVAIL_LABELS[alt.reported_availability] || alt.reported_availability}
                       {alt.reported_available_qty != null ? ` (${alt.reported_available_qty} u.)` : ""}
                     </td>
-                    <td style={{ padding: "10px 8px", fontFamily: "var(--font-mono)", color: "#CBD5E1" }}>
+                    <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text, #14161A)" }}>
                       {alt.moq} u. · {alt.lead_time_days}d
                     </td>
-                    <td style={{ padding: "10px 8px" }}>
+                    <td>
                       <StatusBadge tone={alt.is_cost_expired ? "warning" : "success"}>
                         {alt.is_cost_expired ? "Vencida" : "Vigente"}
                       </StatusBadge>
-                      <p style={{ fontSize: "11px", color: "#94A3B8", marginTop: "3px" }}>{alt.payment_terms || "—"}</p>
+                      <p style={{ fontSize: "11.5px", color: "var(--admin-text-muted, #475569)", marginTop: "3px" }}>{alt.payment_terms || "—"}</p>
                     </td>
-                    <td style={{ padding: "10px 8px" }}>
+                    <td>
                       {alt.is_preferred ? (
                         <StatusBadge tone="success">★ Preferente</StatusBadge>
                       ) : (
@@ -230,10 +230,11 @@ export default function ProductSuppliersTab({ product, variants = [] }) {
                           onClick={() => handleSelectPreferred(alt.id)}
                           style={{
                             display: "inline-flex", alignItems: "center", gap: "5px",
-                            padding: "6px 10px", borderRadius: "8px", cursor: "pointer",
-                            fontSize: "11.5px", fontWeight: 700,
-                            background: "rgba(26,255,110,0.1)", color: "#1AFF6E",
-                            border: "1px solid rgba(26,255,110,0.3)",
+                            padding: "6px 12px", borderRadius: "100px", cursor: "pointer",
+                            fontSize: "12px", fontWeight: 700,
+                            background: "rgba(15,153,64,0.1)", color: "#0F9940",
+                            border: "1px solid rgba(15,153,64,0.3)",
+                            transition: "all 0.15s ease",
                           }}
                         >
                           <Star size={12} /> Elegir preferente
@@ -249,24 +250,24 @@ export default function ProductSuppliersTab({ product, variants = [] }) {
       </SectionCard>
 
       <SectionCard eyebrow="VINCULAR ALTERNATIVA" title="Agregar o actualizar proveedor del SKU">
-        <form onSubmit={handleLink} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "10px", alignItems: "end" }}>
+        <form onSubmit={handleLink} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "12px", alignItems: "end" }}>
           <div>
-            <label style={{ fontSize: "11px", color: "#94A3B8" }}>Proveedor *</label>
+            <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Proveedor *</label>
             <select required value={linkForm.supplier_id} onChange={e => setLinkForm(f => ({ ...f, supplier_id: e.target.value }))} style={bentoInput} data-testid="link-supplier-select">
               <option value="">Seleccionar…</option>
               {activeSuppliers.map(s => <option key={s.id} value={s.id}>{s.internal_code} — {s.trade_name || s.legal_name}</option>)}
             </select>
           </div>
           <div>
-            <label style={{ fontSize: "11px", color: "#94A3B8" }}>SKU Proveedor</label>
+            <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>SKU Proveedor</label>
             <input value={linkForm.supplier_sku} onChange={e => setLinkForm(f => ({ ...f, supplier_sku: e.target.value }))} style={bentoInput} />
           </div>
           <div>
-            <label style={{ fontSize: "11px", color: "#94A3B8" }}>Costo Unitario *</label>
+            <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Costo Unitario *</label>
             <input required type="number" step="0.01" min="0" value={linkForm.unit_cost} onChange={e => setLinkForm(f => ({ ...f, unit_cost: e.target.value }))} style={bentoInput} data-testid="link-unit-cost-input" />
           </div>
           <div>
-            <label style={{ fontSize: "11px", color: "#94A3B8" }}>Moneda</label>
+            <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Moneda</label>
             <select value={linkForm.currency} onChange={e => setLinkForm(f => ({ ...f, currency: e.target.value }))} style={bentoInput}>
               <option value="USD">USD</option>
               <option value="CLP">CLP</option>
@@ -274,18 +275,18 @@ export default function ProductSuppliersTab({ product, variants = [] }) {
             </select>
           </div>
           <div>
-            <label style={{ fontSize: "11px", color: "#94A3B8" }}>Base tributaria</label>
+            <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Base tributaria</label>
             <select value={linkForm.tax_basis} onChange={e => setLinkForm(f => ({ ...f, tax_basis: e.target.value }))} style={bentoInput}>
               <option value="net">Neto</option>
               <option value="tax_included">Imp. incluidos</option>
             </select>
           </div>
           <div>
-            <label style={{ fontSize: "11px", color: "#94A3B8" }}>MOQ</label>
+            <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>MOQ</label>
             <input type="number" min="1" value={linkForm.moq} onChange={e => setLinkForm(f => ({ ...f, moq: e.target.value }))} style={bentoInput} />
           </div>
           <div>
-            <label style={{ fontSize: "11px", color: "#94A3B8" }}>Plazo (días)</label>
+            <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Plazo (días)</label>
             <input type="number" min="0" value={linkForm.lead_time_days} onChange={e => setLinkForm(f => ({ ...f, lead_time_days: e.target.value }))} style={bentoInput} />
           </div>
           <PrimaryButton type="submit" loading={saving} data-testid="submit-link-supplier-btn">
@@ -295,12 +296,12 @@ export default function ProductSuppliersTab({ product, variants = [] }) {
       </SectionCard>
 
       {historyRows.length > 0 && (
-        <SectionCard title="Evolución de costos de adquisición" action={<History size={16} color="#94A3B8" />}>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        <SectionCard title="Evolución de costos de adquisición" action={<History size={16} color="var(--admin-text-muted, #475569)" />}>
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
             {historyRows.slice(0, 10).map(h => (
-              <div key={h.id} style={{ padding: "10px 12px", borderRadius: "10px", background: "#0B0E14", border: "1px solid rgba(255,255,255,0.06)", display: "flex", justifyContent: "space-between", fontSize: "12.5px" }}>
-                <span style={{ color: "#CBD5E1" }}>{h.supplier_code} ({h.supplier_name}) · {h.source} · {new Date(h.recorded_at).toLocaleDateString("es-CL")}</span>
-                <span style={{ fontFamily: "var(--font-mono)", color: "#1AFF6E", fontWeight: 700 }}>
+              <div key={h.id} style={{ padding: "12px 16px", borderRadius: "12px", background: "var(--admin-surface-secondary, #F8FAFC)", border: "1px solid var(--admin-border, #E2E8F0)", display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "13px" }}>
+                <span style={{ color: "var(--admin-text, #14161A)", fontWeight: 600 }}>{h.supplier_code} ({h.supplier_name}) · {h.source} · {new Date(h.recorded_at).toLocaleDateString("es-CL")}</span>
+                <span style={{ fontFamily: "var(--font-mono)", color: "var(--admin-primary-text, #0F9940)", fontWeight: 700 }}>
                   {h.previous_cost != null ? `${formatCurrency(h.previous_cost, h.previous_currency || h.new_currency)} → ` : ""}
                   {h.new_cost != null ? `${formatCurrency(h.new_cost, h.new_currency)} ${h.new_currency}` : "Restringido"}
                 </span>

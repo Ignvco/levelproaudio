@@ -16,10 +16,10 @@ import { Plus, Search, Upload, Download, Building2, Globe2, PackageCheck, AlertT
 const bentoInput = {
   width: "100%",
   padding: "9px 12px",
-  background: "#0B0E14",
-  border: "1px solid rgba(255,255,255,0.12)",
+  background: "var(--admin-surface, #FFFFFF)",
+  border: "1px solid var(--admin-border, #CBD5E1)",
   borderRadius: "10px",
-  color: "#F8FAFC",
+  color: "var(--admin-text, #14161A)",
   fontSize: "13px",
   outline: "none",
 }
@@ -134,18 +134,14 @@ export default function AdminSuppliers() {
         title="Proveedores y Listas de Costos"
         description="Directorio de fabricantes, importadores y distribuidores pro-audio con comparación multi-moneda por SKU."
         actions={
-          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", alignItems: "center" }}>
             <SecondaryButton size="sm" onClick={() => { setImportResult(null); setShowImportModal(true) }} data-testid="open-price-list-import-btn">
               <Upload size={14} /> Importar costos
             </SecondaryButton>
             <a
               href={getSupplierPriceListsExportUrl("xlsx")}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: "6px",
-                padding: "7px 12px", borderRadius: "10px", fontSize: "12.5px", fontWeight: 600,
-                background: "rgba(255,255,255,0.06)", color: "#E2E8F0",
-                border: "1px solid rgba(255,255,255,0.1)", textDecoration: "none",
-              }}
+              className="au-btn au-btn--secondary au-btn--sm"
+              style={{ textDecoration: "none" }}
             >
               <Download size={14} /> Exportar XLSX
             </a>
@@ -156,24 +152,27 @@ export default function AdminSuppliers() {
         }
       />
 
-      {/* KPIs operativos reales */}
+      {/* KPIs operativos oficiales Bento */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: "14px", marginBottom: "20px" }}>
         {[
-          { label: "Proveedores activos", value: summary.active, sub: `${summary.national} nacionales · ${summary.international} int.`, Icon: Building2, tone: "#1AFF6E" },
-          { label: "Cobertura internacional", value: summary.international, sub: "Fabricantes / Importadores USD-ARS", Icon: Globe2, tone: "#38BDF8" },
-          { label: "SKUs vinculados", value: summary.linked_skus, sub: "Relaciones activas catálogo ↔ proveedor", Icon: PackageCheck, tone: "#A78BFA" },
-          { label: "Listas vencidas", value: summary.expired_lists, sub: summary.expired_lists > 0 ? "Requieren actualización de costo" : "Todas vigentes", Icon: AlertTriangle, tone: summary.expired_lists > 0 ? "#F59E0B" : "#1AFF6E" },
+          { label: "Proveedores activos", value: summary.active, sub: `${summary.national} nacionales · ${summary.international} int.`, Icon: Building2, tone: "#0F9940" },
+          { label: "Cobertura internacional", value: summary.international, sub: "Fabricantes / Importadores USD-ARS", Icon: Globe2, tone: "#0284C7" },
+          { label: "SKUs vinculados", value: summary.linked_skus, sub: "Relaciones activas catálogo ↔ proveedor", Icon: PackageCheck, tone: "#7C3AED" },
+          { label: "Listas vencidas", value: summary.expired_lists, sub: summary.expired_lists > 0 ? "Requieren actualización de costo" : "Todas vigentes", Icon: AlertTriangle, tone: summary.expired_lists > 0 ? "#D97706" : "#0F9940" },
         ].map(({ label, value, sub, Icon, tone }) => (
           <div key={label} style={{
-            padding: "16px 18px", borderRadius: "16px",
-            background: "#121722", border: "1px solid rgba(255,255,255,0.08)",
+            padding: "18px 20px", borderRadius: "var(--admin-radius-lg, 20px)",
+            background: "var(--admin-surface, #FFFFFF)", border: "1px solid var(--admin-border, #ECEEF2)",
+            boxShadow: "var(--admin-shadow-sm, 0 4px 14px rgba(20,30,24,0.05))",
           }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-              <span style={{ fontSize: "11px", fontWeight: 700, color: "#94A3B8", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
-              <Icon size={16} color={tone} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--admin-text-muted, #475569)", textTransform: "uppercase", letterSpacing: "0.08em" }}>{label}</span>
+              <span style={{ width: "32px", height: "32px", borderRadius: "50%", background: "var(--admin-surface-secondary, #F1F5F9)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon size={16} color={tone} />
+              </span>
             </div>
-            <p style={{ fontSize: "26px", fontWeight: 800, color: "#F8FAFC", fontFamily: "var(--font-mono)", lineHeight: 1.1 }}>{value}</p>
-            <p style={{ fontSize: "11.5px", color: "#94A3B8", marginTop: "6px" }}>{sub}</p>
+            <p style={{ fontSize: "28px", fontWeight: 850, color: "var(--admin-text, #14161A)", fontFamily: "var(--font-mono)", lineHeight: 1.1, letterSpacing: "-0.02em" }}>{value}</p>
+            <p style={{ fontSize: "12px", color: "var(--admin-text-muted, #475569)", marginTop: "6px", fontWeight: 500 }}>{sub}</p>
           </div>
         ))}
       </div>
@@ -182,7 +181,7 @@ export default function AdminSuppliers() {
       <SectionCard eyebrow="DIRECTORIO" title="Filtros de búsqueda">
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>
           <div style={{ position: "relative" }}>
-            <Search size={14} style={{ position: "absolute", left: "11px", top: "12px", color: "#64748B" }} />
+            <Search size={14} style={{ position: "absolute", left: "11px", top: "12px", color: "var(--admin-text-muted, #64748B)" }} />
             <input
               data-testid="supplier-search-input"
               value={search}
@@ -210,23 +209,23 @@ export default function AdminSuppliers() {
 
         <div style={{ marginTop: "18px", overflowX: "auto" }}>
           {isLoading ? (
-            <p style={{ color: "#94A3B8", fontSize: "13px" }}>Cargando directorio de proveedores…</p>
+            <p style={{ color: "var(--admin-text-muted, #475569)", fontSize: "13px" }}>Cargando directorio de proveedores…</p>
           ) : isError ? (
-            <p style={{ color: "#F87171", fontSize: "13px" }}>Error al cargar proveedores. Verifica tus permisos.</p>
+            <p style={{ color: "#DC2626", fontSize: "13px", fontWeight: 600 }}>Error al cargar proveedores. Verifica tus permisos.</p>
           ) : suppliers.length === 0 ? (
-            <p style={{ color: "#94A3B8", fontSize: "13px" }}>No se encontraron proveedores para los filtros aplicados.</p>
+            <p style={{ color: "var(--admin-text-muted, #475569)", fontSize: "13px" }}>No se encontraron proveedores para los filtros aplicados.</p>
           ) : (
-            <table data-testid="suppliers-table" style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px" }}>
+            <table className="au-table" data-testid="suppliers-table">
               <thead>
-                <tr style={{ borderBottom: "1px solid rgba(255,255,255,0.08)", color: "#94A3B8", fontSize: "11px", textTransform: "uppercase", textAlign: "left" }}>
-                  <th style={{ padding: "10px 8px" }}>Código</th>
-                  <th style={{ padding: "10px 8px" }}>Proveedor</th>
-                  <th style={{ padding: "10px 8px" }}>Tipo / País</th>
-                  <th style={{ padding: "10px 8px" }}>Moneda</th>
-                  <th style={{ padding: "10px 8px" }}>Plazo / MOQ</th>
-                  <th style={{ padding: "10px 8px" }}>Marcas</th>
-                  <th style={{ padding: "10px 8px" }}>SKUs</th>
-                  <th style={{ padding: "10px 8px" }}>Estado</th>
+                <tr>
+                  <th>Código</th>
+                  <th>Proveedor</th>
+                  <th>Tipo / País</th>
+                  <th>Moneda</th>
+                  <th>Plazo / MOQ</th>
+                  <th>Marcas</th>
+                  <th>SKUs</th>
+                  <th>Estado</th>
                 </tr>
               </thead>
               <tbody>
@@ -235,29 +234,29 @@ export default function AdminSuppliers() {
                     key={s.id}
                     data-testid={`supplier-row-${s.internal_code}`}
                     onClick={() => navigate(`/admin/suppliers/${s.id}`)}
-                    style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", cursor: "pointer" }}
+                    style={{ cursor: "pointer", opacity: s.is_active ? 1 : 0.68 }}
                   >
-                    <td style={{ padding: "12px 8px", fontFamily: "var(--font-mono)", color: "#1AFF6E", fontWeight: 700 }}>{s.internal_code}</td>
-                    <td style={{ padding: "12px 8px" }}>
-                      <p style={{ fontWeight: 700, color: "#F8FAFC" }}>{s.trade_name || s.legal_name}</p>
-                      <p style={{ fontSize: "11.5px", color: "#94A3B8" }}>{s.legal_name} {s.tax_id ? `· ${s.tax_id}` : ""}</p>
+                    <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-primary-text, #0F9940)", fontWeight: 700 }}>{s.internal_code}</td>
+                    <td>
+                      <p style={{ fontWeight: 700, color: "var(--admin-text, #14161A)" }}>{s.trade_name || s.legal_name}</p>
+                      <p style={{ fontSize: "11.5px", color: "var(--admin-text-muted, #475569)" }}>{s.legal_name} {s.tax_id ? `· ${s.tax_id}` : ""}</p>
                     </td>
-                    <td style={{ padding: "12px 8px", color: "#CBD5E1" }}>
+                    <td style={{ color: "var(--admin-text, #14161A)" }}>
                       {SUPPLIER_TYPES[s.supplier_type] || s.supplier_type} · {s.country}
                     </td>
-                    <td style={{ padding: "12px 8px", fontFamily: "var(--font-mono)", color: "#F8FAFC" }}>{s.currency}</td>
-                    <td style={{ padding: "12px 8px", fontFamily: "var(--font-mono)", color: "#CBD5E1" }}>
+                    <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text, #14161A)" }}>{s.currency}</td>
+                    <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text, #14161A)" }}>
                       {s.default_lead_time_days}d · MOQ {s.default_min_order_qty}
                     </td>
-                    <td style={{ padding: "12px 8px" }}>
+                    <td>
                       <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                         {(s.brands_detail || []).slice(0, 3).map(b => (
-                          <span key={b.id} style={{ fontSize: "11px", padding: "2px 7px", borderRadius: "999px", background: "rgba(255,255,255,0.07)", color: "#E2E8F0" }}>{b.name}</span>
+                          <span key={b.id} style={{ fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "999px", background: "var(--admin-surface-secondary, #F1F5F9)", border: "1px solid var(--admin-border, #CBD5E1)", color: "var(--admin-text, #14161A)" }}>{b.name}</span>
                         ))}
                       </div>
                     </td>
-                    <td style={{ padding: "12px 8px", fontFamily: "var(--font-mono)", color: "#F8FAFC" }}>{s.linked_products_count ?? 0}</td>
-                    <td style={{ padding: "12px 8px" }}>
+                    <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text, #14161A)" }}>{s.linked_products_count ?? 0}</td>
+                    <td>
                       <StatusBadge tone={s.is_active ? "success" : "danger"}>
                         {s.is_active ? "Activo" : "Inactivo"}
                       </StatusBadge>
@@ -272,41 +271,41 @@ export default function AdminSuppliers() {
 
       {/* Modal Crear Proveedor */}
       {showCreateModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "16px" }}>
-          <form onSubmit={handleCreateSupplier} data-testid="create-supplier-modal" style={{ width: "100%", maxWidth: "620px", background: "#121722", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "18px", padding: "22px" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(13,13,15,0.55)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: "16px" }}>
+          <form onSubmit={handleCreateSupplier} data-testid="create-supplier-modal" style={{ width: "100%", maxWidth: "620px", background: "#FFFFFF", border: "1px solid var(--admin-border, #ECEEF2)", borderRadius: "var(--admin-radius-lg, 24px)", boxShadow: "0 24px 60px rgba(20,30,24,0.24)", padding: "26px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h3 style={{ fontSize: "17px", fontWeight: 800, color: "#F8FAFC" }}>Nuevo Proveedor</h3>
-              <button type="button" onClick={() => setShowCreateModal(false)} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer" }}><X size={18} /></button>
+              <h3 style={{ fontSize: "18px", fontWeight: 800, color: "var(--admin-text, #14161A)" }}>Nuevo Proveedor</h3>
+              <button type="button" onClick={() => setShowCreateModal(false)} style={{ background: "none", border: "none", color: "var(--admin-text-muted, #6B7280)", cursor: "pointer" }}><X size={18} /></button>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <div>
-                <label style={{ fontSize: "11px", color: "#94A3B8" }}>Código interno (opcional)</label>
+                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Código interno (opcional)</label>
                 <input data-testid="new-supplier-code" value={newSupplier.internal_code} onChange={e => setNewSupplier(s => ({ ...s, internal_code: e.target.value }))} placeholder="Auto (SUP-XXXX)" style={bentoInput} />
               </div>
               <div>
-                <label style={{ fontSize: "11px", color: "#94A3B8" }}>Identificación tributaria</label>
+                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Identificación tributaria</label>
                 <input value={newSupplier.tax_id} onChange={e => setNewSupplier(s => ({ ...s, tax_id: e.target.value }))} placeholder="RUT / CUIT / EIN" style={bentoInput} />
               </div>
               <div style={{ gridColumn: "1 / -1" }}>
-                <label style={{ fontSize: "11px", color: "#94A3B8" }}>Razón social *</label>
+                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Razón social *</label>
                 <input data-testid="new-supplier-legal-name" required value={newSupplier.legal_name} onChange={e => setNewSupplier(s => ({ ...s, legal_name: e.target.value }))} placeholder="Ej: Audio Distribuidora SpA" style={bentoInput} />
               </div>
               <div>
-                <label style={{ fontSize: "11px", color: "#94A3B8" }}>Nombre comercial</label>
+                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Nombre comercial</label>
                 <input value={newSupplier.trade_name} onChange={e => setNewSupplier(s => ({ ...s, trade_name: e.target.value }))} placeholder="Ej: ProAudio Latam" style={bentoInput} />
               </div>
               <div>
-                <label style={{ fontSize: "11px", color: "#94A3B8" }}>País</label>
+                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>País</label>
                 <input value={newSupplier.country} onChange={e => setNewSupplier(s => ({ ...s, country: e.target.value }))} style={bentoInput} />
               </div>
               <div>
-                <label style={{ fontSize: "11px", color: "#94A3B8" }}>Tipo</label>
+                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Tipo</label>
                 <select value={newSupplier.supplier_type} onChange={e => setNewSupplier(s => ({ ...s, supplier_type: e.target.value }))} style={bentoInput}>
                   {Object.entries(SUPPLIER_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: "11px", color: "#94A3B8" }}>Moneda comercial</label>
+                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Moneda comercial</label>
                 <select value={newSupplier.currency} onChange={e => setNewSupplier(s => ({ ...s, currency: e.target.value }))} style={bentoInput}>
                   <option value="USD">USD</option>
                   <option value="CLP">CLP</option>
@@ -314,23 +313,23 @@ export default function AdminSuppliers() {
                 </select>
               </div>
               <div>
-                <label style={{ fontSize: "11px", color: "#94A3B8" }}>Condiciones de pago</label>
+                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Condiciones de pago</label>
                 <input value={newSupplier.payment_terms} onChange={e => setNewSupplier(s => ({ ...s, payment_terms: e.target.value }))} style={bentoInput} />
               </div>
               <div>
-                <label style={{ fontSize: "11px", color: "#94A3B8" }}>Plazo habitual (días)</label>
+                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Plazo habitual (días)</label>
                 <input type="number" min="0" value={newSupplier.default_lead_time_days} onChange={e => setNewSupplier(s => ({ ...s, default_lead_time_days: e.target.value }))} style={bentoInput} />
               </div>
               <div>
-                <label style={{ fontSize: "11px", color: "#94A3B8" }}>Email</label>
+                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Email</label>
                 <input type="email" value={newSupplier.primary_email} onChange={e => setNewSupplier(s => ({ ...s, primary_email: e.target.value }))} style={bentoInput} />
               </div>
               <div>
-                <label style={{ fontSize: "11px", color: "#94A3B8" }}>Teléfono</label>
+                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Teléfono</label>
                 <input value={newSupplier.primary_phone} onChange={e => setNewSupplier(s => ({ ...s, primary_phone: e.target.value }))} style={bentoInput} />
               </div>
             </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "18px" }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "20px" }}>
               <SecondaryButton type="button" onClick={() => setShowCreateModal(false)}>Cancelar</SecondaryButton>
               <PrimaryButton type="submit" loading={creating} data-testid="submit-create-supplier-btn">Crear proveedor</PrimaryButton>
             </div>
@@ -340,29 +339,31 @@ export default function AdminSuppliers() {
 
       {/* Modal Importar Listas de Costos */}
       {showImportModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.72)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 60, padding: "16px" }}>
-          <div data-testid="price-list-import-modal" style={{ width: "100%", maxWidth: "660px", background: "#121722", border: "1px solid rgba(255,255,255,0.12)", borderRadius: "18px", padding: "22px" }}>
+        <div style={{ position: "fixed", inset: 0, background: "rgba(13,13,15,0.55)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: "16px" }}>
+          <div data-testid="price-list-import-modal" style={{ width: "100%", maxWidth: "660px", background: "#FFFFFF", border: "1px solid var(--admin-border, #ECEEF2)", borderRadius: "var(--admin-radius-lg, 24px)", boxShadow: "0 24px 60px rgba(20,30,24,0.24)", padding: "26px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-              <h3 style={{ fontSize: "17px", fontWeight: 800, color: "#F8FAFC" }}>Importación de Listas de Costos (Excel / CSV)</h3>
-              <button type="button" onClick={() => setShowImportModal(false)} style={{ background: "none", border: "none", color: "#94A3B8", cursor: "pointer" }}><X size={18} /></button>
+              <h3 style={{ fontSize: "18px", fontWeight: 800, color: "var(--admin-text, #14161A)" }}>Importación de Listas de Costos (Excel / CSV)</h3>
+              <button type="button" onClick={() => setShowImportModal(false)} style={{ background: "none", border: "none", color: "var(--admin-text-muted, #6B7280)", cursor: "pointer" }}><X size={18} /></button>
             </div>
-            <p style={{ fontSize: "12.5px", color: "#94A3B8", marginBottom: "14px" }}>
+            <p style={{ fontSize: "13px", color: "var(--admin-text-muted, #475569)", marginBottom: "14px", lineHeight: 1.5 }}>
               Actualiza costos de proveedores sin alterar precios de venta ni stock físico. Descarga la{" "}
-              <a href={getSupplierPriceListTemplateUrl("csv")} style={{ color: "#1AFF6E" }}>plantilla CSV</a> o{" "}
-              <a href={getSupplierPriceListTemplateUrl("xlsx")} style={{ color: "#1AFF6E" }}>XLSX</a>.
+              <a href={getSupplierPriceListTemplateUrl("csv")} style={{ color: "var(--admin-primary-text, #0F9940)", fontWeight: 700, textDecoration: "underline" }}>plantilla CSV</a> o{" "}
+              <a href={getSupplierPriceListTemplateUrl("xlsx")} style={{ color: "var(--admin-primary-text, #0F9940)", fontWeight: 700, textDecoration: "underline" }}>XLSX</a>.
             </p>
-            <input type="file" accept=".csv,.xlsx" onChange={e => setImportFile(e.target.files?.[0] || null)} style={{ color: "#E2E8F0", fontSize: "13px", marginBottom: "14px" }} />
-            <div style={{ display: "flex", gap: "8px", marginBottom: "14px" }}>
+            <div style={{ padding: "14px", borderRadius: "12px", background: "var(--admin-surface-secondary, #F8FAFC)", border: "1px solid var(--admin-border, #CBD5E1)", marginBottom: "16px" }}>
+              <input type="file" accept=".csv,.xlsx" onChange={e => setImportFile(e.target.files?.[0] || null)} style={{ color: "var(--admin-text, #14161A)", fontSize: "13px", width: "100%" }} />
+            </div>
+            <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
               <SecondaryButton onClick={() => handleRunImport(true)} loading={importing} data-testid="import-price-dry-run-btn">Simular (Dry-Run)</SecondaryButton>
               <PrimaryButton onClick={() => handleRunImport(false)} loading={importing} data-testid="import-price-confirm-btn">Confirmar importación</PrimaryButton>
             </div>
             {importResult && (
-              <div data-testid="import-price-summary" style={{ padding: "12px", borderRadius: "12px", background: "#0B0E14", border: "1px solid rgba(255,255,255,0.08)", maxHeight: "220px", overflowY: "auto" }}>
-                <p style={{ fontSize: "12.5px", color: "#F8FAFC", fontWeight: 700, marginBottom: "6px" }}>
+              <div data-testid="import-price-summary" style={{ padding: "14px", borderRadius: "12px", background: "var(--admin-surface-secondary, #F8FAFC)", border: "1px solid var(--admin-border, #CBD5E1)", maxHeight: "220px", overflowY: "auto" }}>
+                <p style={{ fontSize: "13px", color: "var(--admin-text, #14161A)", fontWeight: 700, marginBottom: "8px" }}>
                   {importResult.dry_run ? "Simulación:" : "Aplicado:"} {importResult.summary.new} nuevos · {importResult.summary.updated} actualizados · {importResult.summary.rejected} rechazados
                 </p>
                 {(importResult.errors || []).map(err => (
-                  <p key={err.row} style={{ fontSize: "11.5px", color: "#F87171" }}>Fila {err.row} ({err.sku}): {err.error}</p>
+                  <p key={err.row} style={{ fontSize: "12px", color: "#DC2626", fontWeight: 600, marginTop: "4px" }}>Fila {err.row} ({err.sku}): {err.error}</p>
                 ))}
               </div>
             )}
