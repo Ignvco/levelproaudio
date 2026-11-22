@@ -187,12 +187,19 @@ def upsert_product_supplier(
         return link, True
 
     before_state = {
+        "supplier_sku": existing.supplier_sku,
         "unit_cost": str(existing.unit_cost),
         "currency": existing.currency,
         "tax_basis": existing.tax_basis,
         "moq": existing.moq,
         "lead_time_days": existing.lead_time_days,
+        "reported_availability": existing.reported_availability,
+        "reported_available_qty": existing.reported_available_qty,
+        "cost_valid_from": existing.cost_valid_from.isoformat() if existing.cost_valid_from else None,
+        "cost_valid_until": existing.cost_valid_until.isoformat() if existing.cost_valid_until else None,
         "is_active": existing.is_active,
+        "is_preferred": existing.is_preferred,
+        "has_commercial_notes": bool(existing.commercial_notes),
     }
     cost_changed = (
         existing.unit_cost != Decimal(str(unit_cost))
@@ -244,12 +251,19 @@ def upsert_product_supplier(
         )
 
     after_state = {
+        "supplier_sku": existing.supplier_sku,
         "unit_cost": str(existing.unit_cost),
         "currency": existing.currency,
         "tax_basis": existing.tax_basis,
         "moq": existing.moq,
         "lead_time_days": existing.lead_time_days,
+        "reported_availability": existing.reported_availability,
+        "reported_available_qty": existing.reported_available_qty,
+        "cost_valid_from": existing.cost_valid_from.isoformat() if existing.cost_valid_from else None,
+        "cost_valid_until": existing.cost_valid_until.isoformat() if existing.cost_valid_until else None,
         "is_active": existing.is_active,
+        "is_preferred": existing.is_preferred,
+        "has_commercial_notes": bool(existing.commercial_notes),
     }
     prev_vals, new_vals, changed = compute_state_diff(before_state, after_state)
     if changed:
@@ -364,10 +378,13 @@ def compare_suppliers_for_sku(
     - Destaca menor costo ÚNICAMENTE dentro de grupos comparables (misma moneda y base tributaria).
     - Conversión referencial opcional identificada explícitamente con fuente, tasa y fecha.
     """
-    links = list(
+    links_qs = (
         ProductSupplier.objects.select_related("supplier", "product", "variant")
         .filter(product=product, variant=variant, is_active=True, supplier__is_active=True)
     )
+    if not include_costs:
+        links_qs = links_qs.order_by("-is_preferred", "lead_time_days", "supplier__internal_code")
+    links = list(links_qs)
 
     # Agrupar por (currency, tax_basis) para comparabilidad estricta
     comparable_groups = {}
@@ -433,7 +450,6 @@ def compare_suppliers_for_sku(
             "supplier_country": lnk.supplier.country,
             "supplier_type": lnk.supplier.supplier_type,
             "supplier_sku": lnk.supplier_sku,
-            "payment_terms": lnk.supplier.payment_terms,
             "moq": lnk.moq,
             "lead_time_days": lnk.lead_time_days,
             "reported_availability": lnk.reported_availability,
@@ -443,16 +459,17 @@ def compare_suppliers_for_sku(
             "cost_valid_until": lnk.cost_valid_until.isoformat() if lnk.cost_valid_until else None,
             "is_cost_expired": lnk.is_cost_expired,
             "is_preferred": lnk.is_preferred,
-            "comparable_group": f"{lnk.currency}:{lnk.tax_basis}",
-            "comparable_group_size": group_size,
         }
         if include_costs:
             row.update({
+                "payment_terms": lnk.supplier.payment_terms,
                 "unit_cost": str(lnk.unit_cost),
                 "currency": lnk.currency,
                 "tax_basis": lnk.tax_basis,
                 "is_best_comparable_cost": is_best_comparable,
                 "referential_conversion": ref_conv,
+                "comparable_group": f"{lnk.currency}:{lnk.tax_basis}",
+                "comparable_group_size": group_size,
             })
         rows.append(row)
 
@@ -464,14 +481,16 @@ def compare_suppliers_for_sku(
         rows.sort(key=lambda r: (not r["is_preferred"], r["lead_time_days"]))
     elif include_costs:
         rows.sort(key=lambda r: (r["currency"], r["tax_basis"], Decimal(r["unit_cost"]), r["lead_time_days"]))
+    else:
+        rows.sort(key=lambda r: (not r["is_preferred"], r["lead_time_days"], r["supplier_code"]))
 
     return {
         "product_id": str(product.id),
         "variant_id": str(variant.id) if variant else None,
         "internal_sku": variant.sku if variant else (product.sku or ""),
-        "comparable_groups_count": len(comparable_groups),
-        "has_mixed_currencies": len({k[0] for k in comparable_groups}) > 1,
-        "has_mixed_tax_basis": len({k[1] for k in comparable_groups}) > 1,
+        "comparable_groups_count": len(comparable_groups) if include_costs else None,
+        "has_mixed_currencies": (len({k[0] for k in comparable_groups}) > 1) if include_costs else None,
+        "has_mixed_tax_basis": (len({k[1] for k in comparable_groups}) > 1) if include_costs else None,
         "referential_meta": referential_meta if include_costs else None,
         "alternatives": rows,
     }

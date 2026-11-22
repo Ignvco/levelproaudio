@@ -773,8 +773,10 @@ class AdminProductViewSet(viewsets.ModelViewSet):
 
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
+        from django.db.models import ProtectedError
         from apps.orders.models import OrderItem, B2BQuoteItem
         from apps.products.models import BundleItem
+        from apps.procurement.models import ProductSupplier, SupplierPriceHistory
 
         product = Product.objects.select_for_update().get(pk=self.get_object().pk)
         pid = str(product.id)
@@ -787,6 +789,8 @@ class AdminProductViewSet(viewsets.ModelViewSet):
             or OrderItem.objects.filter(Q(product=product) | Q(variant__product=product)).exists()
             or B2BQuoteItem.objects.filter(Q(product=product) | Q(variant__product=product)).exists()
             or BundleItem.objects.filter(Q(bundle=product) | Q(component=product)).exists()
+            or ProductSupplier.objects.filter(Q(product=product) | Q(variant__product=product)).exists()
+            or SupplierPriceHistory.objects.filter(Q(product=product) | Q(variant__product=product)).exists()
         )
         if has_protected_refs:
             product.is_active = False
@@ -811,12 +815,25 @@ class AdminProductViewSet(viewsets.ModelViewSet):
                     "id": pid,
                     "is_active": False,
                     "deactivated": True,
-                    "detail": "El producto posee variantes, órdenes, cotizaciones o kits asociados; se desactivó lógicamente para preservar referencias y reservas.",
+                    "detail": "El producto posee variantes, órdenes, cotizaciones, kits o relaciones de proveedores/inventario asociados; se desactivó lógicamente para preservar referencias e historial.",
                 },
                 status=status.HTTP_200_OK,
             )
 
-        res = super().destroy(request, *args, **kwargs)
+        try:
+            res = super().destroy(request, *args, **kwargs)
+        except ProtectedError:
+            product.is_active = False
+            product.save(update_fields=["is_active", "updated_at"])
+            return Response(
+                {
+                    "id": pid,
+                    "is_active": False,
+                    "deactivated": True,
+                    "detail": "El producto posee referencias protegidas; se desactivó lógicamente para preservar la integridad histórica.",
+                },
+                status=status.HTTP_200_OK,
+            )
         record_audit_event(
             module=MODULE_CATALOG,
             action="PRODUCT_DELETED",

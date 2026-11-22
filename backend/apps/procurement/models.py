@@ -10,7 +10,7 @@ Modelos de dominio:
 
 from decimal import Decimal
 from django.conf import settings
-from django.core.exceptions import ValidationError
+from django.core.exceptions import PermissionDenied, ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
 from django.utils import timezone
@@ -383,11 +383,31 @@ class ProductSupplier(TimeStampedModel):
         super().save(*args, **kwargs)
 
 
+class AppendOnlyQuerySet(models.QuerySet):
+    """QuerySet inmutable: prohíbe updates y deletes masivos a nivel de ORM."""
+
+    def update(self, **kwargs):
+        raise PermissionDenied("Los registros históricos de costos son inmutables (append-only). Operación UPDATE denegada.")
+
+    def delete(self):
+        raise PermissionDenied("Los registros históricos de costos son inmutables (append-only). Operación DELETE denegada.")
+
+    def bulk_update(self, objs, fields, **kwargs):
+        raise PermissionDenied("Los registros históricos de costos son inmutables (append-only). Operación BULK UPDATE denegada.")
+
+
+class AppendOnlyManager(models.Manager.from_queryset(AppendOnlyQuerySet)):
+    """Manager operacional con semántica append-only."""
+    pass
+
+
 class SupplierPriceHistory(TimeStampedModel):
     """
     Registro histórico append-only de modificaciones de costos de proveedor.
-    Nunca se sobrescribe retroactivamente.
+    Nunca se sobrescribe retroactivamente. Protegido por aplicación y triggers PostgreSQL.
     """
+
+    objects = AppendOnlyManager()
 
     class Source(models.TextChoices):
         INITIAL = "initial", "Alta inicial"
@@ -469,3 +489,11 @@ class SupplierPriceHistory(TimeStampedModel):
 
     def __str__(self):
         return f"{self.supplier.internal_code} · {self.previous_cost} -> {self.new_cost} {self.new_currency}"
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding and self.pk:
+            raise PermissionDenied("Los registros históricos de costos son inmutables: no se permite su modificación.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise PermissionDenied("Los registros históricos de costos son inmutables: no se permite su eliminación.")
