@@ -480,7 +480,16 @@ export function WmsKardexTab() {
                   </td>
                   <td>
                     <p style={{ fontSize: "12.5px", color: "var(--admin-text)", fontWeight: 600 }}>{m.reason}</p>
-                    <p style={{ fontSize: "11px", color: "var(--admin-text-muted)" }}>{m.source_document_type} {m.actor_email || "Sistema"}</p>
+                    <p style={{ fontSize: "11px", color: "var(--admin-text-muted)" }}>
+                      {m.source_document_type === "GOODS_RECEIPT" ? (
+                        <a href="/admin/procurement?tab=receipts" style={{ color: "var(--admin-primary-text)", fontWeight: 700, textDecoration: "underline" }}>
+                          {m.source_document_type}
+                        </a>
+                      ) : (
+                        m.source_document_type
+                      )}{" "}
+                      {m.actor_email || "Sistema"}
+                    </p>
                   </td>
                   <td style={{ fontFamily: "var(--font-mono)", fontSize: "11.5px", color: "var(--admin-text)" }}>
                     {(m.serial_numbers || []).join(", ") || "—"}

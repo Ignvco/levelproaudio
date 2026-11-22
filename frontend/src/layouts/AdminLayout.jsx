@@ -29,6 +29,7 @@ const ROUTE_MODULE_RULES = [
   { prefix: "/admin/products/import", module: "catalog", capability: "edit_prices", label: "Importación Masiva de Catálogo" },
   { prefix: "/admin/products", module: "catalog", label: "Catálogo de Productos" },
   { prefix: "/admin/suppliers", module: "purchases", label: "Proveedores y Listas de Costos" },
+  { prefix: "/admin/procurement", module: "purchases", label: "Órdenes de Compra y Recepciones" },
   { prefix: "/admin/brands", module: "catalog", label: "Marcas" },
   { prefix: "/admin/categories", module: "catalog", label: "Categorías" },
   { prefix: "/admin/inventory", module: "inventory", label: "Inventario y Bodega" },
@@ -68,6 +69,7 @@ const navGroups = [
     { to: "/admin/categories",      label: "Categorías", module: "catalog" },
     { to: "/admin/products/import", label: "Importar", module: "catalog", capability: "edit_prices" },
     { to: "/admin/suppliers",       label: "Proveedores", module: "purchases" },
+    { to: "/admin/procurement",     label: "Órdenes de Compra", module: "purchases" },
     { to: "/admin/inventory",       label: "Inventario", module: "inventory" },
   ]},
   { key: "academia", label: "Academia", module: "academy", items: [

@@ -110,12 +110,14 @@ def _record_movement(
     correlation_id=None,
     idempotency_key: str = None,
     serial_numbers=None,
+    non_sellable_delta: int = 0,
 ) -> InventoryMovement:
     sku_snap = variant.sku if variant is not None else (product.sku or "")
     affected = {
         "physical": phys_after - phys_before,
         "reserved": res_after - res_before,
         "available": avail_after - avail_before,
+        "non_sellable": int(non_sellable_delta),
     }
     return InventoryMovement.objects.create(
         warehouse=warehouse,
@@ -157,22 +159,33 @@ def adjust_stock(
     correlation_id=None,
     idempotency_key: str = None,
     serial_numbers=None,
+    damaged_serial_numbers=None,
 ) -> tuple[WarehouseStock, InventoryMovement | None]:
     """
     Mutación controlada y atómica de stock físico/no elegible con registro simultáneo en Kardex.
     """
+    expected_movement_type = movement_type or (
+        InventoryMovement.MovementType.ADJUST_POS
+        if int(delta_physical) >= 0
+        else InventoryMovement.MovementType.ADJUST_NEG
+    )
     if idempotency_key:
         existing_mov = InventoryMovement.objects.filter(idempotency_key=idempotency_key).first()
         if existing_mov:
             expected_variant_id = variant.id if variant else None
             expected_serials = [str(s).strip() for s in (serial_numbers or []) if str(s).strip()]
             actual_phys_delta = (existing_mov.affected_dimensions or {}).get("physical")
+            actual_non_sell_delta = (existing_mov.affected_dimensions or {}).get("non_sellable", 0)
             if (
                 existing_mov.warehouse_id != warehouse.id
                 or existing_mov.product_id != product.id
                 or existing_mov.variant_id != expected_variant_id
                 or actual_phys_delta != int(delta_physical)
+                or actual_non_sell_delta != int(delta_non_sellable)
                 or list(existing_mov.serial_numbers or []) != expected_serials
+                or existing_mov.movement_type != expected_movement_type
+                or existing_mov.source_document_type != (source_document_type or "")[:60]
+                or existing_mov.source_document_id != str(source_document_id or "")[:80]
             ):
                 raise InventoryServiceError(
                     "Conflicto de idempotencia: la clave ya fue utilizada con un payload diferente."
@@ -213,6 +226,7 @@ def adjust_stock(
         return ws, None
 
     cleaned_sns = [str(s).strip() for s in (serial_numbers or []) if str(s).strip()]
+    damaged_sns_set = {str(s).strip() for s in (damaged_serial_numbers or []) if str(s).strip()}
     db_serialization_mode = Product.objects.values_list("serialization_mode", flat=True).get(pk=product.pk)
     if db_serialization_mode == Product.SerializationMode.REQUIRED and int(delta_physical) != 0:
         expected_count = abs(int(delta_physical))
@@ -222,6 +236,11 @@ def adjust_stock(
             )
         if int(delta_physical) > 0:
             for sn in cleaned_sns:
+                target_sn_status = (
+                    SerialNumberTrack.Status.DAMAGED
+                    if sn in damaged_sns_set
+                    else SerialNumberTrack.Status.IN_STOCK
+                )
                 existing_sn = SerialNumberTrack.objects.select_for_update().filter(
                     product=product, variant=variant, serial_number=sn
                 ).first()
@@ -230,7 +249,7 @@ def adjust_stock(
                         movement_type == InventoryMovement.MovementType.RETURN_IN
                         and existing_sn.status == SerialNumberTrack.Status.DISPATCHED
                     ):
-                        existing_sn.status = SerialNumberTrack.Status.IN_STOCK
+                        existing_sn.status = target_sn_status
                         existing_sn.warehouse = warehouse
                         existing_sn.order = None
                         existing_sn.reservation = None
@@ -243,7 +262,7 @@ def adjust_stock(
                         product=product,
                         variant=variant,
                         warehouse=warehouse,
-                        status=SerialNumberTrack.Status.IN_STOCK,
+                        status=target_sn_status,
                         notes=reason[:255],
                     )
                     sn_obj.full_clean()
@@ -312,6 +331,7 @@ def adjust_stock(
         correlation_id=correlation_id,
         idempotency_key=idempotency_key,
         serial_numbers=serial_numbers,
+        non_sellable_delta=int(delta_non_sellable),
     )
     sync_legacy_stock_projection(product, variant)
 
@@ -338,7 +358,9 @@ def receive_stock_into_warehouse(
     product: Product,
     variant: ProductVariant = None,
     quantity: int,
+    quantity_damaged: int = 0,
     serial_numbers=None,
+    damaged_serial_numbers=None,
     movement_type: str = InventoryMovement.MovementType.MANUAL_IN,
     reason: str = "Recepción de inventario en bodega",
     source_document_type: str = "RECEIPT",
@@ -348,17 +370,21 @@ def receive_stock_into_warehouse(
     idempotency_key: str = None,
 ) -> tuple[WarehouseStock, InventoryMovement | None]:
     """
-    Contrato reutilizable de recepción física de inventario (preparado para Gate 5),
-    con validación atómica de seriales REQUIRED, Kardex e idempotencia.
+    Contrato reutilizable de recepción física de inventario (Gate 5),
+    con soporte de unidades vendibles, dañadas no vendibles, seriales REQUIRED, Kardex e idempotencia.
     """
     qty = int(quantity)
+    dmg = int(quantity_damaged or 0)
     if qty <= 0:
         raise InventoryServiceError("La cantidad a recepcionar debe ser mayor a cero.")
+    if dmg < 0 or dmg > qty:
+        raise InventoryServiceError("La cantidad dañada debe estar entre 0 y la cantidad física recibida.")
     return adjust_stock(
         warehouse=warehouse,
         product=product,
         variant=variant,
         delta_physical=qty,
+        delta_non_sellable=dmg,
         movement_type=movement_type,
         reason=reason,
         source_document_type=source_document_type,
@@ -367,6 +393,7 @@ def receive_stock_into_warehouse(
         correlation_id=correlation_id,
         idempotency_key=idempotency_key,
         serial_numbers=serial_numbers,
+        damaged_serial_numbers=damaged_serial_numbers,
     )
 
 
