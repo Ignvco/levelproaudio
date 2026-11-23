@@ -28,6 +28,7 @@ from apps.analytics.finance_services import (
     apply_receivable_allocation,
     compute_cash_flow_projection,
     create_treasury_account,
+    verify_treasury_opening_balance,
     export_accounting_ledger_csv,
     get_ar_aging_report,
     get_treasury_account_balances,
@@ -203,6 +204,30 @@ def admin_finance_treasury_accounts_view(request):
     except FinanceServiceError as exc:
         return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     return Response(get_treasury_account_balances(acct), status=status.HTTP_201_CREATED)
+
+
+@rbac_endpoint(
+    module=MODULE_FINANCES,
+    capability=PERM_MANAGE_FINANCES,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_FINANCE],
+)
+@api_view(["POST"])
+@permission_classes([IsAdminOrStaff])
+def admin_finance_treasury_verify_opening_view(request, acct_id):
+    acct = FinancialBankAccount.objects.filter(pk=acct_id).first()
+    if acct is None:
+        return Response({"error": "Cuenta bancaria no encontrada."}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        updated = verify_treasury_opening_balance(
+            acct,
+            verification_source=(request.data or {}).get("verification_source", ""),
+            actor=request.user,
+        )
+    except FinancePermissionError as exc:
+        return Response({"error": str(exc)}, status=status.HTTP_403_FORBIDDEN)
+    except FinanceServiceError as exc:
+        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+    return Response(get_treasury_account_balances(updated))
 
 
 @rbac_endpoint(

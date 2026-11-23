@@ -119,6 +119,17 @@ def create_treasury_account(
     raw_num = str(account_number or "").strip()
     masked = f"****{raw_num[-4:]}" if len(raw_num) >= 4 else "****"
     ob = Decimal(str(opening_balance or "0.00")).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    src_clean = (verification_source or "").strip()
+    can_verify = bool(
+        actor is not None
+        and getattr(actor, "is_authenticated", False)
+        and (
+            is_effective_super_admin(actor)
+            or user_has_capability(actor, PERM_MANAGE_FINANCES)
+            or bool(set(get_user_roles(actor)) & {ROLE_FINANCE, ROLE_MANAGEMENT})
+        )
+    )
+    verified_user = actor if (src_clean and can_verify) else None
 
     acct = FinancialBankAccount.objects.create(
         code=code.strip().upper(),
@@ -130,8 +141,8 @@ def create_treasury_account(
         country=(country or "CL").strip().upper()[:10],
         opening_balance=ob,
         opening_balance_date=opening_balance_date or timezone.now().date(),
-        verification_source=(verification_source or "Apertura verificada").strip(),
-        verified_by=actor if getattr(actor, "is_authenticated", False) else None,
+        verification_source=src_clean,
+        verified_by=verified_user,
     )
     record_audit_event(
         module="finances",
@@ -141,11 +152,60 @@ def create_treasury_account(
         resource_id=str(acct.id),
         resource_repr=str(acct),
         actor=actor,
-        new_values={"code": acct.code, "currency": curr, "opening_balance": str(ob)},
+        new_values={
+            "code": acct.code,
+            "currency": curr,
+            "opening_balance": str(ob),
+            "opening_verified": bool(ob == Decimal("0.00") or (src_clean and verified_user is not None)),
+            "verification_source": src_clean,
+        },
         severity=SEVERITY_INFO,
         mandatory=True,
     )
     return acct
+
+
+@transaction.atomic
+def verify_treasury_opening_balance(
+    acct: FinancialBankAccount,
+    *,
+    verification_source: str,
+    actor=None,
+) -> FinancialBankAccount:
+    """FIN9-VERIFICATION-01: Verificación independiente y auditada de saldo inicial declarado."""
+    if actor is None or not getattr(actor, "is_authenticated", False) or not (
+        is_effective_super_admin(actor)
+        or user_has_capability(actor, PERM_MANAGE_FINANCES)
+        or bool(set(get_user_roles(actor)) & {ROLE_FINANCE, ROLE_MANAGEMENT})
+    ):
+        raise FinancePermissionError(
+            "No posee permiso ('manage_finances') para verificar el saldo inicial de tesorería."
+        )
+    src_clean = (verification_source or "").strip()
+    if not src_clean:
+        raise FinanceServiceError("Debe indicar una fuente documental verificable para certificar la apertura.")
+
+    locked = FinancialBankAccount.objects.select_for_update().get(pk=acct.pk)
+    locked.verification_source = src_clean[:160]
+    locked.verified_by = actor
+    locked.save(update_fields=["verification_source", "verified_by", "updated_at"])
+    record_audit_event(
+        module="finances",
+        action="TREASURY_OPENING_VERIFIED",
+        event_category=CATEGORY_MODIFICATION,
+        resource_type="FinancialBankAccount",
+        resource_id=str(locked.id),
+        resource_repr=str(locked),
+        actor=actor,
+        new_values={
+            "code": locked.code,
+            "opening_balance": str(locked.opening_balance),
+            "verification_source": locked.verification_source,
+        },
+        severity=SEVERITY_INFO,
+        mandatory=True,
+    )
+    return locked
 
 
 def get_treasury_account_balances(acct: FinancialBankAccount, *, mask_sensitive: bool = False) -> dict:
@@ -175,7 +235,13 @@ def get_treasury_account_balances(acct: FinancialBankAccount, *, mask_sensitive:
     all_credits = txs.filter(direction=BankTransaction.Direction.CREDIT).aggregate(t=Sum("amount"))["t"] or Decimal("0.00")
     all_debits = txs.filter(direction=BankTransaction.Direction.DEBIT).aggregate(t=Sum("amount"))["t"] or Decimal("0.00")
 
-    reconciled_balance = (acct.opening_balance + credits_reconciled - debits_reconciled).quantize(Decimal("0.01"))
+    opening_verified = bool(
+        acct.opening_balance == Decimal("0.00")
+        or (bool((acct.verification_source or "").strip()) and acct.verified_by_id is not None)
+    )
+    verified_opening = acct.opening_balance if opening_verified else Decimal("0.00")
+
+    reconciled_balance = (verified_opening + credits_reconciled - debits_reconciled).quantize(Decimal("0.01"))
     book_balance = (acct.opening_balance + all_credits - all_debits).quantize(Decimal("0.01"))
     latest_tx = txs.order_by("-effective_date", "-created_at").first()
     reported_balance = latest_tx.reported_balance if (latest_tx and latest_tx.reported_balance is not None) else book_balance
@@ -198,6 +264,9 @@ def get_treasury_account_balances(acct: FinancialBankAccount, *, mask_sensitive:
         "country": acct.country,
         "operational_status": acct.operational_status,
         "opening_balance": _fmt(acct.opening_balance, acct.currency),
+        "verified_opening_balance": _fmt(verified_opening, acct.currency),
+        "opening_verified": opening_verified,
+        "opening_verification_pending": not opening_verified,
         "opening_balance_date": acct.opening_balance_date.isoformat(),
         "verification_source": acct.verification_source,
         "reconciled_balance": _fmt(reconciled_balance, acct.currency),
@@ -840,9 +909,14 @@ def compute_cash_flow_projection(currency: str = "CLP", scenario: str = "base") 
         currency=curr, operational_status=FinancialBankAccount.OperationalStatus.ACTIVE
     )
     opening_total = Decimal("0.00")
+    declared_opening_total = Decimal("0.00")
+    opening_verification_pending = False
     for acct in accounts:
         bal_info = get_treasury_account_balances(acct)
         opening_total += Decimal(bal_info["reconciled_balance"])
+        declared_opening_total += acct.opening_balance
+        if bal_info["opening_verification_pending"]:
+            opening_verification_pending = True
 
     open_ar = AccountReceivable.objects.filter(currency=curr).exclude(
         status__in=[AccountReceivable.Status.PAID, AccountReceivable.Status.CANCELLED]
@@ -870,11 +944,6 @@ def compute_cash_flow_projection(currency: str = "CLP", scenario: str = "base") 
             "deficit_alert": proj < Decimal("0.00"),
         }
 
-    opening_verification_pending = any(
-        acct.opening_balance != Decimal("0.00") and not (acct.verification_source or "").strip()
-        for acct in accounts
-    )
-
     return {
         "currency": curr,
         "scenario": sc,
@@ -882,6 +951,7 @@ def compute_cash_flow_projection(currency: str = "CLP", scenario: str = "base") 
         "is_projection": True,
         "has_opening_accounts": accounts.exists(),
         "opening_verification_pending": opening_verification_pending,
+        "declared_opening_balance": _fmt(declared_opening_total, curr),
         "verified_opening_balance": _fmt(opening_total, curr),
         "horizons": horizons,
     }

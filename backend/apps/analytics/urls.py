@@ -59,6 +59,7 @@ from apps.users.views_rbac import (
 from .finance_views import (
     admin_finance_reconciliation_view,
     admin_finance_treasury_accounts_view,
+    admin_finance_treasury_verify_opening_view,
     admin_finance_internal_transfer_view,
     admin_finance_statement_import_view,
     admin_finance_bank_transactions_view,
@@ -149,6 +150,7 @@ urlpatterns = [
     path("finance/reconciliation/",                     admin_finance_reconciliation_view,    name="finance-reconciliation"),
     path("finance/cash-flow/",                          admin_finance_cash_flow_view,         name="finance-cash-flow"),
     path("finance/treasury-accounts/",                  admin_finance_treasury_accounts_view, name="finance-treasury-accounts"),
+    path("finance/treasury-accounts/<uuid:acct_id>/verify-opening/", admin_finance_treasury_verify_opening_view, name="finance-treasury-verify-opening"),
     path("finance/treasury-accounts/internal-transfer/", admin_finance_internal_transfer_view, name="finance-internal-transfer"),
     path("finance/bank-statements/import/",             admin_finance_statement_import_view,  name="finance-statement-import"),
     path("finance/bank-transactions/",                  admin_finance_bank_transactions_view, name="finance-bank-transactions"),

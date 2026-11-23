@@ -42,8 +42,9 @@ from apps.analytics.finance_services import (
     record_internal_transfer,
     record_payable_payment,
     register_account_payable,
+    verify_treasury_opening_balance,
 )
-from apps.analytics.models import IncomeRecord
+from apps.analytics.models import AuditEvent, IncomeRecord
 from apps.billing.models import TributaryDocument
 from apps.orders.models import Order, OrderStatus
 from apps.payments.models import Payment, PaymentProvider, PaymentStatus
@@ -68,6 +69,7 @@ class Gate9FinancialManagementTests(TransactionTestCase):
             currency="CLP",
             country="CL",
             opening_balance=Decimal("1000000.00"),
+            verification_source="Cartola apertura QA CLP-01",
             actor=self.admin,
         )
         self.acct_clp_2 = create_treasury_account(
@@ -78,6 +80,7 @@ class Gate9FinancialManagementTests(TransactionTestCase):
             currency="CLP",
             country="CL",
             opening_balance=Decimal("500000.00"),
+            verification_source="Cartola apertura QA CLP-02",
             actor=self.admin,
         )
         self.acct_usd = create_treasury_account(
@@ -88,6 +91,7 @@ class Gate9FinancialManagementTests(TransactionTestCase):
             currency="USD",
             country="US",
             opening_balance=Decimal("10000.00"),
+            verification_source="Cartola apertura QA USD-01",
             actor=self.admin,
         )
 
@@ -505,3 +509,60 @@ class Gate9FinancialManagementTests(TransactionTestCase):
         summary = client.get("/api/v1/admin/finance/summary/?currency=CLP").json()
         self.assertEqual(Decimal(str(summary["total_income"])), Decimal("250000.00"))
         self.assertEqual(Decimal(str(summary["net_balance"])), Decimal("250000.00"))
+
+    def test_fin9_verification_01_unverified_opening_balance_and_authorized_verification(self):
+        """FIN9-VERIFICATION-01: Apertura sin fuente queda pendiente, no inventa texto y alerta en flujo de caja."""
+        acct_unv = create_treasury_account(
+            code="PEND-CLP-99",
+            bank_name="Banco Estado",
+            account_holder="LevelPro Audio SpA",
+            account_number="44332211",
+            currency="CLP",
+            country="CL",
+            opening_balance=Decimal("750000.00"),
+            verification_source="",
+            actor=self.admin,
+        )
+        # No inventa fuente ficticia ni asigna verified_by sin evidencia
+        self.assertEqual(acct_unv.verification_source, "")
+        self.assertIsNone(acct_unv.verified_by)
+
+        bal = get_treasury_account_balances(acct_unv)
+        self.assertEqual(Decimal(bal["opening_balance"]), Decimal("750000.00"))
+        self.assertEqual(Decimal(bal["verified_opening_balance"]), Decimal("0.00"))
+        self.assertFalse(bal["opening_verified"])
+        self.assertTrue(bal["opening_verification_pending"])
+        self.assertEqual(Decimal(bal["reconciled_balance"]), Decimal("0.00"))
+
+        # Flujo de caja activa alerta y excluye el saldo no verificado de verified_opening_balance
+        cf_before = compute_cash_flow_projection(currency="CLP", scenario="base")
+        self.assertTrue(cf_before["opening_verification_pending"])
+        self.assertEqual(Decimal(cf_before["declared_opening_balance"]), Decimal("2250000.00"))
+        self.assertEqual(Decimal(cf_before["verified_opening_balance"]), Decimal("1500000.00"))
+
+        # Usuario sin permisos o fuente vacía -> bloqueado
+        with self.assertRaises(FinancePermissionError):
+            verify_treasury_opening_balance(
+                acct_unv, verification_source="Cartola Estado", actor=self.buyer
+            )
+        with self.assertRaises(FinanceServiceError):
+            verify_treasury_opening_balance(acct_unv, verification_source="", actor=self.admin)
+
+        # Verificación autorizada y auditada
+        verified_acct = verify_treasury_opening_balance(
+            acct_unv,
+            verification_source="Cartola apertura BancoEstado #001",
+            actor=self.admin,
+        )
+        self.assertEqual(verified_acct.verification_source, "Cartola apertura BancoEstado #001")
+        self.assertEqual(verified_acct.verified_by_id, self.admin.id)
+        self.assertEqual(verified_acct.opening_balance, Decimal("750000.00"))
+        self.assertTrue(
+            AuditEvent.objects.filter(
+                action="TREASURY_OPENING_VERIFIED", resource_id=str(acct_unv.id)
+            ).exists()
+        )
+
+        cf_after = compute_cash_flow_projection(currency="CLP", scenario="base")
+        self.assertFalse(cf_after["opening_verification_pending"])
+        self.assertEqual(Decimal(cf_after["verified_opening_balance"]), Decimal("2250000.00"))
