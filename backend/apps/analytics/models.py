@@ -399,3 +399,15 @@ class AuditEvent(models.Model):
     def delete(self, *args, **kwargs):
         # Inmutabilidad a nivel de instancia del modelo: prohíbe DELETE.
         raise PermissionDenied("Los registros de auditoría son inmutables: no se permite su eliminación.")
+
+
+from .finance_models import (  # noqa: E402, F401
+    AccountPayable,
+    AccountReceivable,
+    BankReconciliation,
+    BankStatementImport,
+    BankTransaction,
+    FinancialBankAccount,
+    PayableAllocation,
+    ReceivableAllocation,
+)

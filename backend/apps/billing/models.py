@@ -69,6 +69,18 @@ class TributaryDocument(TimeStampedModel):
         upload_to="billing/externos/", blank=True, null=True,
         verbose_name="PDF del documento (opcional)",
     )
+    # GATE 9: Trazabilidad documental externa (sin emisión DTE propia)
+    currency = models.CharField(max_length=10, blank=True, default="CLP")
+    jurisdiction_country = models.CharField(max_length=10, blank=True, default="CL")
+    issuer_tax_id = models.CharField(max_length=50, blank=True, default="")
+    recipient_tax_id = models.CharField(max_length=50, blank=True, default="")
+    document_sha256 = models.CharField(max_length=64, blank=True, default="")
+    referenced_document = models.ForeignKey(
+        "self", on_delete=models.SET_NULL, null=True, blank=True, related_name="referencing_documents"
+    )
+    uploaded_by = models.ForeignKey(
+        "users.User", on_delete=models.SET_NULL, null=True, blank=True, related_name="uploaded_tax_documents"
+    )
 
     class Meta:
         verbose_name = "Documento Tributario"

@@ -13,15 +13,29 @@ import {
   getWithdrawals, createWithdrawal, deleteWithdrawal,
   getAnalytics,
 } from "../../api/admin.api"
+import {
+  ReconciliationPanel,
+  TreasuryPanel,
+  AccountsReceivablePanel,
+  AccountsPayablePanel,
+  ExternalTaxPanel,
+  CashFlowPanel,
+} from "../../components/admin/Gate9FinancePanels"
 
 const fmt = (n, currency = "CLP") => formatCurrency(n, currency)
 const TABS  = [
-  { key:"overview",    label:"Resumen"       },
-  { key:"income",      label:"Ingresos"      },
-  { key:"withdrawals", label:"Retiros"       },
-  { key:"categories",  label:"Configuración" },
-  { key:"by_product",  label:"Por producto"  },
-  { key:"analysis",    label:"Análisis"      },
+  { key:"overview",       label:"Resumen"          },
+  { key:"reconciliation", label:"Conciliación"     },
+  { key:"treasury",       label:"Tesorería"        },
+  { key:"ar",             label:"Cuentas x Cobrar" },
+  { key:"ap",             label:"Cuentas x Pagar"  },
+  { key:"cash_flow",      label:"Flujo de Caja"    },
+  { key:"tax_records",    label:"Tributario"       },
+  { key:"income",         label:"Ingresos"         },
+  { key:"withdrawals",    label:"Retiros"          },
+  { key:"categories",     label:"Configuración"    },
+  { key:"by_product",     label:"Por producto"     },
+  { key:"analysis",       label:"Análisis"         },
 ]
 
 // ── KPI Card ─────────────────────────────────────────────────
@@ -760,6 +774,13 @@ export default function AdminFinance() {
           )}
         </div>
       )}
+
+      {tab === "reconciliation" && <ReconciliationPanel currency={currency} />}
+      {tab === "treasury"       && <TreasuryPanel currency={currency} />}
+      {tab === "ar"             && <AccountsReceivablePanel currency={currency} />}
+      {tab === "ap"             && <AccountsPayablePanel currency={currency} />}
+      {tab === "cash_flow"      && <CashFlowPanel currency={currency} />}
+      {tab === "tax_records"    && <ExternalTaxPanel />}
     </div>
   )
 }
