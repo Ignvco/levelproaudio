@@ -65,12 +65,14 @@ class IncomeRecord(TimeStampedModel):
 
     def create_distributions(self):
         """
-        Distribuye el ingreso entre categorías (Gate 6 — Sección 13):
-        - Preserva historial existente: si este IncomeRecord ya posee distribuciones, no recalcula ni sobrescribe.
+        Distribuye el ingreso entre categorías (Gate 6 — Sección 13 + Gate 7 Preflight OMS-PF-03):
+        - Preserva historial existente: si este IncomeRecord ya posee distribuciones cerradas, no recalcula.
         - Aislamiento monetario: opera en CLP, USD o ARS únicamente cuando el costo real de los ítems
           está en la misma moneda del ingreso. Prohibido mezclar CLP cost_price con ventas USD/ARS.
-        - Utiliza snapshots reales de costo (OrderItem.total_cost_snapshot / unit_cost_snapshot o WAC/CostLayer)
-          y congela el snapshot en OrderItem para que cambios futuros en Product.cost_price jamás alteren históricos.
+        - OMS-PF-03: Un ingreso o pago anterior al despacho NO congela en OrderItem costos provenientes
+          del pool WAC vigente ni de CostLayer antes del despacho físico.
+          Si el SKU posee contabilidad WAC/CostLayer o es serializado REQUIRED y aún no ha sido despachado
+          (cost_frozen_at is None), el ingreso permanece pendiente de asignación hasta el despacho.
         - Soporta pagos parciales y previene duplicación de costo capital entre múltiples IncomeRecord de una misma orden.
         """
         from decimal import ROUND_HALF_UP
@@ -88,10 +90,12 @@ class IncomeRecord(TimeStampedModel):
             return
         fixed_and_percent = [c for c in categories if c.cat_type in ("fixed", "percent")]
         remainder_cats    = [c for c in categories if c.cat_type == "remainder"]
+        has_fixed_category = any(c.cat_type == "fixed" for c in fixed_and_percent)
 
         order_capital_cost = Decimal("0.00")
         if self.order_id and self.order:
-            from apps.procurement.models import CostLayer, WeightedAverageCostState
+            from apps.procurement.models import CostLayer, SerialCostUnit, WeightedAverageCostState
+            from apps.products.models import Product
 
             order_items = list(self.order.items.select_related("product", "variant").all())
             if inc_curr != "CLP" and not order_items:
@@ -111,60 +115,55 @@ class IncomeRecord(TimeStampedModel):
                         )
                     )
                     order_capital_cost += item_cost
+                elif item.costing_method_snapshot == "pending_reconciliation":
+                    # OMS-PF-02 / OMS-PF-03: Costeo pendiente de reconciliación cambiaria o documental
+                    return
                 else:
-                    wac = (
-                        WeightedAverageCostState.objects.filter(
-                            product=item.product,
-                            variant=item.variant,
-                            currency=inc_curr,
-                            average_unit_cost__gt=0,
-                        ).first()
-                        if item.product_id
-                        else None
-                    )
-                    layer = (
-                        CostLayer.objects.filter(
-                            product=item.product,
-                            variant=item.variant,
-                            valuation_currency=inc_curr,
+                    # OMS-PF-03: Ítem sin snapshot congelado todavía (pago antes de despacho o venta legacy).
+                    # Si el producto tiene contabilidad de capas (WAC / CostLayer / SerialCostUnit) o es REQUIRED,
+                    # o la moneda no es CLP, NO debemos congelar prematuramente el WAC en el pago antes del despacho.
+                    has_wac_or_layers = False
+                    is_serial_required = False
+                    if item.product_id and item.product:
+                        is_serial_required = (
+                            item.product.serialization_mode == Product.SerializationMode.REQUIRED
                         )
-                        .order_by("-effective_date", "-created_at")
-                        .first()
-                        if (wac is None and item.product_id)
-                        else None
-                    )
-                    if wac is not None:
-                        u_cost = wac.average_unit_cost
-                        method_snap = "weighted_average"
-                    elif layer is not None:
-                        u_cost = layer.landed_unit_cost
-                        method_snap = layer.costing_method
-                    elif inc_curr == "CLP":
-                        raw_cat_cost = (
-                            item.variant.effective_cost_price
-                            if (item.variant_id and item.variant)
-                            else getattr(item.product, "cost_price", None)
-                        ) or Decimal("0.00")
-                        u_cost = Decimal(str(raw_cat_cost)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
-                        method_snap = "catalog_fallback"
-                    else:
-                        # Venta en USD/ARS sin snapshot ni capa en esa moneda: no inventar rentabilidad cruzando CLP
+                        has_wac_or_layers = (
+                            WeightedAverageCostState.objects.filter(
+                                product=item.product, variant=item.variant
+                            ).exists()
+                            or CostLayer.objects.filter(
+                                product=item.product, variant=item.variant
+                            ).exists()
+                            or SerialCostUnit.objects.filter(
+                                product=item.product, variant=item.variant
+                            ).exists()
+                        )
+
+                    if inc_curr != "CLP":
+                        # En USD/ARS sin snapshot congelado no existe fallback de catálogo CLP
                         return
 
-                    item_cost = (u_cost * Decimal(item.quantity)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                    item.unit_cost_snapshot = u_cost
-                    item.total_cost_snapshot = item_cost
-                    item.cost_currency = inc_curr
-                    item.costing_method_snapshot = method_snap
-                    item.save(
-                        update_fields=[
-                            "unit_cost_snapshot",
-                            "total_cost_snapshot",
-                            "cost_currency",
-                            "costing_method_snapshot",
-                            "updated_at",
-                        ]
+                    if has_fixed_category and (has_wac_or_layers or is_serial_required):
+                        # OMS-PF-03: Existe contabilidad WAC/Capas/Seriales pero la orden aún no fue despachada.
+                        # No congelar WAC vigente durante el pago; esperar a freeze_order_cogs_on_dispatch().
+                        return
+
+                    # Caso exclusivo legacy en CLP sin capas WAC/CostLayer: usar cost_price del catálogo
+                    # para el cálculo sin marcar cost_frozen_at (que pertenece exclusivamente al despacho).
+                    raw_cat_cost = (
+                        item.variant.effective_cost_price
+                        if (item.variant_id and item.variant)
+                        else getattr(item.product, "cost_price", None)
                     )
+                    if raw_cat_cost is None:
+                        if has_fixed_category:
+                            return
+                        u_cost = Decimal("0.0000")
+                    else:
+                        u_cost = Decimal(str(raw_cat_cost)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+
+                    item_cost = (u_cost * Decimal(item.quantity)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
                     order_capital_cost += item_cost
         elif inc_curr != "CLP":
             return

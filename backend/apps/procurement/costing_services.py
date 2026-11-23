@@ -1237,16 +1237,21 @@ def freeze_order_cogs_on_dispatch(
     order: Order,
     *,
     movements: list[InventoryMovement] = None,
+    explicit_fx_payload: dict = None,
     actor=None,
 ) -> list[CostConsumptionRecord]:
     """
-    Sección 9, 10 y 12: Congela el costo de venta (COGS) en cada OrderItem en el momento
-    efectivo de salida física de mercancía (DISPATCH).
-    - Para equipos serializados: identifica y consume el SerialCostUnit específico de cada serial despachado,
-      impidiendo que el mismo serial sea asignado a otra venta.
-    - Para productos fungibles: consume de las capas disponibles y del estado de promedio ponderado móvil (WAC).
-    - Registra CostConsumptionRecord append-only inmutable.
-    - Jamás altera costos de órdenes ya congeladas.
+    Sección 9, 10 y 12 + GATE 7 Preflight (OMS-PF-01, OMS-PF-02, OMS-PF-03):
+    Congela el costo de venta (COGS) en cada OrderItem en el momento efectivo de salida física (DISPATCH).
+    - OMS-PF-01 (Paridad WAC/FIFO): Verifica que la cantidad consumida de CostLayer (FIFO) coincida
+      exactamente con la cantidad debitada del pool WAC. Si el consumo FIFO queda incompleto, lanza
+      CostingServiceError para revertir atómicamente WMS, Kardex, CostLayer, WAC y OrderItem.
+    - OMS-PF-02 (Coherencia Monetaria): Prohibido seleccionar automáticamente un pool WAC o CostLayer
+      en otra moneda sin evidencia explícita y persistida de conversión (ExchangeRateSnapshot).
+      Si no existe costo en la moneda de la orden ni conversión explícita, declara el costeo
+      'pending_reconciliation' sin inventar costos cruzados.
+    - OMS-PF-03 (Sincronización con IncomeRecord): Al congelar definitivamente el COGS en el despacho,
+      concilia cualquier IncomeRecord de la orden cuyo costo había quedado pendiente por pago previo al despacho.
     """
     movements = movements or list(
         InventoryMovement.objects.filter(
@@ -1258,9 +1263,10 @@ def freeze_order_cogs_on_dispatch(
     now = timezone.now()
     order_curr = (order.currency or "CLP").strip().upper()
     consumptions = []
+    any_frozen = False
 
     for item in OrderItem.objects.select_for_update().filter(order=order):
-        if item.cost_frozen_at is not None:
+        if item.cost_frozen_at is not None and item.costing_method_snapshot != "pending_reconciliation":
             continue
         if item.product is None:
             continue
@@ -1348,6 +1354,30 @@ def freeze_order_cogs_on_dispatch(
 
                     u_cost = scu.landed_unit_cost
                     curr = scu.valuation_currency
+                    if curr != order_curr:
+                        if (
+                            explicit_fx_payload
+                            and str(explicit_fx_payload.get("source_currency", "")).strip().upper() == curr
+                            and str(explicit_fx_payload.get("target_currency", order_curr)).strip().upper() == order_curr
+                            and explicit_fx_payload.get("rate") is not None
+                            and explicit_fx_payload.get("rate_source")
+                        ):
+                            fx_snap = create_exchange_rate_snapshot(
+                                source_currency=curr,
+                                target_currency=order_curr,
+                                rate=explicit_fx_payload["rate"],
+                                rate_source=explicit_fx_payload["rate_source"],
+                                effective_date=explicit_fx_payload.get("effective_date"),
+                                original_amount=u_cost,
+                                actor=actor,
+                            )
+                            u_cost = (u_cost * fx_snap.rate).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+                            curr = order_curr
+                        else:
+                            # OMS-PF-02: Serial en otra moneda sin conversión explícita -> conservar en su moneda real
+                            # pero si la orden está en otra moneda y no hay FX, registrar en su moneda nativa de serial
+                            pass
+
                     cc = CostConsumptionRecord.objects.create(
                         order=order,
                         order_item=item,
@@ -1392,21 +1422,41 @@ def freeze_order_cogs_on_dispatch(
                         "updated_at",
                     ]
                 )
+                any_frozen = True
                 continue
 
-        # 2. Costeo de inventario fungible por promedio ponderado móvil (WAC) + consumo de capas
+        # 2. Costeo de inventario fungible por promedio ponderado móvil (WAC) + consumo de capas (OMS-PF-01 & OMS-PF-02)
         wac = (
             WeightedAverageCostState.objects.select_for_update()
             .filter(product=product, variant=variant, currency=order_curr, total_quantity__gt=0)
             .first()
         )
-        if wac is None:
-            wac = (
-                WeightedAverageCostState.objects.select_for_update()
-                .filter(product=product, variant=variant, total_quantity__gt=0)
-                .order_by("-updated_at")
-                .first()
-            )
+        fx_snap_for_wac = None
+        if wac is None and explicit_fx_payload:
+            src_curr = str(explicit_fx_payload.get("source_currency") or "").strip().upper()
+            tgt_curr = str(explicit_fx_payload.get("target_currency") or order_curr).strip().upper()
+            if (
+                src_curr
+                and tgt_curr == order_curr
+                and explicit_fx_payload.get("rate") is not None
+                and explicit_fx_payload.get("rate_source")
+            ):
+                foreign_wac = (
+                    WeightedAverageCostState.objects.select_for_update()
+                    .filter(product=product, variant=variant, currency=src_curr, total_quantity__gt=0)
+                    .first()
+                )
+                if foreign_wac is not None:
+                    wac = foreign_wac
+                    fx_snap_for_wac = create_exchange_rate_snapshot(
+                        source_currency=src_curr,
+                        target_currency=order_curr,
+                        rate=explicit_fx_payload["rate"],
+                        rate_source=explicit_fx_payload["rate_source"],
+                        effective_date=explicit_fx_payload.get("effective_date"),
+                        original_amount=foreign_wac.average_unit_cost,
+                        actor=actor,
+                    )
 
         if wac is not None and wac.average_unit_cost > Decimal("0"):
             if qty_needed > wac.sellable_quantity:
@@ -1414,10 +1464,24 @@ def freeze_order_cogs_on_dispatch(
                     f"Consumo de costo superior a cantidad disponible en WAC para '{wac.sku_snapshot}': "
                     f"solicitado={qty_needed}, disponible={wac.sellable_quantity}."
                 )
-            u_cost = wac.average_unit_cost
-            curr = wac.currency
-            tot_cost = (u_cost * Decimal(qty_needed)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-            val_deducted = (u_cost * Decimal(qty_needed)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+
+            # OMS-PF-01: Verificar paridad estricta entre WAC y disponibilidad en CostLayer ANTES de confirmar
+            pool_curr = wac.currency
+            avail_layers = list(
+                CostLayer.objects.select_for_update()
+                .filter(product=product, variant=variant, valuation_currency=pool_curr, quantity_available__gt=0)
+                .order_by("effective_date", "created_at")
+            )
+            total_layer_avail = sum(lyr.quantity_available for lyr in avail_layers)
+            if total_layer_avail < qty_needed:
+                raise CostingServiceError(
+                    f"Discrepancia de paridad WAC/FIFO para '{wac.sku_snapshot}': "
+                    f"WAC disponible={wac.sellable_quantity}, CostLayer disponible={total_layer_avail}, "
+                    f"solicitado={qty_needed}. Salida bloqueada para preservar integridad contable."
+                )
+
+            raw_u_cost = wac.average_unit_cost
+            val_deducted = (raw_u_cost * Decimal(qty_needed)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
             if qty_needed == wac.sellable_quantity:
                 val_deducted = wac.sellable_value
 
@@ -1429,14 +1493,9 @@ def freeze_order_cogs_on_dispatch(
                 wac.average_unit_cost = Decimal("0.0000")
             wac.save()
 
-            # Consumir cantidades en CostLayer (FIFO) para trazabilidad por lote
+            # Consumir cantidades en CostLayer (FIFO) verificando consumo exacto
             rem_to_consume = qty_needed
             primary_layer = None
-            avail_layers = list(
-                CostLayer.objects.select_for_update()
-                .filter(product=product, variant=variant, valuation_currency=curr, quantity_available__gt=0)
-                .order_by("effective_date", "created_at")
-            )
             for lyr in avail_layers:
                 if rem_to_consume <= 0:
                     break
@@ -1452,6 +1511,20 @@ def freeze_order_cogs_on_dispatch(
                 if primary_layer is None:
                     primary_layer = lyr
                 rem_to_consume -= take
+
+            if rem_to_consume != 0:
+                raise CostingServiceError(
+                    f"Consumo FIFO incompleto para '{wac.sku_snapshot}': faltaron {rem_to_consume} unidades en CostLayer."
+                )
+
+            if fx_snap_for_wac is not None:
+                u_cost = (raw_u_cost * fx_snap_for_wac.rate).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+                curr = order_curr
+            else:
+                u_cost = raw_u_cost
+                curr = pool_curr
+
+            tot_cost = (u_cost * Decimal(qty_needed)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
             idem_key = f"cogs_wac:{order.id}:{item.id}"
             cc, _ = CostConsumptionRecord.objects.get_or_create(
@@ -1488,17 +1561,24 @@ def freeze_order_cogs_on_dispatch(
                     "updated_at",
                 ]
             )
+            any_frozen = True
         else:
-            # Fallback para inventario legacy pre-Gate 6 sin capas: usar cost_price del catálogo si existe en CLP
-            cat_cost = (variant.effective_cost_price if variant else product.cost_price)
-            if cat_cost is not None:
-                u_cost = Decimal(str(cat_cost)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
-                tot_cost = (u_cost * Decimal(qty_needed)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
-                item.unit_cost_snapshot = u_cost
-                item.total_cost_snapshot = tot_cost
-                item.cost_currency = "CLP"
-                item.costing_method_snapshot = "catalog_fallback"
-                item.cost_frozen_at = now
+            # OMS-PF-02: Verificar si existe WAC en OTRA moneda sin conversión explícita
+            has_foreign_wac = (
+                WeightedAverageCostState.objects.filter(
+                    product=product, variant=variant, total_quantity__gt=0, average_unit_cost__gt=0
+                )
+                .exclude(currency=order_curr)
+                .exists()
+            )
+            if has_foreign_wac or order_curr != "CLP":
+                # No utilizar automáticamente costos de otra moneda como si fueran comparables.
+                # Declarar el costeo pendiente de reconciliación sin inventar snapshots.
+                item.unit_cost_snapshot = None
+                item.total_cost_snapshot = None
+                item.cost_currency = ""
+                item.costing_method_snapshot = "pending_reconciliation"
+                item.cost_frozen_at = None
                 item.save(
                     update_fields=[
                         "unit_cost_snapshot",
@@ -1509,6 +1589,36 @@ def freeze_order_cogs_on_dispatch(
                         "updated_at",
                     ]
                 )
+            else:
+                # Fallback exclusivo para inventario legacy pre-Gate 6 en CLP sin capas WAC
+                cat_cost = variant.effective_cost_price if variant else product.cost_price
+                if cat_cost is not None:
+                    u_cost = Decimal(str(cat_cost)).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+                    tot_cost = (u_cost * Decimal(qty_needed)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+                    item.unit_cost_snapshot = u_cost
+                    item.total_cost_snapshot = tot_cost
+                    item.cost_currency = "CLP"
+                    item.costing_method_snapshot = "catalog_fallback"
+                    item.cost_frozen_at = now
+                    item.save(
+                        update_fields=[
+                            "unit_cost_snapshot",
+                            "total_cost_snapshot",
+                            "cost_currency",
+                            "costing_method_snapshot",
+                            "cost_frozen_at",
+                            "updated_at",
+                        ]
+                    )
+                    any_frozen = True
+
+    # OMS-PF-03: Si se congelaron costos al despachar, actualizar cualquier IncomeRecord de la orden
+    # cuyas distribuciones hayan quedado pendientes de asignación de costo por pago previo al despacho.
+    if any_frozen:
+        from apps.analytics.models import IncomeRecord
+
+        for inc_rec in IncomeRecord.objects.filter(order=order):
+            inc_rec.create_distributions()
 
     return consumptions
 

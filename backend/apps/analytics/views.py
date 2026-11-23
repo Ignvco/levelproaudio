@@ -281,12 +281,36 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
     ordering           = ["-created_at"]
 
     def get_queryset(self):
-        qs = Order.objects.select_related("user").prefetch_related(
+        qs = Order.objects.select_related("user", "sales_rep", "assigned_warehouse").prefetch_related(
             "items", "payments"
         ).all()
         status_filter = self.request.query_params.get("status")
         if status_filter:
             qs = qs.filter(status=status_filter)
+        comm_filter = self.request.query_params.get("commercial_status")
+        if comm_filter:
+            qs = qs.filter(commercial_status=comm_filter)
+        fin_filter = self.request.query_params.get("financial_status")
+        if fin_filter:
+            qs = qs.filter(financial_status=fin_filter)
+        fulf_filter = self.request.query_params.get("fulfillment_status")
+        if fulf_filter:
+            qs = qs.filter(fulfillment_status=fulf_filter)
+        curr_filter = self.request.query_params.get("currency")
+        if curr_filter:
+            qs = qs.filter(currency=curr_filter.upper())
+        origin_filter = self.request.query_params.get("order_origin")
+        if origin_filter:
+            qs = qs.filter(order_origin=origin_filter)
+        rep_filter = self.request.query_params.get("sales_rep")
+        if rep_filter:
+            qs = qs.filter(sales_rep_id=rep_filter)
+        date_from = self.request.query_params.get("date_from")
+        if date_from:
+            qs = qs.filter(created_at__date__gte=date_from)
+        date_to = self.request.query_params.get("date_to")
+        if date_to:
+            qs = qs.filter(created_at__date__lte=date_to)
         return qs
 
     def _validate_order_mutation_rbac(self, request, order, new_status=None):

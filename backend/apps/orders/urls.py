@@ -10,6 +10,10 @@ from .views_b2b import (
     admin_b2b_quote_detail,
     admin_b2b_quote_convert,
 )
+from .oms_views import (
+    public_whatsapp_proposal_view,
+    public_whatsapp_checkout_continue_view,
+)
 
 
 router = DefaultRouter()
@@ -27,4 +31,6 @@ urlpatterns = [
     path('admin/orders/b2b/quotes/<uuid:quote_id>/', admin_b2b_quote_detail, name='admin-orders-b2b-quote-detail'),
     path('admin/b2b/quotes/<uuid:quote_id>/convert/', admin_b2b_quote_convert, name='admin-b2b-quote-convert'),
     path('admin/orders/b2b/quotes/<uuid:quote_id>/convert/', admin_b2b_quote_convert, name='admin-orders-b2b-quote-convert'),
+    path('orders/whatsapp/<path:token>/checkout/', public_whatsapp_checkout_continue_view, name='orders-whatsapp-checkout'),
+    path('orders/whatsapp/<path:token>/', public_whatsapp_proposal_view, name='orders-whatsapp-proposal'),
 ] + router.urls

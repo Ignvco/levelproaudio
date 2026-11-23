@@ -72,6 +72,22 @@ from apps.products.admin_pim_views import (
     admin_products_bulk_apply,
     admin_products_export,
 )
+from apps.orders.oms_views import (
+    admin_manual_orders_view,
+    admin_manual_order_detail_view,
+    admin_manual_order_convert_view,
+    admin_manual_order_cancel_view,
+    admin_manual_order_whatsapp_link_view,
+    admin_order_states_view,
+    admin_fulfillment_queue_view,
+    admin_order_dispatch_view,
+    admin_order_payment_attempt_view,
+    admin_order_rma_view,
+    admin_rma_list_view,
+    admin_rma_authorize_view,
+    admin_rma_inspect_view,
+    admin_rma_refund_view,
+)
 
 router = DefaultRouter()
 router.register("orders",          AdminOrderViewSet,   basename="admin-orders")
@@ -166,6 +182,22 @@ urlpatterns = [
 
     # WMS — Bodegas, Stock Dimensional, Kardex, Reservas, Transferencias y Seriales (GATE 4)
     path("", include("apps.inventory.urls")),
+
+    # OMS — Ventas Manuales, WhatsApp Checkout, Estados 3D, Preparación/Despacho y RMA (GATE 7)
+    path("orders/manual/", admin_manual_orders_view, name="admin-orders-manual"),
+    path("orders/manual/<uuid:draft_id>/", admin_manual_order_detail_view, name="admin-orders-manual-detail"),
+    path("orders/manual/<uuid:draft_id>/convert/", admin_manual_order_convert_view, name="admin-orders-manual-convert"),
+    path("orders/manual/<uuid:draft_id>/cancel/", admin_manual_order_cancel_view, name="admin-orders-manual-cancel"),
+    path("orders/manual/<uuid:draft_id>/whatsapp-link/", admin_manual_order_whatsapp_link_view, name="admin-orders-manual-whatsapp"),
+    path("orders/fulfillment-queue/", admin_fulfillment_queue_view, name="admin-orders-fulfillment-queue"),
+    path("orders/rmas/", admin_rma_list_view, name="admin-orders-rmas-list"),
+    path("orders/rmas/<uuid:rma_id>/authorize/", admin_rma_authorize_view, name="admin-orders-rma-authorize"),
+    path("orders/rmas/<uuid:rma_id>/inspect/", admin_rma_inspect_view, name="admin-orders-rma-inspect"),
+    path("orders/rmas/<uuid:rma_id>/refund/", admin_rma_refund_view, name="admin-orders-rma-refund"),
+    path("orders/<uuid:order_id>/states/", admin_order_states_view, name="admin-orders-states"),
+    path("orders/<uuid:order_id>/dispatch/", admin_order_dispatch_view, name="admin-orders-dispatch"),
+    path("orders/<uuid:order_id>/payment-attempt/", admin_order_payment_attempt_view, name="admin-orders-payment-attempt"),
+    path("orders/<uuid:order_id>/rma/", admin_order_rma_view, name="admin-orders-rma"),
 
     # Router al final
     path("", include(router.urls)),
