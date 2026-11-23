@@ -7,9 +7,9 @@ Endpoints:
 - GET/PATCH /api/v1/admin/orders/b2b/quotes/{id}/ → Detalle y actualización comercial (Admin/Staff)
 - POST /api/v1/admin/orders/b2b/quotes/{id}/convert/ → Conversión atómica a Order (Admin/Staff)
 """
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 from django.db import transaction
-from django.utils import timezone
+from django.db.models import Count, Q
 from drf_spectacular.utils import extend_schema, OpenApiTypes
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -21,22 +21,22 @@ from core.rbac.constants import (
     MODULE_ORDERS,
     PERM_APPLY_DISCOUNTS,
     PERM_EDIT_PRICES,
-    MAX_UNAPPROVED_DISCOUNT_PERCENT,
     ROLE_SUPER_ADMIN,
     ROLE_MANAGEMENT,
     ROLE_SALES,
 )
-from core.rbac.permissions import is_effective_super_admin, user_has_capability
+from core.rbac.permissions import get_user_roles, is_effective_super_admin, user_has_capability
 from core.audit.services import record_audit_event
-from core.audit.constants import (
-    CATEGORY_MODIFICATION,
-    CATEGORY_ORDER_STATUS,
-    SEVERITY_INFO,
-    RESULT_SUCCESS,
-)
+from core.audit.constants import CATEGORY_MODIFICATION
 from apps.products.models import Product
 from apps.site_settings.models import SiteSettings
-from .models import Order, OrderItem, B2BQuote, B2BQuoteItem, B2BQuoteStatus
+from .b2b_preflight import (
+    B2BPreflightError,
+    convert_b2b_quote_to_order,
+    format_money_str,
+    resolve_b2b_tax_contract,
+)
+from .models import B2BQuote, B2BQuoteItem, B2BQuoteStatus
 
 
 def _sanitize_tax_id(tax_id_str):
@@ -114,9 +114,14 @@ def b2b_quote_create(request):
             "subtotal": item_subtotal,
         })
 
-    # IVA referencial según país/moneda (CLP = 19% IVA chileno)
-    tax_amount = (subtotal * Decimal("0.19")).quantize(Decimal("0.01")) if currency == "CLP" else Decimal("0.00")
-    total = subtotal + tax_amount
+    # CRM-PF-02: Contrato explícito de jurisdicción tributaria (no asumir CLP => 19% sin país)
+    tax_contract = resolve_b2b_tax_contract(
+        country=data.get("country"),
+        currency=currency,
+        tax_regime=data.get("tax_regime"),
+    )
+    tax_amount = tax_contract.compute_tax(subtotal) if tax_contract.is_resolved else Decimal("0.00")
+    total = (subtotal + tax_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     user = request.user if request.user.is_authenticated else None
 
@@ -152,9 +157,11 @@ def b2b_quote_create(request):
         "company_name": quote.company_name,
         "tax_id": quote.tax_id,
         "currency": quote.currency,
-        "subtotal": float(quote.subtotal),
-        "tax_amount": float(quote.tax_amount),
-        "total": float(quote.total),
+        "subtotal": format_money_str(quote.subtotal, quote.currency),
+        "tax_amount": format_money_str(quote.tax_amount, quote.currency),
+        "total": format_money_str(quote.total, quote.currency),
+        "tax_regime": tax_contract.tax_regime,
+        "tax_jurisdiction_resolved": tax_contract.is_resolved,
         "status": quote.status,
         "items_count": len(validated_items),
         "created_at": quote.created_at.isoformat(),
@@ -170,7 +177,7 @@ def admin_b2b_quotes(request):
     GET /api/v1/admin/orders/b2b/quotes/
     Listado administrativo de cotizaciones B2B con filtros y búsqueda.
     """
-    qs = B2BQuote.objects.all().order_by("-created_at")
+    qs = B2BQuote.objects.annotate(items_count_ann=Count("items")).order_by("-created_at")
 
     status_filter = request.query_params.get("status")
     if status_filter:
@@ -179,13 +186,10 @@ def admin_b2b_quotes(request):
     search = request.query_params.get("search")
     if search:
         qs = qs.filter(
-            company_name__icontains=search
-        ) | qs.filter(
-            tax_id__icontains=search
-        ) | qs.filter(
-            contact_name__icontains=search
-        ) | qs.filter(
-            email__icontains=search
+            Q(company_name__icontains=search)
+            | Q(tax_id__icontains=search)
+            | Q(contact_name__icontains=search)
+            | Q(email__icontains=search)
         )
 
     results = []
@@ -198,13 +202,13 @@ def admin_b2b_quotes(request):
             "email": q.email,
             "phone": q.phone,
             "currency": q.currency,
-            "subtotal": float(q.subtotal),
-            "discount_amount": float(q.discount_amount),
-            "discount_percent": float(q.discount_percent),
-            "tax_amount": float(q.tax_amount),
-            "total": float(q.total),
+            "subtotal": format_money_str(q.subtotal, q.currency),
+            "discount_amount": format_money_str(q.discount_amount, q.currency),
+            "discount_percent": str(q.discount_percent),
+            "tax_amount": format_money_str(q.tax_amount, q.currency),
+            "total": format_money_str(q.total, q.currency),
             "status": q.status,
-            "items_count": q.items.count(),
+            "items_count": q.items_count_ann,
             "converted_order_id": str(q.converted_order_id) if q.converted_order_id else None,
             "created_at": q.created_at.strftime("%Y-%m-%d %H:%M"),
         })
@@ -230,6 +234,11 @@ def admin_b2b_quote_detail(request, quote_id):
     except B2BQuote.DoesNotExist:
         return Response({"error": "Cotización B2B no encontrada."}, status=status.HTTP_404_NOT_FOUND)
 
+    user_roles = set(get_user_roles(request.user))
+    can_view_internal_notes = is_effective_super_admin(request.user) or bool(
+        user_roles & {ROLE_MANAGEMENT, ROLE_SALES}
+    )
+
     if request.method == "GET":
         return Response({
             "id": str(quote.id),
@@ -239,23 +248,23 @@ def admin_b2b_quote_detail(request, quote_id):
             "email": quote.email,
             "phone": quote.phone,
             "currency": quote.currency,
-            "subtotal": float(quote.subtotal),
-            "discount_amount": float(quote.discount_amount),
-            "discount_percent": float(quote.discount_percent),
-            "tax_amount": float(quote.tax_amount),
-            "total": float(quote.total),
+            "subtotal": format_money_str(quote.subtotal, quote.currency),
+            "discount_amount": format_money_str(quote.discount_amount, quote.currency),
+            "discount_percent": str(quote.discount_percent),
+            "tax_amount": format_money_str(quote.tax_amount, quote.currency),
+            "total": format_money_str(quote.total, quote.currency),
             "status": quote.status,
             "client_notes": quote.client_notes,
-            "admin_notes": quote.admin_notes,
+            "admin_notes": quote.admin_notes if can_view_internal_notes else "",
             "converted_order_id": str(quote.converted_order_id) if quote.converted_order_id else None,
             "created_at": quote.created_at.isoformat(),
             "items": [{
                 "id": str(it.id),
                 "product_id": str(it.product_id) if it.product_id else None,
                 "product_name": it.product_name,
-                "unit_price": float(it.unit_price),
+                "unit_price": format_money_str(it.unit_price, quote.currency),
                 "quantity": it.quantity,
-                "subtotal": float(it.subtotal),
+                "subtotal": format_money_str(it.subtotal, quote.currency),
             } for it in quote.items.all()],
         })
 
@@ -293,7 +302,28 @@ def admin_b2b_quote_detail(request, quote_id):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+    # CRM-PF-02: Resolver jurisdicción tributaria explícita si se intenta emitir/aprobar o si se envía país/régimen
     new_status = data.get("status")
+    has_explicit_tax_params = ("country" in data) or ("tax_regime" in data)
+    tax_contract = None
+    if has_explicit_tax_params:
+        tax_contract = resolve_b2b_tax_contract(
+            country=data.get("country"),
+            currency=quote.currency,
+            tax_regime=data.get("tax_regime"),
+        )
+        if not tax_contract.is_resolved and new_status == B2BQuoteStatus.APPROVED:
+            return Response({"error": tax_contract.reason}, status=status.HTTP_400_BAD_REQUEST)
+    elif new_status == B2BQuoteStatus.APPROVED and quote.tax_amount == Decimal("0.00"):
+        # Si no hay impuesto resuelto ni jurisdicción declarada, impedir emisión definitiva sin configuración fiscal
+        tax_contract = resolve_b2b_tax_contract(
+            country=data.get("country"),
+            currency=quote.currency,
+            tax_regime=data.get("tax_regime"),
+        )
+        if not tax_contract.is_resolved:
+            return Response({"error": tax_contract.reason}, status=status.HTTP_400_BAD_REQUEST)
+
     if new_status and new_status in B2BQuoteStatus.values:
         quote.status = new_status
 
@@ -302,14 +332,22 @@ def admin_b2b_quote_detail(request, quote_id):
 
     if "discount_percent" in data and d_pct is not None:
         quote.discount_percent = d_pct
-        quote.discount_amount = (quote.subtotal * d_pct / Decimal("100")).quantize(Decimal("0.01"))
+        quote.discount_amount = (quote.subtotal * d_pct / Decimal("100")).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
     elif "discount_amount" in data and d_amt is not None:
         quote.discount_amount = min(quote.subtotal, d_amt)
         quote.discount_percent = d_pct if d_pct is not None else Decimal("0.00")
 
     net_after_discount = max(Decimal("0.00"), quote.subtotal - quote.discount_amount)
-    quote.tax_amount = (net_after_discount * Decimal("0.19")).quantize(Decimal("0.01")) if quote.currency == "CLP" else Decimal("0.00")
-    quote.total = net_after_discount + quote.tax_amount
+    if tax_contract is not None and tax_contract.is_resolved:
+        quote.tax_amount = tax_contract.compute_tax(net_after_discount)
+    elif quote.tax_amount > Decimal("0.00") and quote.subtotal > Decimal("0.00"):
+        # Preservar tasa implícita de cotización histórica sin asumir CLP => 19%
+        prev_net = max(Decimal("1.00"), quote.subtotal)
+        eff_rate = (quote.tax_amount / prev_net).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+        quote.tax_amount = (net_after_discount * eff_rate).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+    quote.total = (net_after_discount + quote.tax_amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
     quote.save()
 
     record_audit_event(
@@ -318,12 +356,13 @@ def admin_b2b_quote_detail(request, quote_id):
         event_category=CATEGORY_MODIFICATION,
         resource_type="B2BQuote",
         resource_id=str(quote.id),
-        resource_repr=f"Cotización B2B #{str(quote.id)[:8].upper()} - {quote.company_name}",
+        resource_repr=f"Cotización B2B #{str(quote.id)[:8].upper()}",
         actor=request.user,
         new_values={
             "status": quote.status,
             "discount_percent": str(quote.discount_percent),
             "total": str(quote.total),
+            "currency": quote.currency,
         },
         mandatory=True,
     )
@@ -331,9 +370,10 @@ def admin_b2b_quote_detail(request, quote_id):
     return Response({
         "id": str(quote.id),
         "status": quote.status,
-        "discount_percent": float(quote.discount_percent),
-        "discount_amount": float(quote.discount_amount),
-        "total": float(quote.total),
+        "discount_percent": str(quote.discount_percent),
+        "discount_amount": format_money_str(quote.discount_amount, quote.currency),
+        "tax_amount": format_money_str(quote.tax_amount, quote.currency),
+        "total": format_money_str(quote.total, quote.currency),
         "admin_notes": quote.admin_notes,
     })
 
@@ -349,74 +389,38 @@ def admin_b2b_quote_detail(request, quote_id):
 def admin_b2b_quote_convert(request, quote_id):
     """
     POST /api/v1/admin/orders/b2b/quotes/{id}/convert/
-    Convierte una cotización B2B aprobada en una Order en estado pending con precios congelados.
+    CRM-PF-01: Convierte una cotización B2B aprobada en una Order integrando OMS y WMS.
     """
-    try:
-        quote = B2BQuote.objects.select_for_update().prefetch_related("items__product").get(id=quote_id)
-    except B2BQuote.DoesNotExist:
+    quote = B2BQuote.objects.filter(id=quote_id).first()
+    if quote is None:
         return Response({"error": "Cotización B2B no encontrada."}, status=status.HTTP_404_NOT_FOUND)
 
-    if quote.status == B2BQuoteStatus.CONVERTED:
+    payload = request.data if isinstance(request.data, dict) else {}
+    idem_key = payload.get("idempotency_key") or request.headers.get("Idempotency-Key")
+    try:
+        order, is_replay = convert_b2b_quote_to_order(
+            quote,
+            idempotency_key=idem_key,
+            shipping_address=payload.get("shipping_address"),
+            actor=request.user,
+        )
+    except B2BPreflightError as exc:
         return Response(
-            {"error": "Esta cotización ya fue convertida en orden de compra.", "order_id": str(quote.converted_order_id)},
+            {
+                "error": str(exc),
+                "order_id": str(quote.converted_order_id) if quote.converted_order_id else None,
+            },
             status=status.HTTP_400_BAD_REQUEST,
         )
-
-    if quote.status != B2BQuoteStatus.APPROVED:
-        return Response(
-            {"error": "Solo cotizaciones en estado 'approved' pueden ser convertidas en pedido."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
-
-    # Construir demanda de inventario
-    stock_demand = {}
-    for item in quote.items.all():
-        if item.product_id:
-            stock_demand[str(item.product_id)] = stock_demand.get(str(item.product_id), 0) + item.quantity
-
-    # Crear Order
-    order = Order.objects.create(
-        user=quote.user,
-        email=quote.email,
-        shipping_address=f"Despacho B2B — {quote.company_name} (RUT/CUIT: {quote.tax_id})",
-        notes=f"Generada desde Cotización B2B #{str(quote.id)[:8].upper()}. {quote.client_notes}".strip(),
-        total=quote.total,
-        currency=quote.currency,
-        status="pending",
-        stock_deductions=stock_demand,
-        loyalty_points_redeemed=0,
-        loyalty_discount=Decimal("0.00"),
-    )
-
-    for item in quote.items.all():
-        OrderItem.objects.create(
-            order=order,
-            product=item.product,
-            product_name=item.product_name,
-            price=item.unit_price,
-            quantity=item.quantity,
-        )
-
-    quote.converted_order = order
-    quote.status = B2BQuoteStatus.CONVERTED
-    quote.save(update_fields=["converted_order", "status"])
-
-    record_audit_event(
-        module="orders",
-        action="B2B_QUOTE_CONVERTED",
-        event_category=CATEGORY_ORDER_STATUS,
-        resource_type="B2BQuote",
-        resource_id=str(quote.id),
-        resource_repr=f"Cotización B2B #{str(quote.id)[:8].upper()} convertida en Orden #{order.id}",
-        actor=request.user,
-        new_values={"order_id": str(order.id), "total": str(order.total)},
-        mandatory=True,
-    )
 
     return Response({
         "order_id": str(order.id),
         "quote_id": str(quote.id),
-        "status": quote.status,
-        "total": float(order.total),
+        "status": B2BQuoteStatus.CONVERTED,
+        "total": format_money_str(order.total, order.currency),
         "currency": order.currency,
-    }, status=status.HTTP_201_CREATED)
+        "commercial_status": order.commercial_status,
+        "financial_status": order.financial_status,
+        "fulfillment_status": order.fulfillment_status,
+        "idempotent_replay": is_replay,
+    }, status=status.HTTP_200_OK if is_replay else status.HTTP_201_CREATED)
