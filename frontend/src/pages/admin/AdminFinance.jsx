@@ -13,15 +13,29 @@ import {
   getWithdrawals, createWithdrawal, deleteWithdrawal,
   getAnalytics,
 } from "../../api/admin.api"
+import {
+  ReconciliationPanel,
+  TreasuryPanel,
+  AccountsReceivablePanel,
+  AccountsPayablePanel,
+  ExternalTaxPanel,
+  CashFlowPanel,
+} from "../../components/admin/Gate9FinancePanels"
 
 const fmt = (n, currency = "CLP") => formatCurrency(n, currency)
 const TABS  = [
-  { key:"overview",    label:"Resumen"       },
-  { key:"income",      label:"Ingresos"      },
-  { key:"withdrawals", label:"Retiros"       },
-  { key:"categories",  label:"Configuración" },
-  { key:"by_product",  label:"Por producto"  },
-  { key:"analysis",    label:"Análisis"      },
+  { key:"overview",       label:"Resumen"          },
+  { key:"reconciliation", label:"Conciliación"     },
+  { key:"treasury",       label:"Tesorería"        },
+  { key:"ar",             label:"Cuentas x Cobrar" },
+  { key:"ap",             label:"Cuentas x Pagar"  },
+  { key:"cash_flow",      label:"Flujo de Caja"    },
+  { key:"tax_records",    label:"Tributario"       },
+  { key:"income",         label:"Ingresos"         },
+  { key:"withdrawals",    label:"Retiros"          },
+  { key:"categories",     label:"Configuración"    },
+  { key:"by_product",     label:"Por producto"     },
+  { key:"analysis",       label:"Análisis"         },
 ]
 
 // ── KPI Card ─────────────────────────────────────────────────
@@ -400,9 +414,9 @@ export default function AdminFinance() {
           Icon={TrendingUp} />
         <KpiCard variant="light" label="Total retirado"
           value={money(summary?.total_withdrawn)} sub={`Retiros identificados en ${currency}`} Icon={ArrowUpFromLine} />
-        <KpiCard variant="primary" label="Balance neto"
+        <KpiCard variant="primary" label="Balance operativo neto"
           value={summary?.reconciliation_required ? "Por conciliar" : money(summary?.net_balance)}
-          sub={summary?.reconciliation_required ? "Sin balance certificado: historial pendiente" : "Saldo verificado por moneda"}
+          sub={summary?.reconciliation_required ? "Sin balance operativo: historial sin moneda pendiente" : "Ingresos clasificados menos retiros (no es saldo bancario)"}
           Icon={Wallet} />
       </div>
 
@@ -760,6 +774,13 @@ export default function AdminFinance() {
           )}
         </div>
       )}
+
+      {tab === "reconciliation" && <ReconciliationPanel currency={currency} />}
+      {tab === "treasury"       && <TreasuryPanel currency={currency} />}
+      {tab === "ar"             && <AccountsReceivablePanel currency={currency} />}
+      {tab === "ap"             && <AccountsPayablePanel currency={currency} />}
+      {tab === "cash_flow"      && <CashFlowPanel currency={currency} />}
+      {tab === "tax_records"    && <ExternalTaxPanel />}
     </div>
   )
 }

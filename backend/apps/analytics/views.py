@@ -395,8 +395,11 @@ class AdminOrderViewSet(viewsets.ModelViewSet):
                 pago.status = "cancelled"
                 pago.save(update_fields=["status"])
 
-            # Elimina IncomeRecord (y sus distribuciones, por CASCADE)
-            IncomeRecord.objects.filter(order=order).delete()
+            # FIN9-PF-02: Preserva historial financiero mediante reversión compensatoria auditable (sin DELETE)
+            from .finance_preflight import preserve_or_compensate_income_records
+            preserve_or_compensate_income_records(
+                order, reason_source="cancellation_reversal", actor=request.user
+            )
 
         # ── Email al cliente — solo si el estado REALMENTE cambió ──
         # (evita reenviar el mismo aviso si el admin re-guarda sin cambiar
@@ -1845,81 +1848,46 @@ def admin_payments(request):
 @permission_classes([IsAdminOrStaff])
 @transaction.atomic
 def admin_update_payment_status(request, payment_id):
-    """PATCH /api/v1/admin/payments/{id}/status/"""
-    
+    """
+    PATCH /api/v1/admin/payments/{id}/status/
+    FIN9-PF-01 & FIN9-PF-02: Delega en reconcile_manual_payment_approval() preservando
+    historial financiero (reversión compensatoria) y trazabilidad de conciliación.
+    """
+    from .finance_preflight import FinancePreflightError, reconcile_manual_payment_approval
 
     try:
         payment = Payment.objects.select_related("order").get(id=payment_id)
     except Payment.DoesNotExist:
         return Response({"error": "Pago no encontrado."}, status=404)
 
-    order = Order.objects.select_for_update().get(pk=payment.order_id)
-    payment = Payment.objects.select_for_update().get(pk=payment.pk)
-    payment.order = order
+    data = request.data or {}
+    new_status = data.get("status")
+    strict_mode = bool(data.get("strict_reconciliation", False))
+    try:
+        res = reconcile_manual_payment_approval(
+            payment,
+            target_status=new_status,
+            bank_account_id=data.get("bank_account_id"),
+            bank_reference=data.get("bank_reference", ""),
+            effective_date=data.get("effective_date"),
+            verified_amount=data.get("verified_amount"),
+            verified_currency=data.get("verified_currency"),
+            manual_exception_reason=data.get("manual_exception_reason", ""),
+            idempotency_key=data.get("idempotency_key") or request.headers.get("Idempotency-Key"),
+            require_evidence=strict_mode,
+            actor=request.user,
+        )
+    except FinancePreflightError as exc:
+        return Response({"error": str(exc)}, status=400)
 
-    new_status = request.data.get("status")
-    valid = ["pending", "approved", "rejected", "cancelled", "refunded"]
-    if new_status not in valid:
-        return Response({"error": f"Estado inválido. Opciones: {valid}"}, status=400)
-
-    old_status = payment.status
-    payment.status = new_status
-
-    if new_status == "approved" and old_status != "approved":
-        from django.utils import timezone
-        payment.paid_at = timezone.now()
-
-    payment.save()
-
-    # ── Sincroniza la orden ──────────────────────────────────
-    # El guardado de arriba (payment.save()) ya disparó el signal
-    # update_order_status de apps/payments/signals.py, que marca
-    # order.status="paid" automáticamente cuando corresponde — y ESO
-    # a su vez dispara toda la cadena real (IncomeRecord en finanzas,
-    # inscripción a curso en academia, puntos en loyalty). No hace
-    # falta (ni conviene) repetir "order.status = paid" + "crear
-    # IncomeRecord" acá — es la misma lógica duplicada que ya
-    # limpiamos antes en el update_status de órdenes.
-    order = payment.order
-    if new_status in ["rejected", "cancelled"]:
-        # Cancela la orden si no hay otro pago aprobado
-        other_approved = order.payments.filter(
-            status="approved"
-        ).exclude(id=payment.id).exists()
-        if not other_approved:
-            order.status = "cancelled"
-            order.save(update_fields=["status"])
-            # Elimina IncomeRecord si existía
-            IncomeRecord.objects.filter(order=order).delete()
-
-    elif new_status == "refunded":
-        order.status = "cancelled"
-        order.save(update_fields=["status"])
-        # Marca el IncomeRecord como reembolsado eliminándolo
-        IncomeRecord.objects.filter(order=order).delete()
-
-    act = "PAYMENT_APPROVED" if new_status == "approved" else ("PAYMENT_REJECTED" if new_status == "rejected" else f"PAYMENT_STATUS_{new_status.upper()}")
-    sev = SEVERITY_WARNING if new_status in ["rejected", "cancelled"] else SEVERITY_INFO
-    record_audit_event(
-        module=MODULE_FINANCES,
-        action=act,
-        event_category=CATEGORY_PAYMENT_OPERATION,
-        resource_type="Payment",
-        resource_id=str(payment.id),
-        resource_repr=f"Pago #{payment.id} (${payment.amount} {payment.currency})",
-        actor=request.user,
-        previous_values={"status": old_status},
-        new_values={"status": new_status},
-        changed_fields=["status"],
-        severity=sev,
-        mandatory=True,
-    )
-
+    updated_payment = res["payment"]
+    updated_order = res["order"]
     return Response({
-        "id":         str(payment.id),
-        "status":     payment.status,
-        "order_id":   str(order.id),
-        "order_status": order.status,
+        "id": str(updated_payment.id),
+        "status": updated_payment.status,
+        "order_id": str(updated_order.id),
+        "order_status": updated_order.status,
+        "idempotent_replay": res["idempotent_replay"],
     })
     
     

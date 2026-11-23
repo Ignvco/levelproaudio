@@ -56,6 +56,21 @@ from apps.users.views_rbac import (
     user_roles_management_view,
     permissions_catalog_view,
 )
+from .finance_views import (
+    admin_finance_reconciliation_view,
+    admin_finance_treasury_accounts_view,
+    admin_finance_treasury_verify_opening_view,
+    admin_finance_internal_transfer_view,
+    admin_finance_statement_import_view,
+    admin_finance_bank_transactions_view,
+    admin_finance_ar_view,
+    admin_finance_ar_aging_view,
+    admin_finance_ar_allocate_view,
+    admin_finance_ap_view,
+    admin_finance_ap_pay_view,
+    admin_finance_cash_flow_view,
+    admin_finance_accounting_export_view,
+)
 from .views_audit import (
     audit_events_list_view,
     audit_event_detail_view,
@@ -131,6 +146,20 @@ urlpatterns = [
     path("finance/categories/<uuid:cat_id>/",           admin_finance_category_detail,      name="finance-category-detail"),
     path("finance/withdrawals/",                        admin_finance_withdrawals,          name="finance-withdrawals"),
     path("finance/withdrawals/<uuid:withdrawal_id>/",   admin_finance_withdrawal_delete,    name="finance-withdrawal-delete"),
+    # GATE 9 — Financial Management
+    path("finance/reconciliation/",                     admin_finance_reconciliation_view,    name="finance-reconciliation"),
+    path("finance/cash-flow/",                          admin_finance_cash_flow_view,         name="finance-cash-flow"),
+    path("finance/treasury-accounts/",                  admin_finance_treasury_accounts_view, name="finance-treasury-accounts"),
+    path("finance/treasury-accounts/<uuid:acct_id>/verify-opening/", admin_finance_treasury_verify_opening_view, name="finance-treasury-verify-opening"),
+    path("finance/treasury-accounts/internal-transfer/", admin_finance_internal_transfer_view, name="finance-internal-transfer"),
+    path("finance/bank-statements/import/",             admin_finance_statement_import_view,  name="finance-statement-import"),
+    path("finance/bank-transactions/",                  admin_finance_bank_transactions_view, name="finance-bank-transactions"),
+    path("finance/ar/",                                 admin_finance_ar_view,                name="finance-ar"),
+    path("finance/ar/aging/",                           admin_finance_ar_aging_view,          name="finance-ar-aging"),
+    path("finance/ar/<uuid:ar_id>/allocate/",           admin_finance_ar_allocate_view,       name="finance-ar-allocate"),
+    path("finance/ap/",                                 admin_finance_ap_view,                name="finance-ap"),
+    path("finance/ap/<uuid:ap_id>/pay/",                admin_finance_ap_pay_view,            name="finance-ap-pay"),
+    path("finance/accounting-export/",                  admin_finance_accounting_export_view, name="finance-accounting-export"),
 
     # Academia
     path("academy/",           admin_academy,      name="admin-academy"),

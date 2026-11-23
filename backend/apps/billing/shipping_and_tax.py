@@ -80,11 +80,31 @@ def validate_argentine_cuit(cuit_str: str) -> bool:
 # 2. GENERADORES DE COMPROBANTES TRIBUTARIOS
 # ═══════════════════════════════════════════════════════════════
 
-def generate_sii_dte_payload(order, buyer_tax_id: str, buyer_name: str, dte_type: str = "33") -> dict:
+def _resolve_configured_emitter(emitter_config: dict = None) -> dict:
     """
-    Genera el esquema estructurado para emisión de DTE del Servicio de Impuestos Internos (SII) de Chile.
-    dte_type: '33' (Factura Electrónica), '39' (Boleta Electrónica).
-    Invariante: Exclusivo para órdenes en CLP.
+    FIN9-PF-04: Evita datos fiscales ficticios predeterminados.
+    Solo retorna datos de emisor cuando provienen de configuración explícita autorizada.
+    """
+    from django.conf import settings
+    cfg = emitter_config or getattr(settings, "BILLING_EMITTER_INFO", None) or {}
+    if not cfg or not cfg.get("tax_id") or not cfg.get("legal_name"):
+        return {
+            "configured": False,
+            "legal_status": "api_ready_draft_only_unconfigured_emitter",
+        }
+    return {
+        "configured": True,
+        "tax_id": str(cfg["tax_id"]),
+        "razon_social": str(cfg["legal_name"]),
+        "giro": str(cfg.get("business_activity") or ""),
+        "comuna": str(cfg.get("commune") or ""),
+        "ciudad": str(cfg.get("city") or ""),
+    }
+
+
+def generate_sii_dte_payload(order, buyer_tax_id: str, buyer_name: str, dte_type: str = "33", emitter_config: dict = None) -> dict:
+    """
+    FIN9-PF-04: Esquema API-ready referencial (NO emite folios oficiales, NO firma XML ni transmite al SII).
     """
     if (order.currency or "").upper() != "CLP":
         raise ValueError("Los documentos tributarios chilenos (SII) deben emitirse exclusivamente en CLP.")
@@ -99,18 +119,16 @@ def generate_sii_dte_payload(order, buyer_tax_id: str, buyer_name: str, dte_type
 
     return {
         "sii_version": "1.0",
+        "api_ready_draft_only": True,
+        "dte_emitted": False,
+        "transmitted_to_authority": False,
+        "is_legal_dte": False,
         "tipo_dte": int(dte_type),
-        "emisor": {
-            "rut": "77.890.123-4",
-            "razon_social": "LEVELPRO AUDIO SPA",
-            "giro": "Venta al por mayor y menor de instrumentos y equipamiento de audio",
-            "comuna": "Providencia",
-            "ciudad": "Santiago",
-        },
+        "emisor": _resolve_configured_emitter(emitter_config),
         "receptor": {
             "rut": clean_tax_id(buyer_tax_id),
             "razon_social": buyer_name.strip(),
-            "direccion": order.shipping_address or "Santiago, Chile",
+            "direccion": order.shipping_address or "",
         },
         "totales": {
             "moneda": "CLP",
@@ -126,11 +144,9 @@ def generate_sii_dte_payload(order, buyer_tax_id: str, buyer_name: str, dte_type
     }
 
 
-def generate_afip_invoice_payload(order, cuit: str, recipient_name: str, invoice_type: str = "A") -> dict:
+def generate_afip_invoice_payload(order, cuit: str, recipient_name: str, invoice_type: str = "A", emitter_config: dict = None) -> dict:
     """
-    Genera el esquema para factura electrónica AFIP / ARCA de Argentina.
-    invoice_type: 'A' (Responsable Inscripto), 'B' (Consumidor Final).
-    Invariante: Denominado en ARS o USD.
+    FIN9-PF-04: Esquema API-ready referencial AFIP/ARCA (NO emite ni transmite).
     """
     currency = (order.currency or "").upper()
     if currency not in ("ARS", "USD"):
@@ -146,13 +162,13 @@ def generate_afip_invoice_payload(order, cuit: str, recipient_name: str, invoice
 
     return {
         "afip_wsfe_version": "2.0",
+        "api_ready_draft_only": True,
+        "dte_emitted": False,
+        "transmitted_to_authority": False,
+        "is_legal_dte": False,
         "tipo_comprobante": 1 if invoice_type == "A" else 6,  # 1 = Factura A, 6 = Factura B
         "punto_de_venta": 1,
-        "emisor": {
-            "cuit": "30718901231",
-            "razon_social": "LEVELPRO AUDIO ARGENTINA S.R.L.",
-            "condicion_iva": "Responsable Inscripto",
-        },
+        "emisor": _resolve_configured_emitter(emitter_config),
         "receptor": {
             "cuit": re.sub(r"[^0-9]", "", str(cuit)),
             "razon_social": recipient_name.strip(),

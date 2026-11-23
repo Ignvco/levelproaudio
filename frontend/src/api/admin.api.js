@@ -328,3 +328,57 @@ export const updateSpecialOrder = (id, data) =>
 
 export const deleteSpecialOrder = (id) =>
   api.delete(`/admin/special-orders/${id}/`).then(r => r.data)
+
+// ── Gate 9: Financial Management (BF-24, BF-36, BF-37, BF-38, BF-39) ──
+export const getFinanceReconciliation = (params = {}) =>
+  api.get(`${BASE}/finance/reconciliation/`, { params }).then(r => r.data)
+
+export const postFinanceReconciliation = (data) =>
+  api.post(`${BASE}/finance/reconciliation/`, data).then(r => r.data)
+
+export const getTreasuryAccounts = (params = {}) =>
+  api.get(`${BASE}/finance/treasury-accounts/`, { params }).then(r => r.data)
+
+export const createTreasuryAccount = (data) =>
+  api.post(`${BASE}/finance/treasury-accounts/`, data).then(r => r.data)
+
+export const postInternalTransfer = (data) =>
+  api.post(`${BASE}/finance/treasury-accounts/internal-transfer/`, data).then(r => r.data)
+
+export const importBankStatement = (formData) =>
+  api.post(`${BASE}/finance/bank-statements/import/`, formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  }).then(r => r.data)
+
+export const getBankTransactions = (params = {}) =>
+  api.get(`${BASE}/finance/bank-transactions/`, { params }).then(r => r.data)
+
+export const getAccountsReceivable = (params = {}) =>
+  api.get(`${BASE}/finance/ar/`, { params }).then(r => r.data)
+
+export const createAccountReceivable = (data) =>
+  api.post(`${BASE}/finance/ar/`, data).then(r => r.data)
+
+export const getArAging = (currency = "CLP") =>
+  api.get(`${BASE}/finance/ar/aging/`, { params: { currency } }).then(r => r.data)
+
+export const allocateReceivable = (arId, data) =>
+  api.post(`${BASE}/finance/ar/${arId}/allocate/`, data).then(r => r.data)
+
+export const getAccountsPayable = (params = {}) =>
+  api.get(`${BASE}/finance/ap/`, { params }).then(r => r.data)
+
+export const createAccountPayable = (data) =>
+  api.post(`${BASE}/finance/ap/`, data).then(r => r.data)
+
+export const payAccountPayable = (apId, data) =>
+  api.post(`${BASE}/finance/ap/${apId}/pay/`, data).then(r => r.data)
+
+export const getCashFlowProjection = (currency = "CLP", scenario = "base") =>
+  api.get(`${BASE}/finance/cash-flow/`, { params: { currency, scenario } }).then(r => r.data)
+
+export const downloadAccountingExportCsv = (currency = "CLP") =>
+  api.get(`${BASE}/finance/accounting-export/`, {
+    params: { currency },
+    responseType: "blob",
+  }).then(r => r.data)
