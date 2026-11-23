@@ -309,6 +309,58 @@ class OrderItem(TimeStampedModel):
 
     quantity = models.PositiveIntegerField()
 
+    # ── GATE 6 (BF-09 & BF-18): Snapshots inmutables de Costo de Venta (COGS) ──
+    unit_cost_snapshot = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Costo unitario real congelado al momento de salida física / venta.",
+    )
+    total_cost_snapshot = models.DecimalField(
+        max_digits=14,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Costo total de venta (COGS) congelado para esta línea.",
+    )
+    cost_currency = models.CharField(
+        max_length=3,
+        blank=True,
+        default="",
+        help_text="Moneda del snapshot de costo (CLP, USD, ARS).",
+    )
+    costing_method_snapshot = models.CharField(
+        max_length=30,
+        blank=True,
+        default="",
+        help_text="Método de costeo aplicado (specific_serial, weighted_average, catalog_fallback).",
+    )
+    cost_frozen_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Timestamp en que se congeló definitivamente el costo de venta.",
+    )
+    tax_rate_snapshot = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Tasa de impuesto explícitamente verificada sobre la venta (None si no verificada).",
+    )
+    net_unit_revenue_snapshot = models.DecimalField(
+        max_digits=14,
+        decimal_places=4,
+        null=True,
+        blank=True,
+        help_text="Ingreso neto unitario verificado (sin conversión silenciosa si faltan datos tributarios).",
+    )
+    allocated_serial_numbers = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Lista de números de serie cuyos costos específicos fueron consumidos en esta línea.",
+    )
+
     class Meta:
         ordering = ["created_at"]
 

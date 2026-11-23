@@ -31,6 +31,15 @@ from apps.procurement.po_views import (
     admin_goods_receipt_detail,
     admin_goods_receipt_confirm,
 )
+from apps.procurement.costing_views import (
+    admin_cost_layers_list,
+    admin_landed_cost_detail,
+    admin_landed_cost_finalize,
+    admin_landed_cost_list,
+    admin_pricing_margins_view,
+    admin_pricing_proposal_approve,
+    admin_pricing_simulator_view,
+)
 
 urlpatterns = [
     path("suppliers/", admin_suppliers_list, name="admin-suppliers-list"),
@@ -61,4 +70,12 @@ urlpatterns = [
     path("goods-receipts/", admin_goods_receipts_list, name="admin-goods-receipts-list"),
     path("goods-receipts/<uuid:gr_id>/", admin_goods_receipt_detail, name="admin-goods-receipt-detail"),
     path("goods-receipts/<uuid:gr_id>/confirm/", admin_goods_receipt_confirm, name="admin-goods-receipt-confirm"),
+    # GATE 6: Cost & Pricing Intelligence (BF-09 Cost Layers & BF-18 Landed Cost)
+    path("costing/landed-cost/", admin_landed_cost_list, name="admin-landed-cost-list"),
+    path("costing/landed-cost/<uuid:alloc_id>/", admin_landed_cost_detail, name="admin-landed-cost-detail"),
+    path("costing/landed-cost/<uuid:alloc_id>/finalize/", admin_landed_cost_finalize, name="admin-landed-cost-finalize"),
+    path("costing/layers/", admin_cost_layers_list, name="admin-cost-layers-list"),
+    path("pricing/margins/", admin_pricing_margins_view, name="admin-pricing-margins"),
+    path("pricing/simulator/", admin_pricing_simulator_view, name="admin-pricing-simulator"),
+    path("pricing/proposals/<uuid:proposal_id>/approve/", admin_pricing_proposal_approve, name="admin-pricing-proposal-approve"),
 ]
