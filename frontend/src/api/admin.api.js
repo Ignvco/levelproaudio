@@ -19,6 +19,46 @@ export const updateOrderStatus  = (id, status) =>
 export const updateOrderShipping = (id, data) =>
   api.patch(`${BASE}/orders/${id}/`, data).then(r => r.data)
 
+// ── GATE 7: Order Management System (OMS) ─────────────────────
+export const getAdminManualOrders = (params) =>
+  api.get(`${BASE}/orders/manual/`, { params }).then(r => r.data)
+export const getAdminManualOrder = (draftId) =>
+  api.get(`${BASE}/orders/manual/${draftId}/`).then(r => r.data)
+export const createAdminManualOrder = (data) =>
+  api.post(`${BASE}/orders/manual/`, data).then(r => r.data)
+export const updateAdminManualOrder = (draftId, data) =>
+  api.patch(`${BASE}/orders/manual/${draftId}/`, data).then(r => r.data)
+export const convertAdminManualOrder = (draftId, data = {}) =>
+  api.post(`${BASE}/orders/manual/${draftId}/convert/`, data).then(r => r.data)
+export const cancelAdminManualOrder = (draftId, data = {}) =>
+  api.post(`${BASE}/orders/manual/${draftId}/cancel/`, data).then(r => r.data)
+export const generateManualOrderWhatsappLink = (draftId, data = {}) =>
+  api.post(`${BASE}/orders/manual/${draftId}/whatsapp-link/`, data).then(r => r.data)
+
+export const getOrderStates3D = (orderId) =>
+  api.get(`${BASE}/orders/${orderId}/states/`).then(r => r.data)
+export const transitionOrderStates3D = (orderId, data) =>
+  api.post(`${BASE}/orders/${orderId}/states/`, data).then(r => r.data)
+export const getFulfillmentQueue = (params) =>
+  api.get(`${BASE}/orders/fulfillment-queue/`, { params }).then(r => r.data)
+export const dispatchOrderWMS = (orderId, data) =>
+  api.post(`${BASE}/orders/${orderId}/dispatch/`, data).then(r => r.data)
+export const recordOrderPaymentAttempt = (orderId, data) =>
+  api.post(`${BASE}/orders/${orderId}/payment-attempt/`, data).then(r => r.data)
+
+export const getAdminRMAs = (params) =>
+  api.get(`${BASE}/orders/rmas/`, { params }).then(r => r.data)
+export const getOrderRMAs = (orderId) =>
+  api.get(`${BASE}/orders/${orderId}/rma/`).then(r => r.data)
+export const createOrderRMA = (orderId, data) =>
+  api.post(`${BASE}/orders/${orderId}/rma/`, data).then(r => r.data)
+export const authorizeAdminRMA = (rmaId, data) =>
+  api.post(`${BASE}/orders/rmas/${rmaId}/authorize/`, data).then(r => r.data)
+export const inspectAdminRMA = (rmaId, data) =>
+  api.post(`${BASE}/orders/rmas/${rmaId}/inspect/`, data).then(r => r.data)
+export const refundAdminRMA = (rmaId, data) =>
+  api.post(`${BASE}/orders/rmas/${rmaId}/refund/`, data).then(r => r.data)
+
 // ── Products ─────────────────────────────────────────────────
 export const getAdminProducts   = (params) => api.get(`${BASE}/products/`, { params }).then(r => r.data)
 export const getAdminProduct    = (id) => api.get(`${BASE}/products/${id}/`).then(r => r.data)

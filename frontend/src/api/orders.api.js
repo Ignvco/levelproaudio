@@ -41,3 +41,14 @@ export const cancelOrder = async (id) => {
   const response = await api.delete(`/orders/${id}/`)
   return response.data
 }
+
+// ── GATE 7 (BF-12): WhatsApp Assisted Checkout ───────────────
+export const getWhatsappProposal = async (token) => {
+  const response = await api.get(`/orders/whatsapp/${encodeURIComponent(token)}/`)
+  return response.data
+}
+
+export const continueWhatsappCheckout = async (token, payload = {}) => {
+  const response = await api.post(`/orders/whatsapp/${encodeURIComponent(token)}/checkout/`, payload)
+  return response.data
+}

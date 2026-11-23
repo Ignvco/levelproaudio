@@ -70,16 +70,39 @@ class OrderSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(
         source="get_status_display", read_only=True
     )
-    payments       = PaymentSummarySerializer(many=True, read_only=True)  # ← agregado
+    commercial_status_display  = serializers.CharField(source="get_commercial_status_display", read_only=True)
+    financial_status_display   = serializers.CharField(source="get_financial_status_display", read_only=True)
+    fulfillment_status_display = serializers.CharField(source="get_fulfillment_status_display", read_only=True)
+    state_contract = serializers.SerializerMethodField()
+    sales_rep_email = serializers.SerializerMethodField()
+    assigned_warehouse_code = serializers.SerializerMethodField()
+    payments       = PaymentSummarySerializer(many=True, read_only=True)
+
+    def get_state_contract(self, obj):
+        return obj.state_contract.to_dict()
+
+    def get_sales_rep_email(self, obj):
+        return obj.sales_rep.email if obj.sales_rep_id and obj.sales_rep else None
+
+    def get_assigned_warehouse_code(self, obj):
+        return obj.assigned_warehouse.code if obj.assigned_warehouse_id and obj.assigned_warehouse else None
 
     class Meta:
         model  = Order
         fields = [
             "id", "status", "status_display",
+            "commercial_status", "commercial_status_display",
+            "financial_status", "financial_status_display",
+            "fulfillment_status", "fulfillment_status_display",
+            "order_origin", "state_contract",
+            "sales_rep", "sales_rep_email",
+            "assigned_warehouse", "assigned_warehouse_code",
+            "source_draft",
+            "customer_name", "customer_phone", "customer_tax_id",
             "total", "currency", "items_count",
             "loyalty_points_redeemed", "loyalty_discount",
             "email", "shipping_address", "notes",
             "shipping_carrier", "tracking_number",
-            "items", "payments",   # ← payments incluido
+            "items", "payments",
             "created_at",
         ]

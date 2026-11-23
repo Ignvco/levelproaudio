@@ -210,8 +210,29 @@ class OrderStateContract:
 
     @classmethod
     def from_order(cls, order: Any) -> "OrderStateContract":
-        """Extrae el contrato a partir de una instancia del modelo Order."""
-        return cls.from_legacy_status(getattr(order, "status", "pending"))
+        """
+        Extrae el contrato a partir de una instancia del modelo Order.
+        Si la orden posee campos tri-dimensionales persistidos (Gate 7 BF-13) y están sincronizados
+        con su estado legacy (o el cambio ocurrió vía motor tri-dimensional), los retorna directamente.
+        Si el código legacy modificó order.status directamente sin actualizar los tres ejes,
+        deriva el estado desde legacy_status para preservar compatibilidad 100%.
+        """
+        legacy = (getattr(order, "status", "pending") or "pending").strip().lower()
+        c_raw = getattr(order, "commercial_status", None)
+        f_raw = getattr(order, "financial_status", None)
+        l_raw = getattr(order, "fulfillment_status", None)
+        if c_raw and f_raw and l_raw:
+            try:
+                contract = cls(
+                    commercial=CommercialStatus(c_raw),
+                    financial=FinancialStatus(f_raw),
+                    fulfillment=FulfillmentStatus(l_raw),
+                )
+                if contract.to_legacy_status() == legacy:
+                    return contract
+            except ValueError:
+                pass
+        return cls.from_legacy_status(legacy)
 
     def to_dict(self) -> Dict[str, str]:
         return {

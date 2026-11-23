@@ -183,6 +183,89 @@ class Order(TimeStampedModel):
         help_text="Notas del cliente"
     )
 
+    # ── GATE 7 (BF-11, BF-12, BF-13): OMS Multi-Dimensional States & Commercial Origin ──
+    class CommercialStatusChoices(models.TextChoices):
+        DRAFT     = "draft",     "Borrador / Cotización asistida"
+        CONFIRMED = "confirmed", "Confirmada"
+        CANCELLED = "cancelled", "Cancelada"
+        COMPLETED = "completed", "Completada"
+
+    class FinancialStatusChoices(models.TextChoices):
+        UNPAID             = "unpaid",             "Sin pago"
+        PENDING            = "pending",            "Pago pendiente"
+        AUTHORIZED         = "authorized",         "Autorizado"
+        PAID               = "paid",               "Pagado"
+        PARTIALLY_PAID     = "partially_paid",     "Pagado parcialmente"
+        PARTIALLY_REFUNDED = "partially_refunded", "Reembolsado parcialmente"
+        REFUNDED           = "refunded",           "Reembolsado"
+        FAILED             = "failed",             "Pago fallido"
+
+    class FulfillmentStatusChoices(models.TextChoices):
+        UNFULFILLED       = "unfulfilled",       "Sin preparación"
+        ALLOCATED         = "allocated",         "Reservado / En preparación"
+        PARTIALLY_SHIPPED = "partially_shipped", "Despachado parcialmente"
+        SHIPPED           = "shipped",           "Despachado"
+        DELIVERED         = "delivered",         "Entregado"
+        RETURNED          = "returned",          "Devuelto (RMA)"
+
+    class OrderOriginChoices(models.TextChoices):
+        ONLINE   = "online",   "Checkout Web Online"
+        MANUAL   = "manual",   "Venta Manual Asistida"
+        WHATSAPP = "whatsapp", "Enlace WhatsApp Checkout"
+        B2B      = "b2b",      "Cotización B2B"
+
+    commercial_status = models.CharField(
+        max_length=20,
+        choices=CommercialStatusChoices.choices,
+        default=CommercialStatusChoices.CONFIRMED,
+        db_index=True,
+    )
+    financial_status = models.CharField(
+        max_length=24,
+        choices=FinancialStatusChoices.choices,
+        default=FinancialStatusChoices.PENDING,
+        db_index=True,
+    )
+    fulfillment_status = models.CharField(
+        max_length=24,
+        choices=FulfillmentStatusChoices.choices,
+        default=FulfillmentStatusChoices.ALLOCATED,
+        db_index=True,
+    )
+    order_origin = models.CharField(
+        max_length=20,
+        choices=OrderOriginChoices.choices,
+        default=OrderOriginChoices.ONLINE,
+        db_index=True,
+    )
+    sales_rep = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assisted_orders",
+        help_text="Ejecutivo comercial responsable de la orden.",
+    )
+    assigned_warehouse = models.ForeignKey(
+        "inventory.Warehouse",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_orders",
+        help_text="Bodega principal asignada para preparación y despacho.",
+    )
+    source_draft = models.OneToOneField(
+        "DraftOrder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="converted_order_link",
+        help_text="Borrador de venta manual que originó esta orden.",
+    )
+    customer_name = models.CharField(max_length=180, blank=True, default="")
+    customer_phone = models.CharField(max_length=60, blank=True, default="")
+    customer_tax_id = models.CharField(max_length=50, blank=True, default="")
+
     class Meta:
         verbose_name        = "Pedido"
         verbose_name_plural = "Pedidos"
@@ -190,10 +273,19 @@ class Order(TimeStampedModel):
         indexes             = [
             models.Index(fields=["status", "-created_at"], name="order_status_created_idx"),
             models.Index(fields=["currency", "status"], name="order_currency_status_idx"),
+            models.Index(fields=["commercial_status", "financial_status", "fulfillment_status"], name="order_3d_states_idx"),
         ]
 
     def __str__(self):
         return f"Order #{self.id}"
+
+    def _sync_3d_from_legacy_status(self):
+        """Sincroniza los 3 ejes desde el campo plano legacy status cuando se muta directamente."""
+        from core.contracts.states import OrderStateContract
+        contract = OrderStateContract.from_legacy_status(self.status)
+        self.commercial_status = contract.commercial.value
+        self.financial_status = contract.financial.value
+        self.fulfillment_status = contract.fulfillment.value
 
     def _validate_status_transition(self, previous_status):
         if previous_status == OrderStatus.CANCELLED and self.status != OrderStatus.CANCELLED:
@@ -209,7 +301,18 @@ class Order(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         update_fields = kwargs.get("update_fields")
-        if self._state.adding or (update_fields is not None and "status" not in update_fields):
+        if self._state.adding:
+            # Si se creó especificando status legacy (ej. status="paid") y los 3 ejes están en su default,
+            # sincronizar los 3 ejes con el estado legacy inicial.
+            if (
+                self.status != OrderStatus.PENDING
+                and self.commercial_status == self.CommercialStatusChoices.CONFIRMED
+                and self.financial_status == self.FinancialStatusChoices.PENDING
+                and self.fulfillment_status == self.FulfillmentStatusChoices.ALLOCATED
+            ):
+                self._sync_3d_from_legacy_status()
+            return super().save(*args, **kwargs)
+        if update_fields is not None and "status" not in update_fields:
             return super().save(*args, **kwargs)
         using = kwargs.get("using") or router.db_for_write(type(self), instance=self)
         with transaction.atomic(using=using):
@@ -248,8 +351,28 @@ class Order(TimeStampedModel):
                     dispatch_order_reservations(previous, allow_from_order_save=True)
                 except InventoryServiceError as exc:
                     raise ValidationError({"status": str(exc)}) from exc
-            # Las cancelaciones de pedidos ya pagados/enviados no prueban que
-            # la mercadería haya regresado: su devolución física sigue siendo manual.
+
+            # Sincronizar los 3 ejes si la mutación vino por la vía legacy (Order.status)
+            if update_fields is None or not any(
+                f in update_fields for f in ("commercial_status", "financial_status", "fulfillment_status")
+            ):
+                if previous.status != self.status:
+                    # Si la orden ya estaba pagada y se cancela comercialmente, NO marcar financial_status=failed
+                    if previous.financial_status in (
+                        self.FinancialStatusChoices.PAID,
+                        self.FinancialStatusChoices.PARTIALLY_PAID,
+                        self.FinancialStatusChoices.PARTIALLY_REFUNDED,
+                        self.FinancialStatusChoices.REFUNDED,
+                    ) and self.status == OrderStatus.CANCELLED:
+                        self.commercial_status = self.CommercialStatusChoices.CANCELLED
+                        self.financial_status = previous.financial_status
+                        self.fulfillment_status = previous.fulfillment_status
+                    else:
+                        self._sync_3d_from_legacy_status()
+                    if update_fields is not None:
+                        kwargs["update_fields"] = list(
+                            set(update_fields) | {"commercial_status", "financial_status", "fulfillment_status"}
+                        )
             return super().save(*args, **kwargs)
 
     @property
@@ -430,4 +553,378 @@ class B2BQuoteItem(TimeStampedModel):
 
     def __str__(self):
         return f"{self.product_name} x {self.quantity}"
+
+
+# ═══════════════════════════════════════════════════════════════
+# GATE 7 (BF-11, BF-12, BF-13, BF-23): ORDER MANAGEMENT SYSTEM
+# ═══════════════════════════════════════════════════════════════
+
+class DraftOrder(TimeStampedModel):
+    """
+    BF-11 & BF-12: Venta Manual Asistida / Propuesta Comercial con snapshots inmutables,
+    integración de reservas temporales WMS y generación de enlace seguro de WhatsApp Checkout.
+    """
+
+    class Status(models.TextChoices):
+        DRAFT     = "draft",     "Borrador en edición"
+        PROPOSED  = "proposed",  "Propuesta emitida"
+        RESERVED  = "reserved",  "Stock reservado temporalmente"
+        SHARED    = "shared",    "Enlace de pago compartido"
+        CONVERTED = "converted", "Convertido en pedido"
+        EXPIRED   = "expired",   "Vencido"
+        CANCELLED = "cancelled", "Cancelado"
+
+    class Channel(models.TextChoices):
+        MANUAL   = "manual",   "Venta Manual Ejecutiva"
+        WHATSAPP = "whatsapp", "WhatsApp Checkout"
+        PHONE    = "phone",    "Atención Telefónica"
+        SHOWROOM = "showroom", "Showroom / Sala de Ventas"
+
+    draft_number = models.CharField(max_length=40, unique=True, db_index=True)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.DRAFT,
+        db_index=True,
+    )
+    channel = models.CharField(
+        max_length=20,
+        choices=Channel.choices,
+        default=Channel.MANUAL,
+    )
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="draft_orders",
+    )
+    customer_name = models.CharField(max_length=180)
+    customer_email = models.EmailField()
+    customer_phone = models.CharField(max_length=60, blank=True, default="")
+    customer_tax_id = models.CharField(max_length=50, blank=True, default="")
+    shipping_address = models.TextField(blank=True, default="")
+
+    currency = models.CharField(max_length=10, default="CLP")
+    subtotal = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
+    discount_amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    tax_amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    total = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+
+    valid_until = models.DateTimeField(null=True, blank=True, db_index=True)
+    reserve_inventory = models.BooleanField(default=False)
+    reservation_session_key = models.CharField(max_length=120, blank=True, default="", db_index=True)
+    reservation_expires_at = models.DateTimeField(null=True, blank=True)
+    warehouse = models.ForeignKey(
+        "inventory.Warehouse",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="draft_orders",
+    )
+
+    notes = models.TextField(blank=True, default="", help_text="Observaciones visibles para el cliente.")
+    internal_notes = models.TextField(blank=True, default="", help_text="Notas internas privadas de ventas.")
+    terms_snapshot = models.TextField(blank=True, default="")
+
+    # BF-12: Token opaco y enlace seguro de WhatsApp Checkout
+    checkout_token = models.CharField(max_length=128, unique=True, null=True, blank=True, db_index=True)
+    checkout_token_expires_at = models.DateTimeField(null=True, blank=True)
+    whatsapp_shared_at = models.DateTimeField(null=True, blank=True)
+
+    # Conversión idempotente a Order
+    converted_order = models.OneToOneField(
+        Order,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="originating_draft_order",
+    )
+    conversion_idempotency_key = models.CharField(max_length=160, unique=True, null=True, blank=True)
+
+    sales_rep = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_draft_orders",
+    )
+    approved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="approved_draft_orders",
+    )
+
+    class Meta:
+        verbose_name = "Borrador de Venta Manual"
+        verbose_name_plural = "Borradores de Ventas Manuales"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.draft_number} — {self.customer_name} ({self.status})"
+
+
+class DraftOrderItem(TimeStampedModel):
+    """
+    BF-11: Línea de propuesta comercial / venta manual con snapshots congelados de SKU,
+    nombre, variante, precio de catálogo y precio autorizado.
+    """
+
+    draft_order = models.ForeignKey(
+        DraftOrder,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    product = models.ForeignKey(
+        "products.Product",
+        on_delete=models.PROTECT,
+        related_name="draft_order_items",
+    )
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="draft_order_items",
+    )
+    sku_snapshot = models.CharField(max_length=100)
+    product_name_snapshot = models.CharField(max_length=300)
+    variant_name_snapshot = models.CharField(max_length=250, blank=True, default="")
+    product_type_snapshot = models.CharField(max_length=20, default="stock")
+    quantity = models.PositiveIntegerField(default=1)
+    catalog_unit_price_snapshot = models.DecimalField(max_digits=14, decimal_places=2)
+    authorized_unit_price = models.DecimalField(max_digits=14, decimal_places=2)
+    currency = models.CharField(max_length=10, default="CLP")
+    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
+    subtotal = models.DecimalField(max_digits=14, decimal_places=2)
+    notes = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        verbose_name = "Ítem de Borrador de Venta"
+        verbose_name_plural = "Ítems de Borrador de Venta"
+        ordering = ["created_at", "pk"]
+
+    def __str__(self):
+        return f"{self.sku_snapshot} x {self.quantity} ({self.draft_order.draft_number})"
+
+
+class ReturnMerchandiseAuthorization(TimeStampedModel):
+    """
+    BF-23: Autorización formal de devolución y reembolso (RMA).
+    Diferencia estrictamente:
+    1. Solicitud comercial (requested).
+    2. Autorización de retorno (authorized / rejected).
+    3. Recepción física en bodega (received).
+    4. Inspección técnica (inspected).
+    5. Reingreso controlado a stock vendible o no vendible (restocked / quarantined / scrapped).
+    6. Resolución y ejecución de reembolso financiero (refund_status).
+    """
+
+    class Status(models.TextChoices):
+        REQUESTED  = "requested",  "1. Devolución solicitada"
+        AUTHORIZED = "authorized", "2. Retorno autorizado"
+        REJECTED   = "rejected",   "Rechazada comercialmente"
+        RECEIVED   = "received",   "3. Producto recibido físicamente"
+        INSPECTED  = "inspected",  "4. Inspección física completada"
+        RESTOCKED  = "restocked",  "5. Reincorporado a inventario"
+        CLOSED     = "closed",     "6. Caso RMA cerrado"
+        CANCELLED  = "cancelled",  "Cancelada"
+
+    class ReasonCode(models.TextChoices):
+        DEFECTIVE        = "defective",        "Falla técnica / Defecto de fábrica"
+        DAMAGED_SHIPPING = "damaged_shipping", "Daño en transporte"
+        WRONG_ITEM       = "wrong_item",       "Producto o variante incorrecta"
+        COMMERCIAL_CHANGE = "commercial_change", "Cambio comercial autorizado"
+        RETRACT          = "retract",          "Retracto legal"
+        OTHER            = "other",            "Otro motivo"
+
+    class RefundStatus(models.TextChoices):
+        NONE                         = "none",                         "Sin reembolso"
+        PENDING_APPROVAL             = "pending_approval",             "Pendiente de aprobación financiera"
+        APPROVED_PENDING_EXECUTION   = "approved_pending_execution",   "Aprobado — Pendiente de ejecución autorizada"
+        EXECUTED                     = "executed",                     "Reembolso ejecutado"
+        REJECTED                     = "rejected",                     "Reembolso rechazado"
+
+    rma_number = models.CharField(max_length=40, unique=True, db_index=True)
+    order = models.ForeignKey(
+        Order,
+        on_delete=models.PROTECT,
+        related_name="rmas",
+    )
+    status = models.CharField(
+        max_length=24,
+        choices=Status.choices,
+        default=Status.REQUESTED,
+        db_index=True,
+    )
+    reason_code = models.CharField(
+        max_length=30,
+        choices=ReasonCode.choices,
+        default=ReasonCode.DEFECTIVE,
+    )
+    reason_details = models.TextField(blank=True, default="")
+    warehouse = models.ForeignKey(
+        "inventory.Warehouse",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="rmas",
+    )
+
+    # Decisión comercial y reembolso financiero (desacoplado del reingreso físico)
+    commercial_resolution = models.CharField(max_length=60, blank=True, default="")
+    refund_status = models.CharField(
+        max_length=32,
+        choices=RefundStatus.choices,
+        default=RefundStatus.NONE,
+        db_index=True,
+    )
+    refund_amount = models.DecimalField(max_digits=14, decimal_places=2, default=Decimal("0.00"))
+    refund_currency = models.CharField(max_length=10, default="CLP")
+    refund_provider = models.CharField(max_length=40, blank=True, default="")
+    refund_reference = models.CharField(max_length=140, blank=True, default="")
+    refund_idempotency_key = models.CharField(max_length=160, unique=True, null=True, blank=True)
+
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="requested_rmas",
+    )
+    authorized_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="authorized_rmas",
+    )
+    received_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="received_rmas",
+    )
+    inspected_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="inspected_rmas",
+    )
+    refund_resolved_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="refund_resolved_rmas",
+    )
+
+    authorized_at = models.DateTimeField(null=True, blank=True)
+    received_at = models.DateTimeField(null=True, blank=True)
+    inspected_at = models.DateTimeField(null=True, blank=True)
+    restocked_at = models.DateTimeField(null=True, blank=True)
+    refunded_at = models.DateTimeField(null=True, blank=True)
+    notes = models.TextField(blank=True, default="")
+
+    class Meta:
+        verbose_name = "Autorización de Devolución (RMA)"
+        verbose_name_plural = "Autorizaciones de Devolución (RMA)"
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.rma_number} (Order #{self.order_id}) — {self.status}"
+
+
+class RMAItem(TimeStampedModel):
+    """
+    BF-23: Línea de devolución RMA referenciando OrderItem, SKU, variante, número de serie,
+    condición física inspeccionada, decisión de inventario y movimientos compensatorios de Kardex y Costos.
+    """
+
+    class ConditionStatus(models.TextChoices):
+        PENDING_INSPECTION = "pending_inspection", "Pendiente de inspección"
+        SELLABLE_GOOD      = "sellable_good",      "Apto para venta (Sellable)"
+        DAMAGED_NON_SELLABLE = "damaged_non_sellable", "Dañado / No elegible para venta"
+        DEFECTIVE_WARRANTY = "defective_warranty", "Defectuoso (Garantía / Taller)"
+
+    class RestockDecision(models.TextChoices):
+        PENDING                  = "pending",                  "Pendiente de decisión"
+        RESTOCK_SELLABLE         = "restock_sellable",         "Reingresar a stock vendible"
+        RESTOCK_DAMAGED_QUARANTINE = "restock_damaged_quarantine", "Reingresar como dañado / no vendible"
+        DO_NOT_RESTOCK           = "do_not_restock",           "No reingresar a inventario"
+
+    rma = models.ForeignKey(
+        ReturnMerchandiseAuthorization,
+        on_delete=models.CASCADE,
+        related_name="items",
+    )
+    order_item = models.ForeignKey(
+        OrderItem,
+        on_delete=models.PROTECT,
+        related_name="rma_items",
+    )
+    product = models.ForeignKey(
+        "products.Product",
+        on_delete=models.PROTECT,
+        related_name="rma_items",
+    )
+    variant = models.ForeignKey(
+        "products.ProductVariant",
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name="rma_items",
+    )
+    sku_snapshot = models.CharField(max_length=100)
+    serial_number = models.CharField(max_length=120, blank=True, default="", db_index=True)
+
+    quantity_requested = models.PositiveIntegerField(default=1)
+    quantity_received = models.PositiveIntegerField(default=0)
+    quantity_accepted_sellable = models.PositiveIntegerField(default=0)
+    quantity_damaged_non_sellable = models.PositiveIntegerField(default=0)
+
+    condition_status = models.CharField(
+        max_length=30,
+        choices=ConditionStatus.choices,
+        default=ConditionStatus.PENDING_INSPECTION,
+    )
+    restock_decision = models.CharField(
+        max_length=32,
+        choices=RestockDecision.choices,
+        default=RestockDecision.PENDING,
+    )
+    inspection_notes = models.TextField(blank=True, default="")
+
+    # Costo histórico preservado de la venta original y referencias compensatorias
+    original_unit_cost_snapshot = models.DecimalField(max_digits=14, decimal_places=4, null=True, blank=True)
+    cost_currency = models.CharField(max_length=10, blank=True, default="")
+    return_inventory_movement = models.ForeignKey(
+        "inventory.InventoryMovement",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="rma_return_items",
+    )
+    compensatory_cost_layer = models.ForeignKey(
+        "procurement.CostLayer",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="rma_compensatory_items",
+    )
+    is_restocked = models.BooleanField(default=False, db_index=True)
+
+    class Meta:
+        verbose_name = "Línea de RMA"
+        verbose_name_plural = "Líneas de RMA"
+        ordering = ["created_at", "pk"]
+
+    def __str__(self):
+        return f"{self.rma.rma_number} | {self.sku_snapshot} x {self.quantity_requested}"
+
 

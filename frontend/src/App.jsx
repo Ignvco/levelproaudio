@@ -43,6 +43,7 @@ const PoliticaEnvios = lazy(() => import("./pages/legal/PoliticaEnvios"))
 // Páginas protegidas
 const Dashboard = lazy(() => import("./pages/Dashboard"))
 const Checkout = lazy(() => import("./pages/Checkout"))
+const AssistedCheckout = lazy(() => import("./pages/AssistedCheckout"))
 const OrderConfirmation = lazy(() => import("./pages/OrderConfirmationVerified"))
 
 
@@ -172,6 +173,7 @@ function App() {
         <Route path="/services" element={<MainLayout><Services /></MainLayout>} />
         <Route path="/bajo-pedido" element={<MainLayout><SpecialOrder /></MainLayout>} />
         <Route path="/b2b" element={<MainLayout><B2BQuote /></MainLayout>} />
+        <Route path="/checkout/assisted/:token" element={<MainLayout><AssistedCheckout /></MainLayout>} />
         <Route path="/services/:slug" element={<MainLayout><ServiceDetail /></MainLayout>} />
 
         {/* Rewards público */}
