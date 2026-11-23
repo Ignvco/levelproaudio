@@ -691,6 +691,7 @@ export default function AdminOrders() {
   const [inspectDecision, setInspectDecision] = useState("restock_sellable")
   const [inspectNotes, setInspectNotes] = useState("")
   const [refundAmountInput, setRefundAmountInput] = useState("")
+  const [refundReferenceInput, setRefundReferenceInput] = useState("")
   const [refundExecuteNow, setRefundExecuteNow] = useState(true)
 
   const { data: myPerms } = useQuery({
@@ -866,11 +867,12 @@ export default function AdminOrders() {
   })
 
   const refundRmaMutation = useMutation({
-    mutationFn: ({ rmaId, amount, executeNow }) =>
+    mutationFn: ({ rmaId, amount, executeNow, reference }) =>
       refundAdminRMA(rmaId, {
         refund_amount: amount,
         execute_now: executeNow,
         provider: "transfer",
+        reference: reference || "",
         idempotency_key: `ui_rma_ref:${rmaId}`,
       }),
     onSuccess: (res) => {
@@ -2063,7 +2065,15 @@ export default function AdminOrders() {
                       value={refundAmountInput}
                       onChange={(e) => setRefundAmountInput(e.target.value)}
                       placeholder="Monto a reembolsar"
-                      style={{ ...formInputStyle, background: "#fff", width: "200px", fontSize: "12.5px" }}
+                      style={{ ...formInputStyle, background: "#fff", width: "180px", fontSize: "12.5px" }}
+                    />
+                    <input
+                      type="text"
+                      data-testid="rma-refund-reference-input"
+                      value={refundReferenceInput}
+                      onChange={(e) => setRefundReferenceInput(e.target.value)}
+                      placeholder="Comprobante / Referencia"
+                      style={{ ...formInputStyle, background: "#fff", width: "190px", fontSize: "12.5px" }}
                     />
                     <label style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "12.5px", fontWeight: 700, color: "var(--admin-text)" }}>
                       <input
@@ -2082,6 +2092,7 @@ export default function AdminOrders() {
                           rmaId: selectedRma.id,
                           amount: refundAmountInput || "100000",
                           executeNow: refundExecuteNow,
+                          reference: refundReferenceInput,
                         })
                       }
                     >

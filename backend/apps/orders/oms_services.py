@@ -1606,6 +1606,7 @@ def receive_and_inspect_rma(
     inspections: list[dict],
     warehouse: Warehouse = None,
     notes: str = "",
+    idempotency_key: str = None,
     actor=None,
 ) -> ReturnMerchandiseAuthorization:
     """
@@ -1624,11 +1625,15 @@ def receive_and_inspect_rma(
       y registra en pool WAC como `damaged_quantity` / `damaged_value`.
     """
     locked_rma = ReturnMerchandiseAuthorization.objects.select_for_update().get(pk=rma.pk)
-    if locked_rma.status not in (
+    allowed_statuses = [
         ReturnMerchandiseAuthorization.Status.AUTHORIZED,
         ReturnMerchandiseAuthorization.Status.RECEIVED,
         ReturnMerchandiseAuthorization.Status.INSPECTED,
-    ):
+    ]
+    if idempotency_key:
+        allowed_statuses.append(ReturnMerchandiseAuthorization.Status.RESTOCKED)
+
+    if locked_rma.status not in allowed_statuses:
         raise OMSServiceError(
             f"El RMA debe estar autorizado antes de recibir e inspeccionar físicamente (estado actual: '{locked_rma.status}')."
         )
@@ -1648,11 +1653,6 @@ def receive_and_inspect_rma(
             spec = inspections[0]
         if spec is None:
             continue
-
-        if rma_item.is_restocked:
-            raise OMSServiceError(
-                f"La línea RMA '{rma_item.sku_snapshot}' ya fue recibida y reincorporada al inventario. Prohibido duplicar entrada física."
-            )
 
         qty_rec = int(spec.get("quantity_received", rma_item.quantity_requested))
         if qty_rec <= 0 or qty_rec > rma_item.quantity_requested:
@@ -1674,6 +1674,18 @@ def receive_and_inspect_rma(
         ).strip()
         if decision not in RMAItem.RestockDecision.values:
             raise OMSServiceError(f"Decisión de inventario inválida: '{decision}'.")
+
+        if rma_item.is_restocked:
+            if (
+                idempotency_key
+                and rma_item.quantity_received == qty_rec
+                and rma_item.condition_status == cond
+                and rma_item.restock_decision == decision
+            ):
+                continue
+            raise OMSServiceError(
+                f"La línea RMA '{rma_item.sku_snapshot}' ya fue recibida y reincorporada al inventario. Prohibido duplicar entrada física."
+            )
 
         # Regla crítica BF-23: Un producto dañado o defectuoso JAMÁS puede reingresar a stock vendible
         if cond in (RMAItem.ConditionStatus.DAMAGED_NON_SELLABLE, RMAItem.ConditionStatus.DEFECTIVE_WARRANTY):
@@ -1851,7 +1863,7 @@ def receive_and_inspect_rma(
     if any_restocked:
         locked_rma.restocked_at = now
         locked_rma.status = ReturnMerchandiseAuthorization.Status.RESTOCKED
-    else:
+    elif locked_rma.status != ReturnMerchandiseAuthorization.Status.RESTOCKED:
         locked_rma.status = ReturnMerchandiseAuthorization.Status.INSPECTED
     if notes:
         locked_rma.notes = f"{locked_rma.notes}\n{notes}".strip()
@@ -1958,10 +1970,18 @@ def resolve_rma_refund(
         )
 
     now = timezone.now()
+    eff_provider = (provider or "").strip()[:40]
+    eff_reference = (reference or "").strip()[:140]
+    if execute_now and (not eff_provider or not eff_reference):
+        raise OMSServiceError(
+            "Se requiere evidencia de ejecución autorizada (proveedor y referencia/comprobante de transacción) "
+            "para marcar el reembolso como ejecutado."
+        )
+
     locked_rma.refund_amount = amt
     locked_rma.refund_currency = locked_order.currency
-    locked_rma.refund_provider = (provider or "manual_treasury").strip()[:40]
-    locked_rma.refund_reference = (reference or f"REF-{locked_rma.rma_number}").strip()[:140]
+    locked_rma.refund_provider = eff_provider or "manual_treasury"
+    locked_rma.refund_reference = eff_reference
     if idempotency_key:
         locked_rma.refund_idempotency_key = idempotency_key
     locked_rma.refund_resolved_by = actor if getattr(actor, "is_authenticated", False) else None

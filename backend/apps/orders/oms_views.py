@@ -737,12 +737,14 @@ def admin_rma_inspect_view(request, rma_id):
     if payload.get("warehouse_id"):
         wh_obj = Warehouse.objects.filter(pk=payload["warehouse_id"], is_active=True).first()
 
+    idem_key = payload.get("idempotency_key") or request.headers.get("Idempotency-Key")
     try:
         updated = receive_and_inspect_rma(
             rma,
             inspections=payload.get("inspections") or [],
             warehouse=wh_obj,
             notes=payload.get("notes", ""),
+            idempotency_key=idem_key,
             actor=request.user,
         )
     except OMSServiceError as exc:
