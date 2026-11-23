@@ -213,6 +213,7 @@ class TestCommercialExpansionV33:
             "contact_name": "Carlos Mezcla",
             "email": "carlos@estudiosdelsur.cl",
             "phone": "+56912345678",
+            "country": "CL",
             "currency": "CLP",
             "items": [
                 {"product_id": str(self.prod_a.id), "quantity": 2},

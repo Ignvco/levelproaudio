@@ -265,6 +265,16 @@ class Order(TimeStampedModel):
     customer_name = models.CharField(max_length=180, blank=True, default="")
     customer_phone = models.CharField(max_length=60, blank=True, default="")
     customer_tax_id = models.CharField(max_length=50, blank=True, default="")
+    # ── GATE 8 (BF-40): Crédito comercial B2B ──
+    payment_terms = models.CharField(max_length=24, blank=True, default="prepaid")
+    credit_account = models.ForeignKey(
+        "CommercialCreditAccount",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="orders",
+        help_text="Cuenta de crédito comercial comprometida por esta orden (si aplica).",
+    )
 
     class Meta:
         verbose_name        = "Pedido"
@@ -500,22 +510,34 @@ class OrderItem(TimeStampedModel):
 # ═══════════════════════════════════════════════════════════════
 
 class B2BQuoteStatus(models.TextChoices):
+    DRAFT     = "draft",     "Borrador comercial"
     PENDING   = "pending",   "Pendiente de revisión"
     REVIEWED  = "reviewed",  "En evaluación técnica"
     APPROVED  = "approved",  "Aprobada"
+    ISSUED    = "issued",    "Emitida"
+    SENT      = "sent",      "Enviada al cliente"
+    ACCEPTED  = "accepted",  "Aceptada por cliente"
     REJECTED  = "rejected",  "Rechazada"
     CONVERTED = "converted", "Convertida en pedido"
     EXPIRED   = "expired",   "Vencida"
 
 
 class B2BQuote(TimeStampedModel):
-    """Cotización B2B para estudios, productoras e instituciones (V3.3 Módulo 2)."""
+    """Cotización B2B para estudios, productoras e instituciones (V3.3 + Gate 8 BF-20)."""
+    quote_number     = models.CharField(max_length=40, unique=True, null=True, blank=True, db_index=True)
+    version          = models.PositiveIntegerField(default=1)
     user             = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="b2b_quotes")
+    organization     = models.ForeignKey("CustomerOrganization", on_delete=models.SET_NULL, null=True, blank=True, related_name="b2b_quotes")
+    customer_profile = models.ForeignKey("CustomerProfile", on_delete=models.SET_NULL, null=True, blank=True, related_name="b2b_quotes")
+    contact          = models.ForeignKey("CustomerContact", on_delete=models.SET_NULL, null=True, blank=True, related_name="b2b_quotes")
+    sales_rep        = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="assigned_b2b_quotes")
     company_name     = models.CharField(max_length=200, verbose_name="Razón Social / Empresa")
     tax_id           = models.CharField(max_length=50, help_text="RUT (Chile) o CUIT (Argentina)")
     contact_name     = models.CharField(max_length=150, verbose_name="Nombre de Contacto")
     email            = models.EmailField(verbose_name="Email de Contacto")
     phone            = models.CharField(max_length=50, blank=True, verbose_name="Teléfono")
+    country          = models.CharField(max_length=10, blank=True, default="")
+    tax_regime       = models.CharField(max_length=40, blank=True, default="")
     currency         = models.CharField(max_length=10, default="CLP")
     subtotal         = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     discount_amount  = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
@@ -523,9 +545,19 @@ class B2BQuote(TimeStampedModel):
     tax_amount       = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     total            = models.DecimalField(max_digits=12, decimal_places=2, default=Decimal("0.00"))
     valid_until      = models.DateField(null=True, blank=True)
+    payment_terms    = models.CharField(max_length=40, blank=True, default="prepaid")
+    delivery_terms   = models.CharField(max_length=220, blank=True, default="")
     status           = models.CharField(max_length=20, choices=B2BQuoteStatus.choices, default=B2BQuoteStatus.PENDING)
     client_notes     = models.TextField(blank=True, verbose_name="Notas del Cliente")
     admin_notes      = models.TextField(blank=True, verbose_name="Notas de Ventas")
+    issued_at        = models.DateTimeField(null=True, blank=True)
+    approved_by      = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="approved_b2b_quotes")
+    approved_at      = models.DateTimeField(null=True, blank=True)
+    shared_at        = models.DateTimeField(null=True, blank=True)
+    share_token      = models.CharField(max_length=128, unique=True, null=True, blank=True, db_index=True)
+    share_token_expires_at = models.DateTimeField(null=True, blank=True)
+    conversion_idempotency_key = models.CharField(max_length=160, unique=True, null=True, blank=True)
+    version_history  = models.JSONField(default=list, blank=True)
     converted_order  = models.OneToOneField("Order", null=True, blank=True, on_delete=models.SET_NULL, related_name="originating_b2b_quote")
 
     class Meta:
@@ -542,9 +574,16 @@ class B2BQuoteItem(TimeStampedModel):
     product      = models.ForeignKey("products.Product", on_delete=models.SET_NULL, null=True, blank=True)
     variant      = models.ForeignKey("products.ProductVariant", on_delete=models.SET_NULL, null=True, blank=True)
     product_name = models.CharField(max_length=300)
+    sku_snapshot = models.CharField(max_length=100, blank=True, default="")
+    variant_name_snapshot = models.CharField(max_length=250, blank=True, default="")
+    catalog_unit_price_snapshot = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
+    b2b_proposed_price_snapshot = models.DecimalField(max_digits=14, decimal_places=2, null=True, blank=True)
     unit_price   = models.DecimalField(max_digits=12, decimal_places=2)
+    discount_percent = models.DecimalField(max_digits=5, decimal_places=2, default=Decimal("0.00"))
     quantity     = models.PositiveIntegerField(default=1)
     subtotal     = models.DecimalField(max_digits=12, decimal_places=2)
+    pricing_source = models.CharField(max_length=120, blank=True, default="")
+    price_list_version = models.PositiveIntegerField(null=True, blank=True)
 
     class Meta:
         verbose_name = "Item de Cotización B2B"
@@ -926,5 +965,20 @@ class RMAItem(TimeStampedModel):
 
     def __str__(self):
         return f"{self.rma.rma_number} | {self.sku_snapshot} x {self.quantity_requested}"
+
+
+from .crm_models import (  # noqa: E402, F401
+    B2BPriceList,
+    B2BPriceListItem,
+    B2BPriceTier,
+    B2BQuotePDFSnapshot,
+    CommercialCreditAccount,
+    CommercialCreditDecision,
+    CustomerContact,
+    CustomerInteraction,
+    CustomerOrganization,
+    CustomerProfile,
+    CustomerTechnicalProfile,
+)
 
 
