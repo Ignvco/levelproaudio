@@ -430,3 +430,78 @@ class Gate9FinancialManagementTests(TransactionTestCase):
         ]:
             resp = client.get(path)
             self.assertEqual(resp.status_code, 200, f"GET {path} failed: {resp.status_code}")
+
+    def test_fin9_accept_01_02_03_invariants_and_math_identity(self):
+        """FIN9-ACCEPT-01..03: Rollback, orden cancelada, doble moneda e identidad matemática de saldos."""
+        # 1. Orden cancelada no puede conciliarse/aprobarse
+        cancelled_order, cancelled_pay = self._make_order_payment("ORD-G9-CANC", Decimal("120000.00"))
+        cancelled_order.status = OrderStatus.CANCELLED
+        cancelled_order.save(update_fields=["status"])
+        tx = BankTransaction.objects.create(
+            financial_account=self.acct_clp,
+            external_row_hash="hash-canc-001",
+            effective_date=timezone.now().date(),
+            direction=BankTransaction.Direction.CREDIT,
+            amount=Decimal("250000.00"),
+            currency="CLP",
+            reference="TRF-CANC-1",
+        )
+        with self.assertRaises(FinanceServiceError):
+            reconcile_payment_with_bank(
+                payment=cancelled_pay,
+                decision=BankReconciliation.Status.APPROVED,
+                bank_transaction=tx,
+                actor=self.admin,
+            )
+        tx.refresh_from_db()
+        self.assertEqual(tx.allocated_amount, Decimal("0.00"))
+        self.assertEqual(BankReconciliation.objects.filter(payment=cancelled_pay).count(), 0)
+
+        # 2. Moneda de cuenta bancaria incompatible bloqueada
+        _, clp_pay = self._make_order_payment("ORD-G9-CURR", Decimal("100000.00"), currency="CLP")
+        with self.assertRaises(FinanceServiceError):
+            reconcile_payment_with_bank(
+                payment=clp_pay,
+                decision=BankReconciliation.Status.APPROVED,
+                financial_account=self.acct_usd,
+                manual_exception_reason="Intento cruce moneda",
+                actor=self.admin,
+            )
+
+        # 3. Identidad matemática de Tesorería & Cash Flow: Saldo inicial + entradas - salidas = saldo final
+        # acct_clp: 1,000,000 + 250,000 (conciliado) - 100,000 (traspaso) = 1,150,000
+        # acct_clp_2: 500,000 + 100,000 (traspaso) = 600,000 -> Total CLP = 1,750,000
+        _, pay_ok = self._make_order_payment("ORD-G9-MATH", Decimal("250000.00"), currency="CLP")
+        reconcile_payment_with_bank(
+            payment=pay_ok,
+            decision=BankReconciliation.Status.APPROVED,
+            bank_transaction=tx,
+            idempotency_key="REC-MATH-01",
+            actor=self.admin,
+        )
+        record_internal_transfer(
+            source_account=self.acct_clp,
+            target_account=self.acct_clp_2,
+            amount=Decimal("100000.00"),
+            effective_date=timezone.now().date(),
+            reference="INT-MATH-01",
+            actor=self.admin,
+        )
+        b1 = get_treasury_account_balances(self.acct_clp)
+        b2 = get_treasury_account_balances(self.acct_clp_2)
+        b_usd = get_treasury_account_balances(self.acct_usd)
+        self.assertEqual(Decimal(b1["reconciled_balance"]), Decimal("1150000.00"))
+        self.assertEqual(Decimal(b2["reconciled_balance"]), Decimal("600000.00"))
+        self.assertEqual(Decimal(b_usd["reconciled_balance"]), Decimal("10000.00"))
+
+        cf_clp = compute_cash_flow_projection(currency="CLP", scenario="base")
+        cf_usd = compute_cash_flow_projection(currency="USD", scenario="base")
+        self.assertEqual(Decimal(cf_clp["verified_opening_balance"]), Decimal("1750000.00"))
+        self.assertEqual(Decimal(cf_usd["verified_opening_balance"]), Decimal("10000.00"))
+
+        # Dashboard operativo (IncomeRecord - Withdrawal) es independiente del saldo bancario de Tesorería
+        client = APIClient()
+        client.force_authenticate(user=self.admin)
+        summary = client.get("/api/v1/admin/finance/summary/?currency=CLP").json()
+        self.assertEqual(Decimal(str(summary["total_income"])), Decimal("250000.00"))
+        self.assertEqual(Decimal(str(summary["net_balance"])), Decimal("250000.00"))

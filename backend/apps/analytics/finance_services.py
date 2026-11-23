@@ -35,7 +35,7 @@ from apps.analytics.finance_preflight import (
     FinancePreflightError,
     reconcile_manual_payment_approval,
 )
-from apps.orders.models import Order
+from apps.orders.models import Order, OrderStatus
 from apps.payments.models import BankAccount, Payment, PaymentStatus
 from apps.procurement.models import GoodsReceipt, PurchaseOrder, Supplier
 from core.audit.constants import (
@@ -445,6 +445,18 @@ def reconcile_payment_with_bank(
     locked_payment = Payment.objects.select_for_update().select_related("order").get(pk=payment.pk)
     locked_order = Order.objects.select_for_update().get(pk=locked_payment.order_id)
 
+    if decision in (
+        BankReconciliation.Status.APPROVED,
+        BankReconciliation.Status.PARTIAL,
+        BankReconciliation.Status.OVERPAYMENT,
+    ):
+        if locked_order.status == OrderStatus.CANCELLED or locked_payment.status == PaymentStatus.REFUNDED:
+            raise FinanceServiceError(
+                f"No se puede aprobar ni conciliar un pago para una orden '{locked_order.status}' o pago '{locked_payment.status}'."
+            )
+        if decision == BankReconciliation.Status.APPROVED and locked_payment.status == PaymentStatus.APPROVED:
+            raise FinanceServiceError("El pago ya se encuentra aprobado; utilice idempotency_key para reintentos seguros.")
+
     valid_decisions = {
         BankReconciliation.Status.APPROVED,
         BankReconciliation.Status.PARTIAL,
@@ -467,6 +479,10 @@ def reconcile_payment_with_bank(
         if locked_tx.direction != BankTransaction.Direction.CREDIT:
             raise FinanceServiceError("Solo abonos bancarios (credit) pueden conciliar cobros de clientes.")
         eff_acct = locked_tx.financial_account
+    elif eff_acct is not None and eff_acct.currency != locked_payment.currency:
+        raise FinanceServiceError(
+            f"Moneda incompatible: cuenta bancaria en {eff_acct.currency}, pago en {locked_payment.currency}."
+        )
 
     amt = Decimal(str(reconciled_amount if reconciled_amount is not None else locked_payment.amount)).quantize(
         Decimal("0.01"), rounding=ROUND_HALF_UP
@@ -854,12 +870,18 @@ def compute_cash_flow_projection(currency: str = "CLP", scenario: str = "base") 
             "deficit_alert": proj < Decimal("0.00"),
         }
 
+    opening_verification_pending = any(
+        acct.opening_balance != Decimal("0.00") and not (acct.verification_source or "").strip()
+        for acct in accounts
+    )
+
     return {
         "currency": curr,
         "scenario": sc,
         "scenario_label": factors["label"],
         "is_projection": True,
         "has_opening_accounts": accounts.exists(),
+        "opening_verification_pending": opening_verification_pending,
         "verified_opening_balance": _fmt(opening_total, curr),
         "horizons": horizons,
     }

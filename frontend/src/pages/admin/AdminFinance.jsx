@@ -414,9 +414,9 @@ export default function AdminFinance() {
           Icon={TrendingUp} />
         <KpiCard variant="light" label="Total retirado"
           value={money(summary?.total_withdrawn)} sub={`Retiros identificados en ${currency}`} Icon={ArrowUpFromLine} />
-        <KpiCard variant="primary" label="Balance neto"
+        <KpiCard variant="primary" label="Balance operativo neto"
           value={summary?.reconciliation_required ? "Por conciliar" : money(summary?.net_balance)}
-          sub={summary?.reconciliation_required ? "Sin balance certificado: historial pendiente" : "Saldo verificado por moneda"}
+          sub={summary?.reconciliation_required ? "Sin balance operativo: historial sin moneda pendiente" : "Ingresos clasificados menos retiros (no es saldo bancario)"}
           Icon={Wallet} />
       </div>
 

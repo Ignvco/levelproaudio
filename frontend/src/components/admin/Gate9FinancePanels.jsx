@@ -649,6 +649,11 @@ export function CashFlowPanel({ currency }) {
         </div>
       }
     >
+      {(cf && (!cf.has_opening_accounts || cf.opening_verification_pending)) && (
+        <div className="lp-callout lp-callout--warning" style={{ marginBottom: "12px", fontSize: "12px" }}>
+          Saldo inicial pendiente de verificación bancaria en tesorería para {currency}.
+        </div>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "12px" }}>
         {(Array.isArray(cf?.horizons) ? cf.horizons : Object.values(cf?.horizons || {})).map(h => (
           <div key={h.horizon_days || h.days} style={{ padding: "14px", borderRadius: "12px", border: "1px solid var(--admin-border)", background: "var(--admin-surface-soft)" }}>
