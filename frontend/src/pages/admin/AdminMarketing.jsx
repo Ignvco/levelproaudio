@@ -16,6 +16,16 @@ import {
   updateMarketingCoupon,
   updateMarketingPromotion,
 } from "../../api/admin.api"
+import {
+  AdminPageHeader,
+  SectionCard,
+  StatCard,
+  StatusBadge,
+  PrimaryButton,
+  SecondaryButton,
+  FormField,
+  formInputStyle,
+} from "../../components/admin/ui"
 
 const TABS = [
   { id: "dashboard", label: "1. Dashboard", kind: "operativo" },
@@ -32,16 +42,18 @@ const TABS = [
   { id: "loyalty-rewards", label: "12. Loyalty & Rewards", kind: "referencia" },
 ]
 
-const CURRENCY_BADGE = {
-  CLP: "bg-sky-500/15 text-sky-300 border-sky-500/30",
-  USD: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-  ARS: "bg-violet-500/15 text-violet-300 border-violet-500/30",
+const CURRENCY_TONE = {
+  CLP: "info",
+  USD: "success",
+  ARS: "accent",
 }
 
-const INPUT_CLS =
-  "w-full rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-2 text-xs text-white placeholder-neutral-500 focus:border-amber-500 focus:outline-none"
-
-const LABEL_CLS = "mb-1 block text-[11px] font-medium text-neutral-400"
+const subCardStyle = {
+  background: "rgba(255,255,255,0.025)",
+  border: "1px solid var(--border-subtle, rgba(255,255,255,0.08))",
+  borderRadius: 12,
+  padding: 16,
+}
 
 export default function AdminMarketing() {
   const [activeTab, setActiveTab] = useState("dashboard")
@@ -227,47 +239,58 @@ export default function AdminMarketing() {
   const currentTabMeta = TABS.find((t) => t.id === activeTab)
 
   return (
-    <div className="space-y-6 text-neutral-100">
-      <div className="flex flex-col gap-3 border-b border-neutral-800 pb-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-widest text-amber-400">
-            Gate 11 · Marketing & Customer Growth
-          </p>
-          <h1 className="text-xl font-bold text-white sm:text-2xl">
-            Promociones, Cupones & Recuperación de Carritos
-          </h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={handleSchedulerTick}
-            className="rounded-lg bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white transition hover:bg-indigo-500"
-          >
-            Ejecutar Tick Scheduler
-          </button>
-          <button
-            type="button"
-            onClick={loadAll}
-            disabled={loading}
-            className="rounded-lg border border-neutral-700 bg-neutral-900 px-3.5 py-2 text-xs font-medium text-neutral-200 transition hover:bg-neutral-800 disabled:opacity-50"
-          >
-            {loading ? "Actualizando..." : "Refrescar"}
-          </button>
-        </div>
-      </div>
+    <div className="au-stack">
+      <AdminPageHeader
+        eyebrow="Gate 11 · Marketing & Customer Growth"
+        title="Promociones, Cupones & Recuperación de Carritos"
+        description="Motor comercial multi-moneda con protección de margen real, reglas explícitas de acumulación y consentimiento verificable."
+        actions={
+          <>
+            <SecondaryButton onClick={handleSchedulerTick}>
+              Ejecutar Tick Scheduler
+            </SecondaryButton>
+            <PrimaryButton onClick={loadAll} disabled={loading}>
+              {loading ? "Actualizando..." : "Refrescar"}
+            </PrimaryButton>
+          </>
+        }
+      />
 
       {feedback && (
-        <div role="status" className="rounded-xl border border-emerald-700/60 bg-emerald-950/50 px-4 py-3 text-xs text-emerald-200">
+        <div
+          role="status"
+          style={{
+            padding: "12px 16px",
+            borderRadius: 10,
+            background: "rgba(34, 197, 94, 0.12)",
+            border: "1px solid rgba(34, 197, 94, 0.3)",
+            color: "#4ade80",
+            fontSize: 13,
+            fontWeight: 500,
+          }}
+        >
           {feedback}
         </div>
       )}
+
       {error && (
-        <div role="alert" className="rounded-xl border border-rose-700/60 bg-rose-950/50 px-4 py-3 text-xs text-rose-200">
+        <div
+          role="alert"
+          style={{
+            padding: "12px 16px",
+            borderRadius: 10,
+            background: "rgba(239, 68, 68, 0.12)",
+            border: "1px solid rgba(239, 68, 68, 0.3)",
+            color: "#f87171",
+            fontSize: 13,
+            fontWeight: 500,
+          }}
+        >
           {error}
         </div>
       )}
 
-      <nav aria-label="Secciones de Marketing" role="tablist" className="flex flex-wrap gap-1.5">
+      <nav aria-label="Secciones de Marketing" role="tablist" className="au-tabs" style={{ flexWrap: "wrap" }}>
         {TABS.map((t) => {
           const isSelected = activeTab === t.id
           return (
@@ -277,11 +300,7 @@ export default function AdminMarketing() {
               role="tab"
               aria-selected={isSelected}
               onClick={() => setActiveTab(t.id)}
-              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
-                isSelected
-                  ? "bg-amber-500 text-neutral-950 font-semibold shadow-sm"
-                  : "border border-neutral-800 bg-neutral-900/90 text-neutral-300 hover:bg-neutral-800"
-              }`}
+              className={`au-tab${isSelected ? " is-active" : ""}`}
             >
               {t.label}
             </button>
@@ -290,91 +309,107 @@ export default function AdminMarketing() {
       </nav>
 
       {currentTabMeta?.kind === "referencia" && (
-        <div className="rounded-lg border border-sky-800/50 bg-sky-950/30 px-3.5 py-2 text-[11px] text-sky-200">
+        <div
+          style={{
+            padding: "10px 14px",
+            borderRadius: 10,
+            background: "rgba(59, 130, 246, 0.1)",
+            border: "1px solid rgba(59, 130, 246, 0.25)",
+            color: "#60a5fa",
+            fontSize: 12,
+          }}
+        >
           Vista informativa de políticas y estado sincronizado (solo lectura).
         </div>
       )}
 
       {activeTab === "dashboard" && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {[
-              ["Cupones activos", kpis.active_coupons ?? 0],
-              ["Promociones activas", kpis.active_promotions ?? 0],
-              ["Promociones programadas", kpis.scheduled_promotions ?? 0],
-              ["Carritos elegibles", kpis.abandoned_eligible ?? 0],
-              ["Carritos recuperados", kpis.abandoned_recovered ?? 0],
-              ["Carritos suprimidos", kpis.abandoned_suppressed ?? 0],
-              ["Mensajes QA Outbox", kpis.outbox_messages ?? 0],
-              ["Contactos Opt-in", kpis.consented_contacts ?? 0],
-            ].map(([label, val]) => (
-              <div key={label} className="rounded-xl border border-neutral-800 bg-neutral-900/80 p-4">
-                <p className="text-xs text-neutral-400">{label}</p>
-                <p className="mt-1.5 text-2xl font-bold text-white">{val}</p>
-              </div>
-            ))}
+        <div className="au-stack">
+          <div className="au-grid-kpi">
+            <StatCard label="Cupones activos" value={kpis.active_coupons ?? 0} tone="accent" />
+            <StatCard label="Promociones activas" value={kpis.active_promotions ?? 0} tone="success" />
+            <StatCard label="Promociones programadas" value={kpis.scheduled_promotions ?? 0} tone="info" />
+            <StatCard label="Carritos elegibles" value={kpis.abandoned_eligible ?? 0} tone="warning" />
+            <StatCard label="Carritos recuperados" value={kpis.abandoned_recovered ?? 0} tone="success" />
+            <StatCard label="Carritos suprimidos" value={kpis.abandoned_suppressed ?? 0} />
+            <StatCard label="Mensajes QA Outbox" value={kpis.outbox_messages ?? 0} tone="info" />
+            <StatCard label="Contactos Opt-in" value={kpis.consented_contacts ?? 0} tone="accent" />
           </div>
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900/80 p-5">
-            <h2 className="text-sm font-semibold text-amber-300">Redenciones por moneda (sin mezclar monedas)</h2>
-            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
+
+          <SectionCard
+            title="Redenciones por moneda (sin mezclar monedas)"
+            subtitle="Consolidación estrictamente aislada por divisa transaccional original (CLP, USD, ARS)."
+          >
+            <div className="au-grid-3">
               {(dashboard?.redemptions_by_currency || []).map((r) => (
-                <div key={r.currency} className="rounded-lg border border-neutral-800 bg-neutral-950 p-3.5 text-xs">
-                  <span className={`inline-block rounded border px-2 py-0.5 text-[11px] font-semibold ${CURRENCY_BADGE[r.currency] || "text-white"}`}>
-                    {r.currency}
-                  </span>
-                  <p className="mt-2 text-neutral-300">Usos: <strong className="text-white">{r.count}</strong> · Descuento: <strong className="text-white">{r.total_discount}</strong></p>
+                <div key={r.currency} style={subCardStyle}>
+                  <StatusBadge tone={CURRENCY_TONE[r.currency] || "neutral"}>{r.currency}</StatusBadge>
+                  <p style={{ marginTop: 10, marginBottom: 0, fontSize: 13, color: "var(--text-secondary)" }}>
+                    Usos: <strong style={{ color: "var(--text-primary)" }}>{r.count}</strong> · Descuento:{" "}
+                    <strong style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono)" }}>
+                      {r.total_discount}
+                    </strong>
+                  </p>
                 </div>
               ))}
               {(!dashboard?.redemptions_by_currency || dashboard.redemptions_by_currency.length === 0) && (
-                <p className="text-xs text-neutral-400">Sin redenciones registradas aún.</p>
+                <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>
+                  Sin redenciones registradas aún.
+                </p>
               )}
             </div>
-          </div>
+          </SectionCard>
         </div>
       )}
 
       {activeTab === "coupons" && (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900/80 p-5">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-white">Listado de Cupones ({coupons.length})</h2>
-          </div>
+        <SectionCard title={`Listado de Cupones (${coupons.length})`}>
           {coupons.length === 0 ? (
-            <p className="py-6 text-center text-xs text-neutral-400">No hay cupones registrados.</p>
+            <p style={{ padding: "24px 0", textAlign: "center", fontSize: 13, color: "var(--text-muted)", margin: 0 }}>
+              No hay cupones registrados.
+            </p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[680px] text-left text-xs">
-                <thead className="border-b border-neutral-800 text-neutral-400">
+            <div className="au-table-wrap">
+              <table className="au-table">
+                <thead>
                   <tr>
-                    <th className="py-2.5 pr-4">Código</th>
-                    <th className="py-2.5 pr-4">Moneda</th>
-                    <th className="py-2.5 pr-4">Descuento</th>
-                    <th className="py-2.5 pr-4">Usos</th>
-                    <th className="py-2.5 pr-4">Acumulación</th>
-                    <th className="py-2.5 pr-4">Estado</th>
-                    <th className="py-2.5">Acción</th>
+                    <th>Código</th>
+                    <th>Moneda</th>
+                    <th>Descuento</th>
+                    <th>Usos</th>
+                    <th>Acumulación</th>
+                    <th>Estado</th>
+                    <th>Acción</th>
                   </tr>
                 </thead>
                 <tbody>
                   {coupons.map((c) => (
-                    <tr key={c.id} className="border-b border-neutral-800/60">
-                      <td className="py-3 pr-4 font-mono font-semibold text-amber-300">{c.code}</td>
-                      <td className="py-3 pr-4">
-                        <span className={`rounded border px-2 py-0.5 text-[11px] font-semibold ${CURRENCY_BADGE[c.currency] || ""}`}>
-                          {c.currency}
-                        </span>
+                    <tr key={c.id}>
+                      <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "#1AFF6E" }}>{c.code}</td>
+                      <td>
+                        <StatusBadge tone={CURRENCY_TONE[c.currency] || "neutral"}>{c.currency}</StatusBadge>
                       </td>
-                      <td className="py-3 pr-4 text-neutral-200">{c.discount_value} ({c.discount_type})</td>
-                      <td className="py-3 pr-4 text-neutral-300">{c.used_count} / {c.max_total_uses ?? "∞"}</td>
-                      <td className="py-3 pr-4 text-neutral-400">{c.accumulation_rule}</td>
-                      <td className="py-3 pr-4 font-medium text-neutral-200">{c.status}</td>
-                      <td className="py-3">
-                        <button
-                          type="button"
-                          onClick={() => updateMarketingCoupon(c.id, { status: c.status === "active" ? "paused" : "active" }).then(loadAll)}
-                          className="rounded-lg border border-neutral-700 bg-neutral-950 px-2.5 py-1 text-[11px] font-medium hover:bg-neutral-800"
+                      <td>
+                        {c.discount_value} ({c.discount_type})
+                      </td>
+                      <td style={{ fontFamily: "var(--font-mono)" }}>
+                        {c.used_count} / {c.max_total_uses ?? "∞"}
+                      </td>
+                      <td style={{ color: "var(--text-secondary)" }}>{c.accumulation_rule}</td>
+                      <td>
+                        <StatusBadge tone={c.status === "active" ? "success" : "warning"}>{c.status}</StatusBadge>
+                      </td>
+                      <td>
+                        <SecondaryButton
+                          size="sm"
+                          onClick={() =>
+                            updateMarketingCoupon(c.id, {
+                              status: c.status === "active" ? "paused" : "active",
+                            }).then(loadAll)
+                          }
                         >
                           {c.status === "active" ? "Pausar" : "Activar"}
-                        </button>
+                        </SecondaryButton>
                       </td>
                     </tr>
                   ))}
@@ -382,280 +417,483 @@ export default function AdminMarketing() {
               </table>
             </div>
           )}
-        </div>
+        </SectionCard>
       )}
 
       {activeTab === "coupon-builder" && (
-        <form onSubmit={handleCreateCoupon} className="rounded-xl border border-neutral-800 bg-neutral-900/80 p-5 space-y-4">
-          <h2 className="text-sm font-semibold text-white">Crear Cupón Multi-Moneda</h2>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div>
-              <label className={LABEL_CLS}>Código</label>
-              <input required placeholder="Código (ej. STUDIO10)" value={couponForm.code} onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value })} className={INPUT_CLS} />
+        <SectionCard title="Crear Cupón Multi-Moneda" subtitle="Define reglas de descuento, moneda aislada y protección de margen mínimo.">
+          <form onSubmit={handleCreateCoupon} className="au-stack">
+            <div className="au-grid-3">
+              <FormField label="Código">
+                <input
+                  required
+                  placeholder="Código (ej. STUDIO10)"
+                  value={couponForm.code}
+                  onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value })}
+                  style={formInputStyle}
+                />
+              </FormField>
+              <FormField label="Nombre comercial">
+                <input
+                  required
+                  placeholder="Nombre comercial"
+                  value={couponForm.name}
+                  onChange={(e) => setCouponForm({ ...couponForm, name: e.target.value })}
+                  style={formInputStyle}
+                />
+              </FormField>
+              <FormField label="Moneda (aislada)">
+                <select
+                  value={couponForm.currency}
+                  onChange={(e) => setCouponForm({ ...couponForm, currency: e.target.value })}
+                  style={formInputStyle}
+                >
+                  <option value="CLP">CLP</option>
+                  <option value="USD">USD</option>
+                  <option value="ARS">ARS</option>
+                </select>
+              </FormField>
+              <FormField label="Tipo de descuento">
+                <select
+                  value={couponForm.discount_type}
+                  onChange={(e) => setCouponForm({ ...couponForm, discount_type: e.target.value })}
+                  style={formInputStyle}
+                >
+                  <option value="percentage">Porcentaje (%)</option>
+                  <option value="fixed_amount">Importe fijo</option>
+                </select>
+              </FormField>
+              <FormField label="Valor del descuento">
+                <input
+                  required
+                  type="number"
+                  step="0.01"
+                  placeholder="Valor descuento"
+                  value={couponForm.discount_value}
+                  onChange={(e) => setCouponForm({ ...couponForm, discount_value: e.target.value })}
+                  style={formInputStyle}
+                />
+              </FormField>
+              <FormField label="Margen mínimo requerido (%)">
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Margen mínimo %"
+                  value={couponForm.min_margin_percent}
+                  onChange={(e) => setCouponForm({ ...couponForm, min_margin_percent: e.target.value })}
+                  style={formInputStyle}
+                />
+              </FormField>
             </div>
             <div>
-              <label className={LABEL_CLS}>Nombre comercial</label>
-              <input required placeholder="Nombre comercial" value={couponForm.name} onChange={(e) => setCouponForm({ ...couponForm, name: e.target.value })} className={INPUT_CLS} />
+              <PrimaryButton type="submit">Guardar Cupón</PrimaryButton>
             </div>
-            <div>
-              <label className={LABEL_CLS}>Moneda (aislada)</label>
-              <select value={couponForm.currency} onChange={(e) => setCouponForm({ ...couponForm, currency: e.target.value })} className={INPUT_CLS}>
-                <option value="CLP">CLP</option>
-                <option value="USD">USD</option>
-                <option value="ARS">ARS</option>
-              </select>
-            </div>
-            <div>
-              <label className={LABEL_CLS}>Tipo de descuento</label>
-              <select value={couponForm.discount_type} onChange={(e) => setCouponForm({ ...couponForm, discount_type: e.target.value })} className={INPUT_CLS}>
-                <option value="percentage">Porcentaje (%)</option>
-                <option value="fixed_amount">Importe fijo</option>
-              </select>
-            </div>
-            <div>
-              <label className={LABEL_CLS}>Valor del descuento</label>
-              <input required type="number" step="0.01" placeholder="Valor descuento" value={couponForm.discount_value} onChange={(e) => setCouponForm({ ...couponForm, discount_value: e.target.value })} className={INPUT_CLS} />
-            </div>
-            <div>
-              <label className={LABEL_CLS}>Margen mínimo requerido (%)</label>
-              <input type="number" step="0.01" placeholder="Margen mínimo %" value={couponForm.min_margin_percent} onChange={(e) => setCouponForm({ ...couponForm, min_margin_percent: e.target.value })} className={INPUT_CLS} />
-            </div>
-          </div>
-          <button type="submit" className="rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-bold text-neutral-950 transition hover:bg-amber-400">
-            Guardar Cupón
-          </button>
-        </form>
+          </form>
+        </SectionCard>
       )}
 
       {activeTab === "eligibility" && (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900/80 p-5 text-xs space-y-3">
-          <h2 className="text-sm font-semibold text-white">Reglas de Elegibilidad & Margen Mínimo</h2>
-          <p className="text-neutral-300">Los cupones validan moneda exacta (`CLP`, `USD`, `ARS`), monto mínimo elegible y protección de margen contra `WeightedAverageCostState` / `CostLayer` (Gate 6).</p>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        <SectionCard
+          title="Reglas de Elegibilidad & Margen Mínimo"
+          subtitle="Los cupones validan moneda exacta (CLP, USD, ARS), monto mínimo elegible y protección de margen contra WeightedAverageCostState / CostLayer (Gate 6)."
+        >
+          <div className="au-grid-2">
             {coupons.map((c) => (
-              <div key={c.id} className="rounded-lg border border-neutral-800 bg-neutral-950 p-3.5">
-                <span className="font-mono font-semibold text-amber-300">{c.code}</span> · Min: {c.min_eligible_amount} {c.currency} · Margen min: {c.min_margin_percent ?? "N/A"}%
+              <div key={c.id} style={subCardStyle}>
+                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "#1AFF6E" }}>{c.code}</span> · Min:{" "}
+                {c.min_eligible_amount} {c.currency} · Margen min: {c.min_margin_percent ?? "N/A"}%
               </div>
             ))}
           </div>
-        </div>
+        </SectionCard>
       )}
 
       {activeTab === "accumulation" && (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900/80 p-5 text-xs space-y-2.5">
-          <h2 className="text-sm font-semibold text-white">Política de Acumulación & Precedencia Comercial</h2>
-          <ul className="list-disc pl-5 text-neutral-300 space-y-1.5">
+        <SectionCard title="Política de Acumulación & Precedencia Comercial">
+          <ul style={{ margin: 0, paddingLeft: 20, fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.7 }}>
             <li>Precios B2B contractuales tienen precedencia y bloquean cupones/promociones promocionales por defecto.</li>
             <li>Cupones y promociones no se acumulan salvo regla explícita bilateral (`allow_with_promotion`).</li>
             <li>Canje Loyalty solo es acumulable si el cupón declara `allow_with_loyalty` y moneda `CLP`.</li>
             <li>Sorteos / Stickers (`rewards`) permanecen estrictamente separados sin otorgar descuentos monetarios cruzados.</li>
           </ul>
-        </div>
+        </SectionCard>
       )}
 
       {activeTab === "calendar" && (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900/80 p-5 text-xs space-y-3">
-          <h2 className="text-sm font-semibold text-white">Calendario de Promociones Programadas ({promotions.length})</h2>
+        <SectionCard title={`Calendario de Promociones Programadas (${promotions.length})`}>
           {promotions.length === 0 ? (
-            <p className="py-4 text-neutral-400">Sin campañas programadas.</p>
+            <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>Sin campañas programadas.</p>
           ) : (
-            promotions.map((p) => (
-              <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-800 bg-neutral-950 p-3.5">
-                <div>
-                  <p className="font-semibold text-white">{p.name} ({p.currency})</p>
-                  <p className="mt-0.5 text-neutral-400">Ventana: {p.starts_at} → {p.ends_at} · TZ: {p.business_timezone}</p>
+            <div className="au-stack-sm">
+              {promotions.map((p) => (
+                <div
+                  key={p.id}
+                  style={{
+                    ...subCardStyle,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <div>
+                    <p style={{ margin: 0, fontWeight: 700, fontSize: 13, color: "var(--text-primary)" }}>
+                      {p.name} ({p.currency})
+                    </p>
+                    <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-secondary)" }}>
+                      Ventana: {p.starts_at} → {p.ends_at} · TZ: {p.business_timezone}
+                    </p>
+                  </div>
+                  <StatusBadge tone="accent">
+                    {p.status} · P{p.priority}
+                  </StatusBadge>
                 </div>
-                <span className="rounded-md bg-neutral-800 px-2.5 py-1 text-[11px] font-semibold text-amber-300">
-                  {p.status} · P{p.priority}
-                </span>
-              </div>
-            ))
+              ))}
+            </div>
           )}
-        </div>
+        </SectionCard>
       )}
 
       {activeTab === "campaigns" && (
-        <div className="space-y-4">
-          <form onSubmit={handleCreatePromo} className="rounded-xl border border-neutral-800 bg-neutral-900/80 p-5 space-y-4">
-            <h2 className="text-sm font-semibold text-white">Nueva Campaña Promocional Programada</h2>
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <div>
-                <label className={LABEL_CLS}>Nombre campaña</label>
-                <input required placeholder="Nombre campaña" value={promoForm.name} onChange={(e) => setPromoForm({ ...promoForm, name: e.target.value })} className={INPUT_CLS} />
+        <div className="au-stack">
+          <SectionCard title="Nueva Campaña Promocional Programada">
+            <form onSubmit={handleCreatePromo} className="au-stack">
+              <div className="au-grid-3">
+                <FormField label="Nombre campaña">
+                  <input
+                    required
+                    placeholder="Nombre campaña"
+                    value={promoForm.name}
+                    onChange={(e) => setPromoForm({ ...promoForm, name: e.target.value })}
+                    style={formInputStyle}
+                  />
+                </FormField>
+                <FormField label="Moneda">
+                  <select
+                    value={promoForm.currency}
+                    onChange={(e) => setPromoForm({ ...promoForm, currency: e.target.value })}
+                    style={formInputStyle}
+                  >
+                    <option value="CLP">CLP</option>
+                    <option value="USD">USD</option>
+                    <option value="ARS">ARS</option>
+                  </select>
+                </FormField>
+                <FormField label="Descuento (%)">
+                  <input
+                    required
+                    type="number"
+                    step="0.01"
+                    placeholder="Valor %"
+                    value={promoForm.discount_value}
+                    onChange={(e) => setPromoForm({ ...promoForm, discount_value: e.target.value })}
+                    style={formInputStyle}
+                  />
+                </FormField>
               </div>
               <div>
-                <label className={LABEL_CLS}>Moneda</label>
-                <select value={promoForm.currency} onChange={(e) => setPromoForm({ ...promoForm, currency: e.target.value })} className={INPUT_CLS}>
-                  <option value="CLP">CLP</option>
-                  <option value="USD">USD</option>
-                  <option value="ARS">ARS</option>
-                </select>
+                <PrimaryButton type="submit">Programar Campaña</PrimaryButton>
               </div>
-              <div>
-                <label className={LABEL_CLS}>Descuento (%)</label>
-                <input required type="number" step="0.01" placeholder="Valor %" value={promoForm.discount_value} onChange={(e) => setPromoForm({ ...promoForm, discount_value: e.target.value })} className={INPUT_CLS} />
-              </div>
-            </div>
-            <button type="submit" className="rounded-lg bg-amber-500 px-5 py-2.5 text-xs font-bold text-neutral-950 transition hover:bg-amber-400">
-              Programar Campaña
-            </button>
-          </form>
-          <div className="rounded-xl border border-neutral-800 bg-neutral-900/80 p-5 space-y-2.5 text-xs">
-            {promotions.map((p) => (
-              <div key={p.id} className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-800 pb-2.5 last:border-b-0 last:pb-0">
-                <span className="text-neutral-200">{p.name} · {p.discount_value} ({p.currency}) · <strong className="text-amber-300">{p.status}</strong></span>
-                <button
-                  type="button"
-                  onClick={() => updateMarketingPromotion(p.id, { status: p.status === "paused" ? "active" : "paused" }).then(loadAll)}
-                  className="rounded-lg border border-neutral-700 bg-neutral-950 px-3 py-1 text-[11px] hover:bg-neutral-800"
+            </form>
+          </SectionCard>
+
+          <SectionCard title="Campañas Registradas">
+            <div className="au-stack-sm">
+              {promotions.map((p) => (
+                <div
+                  key={p.id}
+                  style={{
+                    ...subCardStyle,
+                    display: "flex",
+                    flexWrap: "wrap",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 10,
+                  }}
                 >
-                  {p.status === "paused" ? "Reanudar" : "Pausar"}
-                </button>
-              </div>
-            ))}
-          </div>
+                  <span style={{ fontSize: 13, color: "var(--text-primary)" }}>
+                    {p.name} · {p.discount_value} ({p.currency}) ·{" "}
+                    <strong style={{ color: "#1AFF6E" }}>{p.status}</strong>
+                  </span>
+                  <SecondaryButton
+                    size="sm"
+                    onClick={() =>
+                      updateMarketingPromotion(p.id, {
+                        status: p.status === "paused" ? "active" : "paused",
+                      }).then(loadAll)
+                    }
+                  >
+                    {p.status === "paused" ? "Reanudar" : "Pausar"}
+                  </SecondaryButton>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
         </div>
       )}
 
       {activeTab === "preview" && (
-        <div className="space-y-4 rounded-xl border border-neutral-800 bg-neutral-900/80 p-5">
-          <h2 className="text-sm font-semibold text-white">Previsualización de Descuento y Margen (PricingAdjustmentSnapshot)</h2>
-          <form onSubmit={handlePreviewPricing} className="grid grid-cols-1 gap-4 md:grid-cols-3">
-            <div>
-              <label className={LABEL_CLS}>Moneda</label>
-              <select value={previewForm.currency} onChange={(e) => setPreviewForm({ ...previewForm, currency: e.target.value })} className={INPUT_CLS}>
-                <option value="CLP">CLP</option>
-                <option value="USD">USD</option>
-                <option value="ARS">ARS</option>
-              </select>
-            </div>
-            <div>
-              <label className={LABEL_CLS}>Subtotal</label>
-              <input type="number" step="0.01" placeholder="Subtotal" value={previewForm.subtotal} onChange={(e) => setPreviewForm({ ...previewForm, subtotal: e.target.value })} className={INPUT_CLS} />
-            </div>
-            <div>
-              <label className={LABEL_CLS}>Código de cupón</label>
-              <input placeholder="Código cupón" value={previewForm.coupon_code} onChange={(e) => setPreviewForm({ ...previewForm, coupon_code: e.target.value })} className={INPUT_CLS} />
-            </div>
-            <button type="submit" className="md:col-span-3 rounded-lg bg-indigo-600 px-4 py-2.5 text-xs font-semibold text-white transition hover:bg-indigo-500">
-              Simular Cálculo Comercial
-            </button>
-          </form>
-          {previewResult && (
-            previewResult.valid === false ? (
-              <div className="rounded-lg border border-rose-700/60 bg-rose-950/40 p-3.5 text-xs text-rose-200">
-                {previewResult.detail}
+        <SectionCard title="Previsualización de Descuento y Margen (PricingAdjustmentSnapshot)">
+          <div className="au-stack">
+            <form onSubmit={handlePreviewPricing} className="au-grid-3">
+              <FormField label="Moneda">
+                <select
+                  value={previewForm.currency}
+                  onChange={(e) => setPreviewForm({ ...previewForm, currency: e.target.value })}
+                  style={formInputStyle}
+                >
+                  <option value="CLP">CLP</option>
+                  <option value="USD">USD</option>
+                  <option value="ARS">ARS</option>
+                </select>
+              </FormField>
+              <FormField label="Subtotal">
+                <input
+                  type="number"
+                  step="0.01"
+                  placeholder="Subtotal"
+                  value={previewForm.subtotal}
+                  onChange={(e) => setPreviewForm({ ...previewForm, subtotal: e.target.value })}
+                  style={formInputStyle}
+                />
+              </FormField>
+              <FormField label="Código de cupón">
+                <input
+                  placeholder="Código cupón"
+                  value={previewForm.coupon_code}
+                  onChange={(e) => setPreviewForm({ ...previewForm, coupon_code: e.target.value })}
+                  style={formInputStyle}
+                />
+              </FormField>
+              <div style={{ gridColumn: "1 / -1" }}>
+                <PrimaryButton type="submit">Simular Cálculo Comercial</PrimaryButton>
               </div>
-            ) : (
-              <div data-testid="pricing-breakdown" className="grid grid-cols-2 gap-3 rounded-xl border border-neutral-800 bg-neutral-950 p-4 text-xs sm:grid-cols-4">
-                <div><span className="text-neutral-400">Moneda</span><p className="font-semibold text-white">{previewResult.currency}</p></div>
-                <div><span className="text-neutral-400">Subtotal Ref.</span><p className="font-semibold text-white">{previewResult.reference_subtotal}</p></div>
-                <div><span className="text-neutral-400">Desc. Promoción</span><p className="font-semibold text-emerald-300">{previewResult.promotion_discount}</p></div>
-                <div><span className="text-neutral-400">Desc. Cupón</span><p className="font-semibold text-emerald-300" data-testid="preview-coupon-discount">{previewResult.coupon_discount}</p></div>
-                <div><span className="text-neutral-400">Desc. Efectivo</span><p className="font-semibold text-amber-300">{previewResult.effective_discount}</p></div>
-                <div><span className="text-neutral-400">Total Final</span><p className="font-bold text-white">{previewResult.final_total}</p></div>
-                <div><span className="text-neutral-400">Margen (%)</span><p className="font-semibold text-sky-300">{previewResult.calculated_margin_percent ?? "Restringido / N/A"}</p></div>
-                <div><span className="text-neutral-400">Estado Costo</span><p className="font-semibold text-neutral-300">{previewResult.cost_status}</p></div>
-              </div>
-            )
-          )}
-        </div>
+            </form>
+
+            {previewResult &&
+              (previewResult.valid === false ? (
+                <div
+                  style={{
+                    padding: "12px 16px",
+                    borderRadius: 10,
+                    background: "rgba(239, 68, 68, 0.12)",
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    color: "#f87171",
+                    fontSize: 13,
+                  }}
+                >
+                  {previewResult.detail}
+                </div>
+              ) : (
+                <div data-testid="pricing-breakdown" className="au-grid-kpi" style={subCardStyle}>
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Moneda</span>
+                    <p style={{ margin: "4px 0 0", fontWeight: 700 }}>{previewResult.currency}</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Subtotal Ref.</span>
+                    <p style={{ margin: "4px 0 0", fontWeight: 700 }}>{previewResult.reference_subtotal}</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Desc. Promoción</span>
+                    <p style={{ margin: "4px 0 0", fontWeight: 700, color: "#4ade80" }}>{previewResult.promotion_discount}</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Desc. Cupón</span>
+                    <p
+                      data-testid="preview-coupon-discount"
+                      style={{ margin: "4px 0 0", fontWeight: 700, color: "#4ade80" }}
+                    >
+                      {previewResult.coupon_discount}
+                    </p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Desc. Efectivo</span>
+                    <p style={{ margin: "4px 0 0", fontWeight: 700, color: "#fbbf24" }}>{previewResult.effective_discount}</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Total Final</span>
+                    <p style={{ margin: "4px 0 0", fontWeight: 800 }}>{previewResult.final_total}</p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Margen (%)</span>
+                    <p style={{ margin: "4px 0 0", fontWeight: 700, color: "#60a5fa" }}>
+                      {previewResult.calculated_margin_percent ?? "Restringido / N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Estado Costo</span>
+                    <p style={{ margin: "4px 0 0", fontWeight: 600 }}>{previewResult.cost_status}</p>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </SectionCard>
       )}
 
       {activeTab === "abandoned" && (
-        <div className="space-y-3 rounded-xl border border-neutral-800 bg-neutral-900/80 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-sm font-semibold text-white">Carritos Abandonados Detectados ({abandoned.length})</h2>
-            <button type="button" onClick={handleDetectAbandoned} className="rounded-lg bg-amber-500 px-3.5 py-2 text-xs font-bold text-neutral-950 hover:bg-amber-400">
+        <SectionCard
+          title={`Carritos Abandonados Detectados (${abandoned.length})`}
+          actions={
+            <PrimaryButton size="sm" onClick={handleDetectAbandoned}>
               Detectar Inactivos (60m)
-            </button>
-          </div>
+            </PrimaryButton>
+          }
+        >
           {abandoned.length === 0 ? (
-            <p className="py-4 text-center text-xs text-neutral-400">No hay carritos abandonados detectados.</p>
+            <p style={{ padding: "16px 0", textAlign: "center", fontSize: 13, color: "var(--text-muted)", margin: 0 }}>
+              No hay carritos abandonados detectados.
+            </p>
           ) : (
-            abandoned.map((t) => {
-              const isBlocked = t.status === "recovered" || t.status === "suppressed"
-              return (
-                <div key={t.id} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-neutral-800 bg-neutral-950 p-3.5 text-xs">
-                  <div>
-                    <p className="font-semibold text-white">Trigger #{String(t.id).slice(0, 8)} · Cart #{String(t.cart_id).slice(0, 8)} ({t.user_email || "anónimo"})</p>
-                    <p className="mt-0.5 text-neutral-400">
-                      Estado: <strong className="text-neutral-200">{t.status}</strong> · Intentos: {t.attempts_count}/{t.max_attempts}
-                      {t.suppression_reason ? ` · Motivo: ${t.suppression_reason}` : ""}
-                    </p>
+            <div className="au-stack-sm">
+              {abandoned.map((t) => {
+                const isBlocked = t.status === "recovered" || t.status === "suppressed"
+                return (
+                  <div
+                    key={t.id}
+                    style={{
+                      ...subCardStyle,
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <div>
+                      <p style={{ margin: 0, fontWeight: 700, fontSize: 13 }}>
+                        Trigger #{String(t.id).slice(0, 8)} · Cart #{String(t.cart_id).slice(0, 8)} (
+                        {t.user_email || "anónimo"})
+                      </p>
+                      <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-secondary)" }}>
+                        Estado: <strong>{t.status}</strong> · Intentos: {t.attempts_count}/{t.max_attempts}
+                        {t.suppression_reason ? ` · Motivo: ${t.suppression_reason}` : ""}
+                      </p>
+                    </div>
+                    {isBlocked ? (
+                      <StatusBadge tone="neutral">
+                        {t.status === "recovered" ? "Recuperado (bloqueado)" : "Suprimido (bloqueado)"}
+                      </StatusBadge>
+                    ) : (
+                      <SecondaryButton size="sm" onClick={() => handleDispatchRecovery(t.id)}>
+                        Preparar Recuperación QA
+                      </SecondaryButton>
+                    )}
                   </div>
-                  {isBlocked ? (
-                    <span className="rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-[11px] font-medium text-neutral-400">
-                      {t.status === "recovered" ? "Recuperado (bloqueado)" : "Suprimido (bloqueado)"}
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleDispatchRecovery(t.id)}
-                      className="rounded-lg border border-indigo-600 bg-indigo-950/40 px-3 py-1.5 text-[11px] font-semibold text-indigo-300 hover:bg-indigo-900/50"
-                    >
-                      Preparar Recuperación QA
-                    </button>
-                  )}
-                </div>
-              )
-            })
+                )
+              })}
+            </div>
           )}
-        </div>
+        </SectionCard>
       )}
 
       {activeTab === "recovery" && (
-        <div className="rounded-xl border border-neutral-800 bg-neutral-900/80 p-5 text-xs space-y-2">
-          <h2 className="text-sm font-semibold text-white">Flujo de Recuperación & Enlaces Opacos</h2>
-          <p className="text-neutral-300">Cada trigger genera un token opaco `mktrec_...` con expiración de 72h, verificación de pertenencia de usuario, revalidación de stock/precio y bloqueo automático tras conversión.</p>
-          <p className="text-neutral-400">Triggers recuperados: {kpis.abandoned_recovered ?? 0} · Suprimidos: {kpis.abandoned_suppressed ?? 0}</p>
-        </div>
+        <SectionCard title="Flujo de Recuperación & Enlaces Opacos">
+          <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: "0 0 8px", lineHeight: 1.6 }}>
+            Cada trigger genera un token opaco `mktrec_...` con expiración de 72h, verificación de pertenencia de
+            usuario, revalidación de stock/precio y bloqueo automático tras conversión.
+          </p>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0 }}>
+            Triggers recuperados: {kpis.abandoned_recovered ?? 0} · Suprimidos: {kpis.abandoned_suppressed ?? 0}
+          </p>
+        </SectionCard>
       )}
 
       {activeTab === "consent" && (
-        <div className="space-y-4 rounded-xl border border-neutral-800 bg-neutral-900/80 p-5 text-xs">
-          <h2 className="text-sm font-semibold text-white">Consentimiento Comercial Documentado & Outbox QA</h2>
-          <form onSubmit={handleRecordConsent} className="grid grid-cols-1 gap-3 md:grid-cols-4">
-            <input required type="email" placeholder="cliente@dominio.cl" value={consentForm.email} onChange={(e) => setConsentForm({ ...consentForm, email: e.target.value })} className={INPUT_CLS} />
-            <input required={consentForm.promotional_opt_in} placeholder="Evidencia (ej. TKT-2026-8841)" value={consentForm.evidence_reference} onChange={(e) => setConsentForm({ ...consentForm, evidence_reference: e.target.value })} className={INPUT_CLS} />
-            <label className="flex items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2 text-neutral-200">
-              <input type="checkbox" checked={consentForm.promotional_opt_in} onChange={(e) => setConsentForm({ ...consentForm, promotional_opt_in: e.target.checked })} />
-              Opt-in promocional
-            </label>
-            <button type="submit" className="rounded-lg bg-amber-500 px-3 py-2 font-bold text-neutral-950 hover:bg-amber-400">Registrar</button>
-          </form>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-            <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-3.5 space-y-1.5">
-              <p className="font-semibold text-amber-300">Consentimientos ({consents.length})</p>
-              {consents.map((c) => (
-                <p key={c.id} className="text-neutral-300">
-                  {c.email} · opt_in={String(c.promotional_opt_in)} · {c.consent_origin} ({c.evidence_reference || c.consent_source})
+        <SectionCard title="Consentimiento Comercial Documentado & Outbox QA">
+          <div className="au-stack">
+            <form onSubmit={handleRecordConsent} className="au-grid-2">
+              <FormField label="Email del contacto">
+                <input
+                  required
+                  type="email"
+                  placeholder="cliente@dominio.cl"
+                  value={consentForm.email}
+                  onChange={(e) => setConsentForm({ ...consentForm, email: e.target.value })}
+                  style={formInputStyle}
+                />
+              </FormField>
+              <FormField label="Evidencia documental">
+                <input
+                  required={consentForm.promotional_opt_in}
+                  placeholder="Evidencia (ej. TKT-2026-8841)"
+                  value={consentForm.evidence_reference}
+                  onChange={(e) => setConsentForm({ ...consentForm, evidence_reference: e.target.value })}
+                  style={formInputStyle}
+                />
+              </FormField>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={consentForm.promotional_opt_in}
+                    onChange={(e) => setConsentForm({ ...consentForm, promotional_opt_in: e.target.checked })}
+                  />
+                  Opt-in promocional
+                </label>
+                <PrimaryButton type="submit" size="sm">
+                  Registrar
+                </PrimaryButton>
+              </div>
+            </form>
+
+            <div className="au-grid-2">
+              <div style={subCardStyle}>
+                <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: 13, color: "#fbbf24" }}>
+                  Consentimientos ({consents.length})
                 </p>
-              ))}
-            </div>
-            <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-3.5 space-y-1.5">
-              <p className="font-semibold text-indigo-300">Outbox QA ({outbox.length})</p>
-              {outbox.map((m) => (
-                <p key={m.id} className="text-neutral-300">{m.recipient_email} · {m.status} · {m.channel_class}</p>
-              ))}
+                {consents.map((c) => (
+                  <p key={c.id} style={{ margin: "4px 0", fontSize: 12, color: "var(--text-secondary)" }}>
+                    {c.email} · opt_in={String(c.promotional_opt_in)} · {c.consent_origin} (
+                    {c.evidence_reference || c.consent_source})
+                  </p>
+                ))}
+              </div>
+              <div style={subCardStyle}>
+                <p style={{ margin: "0 0 8px", fontWeight: 700, fontSize: 13, color: "#60a5fa" }}>
+                  Outbox QA ({outbox.length})
+                </p>
+                {outbox.map((m) => (
+                  <p key={m.id} style={{ margin: "4px 0", fontSize: 12, color: "var(--text-secondary)" }}>
+                    {m.recipient_email} · {m.status} · {m.channel_class}
+                  </p>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        </SectionCard>
       )}
 
       {activeTab === "loyalty-rewards" && (
-        <div className="grid grid-cols-1 gap-3 rounded-xl border border-neutral-800 bg-neutral-900/80 p-5 md:grid-cols-2 text-xs">
-          <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
-            <h3 className="font-semibold text-amber-300">Loyalty (Puntos CLP)</h3>
-            <p className="mt-1.5 text-neutral-300">Cuentas: {dashboard?.loyalty_summary?.accounts_count ?? 0}</p>
-            <p className="text-neutral-300">Saldo total puntos: {dashboard?.loyalty_summary?.total_points_balance ?? 0}</p>
+        <SectionCard title="Integración Loyalty & Rewards">
+          <div className="au-grid-2">
+            <div style={subCardStyle}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#fbbf24" }}>
+                Loyalty (Puntos CLP)
+              </h3>
+              <p style={{ margin: "4px 0", fontSize: 13, color: "var(--text-secondary)" }}>
+                Cuentas: {dashboard?.loyalty_summary?.accounts_count ?? 0}
+              </p>
+              <p style={{ margin: "4px 0", fontSize: 13, color: "var(--text-secondary)" }}>
+                Saldo total puntos: {dashboard?.loyalty_summary?.total_points_balance ?? 0}
+              </p>
+            </div>
+            <div style={subCardStyle}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#1AFF6E" }}>
+                Rewards (Sorteos & Stickers)
+              </h3>
+              <p style={{ margin: "4px 0", fontSize: 13, color: "var(--text-secondary)" }}>
+                Campañas: {dashboard?.rewards_summary?.campaigns_count ?? 0} (activas:{" "}
+                {dashboard?.rewards_summary?.active_campaigns ?? 0})
+              </p>
+              <p style={{ margin: "4px 0", fontSize: 13, color: "var(--text-secondary)" }}>
+                Stickers: {dashboard?.rewards_summary?.stickers_count ?? 0} · Ganadores:{" "}
+                {dashboard?.rewards_summary?.winners_count ?? 0}
+              </p>
+            </div>
           </div>
-          <div className="rounded-lg border border-neutral-800 bg-neutral-950 p-4">
-            <h3 className="font-semibold text-emerald-300">Rewards (Sorteos & Stickers)</h3>
-            <p className="mt-1.5 text-neutral-300">Campañas: {dashboard?.rewards_summary?.campaigns_count ?? 0} (activas: {dashboard?.rewards_summary?.active_campaigns ?? 0})</p>
-            <p className="text-neutral-300">Stickers: {dashboard?.rewards_summary?.stickers_count ?? 0} · Ganadores: {dashboard?.rewards_summary?.winners_count ?? 0}</p>
-          </div>
-        </div>
+        </SectionCard>
       )}
     </div>
   )

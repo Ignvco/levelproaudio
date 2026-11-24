@@ -1745,3 +1745,109 @@
   .admin-root .au-acard__foot { gap: 8px; }
   .admin-root .lp-seg-tabs { width: 100%; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   LEVELPRO OS V4.0 — GATE 13: ADMIN EXPERIENCE UNIFIED DESIGN SYSTEM
+   - Editorial Bento utility grid helpers (au-stack, au-grid-kpi, au-grid-2, au-grid-3)
+   - WCAG AA visible focus rings (:focus-visible)
+   - Tabular numeric alignment for prices, SKUs, serials, stock & KPIs
+   - Responsive range 320px .. 3840x2160 (4K) without unwanted overflow
+   - Reduced-motion compliance (prefers-reduced-motion: reduce)
+   ═══════════════════════════════════════════════════════════════════════════ */
+.admin-root .au-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.admin-root .au-stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-root .au-grid-kpi {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 16px;
+}
+
+.admin-root .au-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.admin-root .au-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+/* Tabular numbers for financial, inventory & order columns */
+.admin-root .au-lp__value,
+.admin-root .au-table td,
+.admin-root .v3-mono {
+  font-variant-numeric: tabular-nums;
+}
+
+/* WCAG AA visible keyboard focus inside admin experience */
+.admin-root button:focus-visible,
+.admin-root a:focus-visible,
+.admin-root input:focus-visible,
+.admin-root select:focus-visible,
+.admin-root textarea:focus-visible,
+.admin-root [role="tab"]:focus-visible,
+.admin-root [role="menuitem"]:focus-visible {
+  outline: 2px solid #1AFF6E !important;
+  outline-offset: 2px !important;
+}
+
+@media (max-width: 900px) {
+  .admin-root .au-grid-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .admin-root .au-grid-2,
+  .admin-root .au-grid-3,
+  .admin-root .au-grid-kpi {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+/* Ultra-compact mobile (320px–390px) safeguard */
+@media (max-width: 400px) {
+  .admin-root.v3-admin-shell .v3-main-container {
+    padding-left: 12px;
+    padding-right: 12px;
+  }
+  .admin-root .au-title {
+    font-size: 1.35rem;
+    word-break: break-word;
+  }
+}
+
+/* 4K / Ultra-Wide (2560px–3840px) container centering & readable measure */
+@media (min-width: 2200px) {
+  .admin-root.v3-admin-shell .v3-main-container {
+    max-width: 1760px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
+
+/* Respect OS reduced motion setting */
+@media (prefers-reduced-motion: reduce) {
+  .admin-root *,
+  .admin-root *::before,
+  .admin-root *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+

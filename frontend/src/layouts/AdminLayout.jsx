@@ -4,19 +4,16 @@ import { useState, useEffect, useRef } from "react"
 import { NavLink, Link, useNavigate, useLocation, Outlet } from "react-router-dom"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { useAuthStore } from "../store/authStore"
-import { getAdminDashboard } from "../api/admin.api"
+import { getAdminNotifications, markAdminNotificationsRead } from "../api/admin.api"
 import { getMyPermissions } from "../api/rbac.api"
 import AdminSearch from "../components/admin/AdminSearch"
 import { useSiteSettings } from "../hooks/useSiteSettings"
 import logoImg from "../assets/logo.png"
-import { formatCurrency } from "../utils/accountingCurrency"
 import {
   Search, Bell, Menu, X, ChevronDown, CheckCircle2,
   Clock, AlertTriangle, MessageSquare, ExternalLink, LogOut,
   LayoutDashboard, ShoppingBag, Package, GraduationCap, Wrench, Gift, Wallet, Settings, ShieldAlert
 } from "lucide-react"
-
-const clpN = (n, currency) => formatCurrency(n, currency)
 
 const ROUTE_MODULE_RULES = [
   { exact: true, path: "/admin", module: "dashboard", label: "Dashboard Ejecutivo" },
@@ -110,41 +107,91 @@ function isGroupActive(group, pathname) {
 
 function NotificationsBell() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
+  const [categoryFilter, setCategoryFilter] = useState("all")
+  const [markingAll, setMarkingAll] = useState(false)
   const ref = useRef(null)
 
-  const { data } = useQuery({
-    queryKey: ["admin-dashboard"],
-    queryFn: getAdminDashboard,
+  const { data: notifData, refetch, isFetching } = useQuery({
+    queryKey: ["admin-notifications-center"],
+    queryFn: () => getAdminNotifications(),
     refetchInterval: 60000,
   })
 
   useEffect(() => {
     const h = (e) => ref.current && !ref.current.contains(e.target) && setOpen(false)
+    const k = (e) => {
+      if (e.key === "Escape") setOpen(false)
+    }
     document.addEventListener("mousedown", h)
-    return () => document.removeEventListener("mousedown", h)
+    window.addEventListener("keydown", k)
+    return () => {
+      document.removeEventListener("mousedown", h)
+      window.removeEventListener("keydown", k)
+    }
   }, [])
 
-  const actions  = data?.actions || {}
-  const pending  = actions.pending_orders || []
-  const lowStock = actions.low_stock || []
-  const unread   = actions.unread_service_requests || 0
-  const count    = pending.length + lowStock.length + unread
+  const allNotifications = notifData?.notifications || []
+  const unreadCount = typeof notifData?.unread_count === "number" ? notifData.unread_count : 0
 
-  const go = (to) => { setOpen(false); navigate(to) }
+  const filteredNotifications =
+    categoryFilter === "all"
+      ? allNotifications
+      : allNotifications.filter((n) => n.category === categoryFilter)
+
+  const handleMarkOneRead = async (item, shouldNavigate = false) => {
+    try {
+      if (!item.is_read) {
+        await markAdminNotificationsRead({ key: item.key })
+        await queryClient.invalidateQueries({ queryKey: ["admin-notifications-center"] })
+      }
+    } catch {
+      // Best-effort read state persistence
+    }
+    if (shouldNavigate && item.target_route) {
+      setOpen(false)
+      navigate(item.target_route)
+    }
+  }
+
+  const handleMarkAllRead = async () => {
+    if (unreadCount === 0 || markingAll) return
+    setMarkingAll(true)
+    try {
+      await markAdminNotificationsRead({ mark_all: true })
+      await queryClient.invalidateQueries({ queryKey: ["admin-notifications-center"] })
+    } finally {
+      setMarkingAll(false)
+    }
+  }
+
+  const priorityMeta = (priority) => {
+    switch (priority) {
+      case "critical":
+        return { label: "CRÍTICA", bg: "rgba(239,68,68,0.12)", color: "#DC2626" }
+      case "high":
+        return { label: "ALTA", bg: "rgba(245,158,11,0.14)", color: "#D97706" }
+      case "warning":
+        return { label: "ATENCIÓN", bg: "rgba(234,179,8,0.14)", color: "#B45309" }
+      default:
+        return { label: "OPERATIVA", bg: "rgba(26,157,78,0.12)", color: "#15803D" }
+    }
+  }
 
   return (
     <div style={{ position: "relative" }} ref={ref}>
       <button
         type="button"
         className="v3-circle-btn"
-        aria-label="Notificaciones"
+        aria-label="Centro de notificaciones operativas"
         data-testid="admin-notifications-btn"
         aria-expanded={open}
+        aria-haspopup="dialog"
         onClick={() => setOpen((o) => !o)}
       >
         <Bell size={17} strokeWidth={2} />
-        {count > 0 && (
+        {unreadCount > 0 && (
           <span
             data-testid="admin-notifications-badge"
             style={{
@@ -166,174 +213,241 @@ function NotificationsBell() {
               lineHeight: 1,
             }}
           >
-            {count > 9 ? "9+" : count}
+            {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
 
       {open && (
         <div
+          role="dialog"
+          aria-label="Centro de Notificaciones Operativas BF-32"
           data-testid="admin-notifications-panel"
           style={{
             position: "absolute",
             top: "calc(100% + 10px)",
             right: 0,
-            zIndex: 150,
-            width: 340,
-            maxWidth: "calc(100vw - 32px)",
+            zIndex: 180,
+            width: 390,
+            maxWidth: "calc(100vw - 24px)",
             background: "#FFFFFF",
             border: "1px solid var(--v3-border)",
             borderRadius: 20,
-            boxShadow: "0 24px 60px rgba(0,0,0,.15)",
+            boxShadow: "0 24px 60px rgba(0,0,0,.18)",
             overflow: "hidden",
             animation: "v3FadeIn 0.15s ease-out",
           }}
         >
-          <div style={{
-            padding: "16px 20px",
-            borderBottom: "1px solid var(--v3-border)",
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center"
-          }}>
-            <p style={{ fontSize: 14, fontWeight: 700, margin: 0, color: "var(--v3-text-primary)" }}>Notificaciones</p>
-            {count > 0 && (
-              <span style={{
-                fontSize: 11,
-                fontWeight: 700,
-                color: "#EF4444",
-                background: "rgba(239,68,68,.1)",
-                padding: "2px 8px",
-                borderRadius: 999
-              }}>
-                {count} nuevas
+          {/* Header */}
+          <div
+            style={{
+              padding: "14px 18px 10px",
+              borderBottom: "1px solid var(--v3-border)",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              gap: 8,
+            }}
+          >
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 800, margin: 0, color: "var(--v3-text-primary)" }}>
+                Centro de Notificaciones
+              </p>
+              <span style={{ fontSize: 10.5, color: "var(--v3-text-muted)" }}>
+                {notifData?.delivery_disclosure || "Polling controlado (60s) · Eventos verificables"}
               </span>
-            )}
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              {unreadCount > 0 && (
+                <button
+                  type="button"
+                  onClick={handleMarkAllRead}
+                  disabled={markingAll}
+                  data-testid="admin-notifications-mark-all"
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "#15803D",
+                    background: "rgba(26,157,78,0.1)",
+                    border: "1px solid rgba(26,157,78,0.22)",
+                    padding: "4px 9px",
+                    borderRadius: 999,
+                    cursor: "pointer",
+                  }}
+                >
+                  {markingAll ? "Marcando..." : "Marcar todo leído"}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => refetch()}
+                data-testid="admin-notifications-refresh"
+                aria-label="Actualizar notificaciones"
+                style={{
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: "var(--v3-text-secondary)",
+                  background: "var(--v3-surface-subtle, #F4F5F7)",
+                  border: "1px solid var(--v3-border)",
+                  padding: "4px 8px",
+                  borderRadius: 8,
+                  cursor: "pointer",
+                }}
+              >
+                {isFetching ? "..." : "Actualizar"}
+              </button>
+            </div>
           </div>
 
+          {/* Category filter pills */}
+          <div
+            style={{
+              display: "flex",
+              gap: 6,
+              padding: "8px 16px",
+              borderBottom: "1px solid var(--v3-border-light)",
+              overflowX: "auto",
+              background: "#FAFBFC",
+            }}
+          >
+            {[
+              { id: "all", label: "Todas" },
+              { id: "orders", label: "Pedidos" },
+              { id: "inventory", label: "Stock" },
+              { id: "logistics", label: "Logística" },
+              { id: "services", label: "Servicios" },
+            ].map((tab) => {
+              const active = categoryFilter === tab.id
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  data-testid={`admin-notif-filter-${tab.id}`}
+                  onClick={() => setCategoryFilter(tab.id)}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    padding: "4px 10px",
+                    borderRadius: 999,
+                    border: active ? "1px solid #0C0D0E" : "1px solid var(--v3-border)",
+                    background: active ? "#0C0D0E" : "#FFFFFF",
+                    color: active ? "#FFFFFF" : "var(--v3-text-secondary)",
+                    cursor: "pointer",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {tab.label}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Notification items */}
           <div style={{ maxHeight: 380, overflowY: "auto" }}>
-            {count === 0 ? (
-              <div style={{ padding: "36px 20px", textAlign: "center", color: "var(--v3-text-muted)" }}>
-                <CheckCircle2 size={32} style={{ color: "#1A9D4E", marginBottom: 8, margin: "0 auto" }} />
-                <p style={{ fontSize: 13, fontWeight: 600, margin: "8px 0 2px" }}>Todo al día</p>
-                <p style={{ fontSize: 12, margin: 0 }}>No hay alertas prioritarias pendientes.</p>
+            {filteredNotifications.length === 0 ? (
+              <div
+                data-testid="admin-notifications-empty"
+                style={{ padding: "34px 20px", textAlign: "center", color: "var(--v3-text-muted)" }}
+              >
+                <CheckCircle2 size={30} style={{ color: "#1A9D4E", margin: "0 auto 8px" }} />
+                <p style={{ fontSize: 13, fontWeight: 700, margin: "4px 0 2px", color: "var(--v3-text-primary)" }}>
+                  Bandeja operativa al día
+                </p>
+                <p style={{ fontSize: 12, margin: 0 }}>
+                  No hay alertas operativas activas en esta categoría para tu rol.
+                </p>
               </div>
             ) : (
-              <>
-                {pending.length > 0 && (
-                  <div style={{ borderBottom: "1px solid var(--v3-border-light)" }}>
-                    <div style={{
+              filteredNotifications.map((item) => {
+                const pMeta = priorityMeta(item.priority)
+                return (
+                  <div
+                    key={item.key}
+                    data-testid={`admin-notification-item-${item.category}`}
+                    style={{
+                      padding: "12px 18px",
+                      borderBottom: "1px solid var(--v3-border-light)",
+                      background: item.is_read ? "#FFFFFF" : "rgba(26, 157, 78, 0.04)",
                       display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "10px 18px 6px"
-                    }}>
-                      <span style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        color: "#D97706"
-                      }}>
-                        <Clock size={12} /> Pedidos por confirmar
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => go("/admin/orders")}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, color: "#1A9D4E" }}
-                      >
-                        Ver todo
-                      </button>
-                    </div>
-                    {pending.slice(0, 4).map((o) => (
-                      <div
-                        key={o.id}
-                        onClick={() => go(`/admin/orders?id=${o.id}`)}
+                      flexDirection: "column",
+                      gap: 6,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                      <span
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          padding: "8px 18px",
-                          cursor: "pointer",
-                          transition: "background 0.12s"
+                          fontSize: 10,
+                          fontWeight: 800,
+                          padding: "2px 7px",
+                          borderRadius: 999,
+                          background: pMeta.bg,
+                          color: pMeta.color,
+                          letterSpacing: "0.04em",
                         }}
                       >
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ fontSize: 13, fontWeight: 600, margin: 0, color: "var(--v3-text-primary)" }}>#{o.short_id}</p>
-                          <p style={{ fontSize: 11, margin: 0, color: "var(--v3-text-muted)" }}>{o.user_name || "Cliente"}</p>
-                        </div>
-                        <span style={{ fontSize: 12.5, fontWeight: 700 }}>{clpN(o.total, o.currency)}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {lowStock.length > 0 && (
-                  <div style={{ borderBottom: "1px solid var(--v3-border-light)" }}>
-                    <div style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      padding: "10px 18px 6px"
-                    }}>
-                      <span style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 6,
-                        fontSize: 11,
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        color: "#EF4444"
-                      }}>
-                        <AlertTriangle size={12} /> Stock bajo o agotado
+                        {pMeta.label}
                       </span>
-                      <button
-                        type="button"
-                        onClick={() => go("/admin/inventory")}
-                        style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, fontWeight: 700, color: "#1A9D4E" }}
-                      >
-                        Ver todo
-                      </button>
-                    </div>
-                    {lowStock.slice(0, 4).map((p) => (
-                      <div
-                        key={p.id}
-                        onClick={() => go(`/admin/products?highlight=${p.id}`)}
+                      <span
                         style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          padding: "8px 18px",
-                          cursor: "pointer"
+                          fontSize: 10.5,
+                          fontWeight: 700,
+                          color: item.is_read ? "var(--v3-text-muted)" : "#15803D",
                         }}
                       >
-                        <div style={{ minWidth: 0 }}>
-                          <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{p.name}</p>
-                          <p style={{ fontSize: 11, margin: 0, color: "#EF4444" }}>{p.stock === 0 ? "Agotado" : `Quedan ${p.stock} u.`}</p>
-                        </div>
-                        <span style={{ fontSize: 12.5, fontWeight: 700, color: p.stock === 0 ? "#EF4444" : "#D97706" }}>
-                          {p.stock === 0 ? "0" : `${p.stock} u.`}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+                        {item.is_read ? "Leída" : "● No leída"}
+                      </span>
+                    </div>
 
-                {unread > 0 && (
-                  <div>
                     <div
-                      onClick={() => go("/admin/services")}
-                      style={{ padding: "12px 18px", cursor: "pointer" }}
+                      onClick={() => handleMarkOneRead(item, true)}
+                      style={{ cursor: "pointer" }}
                     >
-                      <p style={{ fontSize: 13, margin: 0, color: "var(--v3-text-primary)" }}>
-                        Tenés <strong style={{ color: "#1A9D4E" }}>{unread}</strong> cotizaciones de servicio técnico pendientes.
+                      <p style={{ fontSize: 13, fontWeight: 700, margin: "0 0 2px", color: "var(--v3-text-primary)" }}>
+                        {item.title}
+                      </p>
+                      <p style={{ fontSize: 11.5, margin: 0, color: "var(--v3-text-secondary)", lineHeight: 1.4 }}>
+                        {item.description}
                       </p>
                     </div>
+
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
+                      <button
+                        type="button"
+                        onClick={() => handleMarkOneRead(item, true)}
+                        style={{
+                          background: "none",
+                          border: "none",
+                          padding: 0,
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: "#15803D",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Ir al módulo →
+                      </button>
+                      {!item.is_read && (
+                        <button
+                          type="button"
+                          data-testid={`admin-notif-mark-read-${item.category}`}
+                          onClick={() => handleMarkOneRead(item, false)}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            fontSize: 11,
+                            fontWeight: 600,
+                            color: "var(--v3-text-muted)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          Marcar leída
+                        </button>
+                      )}
+                    </div>
                   </div>
-                )}
-              </>
+                )
+              })
             )}
           </div>
         </div>

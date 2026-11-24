@@ -516,3 +516,14 @@ export const recordMarketingConsentAdmin = (data) =>
 
 export const getMarketingOutbox = () =>
   api.get(`${BASE}/marketing/outbox/`).then(r => r.data)
+
+// ── Gate 13: Admin Experience (Command Palette & Notification Center) ──
+export const globalAdminSearch = (q, { limit = 6, signal } = {}) =>
+  api.get(`${BASE}/search/global/`, { params: { q, limit }, signal }).then(r => r.data)
+
+export const getAdminNotifications = (params = {}) =>
+  api.get(`${BASE}/notifications/`, { params }).then(r => r.data)
+
+export const markAdminNotificationsRead = (payload = {}) =>
+  api.post(`${BASE}/notifications/read/`, payload).then(r => r.data)
+

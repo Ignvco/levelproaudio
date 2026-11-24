@@ -228,6 +228,11 @@ urlpatterns = [
     path("orders/<uuid:order_id>/payment-attempt/", admin_order_payment_attempt_view, name="admin-orders-payment-attempt"),
     path("orders/<uuid:order_id>/rma/", admin_order_rma_view, name="admin-orders-rma"),
 
+    # Gate 13 — Admin Experience (Command Palette & Notification Center)
+    path("search/global/", __import__("apps.analytics.admin_experience_views", fromlist=["admin_global_search_view"]).admin_global_search_view, name="admin-global-search"),
+    path("notifications/", __import__("apps.analytics.admin_experience_views", fromlist=["admin_notifications_center_view"]).admin_notifications_center_view, name="admin-notifications-center"),
+    path("notifications/read/", __import__("apps.analytics.admin_experience_views", fromlist=["admin_notifications_mark_read_view"]).admin_notifications_mark_read_view, name="admin-notifications-read"),
+
     # Router al final
     path("", include(router.urls)),
 ]

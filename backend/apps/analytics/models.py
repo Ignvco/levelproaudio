@@ -411,3 +411,28 @@ from .finance_models import (  # noqa: E402, F401
     PayableAllocation,
     ReceivableAllocation,
 )
+
+
+class AdminNotificationReadState(TimeStampedModel):
+    """
+    GATE 13 (BF-32): Estado auditable de lectura de alertas operativas por administrador.
+    """
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="admin_notification_reads",
+    )
+    notification_key = models.CharField(max_length=160, db_index=True)
+    read_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-read_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "notification_key"],
+                name="uniq_admin_notif_read_user_key",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} -> {self.notification_key}"
