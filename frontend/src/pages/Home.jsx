@@ -76,7 +76,7 @@ function AnimatedNumber({ value }) {
 }
 
 // ═══════════════════════════════════════════════════════════════
-export default function Home() {
+export default function Home({ previewSettings = null } = {}) {
   const { whatsappUrl } = useSiteSettings()
   const { data: featuredData } = useQuery({
     queryKey: ["products", { featured: true }],
@@ -96,16 +96,24 @@ export default function Home() {
   const { data: settings } = useQuery({
     queryKey: ["site-settings"], queryFn: getSiteSettings,
     staleTime: 30 * 1000,  // 30s — para que cambios en admin se reflejen rápido
+    enabled: !previewSettings,
   })
 
   const featured  = featuredData?.results  || featuredData  || []
   const courses   = coursesData?.results   || coursesData   || []
   const services  = servicesData?.results  || servicesData  || []
   const brands    = brandsData?.results    || brandsData    || []
-  const s         = settings || {}
+  const s         = previewSettings || settings || {}
 
-  const heroImages = [s.hero_image_url, s.hero_image_2_url, s.hero_image_3_url]
-    .filter(Boolean)
+  const cmsSlides = s.cms?.hero_slides || []
+  const isMobileViewport = typeof window !== "undefined" && window.innerWidth < 768
+  const heroImages = cmsSlides.length > 0
+    ? cmsSlides
+        .map((sl) => (isMobileViewport ? (sl.mobile_image?.url || sl.desktop_image?.url) : (sl.desktop_image?.url || sl.mobile_image?.url)))
+        .filter(Boolean)
+    : [s.hero_image_url, s.hero_image_2_url, s.hero_image_3_url].filter(Boolean)
+  const cmsAnnouncements = s.cms?.announcements || []
+  const cmsBanners = s.cms?.banners || []
   const [heroIdx, setHeroIdx] = useState(0)
   useEffect(() => {
     if (heroImages.length < 2) return
@@ -180,7 +188,31 @@ export default function Home() {
 
       {/* Contenido del Home por encima de las capas de fondo */}
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column" }}>
-      <Seo />
+      {!previewSettings && <Seo />}
+
+      {cmsAnnouncements.length > 0 && (
+        <div
+          data-testid="cms-announcement-bar"
+          style={{
+            background: "#0B0E14",
+            borderBottom: "1px solid rgba(26,255,110,0.28)",
+            color: "#F5F5F5",
+            padding: "8px 16px",
+            textAlign: "center",
+            fontSize: "12px",
+            fontFamily: "var(--font-mono)",
+          }}
+        >
+          <span style={{ color: "#1AFF6E", marginRight: "8px" }}>●</span>
+          {cmsAnnouncements[0].link_url ? (
+            <Link to={cmsAnnouncements[0].link_url} style={{ color: "#F5F5F5", textDecoration: "underline" }}>
+              {cmsAnnouncements[0].text}
+            </Link>
+          ) : (
+            <span>{cmsAnnouncements[0].text}</span>
+          )}
+        </div>
+      )}
 
       {/* ═════════════════════════════════════════════════════════════
           HERO — split · left copy · right console-inspired glass
@@ -523,6 +555,68 @@ export default function Home() {
           </div>
         </div>
       </section>
+      )}
+
+      {cmsBanners.filter((b) => b.target_page === "home").length > 0 && (
+        <section data-testid="cms-banners-strip" style={{ padding: "0 clamp(16px, 4vw, 48px)", marginBottom: "28px" }}>
+          <div style={{ maxWidth: "1240px", margin: "0 auto", display: "grid", gap: "14px" }}>
+            {cmsBanners
+              .filter((b) => b.target_page === "home")
+              .map((b) => {
+                const bImg = isMobileViewport ? (b.mobile_image?.url || b.desktop_image?.url) : (b.desktop_image?.url || b.mobile_image?.url)
+                return (
+                  <div
+                    key={b.id}
+                    style={{
+                      background: "#0B0E14",
+                      border: "1px solid rgba(26,255,110,0.22)",
+                      borderRadius: "16px",
+                      padding: "20px 24px",
+                      display: "flex",
+                      flexWrap: "wrap",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "16px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "16px", flex: "1 1 320px" }}>
+                      {bImg && (
+                        <img
+                          src={mediaUrl(bImg)}
+                          alt={b.title || b.name}
+                          loading="lazy"
+                          style={{ width: "88px", height: "56px", objectFit: "cover", borderRadius: "8px", border: "1px solid #242A34" }}
+                        />
+                      )}
+                      <div>
+                        <p style={{ margin: 0, fontSize: "11px", color: "#1AFF6E", fontFamily: "var(--font-mono)", textTransform: "uppercase" }}>
+                          {b.code}
+                        </p>
+                        <h3 style={{ margin: "2px 0 4px", fontSize: "16px", fontWeight: 700, color: "#F5F5F5" }}>{b.title || b.name}</h3>
+                        {b.body_text && <p style={{ margin: 0, fontSize: "12px", color: "#9CA3AF" }}>{b.body_text}</p>}
+                      </div>
+                    </div>
+                    {b.cta_text && b.cta_link && (
+                      <Link
+                        to={b.cta_link}
+                        style={{
+                          background: "#1AFF6E",
+                          color: "#0B0E14",
+                          padding: "8px 16px",
+                          borderRadius: "8px",
+                          fontSize: "12px",
+                          fontWeight: 700,
+                          textDecoration: "none",
+                        }}
+                      >
+                        {b.cta_text}
+                      </Link>
+                    )}
+                  </div>
+                )
+              })}
+          </div>
+        </section>
       )}
 
       {/* ═════════════════════════════════════════════════════════════

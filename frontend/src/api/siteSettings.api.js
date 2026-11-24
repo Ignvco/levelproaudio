@@ -26,3 +26,55 @@ export const updateSiteSettings = (data, files = {}) => {
   }
   return api.patch("/admin/site-settings/", data).then(r => r.data)
 }
+
+// ── Gate 12: Editorial CMS (BF-30, BF-31) ─────────────────────
+export const getCmsVersions = () =>
+  api.get("/admin/cms/versions/").then(r => r.data)
+
+export const createCmsDraft = (changeSummary = "") =>
+  api.post("/admin/cms/versions/", { change_summary: changeSummary }).then(r => r.data)
+
+export const getCmsVersion = (versionId) =>
+  api.get(`/admin/cms/versions/${versionId}/`).then(r => r.data)
+
+export const updateCmsDraft = (versionId, payload, changeSummary) =>
+  api.patch(`/admin/cms/versions/${versionId}/`, { payload, change_summary: changeSummary }).then(r => r.data)
+
+export const previewCmsVersion = (versionId) =>
+  api.get(`/admin/cms/versions/${versionId}/preview/`).then(r => r.data)
+
+export const reviewCmsVersion = (versionId, targetStatus) =>
+  api.post(`/admin/cms/versions/${versionId}/review/`, { target_status: targetStatus }).then(r => r.data)
+
+export const publishCmsVersion = (versionId, notes = "") =>
+  api.post(`/admin/cms/versions/${versionId}/publish/`, { notes }).then(r => r.data)
+
+export const rollbackCmsVersion = (versionId, notes = "") =>
+  api.post(`/admin/cms/versions/${versionId}/rollback/`, { notes }).then(r => r.data)
+
+export const getCmsAssets = () =>
+  api.get("/admin/cms/assets/").then(r => r.data)
+
+export const uploadCmsAsset = (file, meta = {}) => {
+  const fd = new FormData()
+  fd.append("file", file)
+  if (meta.title) fd.append("title", meta.title)
+  if (meta.alt_text) fd.append("alt_text", meta.alt_text)
+  if (meta.device_target) fd.append("device_target", meta.device_target)
+  return api.post("/admin/cms/assets/", fd).then(r => r.data)
+}
+
+export const saveCmsHeroSlide = (data) =>
+  api.post("/admin/cms/hero-slides/", data).then(r => r.data)
+
+export const getCmsBanners = (versionId) =>
+  api.get("/admin/cms/banners/", { params: versionId ? { version_id: versionId } : {} }).then(r => r.data)
+
+export const saveCmsBanner = (data) =>
+  api.post("/admin/cms/banners/", data).then(r => r.data)
+
+export const saveCmsAnnouncement = (data) =>
+  api.post("/admin/cms/announcements/", data).then(r => r.data)
+
+export const getCmsEvents = () =>
+  api.get("/admin/cms/events/").then(r => r.data)

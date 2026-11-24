@@ -1,555 +1,681 @@
-// pages/admin/AdminSettings.jsx — Panel de personalización del sitio
-import { useState, useEffect } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { getAdminSiteSettings, updateSiteSettings } from "../../api/siteSettings.api"
-import { mediaUrl } from "../../utils/mediaUrl"
-import { AdminPageHeader, PrimaryButton, SecondaryButton, ErrorState, FormField } from "../../components/admin/ui"
+// pages/admin/AdminSettings.jsx — LEVELPRO OS V4.0 GATE 12: Visual Editorial Bento CMS (BF-30 & BF-31)
+import { useEffect, useState } from "react"
+import { useQuery } from "@tanstack/react-query"
+import {
+  createCmsDraft,
+  getAdminSiteSettings,
+  getCmsAssets,
+  getCmsBanners,
+  getCmsEvents,
+  getCmsVersion,
+  getCmsVersions,
+  previewCmsVersion,
+  publishCmsVersion,
+  reviewCmsVersion,
+  rollbackCmsVersion,
+  saveCmsAnnouncement,
+  saveCmsBanner,
+  saveCmsHeroSlide,
+  updateCmsDraft,
+  updateSiteSettings,
+  uploadCmsAsset,
+} from "../../api/siteSettings.api"
+import { AdminPageHeader, ErrorState, FormField, PrimaryButton, SecondaryButton } from "../../components/admin/ui"
+import Home from "../Home"
 import { showToast } from "../../utils/toast"
 
 const TABS = [
-  { id: "hero",     label: "Hero"        },
-  { id: "pillars",  label: "Pilares"     },
-  { id: "brand",    label: "Marca"       },
-  { id: "contact",  label: "Contacto"    },
-  { id: "sections", label: "Secciones"   },
-  { id: "seo",      label: "SEO"         },
-  { id: "test",     label: "Testimonial" },
-  { id: "currency", label: "Monedas"     },
-  { id: "homebg",   label: "Fondo Home"  },
+  { id: "overview", label: "1. Vista General" },
+  { id: "hero", label: "2. Editor Hero" },
+  { id: "assets", label: "3. Imágenes" },
+  { id: "banners", label: "4. Banners" },
+  { id: "announcements", label: "5. Anuncios" },
+  { id: "sections", label: "6. Secciones Home" },
+  { id: "buttons", label: "7. Botones & Enlaces" },
+  { id: "seo", label: "8. SEO" },
+  { id: "drafts", label: "9. Borradores" },
+  { id: "history", label: "10. Historial" },
+  { id: "preview", label: "11. Previsualización" },
+  { id: "publish", label: "12. Publicar & Rollback" },
+  { id: "systemic", label: "Config. Sistémica (FX)" },
 ]
 
-const inputSt = {
-  width: "100%", padding: "10px 14px",
-  background: "var(--surface-2)", border: "1px solid var(--border)",
-  borderRadius: "var(--r-md)", color: "var(--text)",
-  fontSize: "13px", outline: "none",
-  fontFamily: "var(--font-sans)",
-  transition: "border-color 150ms",
-}
-
-function Field({ label, children, helper }) {
-  return <div style={{ marginBottom: "20px" }}>
-    <FormField label={label} description={helper}>{children}</FormField>
-  </div>
-}
-
-function Toggle({ label, checked, onChange }) {
-  return (
-    <label style={{
-      display: "flex", alignItems: "center", justifyContent: "space-between",
-      padding: "14px 16px",
-      background: "var(--surface-2)", border: "1px solid var(--border)",
-      borderRadius: "var(--r-md)", cursor: "pointer",
-      transition: "border-color 150ms",
-    }}>
-      <span style={{ fontSize: "13px", color: "var(--text)",
-        fontFamily: "var(--font-sans)" }}>{label}</span>
-      <span style={{
-        position: "relative", width: "38px", height: "22px",
-        borderRadius: "11px",
-        background: checked ? "var(--accent)" : "var(--surface-3)",
-        transition: "background 200ms",
-      }}>
-        <input type="checkbox" checked={checked}
-          onChange={e => onChange(e.target.checked)}
-          style={{ position: "absolute", opacity: 0, width: "100%", height: "100%",
-            cursor: "pointer" }} />
-        <span style={{
-          position: "absolute",
-          top: "2px", left: checked ? "18px" : "2px",
-          width: "18px", height: "18px", borderRadius: "50%",
-          background: "#fff",
-          transition: "left 200ms var(--ease)",
-        }} />
-      </span>
-    </label>
-  )
-}
-
-function FileInput({ value, onChange, previewUrl }) {
-  const [preview, setPreview] = useState(previewUrl)
-  useEffect(() => { setPreview(previewUrl) }, [previewUrl])
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-      {preview && (
-        <div style={{
-          width: "70px", height: "70px", borderRadius: "var(--r-md)",
-          overflow: "hidden", background: "var(--surface-2)",
-          border: "1px solid var(--border)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-        }}>
-          <img src={mediaUrl(preview)} alt=""
-            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
-        </div>
-      )}
-      <label style={{
-        flex: 1, padding: "10px 14px",
-        background: "var(--surface-2)", border: "1px dashed var(--border)",
-        borderRadius: "var(--r-md)", cursor: "pointer",
-        fontSize: "12px", color: "var(--text-2)",
-        display: "flex", alignItems: "center", justifyContent: "center", gap: "8px",
-        transition: "border-color 150ms",
-      }}>
-        <input type="file" accept="image/*"
-          onChange={e => {
-            const f = e.target.files?.[0]
-            if (f) {
-              onChange(f)
-              setPreview(URL.createObjectURL(f))
-            }
-          }}
-          style={{ display: "none" }} />
-        {value?.name || "Elegir imagen…"}
-      </label>
-    </div>
-  )
-}
+const INPUT_CLS =
+  "w-full rounded-lg border border-neutral-700 bg-[#0B0E14] px-3 py-2 text-xs text-[#F5F5F5] placeholder-neutral-500 focus:border-[#1AFF6E] focus:outline-none"
 
 export default function AdminSettings() {
-  const qc = useQueryClient()
-  const [tab, setTab]     = useState("hero")
-  const [form, setForm]   = useState(null)
-  const [files, setFiles] = useState({})
+  const [activeTab, setActiveTab] = useState("overview")
+  const [versions, setVersions] = useState([])
+  const [activeDraft, setActiveDraft] = useState(null)
+  const [assets, setAssets] = useState([])
+  const [banners, setBanners] = useState([])
+  const [events, setEvents] = useState([])
+  const [previewData, setPreviewData] = useState(null)
+  const [previewViewport, setPreviewViewport] = useState("desktop")
+  const [feedback, setFeedback] = useState("")
+  const [errorMsg, setErrorMsg] = useState("")
+  const [busy, setBusy] = useState(false)
 
-  const { data, isError, refetch } = useQuery({ queryKey: ["site-settings-admin"], queryFn: getAdminSiteSettings })
-  useEffect(() => {
-    if (data && !form) setForm({ ...data })
-  }, [data, form])
-
-  const save = useMutation({
-    mutationFn: () => updateSiteSettings(cleanForPost(form), files),
-    onSuccess: (fresh) => {
-      qc.setQueryData(["site-settings-admin"], fresh)
-      qc.invalidateQueries({ queryKey: ["site-settings"] })
-      setForm({ ...fresh })
-      setFiles({})
-    },
-    onError: (err) => {
-      const msg = err?.response?.status === 413
-        ? "La imagen supera el tamaño permitido. Reduce su peso e inténtalo nuevamente."
-        : "No pudimos guardar los cambios. Revisa la conexión e inténtalo nuevamente."
-      showToast(msg, "error")
-    },
+  const [draftPayload, setDraftPayload] = useState({
+    hero_title: "",
+    hero_subtitle: "",
+    hero_cta1_text: "",
+    hero_cta1_link: "",
+    hero_cta2_text: "",
+    hero_cta2_link: "",
+    site_name: "LevelPro Audio",
+    tagline: "",
+    seo_title: "",
+    seo_description: "",
+    show_trust_strip: true,
+    show_pillars: true,
+    show_products: true,
+    show_courses: true,
+    show_services: true,
+    show_about: true,
+    show_trust_details: true,
+    show_testimonial: true,
+    show_brands: true,
+    show_final_cta: true,
   })
 
-  function cleanForPost(f) {
-    if (!f) return {}
-    const clone = { ...f }
-    // Removemos URLs derivadas del serializer read-only
-    ;["hero_image_url","hero_image_2_url","hero_image_3_url",
-      "pillar_shop_image_url","pillar_academy_image_url","pillar_services_image_url",
-      "logo_url","og_image_url","testimonial_photo_url","home_bg_image_url",
-      "id","created_at","updated_at"].forEach(k => delete clone[k])
-    return clone
+  const [slideForm, setSlideForm] = useState({
+    order: 1,
+    title: "",
+    subtitle: "",
+    desktop_image_id: "",
+    mobile_image_id: "",
+    alt_text: "",
+    cta1_text: "",
+    cta1_link: "/shop",
+    overlay_opacity: 40,
+  })
+
+  const [bannerForm, setBannerForm] = useState({
+    code: "",
+    name: "",
+    banner_type: "home_mid",
+    target_page: "home",
+    desktop_image_id: "",
+    mobile_image_id: "",
+    title: "",
+    body_text: "",
+    cta_text: "",
+    cta_link: "/shop",
+  })
+
+  const [annForm, setAnnForm] = useState({
+    text: "",
+    link_url: "/shop",
+    market: "ALL",
+    currency: "ALL",
+    priority: 10,
+  })
+
+  const [assetFile, setAssetFile] = useState(null)
+  const [assetTitle, setAssetTitle] = useState("")
+  const [assetDevice, setAssetDevice] = useState("desktop")
+
+  const [systemForm, setSystemForm] = useState({
+    usd_to_clp: "950.00",
+    usd_to_ars: "1000.00",
+    contact_whatsapp: "",
+    contact_email: "",
+  })
+
+  const { data: sysSettings, isError: sysError } = useQuery({
+    queryKey: ["admin-site-settings"],
+    queryFn: getAdminSiteSettings,
+  })
+
+  useEffect(() => {
+    if (sysSettings) {
+      setSystemForm({
+        usd_to_clp: String(sysSettings.usd_to_clp ?? "950.00"),
+        usd_to_ars: String(sysSettings.usd_to_ars ?? "1000.00"),
+        contact_whatsapp: sysSettings.contact_whatsapp || "",
+        contact_email: sysSettings.contact_email || "",
+      })
+    }
+  }, [sysSettings])
+
+  const loadCms = async () => {
+    setBusy(true)
+    setErrorMsg("")
+    try {
+      const [vRes, aRes, eRes] = await Promise.all([getCmsVersions(), getCmsAssets(), getCmsEvents()])
+      const vList = vRes.results || []
+      setVersions(vList)
+      setAssets(aRes.results || [])
+      setEvents(eRes.results || [])
+
+      const targetDraft = vList.find((v) => v.status === "draft" || v.status === "in_review" || v.status === "approved") || vList[0]
+      if (targetDraft) {
+        const detail = await getCmsVersion(targetDraft.id)
+        setActiveDraft(detail)
+        setDraftPayload((prev) => ({ ...prev, ...(detail.payload || {}) }))
+        const bRes = await getCmsBanners(targetDraft.id)
+        setBanners(bRes.results || [])
+      }
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.detail || "Error cargando CMS Editorial")
+    } finally {
+      setBusy(false)
+    }
   }
 
-  function set(k, v) { setForm(prev => ({ ...prev, [k]: v })) }
-  function setFile(k, f) { setFiles(prev => ({ ...prev, [k]: f })) }
+  useEffect(() => {
+    loadCms()
+  }, [])
 
-  if (isError && !form) {
-    return <div className="au-page" data-testid="admin-settings-error">
-      <AdminPageHeader title="Configuración del sitio" description="LevelPro Audio" />
-      <ErrorState title="No pudimos cargar la configuración"
-        description="Los ajustes actuales permanecen guardados en el servidor."
-        action={<SecondaryButton onClick={() => refetch()}>Reintentar</SecondaryButton>} />
-    </div>
+  const handleCreateDraft = async () => {
+    setBusy(true)
+    setErrorMsg("")
+    setFeedback("")
+    try {
+      const created = await createCmsDraft("Nuevo borrador editorial")
+      setActiveDraft(created)
+      setDraftPayload((prev) => ({ ...prev, ...(created.payload || {}) }))
+      setFeedback(`Borrador v${created.version_number} creado correctamente.`)
+      await loadCms()
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.detail || "No se pudo crear el borrador")
+    } finally {
+      setBusy(false)
+    }
   }
 
-  if (!form) {
-    return (
-      <div className="au-page" data-testid="admin-settings">
-        <div className="skeleton" style={{ height: "280px", borderRadius: "20px" }} />
-      </div>
-    )
+  const handleSaveDraft = async (e) => {
+    if (e) e.preventDefault()
+    if (!activeDraft) return
+    setBusy(true)
+    setErrorMsg("")
+    setFeedback("")
+    try {
+      const updated = await updateCmsDraft(activeDraft.version_id, draftPayload, "Actualización desde editor visual")
+      setActiveDraft(updated)
+      setFeedback(`Borrador v${updated.version_number} guardado (checksum ${updated.checksum_sha256?.slice(0, 10)}).`)
+      showToast?.("Borrador guardado", "success")
+      await loadCms()
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.detail || "Error guardando borrador")
+    } finally {
+      setBusy(false)
+    }
   }
+
+  const handleUploadAsset = async (e) => {
+    e.preventDefault()
+    if (!assetFile) return
+    setBusy(true)
+    setErrorMsg("")
+    try {
+      const created = await uploadCmsAsset(assetFile, { title: assetTitle || assetFile.name, device_target: assetDevice })
+      setFeedback(`Imagen '${created.title}' (${created.width}x${created.height} ${created.file_format}) validada y cargada.`)
+      setAssetFile(null)
+      setAssetTitle("")
+      await loadCms()
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.detail || "Imagen rechazada por política de seguridad")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleAddSlide = async (e) => {
+    e.preventDefault()
+    if (!activeDraft) return
+    setBusy(true)
+    setErrorMsg("")
+    try {
+      await saveCmsHeroSlide({ ...slideForm, version_id: activeDraft.version_id })
+      setFeedback("Slide agregado al borrador.")
+      setSlideForm((f) => ({ ...f, title: "", subtitle: "" }))
+      await loadCms()
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.detail || "Error guardando slide")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleAddBanner = async (e) => {
+    e.preventDefault()
+    if (!activeDraft) return
+    setBusy(true)
+    setErrorMsg("")
+    try {
+      await saveCmsBanner({ ...bannerForm, version_id: activeDraft.version_id })
+      setFeedback("Banner agregado al borrador.")
+      setBannerForm((f) => ({ ...f, code: "", name: "", title: "" }))
+      await loadCms()
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.detail || "Error guardando banner")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleAddAnnouncement = async (e) => {
+    e.preventDefault()
+    if (!activeDraft) return
+    setBusy(true)
+    setErrorMsg("")
+    try {
+      await saveCmsAnnouncement({ ...annForm, version_id: activeDraft.version_id })
+      setFeedback("Anuncio agregado al borrador.")
+      setAnnForm((f) => ({ ...f, text: "" }))
+      await loadCms()
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.detail || "Error guardando anuncio")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleLoadPreview = async () => {
+    if (!activeDraft) return
+    setBusy(true)
+    try {
+      const prev = await previewCmsVersion(activeDraft.version_id)
+      setPreviewData({
+        ...(sysSettings || {}),
+        ...(prev.payload || {}),
+        cms: {
+          version_number: prev.version_number,
+          hero_slides: prev.hero_slides || [],
+          banners: prev.banners || [],
+          announcements: prev.announcements || [],
+        },
+      })
+      setActiveTab("preview")
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.detail || "No se pudo cargar la previsualización")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handlePublish = async (versionId) => {
+    setBusy(true)
+    setErrorMsg("")
+    setFeedback("")
+    try {
+      const pub = await publishCmsVersion(versionId, "Publicación desde CMS Gate 12")
+      setFeedback(`Versión v${pub.version_number} publicada atómicamente en el sitio público.`)
+      await loadCms()
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.detail || "No se pudo publicar la versión")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleRollback = async (versionId) => {
+    setBusy(true)
+    setErrorMsg("")
+    setFeedback("")
+    try {
+      const pub = await rollbackCmsVersion(versionId, "Rollback editorial")
+      setFeedback(`Rollback completado: nueva versión publicada v${pub.version_number}.`)
+      await loadCms()
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.detail || "Error ejecutando rollback")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const handleSaveSystemic = async (e) => {
+    e.preventDefault()
+    setBusy(true)
+    setErrorMsg("")
+    try {
+      await updateSiteSettings(systemForm)
+      setFeedback("Configuración sistémica (FX / contacto) actualizada con auditoría.")
+    } catch (err) {
+      setErrorMsg(err?.response?.data?.error || "Sin permisos para modificar configuración sistémica")
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  if (sysError) return <ErrorState message="Error cargando configuración del sitio" />
+
+  const publishedVer = versions.find((v) => v.status === "published")
+  const isEditable = activeDraft && ["draft", "in_review"].includes(activeDraft.status)
 
   return (
-    <div className="au-page" data-testid="admin-settings">
+    <div className="space-y-6 text-[#F5F5F5]" data-testid="admin-cms-page">
       <AdminPageHeader
-        eyebrow="LEVELPRO / NEGOCIO"
-        title="Configurá tu sitio"
-        description="Hero, pilares, identidad de marca, contacto, secciones visibles, SEO y multimoneda"
+        title="Editor Visual CMS & Versionado"
+        subtitle="Gate 12 · Editorial Bento (#0B0E14 / #1AFF6E) · Borradores, Previsualización en Vivo, Publicación Atómica y Rollback"
         actions={
-          <PrimaryButton
-            testId="save-settings"
-            onClick={() => save.mutate()}
-            disabled={save.isPending}
-            loading={save.isPending}
-          >
-            {save.isPending ? "Guardando…" : save.isSuccess ? "✓ Guardado" : "Guardar cambios"}
-          </PrimaryButton>
+          <div className="flex flex-wrap gap-2">
+            <SecondaryButton onClick={handleCreateDraft} disabled={busy}>
+              + Nuevo Borrador
+            </SecondaryButton>
+            <SecondaryButton onClick={handleLoadPreview} disabled={busy || !activeDraft}>
+              Previsualizar
+            </SecondaryButton>
+            {activeDraft && isEditable && (
+              <PrimaryButton onClick={() => handlePublish(activeDraft.version_id)} disabled={busy}>
+                Publicar v{activeDraft.version_number}
+              </PrimaryButton>
+            )}
+          </div>
         }
       />
 
-      {isError && <div role="alert" className="lp-callout lp-callout--warning">
-        No se pudo actualizar la configuración. Los datos visibles pueden estar desactualizados.
-        <SecondaryButton onClick={() => refetch()} size="sm">Actualizar</SecondaryButton>
-      </div>}
+      {feedback && (
+        <div role="status" className="rounded-xl border border-[#1AFF6E]/40 bg-[#0B0E14] px-4 py-3 text-xs text-[#1AFF6E]">
+          {feedback}
+        </div>
+      )}
+      {errorMsg && (
+        <div role="alert" className="rounded-xl border border-rose-500/50 bg-rose-950/40 px-4 py-3 text-xs text-rose-200">
+          {errorMsg}
+        </div>
+      )}
 
-      {/* Tabs */}
-      <div className="lp-seg-tabs">
-        {TABS.map(t => (
-          <button key={t.id}
-            type="button"
-            data-testid={`tab-${t.id}`}
-            onClick={() => setTab(t.id)}
-            className={`lp-seg-tab${tab === t.id ? " is-active" : ""}`}>
-            {t.label}
-          </button>
-        ))}
-      </div>
+      <nav role="tablist" aria-label="Secciones CMS" className="flex flex-wrap gap-1.5">
+        {TABS.map((t) => {
+          const sel = activeTab === t.id
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={sel}
+              onClick={() => setActiveTab(t.id)}
+              className={`rounded-lg px-3 py-1.5 text-xs font-medium transition ${
+                sel
+                  ? "bg-[#1AFF6E] text-[#0B0E14] font-bold"
+                  : "border border-neutral-800 bg-[#242A34]/70 text-neutral-300 hover:bg-[#242A34]"
+              }`}
+            >
+              {t.label}
+            </button>
+          )
+        })}
+      </nav>
 
-      {/* Content */}
-      <div className="au-card au-panel" style={{ padding: "clamp(20px, 3vw, 28px)" }}>
-
-        {tab === "hero" && (
-          <>
-            <Field label="Título grande del hero">
-              <input style={inputSt} value={form.hero_title || ""}
-                onChange={e => set("hero_title", e.target.value)}
-                data-testid="hero-title-input" />
-            </Field>
-            <Field label="Descripción bajo el título">
-              <textarea style={{ ...inputSt, minHeight: "80px", resize: "vertical" }}
-                value={form.hero_subtitle || ""}
-                onChange={e => set("hero_subtitle", e.target.value)} />
-            </Field>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-              <Field label="Texto botón 1">
-                <input style={inputSt} value={form.hero_cta1_text || ""}
-                  onChange={e => set("hero_cta1_text", e.target.value)} />
-              </Field>
-              <Field label="Link botón 1">
-                <input style={inputSt} value={form.hero_cta1_link || ""}
-                  onChange={e => set("hero_cta1_link", e.target.value)} />
-              </Field>
-              <Field label="Texto botón 2">
-                <input style={inputSt} value={form.hero_cta2_text || ""}
-                  onChange={e => set("hero_cta2_text", e.target.value)} />
-              </Field>
-              <Field label="Link botón 2">
-                <input style={inputSt} value={form.hero_cta2_link || ""}
-                  onChange={e => set("hero_cta2_link", e.target.value)} />
-              </Field>
-            </div>
-            <Field label="Imagen del hero 1 (opcional)"
-              helper="Se muestra de fondo detrás del texto. Recomendado: 1600×900px.">
-              <FileInput value={files.hero_image}
-                previewUrl={form.hero_image_url}
-                onChange={f => setFile("hero_image", f)} />
-            </Field>
-            <Field label="Imagen del hero 2 (opcional)"
-              helper="Si cargás 2 o 3 imágenes, el hero las rota automáticamente con un fundido.">
-              <FileInput value={files.hero_image_2}
-                previewUrl={form.hero_image_2_url}
-                onChange={f => setFile("hero_image_2", f)} />
-            </Field>
-            <Field label="Imagen del hero 3 (opcional)"
-              helper="Tercera imagen del carrusel del hero.">
-              <FileInput value={files.hero_image_3}
-                previewUrl={form.hero_image_3_url}
-                onChange={f => setFile("hero_image_3", f)} />
-            </Field>
-          </>
-        )}
-
-        {tab === "pillars" && (
-          <>
-            <p style={{ fontSize: "13px", color: "var(--text-2)",
-              lineHeight: 1.6, marginBottom: "20px" }}>
-              Imágenes de fondo de las 3 cards de la sección <strong>“Todo lo que necesitás”</strong>.
-              El texto se muestra encima con un degradado para que sea legible.
-              Recomendado: 1200×750px (horizontal).
+      {activeTab === "overview" && (
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+          <div className="rounded-xl border border-neutral-800 bg-[#0B0E14] p-5">
+            <p className="text-[11px] uppercase tracking-wider text-neutral-400">Versión Pública Vigente</p>
+            <p className="mt-1 text-2xl font-bold text-[#1AFF6E]">
+              {publishedVer ? `v${publishedVer.version_number}` : "Legacy SiteSettings"}
             </p>
-            <Field label="Fondo · Tienda"
-              helper="Se muestra de fondo en la card 'Tienda'.">
-              <FileInput value={files.pillar_shop_image}
-                previewUrl={form.pillar_shop_image_url}
-                onChange={f => setFile("pillar_shop_image", f)} />
-            </Field>
-            <Field label="Fondo · Academia"
-              helper="Se muestra de fondo en la card 'Academia'.">
-              <FileInput value={files.pillar_academy_image}
-                previewUrl={form.pillar_academy_image_url}
-                onChange={f => setFile("pillar_academy_image", f)} />
-            </Field>
-            <Field label="Fondo · Servicios"
-              helper="Se muestra de fondo en la card 'Servicios'.">
-              <FileInput value={files.pillar_services_image}
-                previewUrl={form.pillar_services_image_url}
-                onChange={f => setFile("pillar_services_image", f)} />
-            </Field>
-          </>
-        )}
-
-        {tab === "brand" && (
-          <>
-            <Field label="Nombre del sitio">
-              <input style={inputSt} value={form.site_name || ""}
-                onChange={e => set("site_name", e.target.value)} />
-            </Field>
-            <Field label="Tagline">
-              <input style={inputSt} value={form.tagline || ""}
-                onChange={e => set("tagline", e.target.value)} />
-            </Field>
-            <Field label="Logo del sitio" helper="Se muestra en el navbar. Recomendado: PNG transparente 200×60.">
-              <FileInput value={files.logo}
-                previewUrl={form.logo_url}
-                onChange={f => setFile("logo", f)} />
-            </Field>
-            <Field label="Color de acento" helper="Verde por defecto. Cambia hover states, badges y CTAs.">
-              <input type="color" value={form.accent_color || "#1aff6e"}
-                onChange={e => set("accent_color", e.target.value)}
-                style={{ width: "60px", height: "40px", border: "1px solid var(--border)",
-                  borderRadius: "var(--r-md)", cursor: "pointer",
-                  background: "var(--surface-2)" }} />
-            </Field>
-          </>
-        )}
-
-        {tab === "contact" && (
-          <>
-            <Field label="WhatsApp"
-              helper={
-                form.contact_whatsapp && !/^\+\d{8,15}$/.test(form.contact_whatsapp)
-                  ? "⚠️ Formato raro — debería ser +código país y número, solo dígitos. Ej: +5492622635045. Así como está, el botón de WhatsApp puede quedar roto en todo el sitio."
-                  : "Formato internacional con +. Ej: +5492622635045"
-              }>
-              <input style={{
-                  ...inputSt,
-                  borderColor: form.contact_whatsapp && !/^\+\d{8,15}$/.test(form.contact_whatsapp)
-                    ? "#D97706" : inputSt.borderColor,
-                }}
-                value={form.contact_whatsapp || ""}
-                onChange={e => set("contact_whatsapp", e.target.value)} />
-            </Field>
-            <Field label="Usuario Instagram" helper="Sin @. Ej: levelproar">
-              <input style={inputSt} value={form.contact_instagram || ""}
-                onChange={e => set("contact_instagram", e.target.value)} />
-            </Field>
-            <Field label="Email de contacto">
-              <input type="email" style={inputSt} value={form.contact_email || ""}
-                onChange={e => set("contact_email", e.target.value)} />
-            </Field>
-          </>
-        )}
-
-        {tab === "sections" && (
-          <div style={{ display: "grid", gap: "12px" }}>
-            <p style={{ fontSize: "12px", color: "var(--text-3)", marginBottom: "8px" }}>
-              Activá o desactivá qué secciones aparecen en la Home:
-            </p>
-            <Toggle label="Métricas (Trust strip)"    checked={!!form.show_trust_strip} onChange={v => set("show_trust_strip", v)} />
-            <Toggle label="3 pilares (Tienda / Academia / Servicios)" checked={!!form.show_pillars} onChange={v => set("show_pillars", v)} />
-            <Toggle label="Productos destacados"     checked={!!form.show_products}    onChange={v => set("show_products", v)} />
-            <Toggle label="Cursos destacados"        checked={!!form.show_courses}     onChange={v => set("show_courses", v)} />
-            <Toggle label="Servicios destacados"     checked={!!form.show_services}    onChange={v => set("show_services", v)} />
-            <Toggle label="Conoce LevelPro"          checked={!!form.show_about}       onChange={v => set("show_about", v)} />
-            <div style={{ margin: "8px 0 16px 0", paddingLeft: "2px" }}>
-              <Field label="Título — Conoce LevelPro">
-                <input style={inputSt} value={form.about_title || ""}
-                  onChange={e => set("about_title", e.target.value)}
-                  placeholder="No vendemos audio por vender." />
-              </Field>
-              <Field label="Texto — Conoce LevelPro">
-                <textarea style={{ ...inputSt, minHeight: "80px" }}
-                  value={form.about_body || ""}
-                  onChange={e => set("about_body", e.target.value)}
-                  placeholder="Creemos que comprar equipamiento profesional debería..." />
-              </Field>
-            </div>
-            <Toggle label="Confianza (garantía / envíos / pago / soporte)" checked={!!form.show_trust_details} onChange={v => set("show_trust_details", v)} />
-            <Toggle label="Testimonial destacado"    checked={!!form.show_testimonial} onChange={v => set("show_testimonial", v)} />
-            <Toggle label="Marcas partner (marquee)" checked={!!form.show_brands}      onChange={v => set("show_brands", v)} />
-            <Toggle label="CTA final"                checked={!!form.show_final_cta}   onChange={v => set("show_final_cta", v)} />
+            <p className="mt-1 text-xs text-neutral-400">{publishedVer?.published_at || "Sin publicación CMS aún"}</p>
           </div>
-        )}
-
-        {tab === "seo" && (
-          <>
-            <Field label="Meta título" helper="Aparece como título en Google. Máx 70 chars.">
-              <input style={inputSt} maxLength={70} value={form.seo_title || ""}
-                onChange={e => set("seo_title", e.target.value)} />
-            </Field>
-            <Field label="Meta descripción" helper="Aparece bajo el título en resultados de Google. Máx 170 chars.">
-              <textarea style={{ ...inputSt, minHeight: "80px" }} maxLength={170}
-                value={form.seo_description || ""}
-                onChange={e => set("seo_description", e.target.value)} />
-            </Field>
-            <Field label="Imagen OG" helper="Se muestra cuando comparten tu link en redes. 1200×630px.">
-              <FileInput value={files.og_image}
-                previewUrl={form.og_image_url}
-                onChange={f => setFile("og_image", f)} />
-            </Field>
-          </>
-        )}
-
-        {tab === "test" && (
-          <>
-            <Field label="Foto del cliente">
-              <FileInput value={files.testimonial_photo}
-                previewUrl={form.testimonial_photo_url}
-                onChange={f => setFile("testimonial_photo", f)} />
-            </Field>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-              <Field label="Nombre">
-                <input style={inputSt} value={form.testimonial_name || ""}
-                  onChange={e => set("testimonial_name", e.target.value)} />
-              </Field>
-              <Field label="Cargo · ciudad">
-                <input style={inputSt} value={form.testimonial_role || ""}
-                  onChange={e => set("testimonial_role", e.target.value)} />
-              </Field>
-            </div>
-            <Field label="Quote">
-              <textarea style={{ ...inputSt, minHeight: "100px" }}
-                value={form.testimonial_quote || ""}
-                onChange={e => set("testimonial_quote", e.target.value)} />
-            </Field>
-          </>
-        )}
-
-        {tab === "currency" && (
-          <>
-            <div style={{ padding: "14px 16px", borderRadius: "var(--r-lg)", marginBottom: "18px",
-              background: "rgba(26,255,110,0.04)", border: "1px solid rgba(26,255,110,0.15)",
-              fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6 }}>
-              Estas tasas se usan para <strong>calcular</strong> los precios USD y ARS de un
-              producto cuando no los cargaste a mano. Si un producto tiene su precio USD/ARS
-              cargado, ese manda y la tasa no lo toca. La tienda le muestra CLP a los chilenos,
-              y ARS + USD a los argentinos.
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-              <Field label="1 USD = ? CLP">
-                <input type="number" min="0" step="0.01" style={inputSt}
-                  value={form.usd_to_clp || ""}
-                  onChange={e => set("usd_to_clp", e.target.value)}
-                  placeholder="950" />
-              </Field>
-              <Field label="1 USD = ? ARS">
-                <input type="number" min="0" step="0.01" style={inputSt}
-                  value={form.usd_to_ars || ""}
-                  onChange={e => set("usd_to_ars", e.target.value)}
-                  placeholder="1000" />
-              </Field>
-            </div>
-            <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "12px" }}>
-              Ejemplo: si 1 USD = 950 CLP, un producto de $95.000 CLP se muestra como US$100.
-              Si además 1 USD = 1000 ARS, ese producto se muestra como $100.000 ARS.
+          <div className="rounded-xl border border-neutral-800 bg-[#0B0E14] p-5">
+            <p className="text-[11px] uppercase tracking-wider text-neutral-400">Borrador Activo</p>
+            <p className="mt-1 text-2xl font-bold text-white">
+              {activeDraft ? `v${activeDraft.version_number} (${activeDraft.status})` : "Ninguno"}
             </p>
-          </>
-        )}
+            <p className="mt-1 text-xs text-neutral-400">Slides: {activeDraft?.hero_slides?.length ?? 0} · Banners: {banners.length}</p>
+          </div>
+          <div className="rounded-xl border border-neutral-800 bg-[#0B0E14] p-5">
+            <p className="text-[11px] uppercase tracking-wider text-neutral-400">Assets Validados</p>
+            <p className="mt-1 text-2xl font-bold text-white">{assets.length}</p>
+            <p className="mt-1 text-xs text-neutral-400">Anti-SVG · Dimensiones · SHA-256</p>
+          </div>
+        </div>
+      )}
 
-        {tab === "homebg" && (
-          <>
-            <div style={{ padding: "14px 16px", borderRadius: "var(--r-lg)", marginBottom: "18px",
-              background: "rgba(26,255,110,0.04)", border: "1px solid rgba(26,255,110,0.15)",
-              fontSize: "13px", color: "var(--text-2)", lineHeight: 1.6 }}>
-              Personalizá el fondo de la página de inicio. Podés elegir un <strong>color sólido</strong> o
-              subir una <strong>imagen</strong>. Con imagen, ajustá su opacidad y sumá un overlay oscuro
-              encima para que el texto y las tarjetas se lean bien.
+      {activeTab === "hero" && (
+        <div className="space-y-4">
+          <form onSubmit={handleSaveDraft} className="rounded-xl border border-neutral-800 bg-[#0B0E14] p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-white">Textos Hero del Home (Borrador)</h2>
+            <FormField label="Título Principal Hero">
+              <input value={draftPayload.hero_title || ""} onChange={(e) => setDraftPayload({ ...draftPayload, hero_title: e.target.value })} className={INPUT_CLS} />
+            </FormField>
+            <FormField label="Subtítulo Hero">
+              <textarea rows={2} value={draftPayload.hero_subtitle || ""} onChange={(e) => setDraftPayload({ ...draftPayload, hero_subtitle: e.target.value })} className={INPUT_CLS} />
+            </FormField>
+            <PrimaryButton type="submit" disabled={busy || !isEditable}>Guardar en Borrador</PrimaryButton>
+          </form>
+
+          <form onSubmit={handleAddSlide} className="rounded-xl border border-neutral-800 bg-[#0B0E14] p-5 space-y-4">
+            <h2 className="text-sm font-semibold text-white">Agregar Slide al Hero Slider</h2>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+              <input placeholder="Título slide" value={slideForm.title} onChange={(e) => setSlideForm({ ...slideForm, title: e.target.value })} className={INPUT_CLS} />
+              <select value={slideForm.desktop_image_id} onChange={(e) => setSlideForm({ ...slideForm, desktop_image_id: e.target.value })} className={INPUT_CLS}>
+                <option value="">Imagen Desktop (opcional)</option>
+                {assets.map((a) => <option key={a.id} value={a.id}>{a.title} ({a.device_target})</option>)}
+              </select>
+              <select value={slideForm.mobile_image_id} onChange={(e) => setSlideForm({ ...slideForm, mobile_image_id: e.target.value })} className={INPUT_CLS}>
+                <option value="">Imagen Mobile (opcional)</option>
+                {assets.map((a) => <option key={a.id} value={a.id}>{a.title} ({a.device_target})</option>)}
+              </select>
             </div>
+            <SecondaryButton type="submit" disabled={busy || !isEditable}>+ Guardar Slide</SecondaryButton>
+          </form>
+        </div>
+      )}
 
-            {/* Tipo de fondo: color o imagen */}
-            <Field label="Tipo de fondo">
-              <div style={{ display: "flex", gap: "10px" }}>
-                {[["color", "Color sólido"], ["image", "Imagen"]].map(([val, lbl]) => (
-                  <button key={val} type="button"
-                    onClick={() => set("home_bg_type", val)}
-                    style={{
-                      flex: 1, padding: "10px 14px", borderRadius: "var(--r-md)", cursor: "pointer",
-                      fontSize: "13px", fontWeight: 600,
-                      border: (form.home_bg_type || "color") === val ? "2px solid var(--accent)" : "1px solid var(--border)",
-                      background: (form.home_bg_type || "color") === val ? "rgba(26,255,110,0.08)" : "transparent",
-                      color: (form.home_bg_type || "color") === val ? "var(--accent)" : "var(--text-2)",
-                    }}>
-                    {lbl}
-                  </button>
-                ))}
+      {activeTab === "assets" && (
+        <div className="space-y-4 rounded-xl border border-neutral-800 bg-[#0B0E14] p-5">
+          <h2 className="text-sm font-semibold text-white">Gestor Seguro de Imágenes (Desktop / Mobile)</h2>
+          <form onSubmit={handleUploadAsset} className="grid grid-cols-1 gap-3 md:grid-cols-4">
+            <input placeholder="Título del asset" value={assetTitle} onChange={(e) => setAssetTitle(e.target.value)} className={INPUT_CLS} />
+            <select value={assetDevice} onChange={(e) => setAssetDevice(e.target.value)} className={INPUT_CLS}>
+              <option value="desktop">Desktop</option>
+              <option value="mobile">Mobile</option>
+              <option value="universal">Universal</option>
+            </select>
+            <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => setAssetFile(e.target.files?.[0] || null)} className={INPUT_CLS} />
+            <PrimaryButton type="submit" disabled={busy || !assetFile}>Subir Imagen</PrimaryButton>
+          </form>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+            {assets.map((a) => (
+              <div key={a.id} className="rounded-lg border border-neutral-800 bg-[#242A34]/40 p-3 text-xs">
+                <p className="font-semibold text-white">{a.title}</p>
+                <p className="text-neutral-400">{a.device_target} · {a.width}×{a.height} · {a.file_format}</p>
               </div>
-            </Field>
+            ))}
+          </div>
+        </div>
+      )}
 
-            {/* Color sólido */}
-            {(form.home_bg_type || "color") === "color" && (
-              <Field label="Color de fondo">
-                <div style={{ display: "flex", gap: "12px", alignItems: "center" }}>
-                  <input type="color"
-                    value={form.home_bg_color || "#0a0a0a"}
-                    onChange={e => set("home_bg_color", e.target.value)}
-                    style={{ width: "56px", height: "40px", borderRadius: "var(--r-md)",
-                      border: "1px solid var(--border)", cursor: "pointer", background: "none" }} />
-                  <input style={{ ...inputSt, maxWidth: "160px" }}
-                    value={form.home_bg_color || "#0a0a0a"}
-                    onChange={e => set("home_bg_color", e.target.value)}
-                    placeholder="#0a0a0a" />
-                </div>
-              </Field>
-            )}
+      {activeTab === "banners" && (
+        <div className="space-y-4 rounded-xl border border-neutral-800 bg-[#0B0E14] p-5">
+          <h2 className="text-sm font-semibold text-white">Gestor de Banners (Home & Categorías)</h2>
+          <form onSubmit={handleAddBanner} className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <input required placeholder="Código (ej. BF-HOME-01)" value={bannerForm.code} onChange={(e) => setBannerForm({ ...bannerForm, code: e.target.value })} className={INPUT_CLS} />
+            <input required placeholder="Nombre banner" value={bannerForm.name} onChange={(e) => setBannerForm({ ...bannerForm, name: e.target.value })} className={INPUT_CLS} />
+            <input required placeholder="Título visible" value={bannerForm.title} onChange={(e) => setBannerForm({ ...bannerForm, title: e.target.value })} className={INPUT_CLS} />
+            <input placeholder="CTA texto" value={bannerForm.cta_text} onChange={(e) => setBannerForm({ ...bannerForm, cta_text: e.target.value })} className={INPUT_CLS} />
+            <input placeholder="CTA enlace (/shop)" value={bannerForm.cta_link} onChange={(e) => setBannerForm({ ...bannerForm, cta_link: e.target.value })} className={INPUT_CLS} />
+            <select value={bannerForm.desktop_image_id} onChange={(e) => setBannerForm({ ...bannerForm, desktop_image_id: e.target.value })} className={INPUT_CLS}>
+              <option value="">Imagen Desktop</option>
+              {assets.map((a) => <option key={a.id} value={a.id}>{a.title}</option>)}
+            </select>
+            <div className="md:col-span-3">
+              <PrimaryButton type="submit" disabled={busy || !isEditable}>Guardar Banner en Borrador</PrimaryButton>
+            </div>
+          </form>
+          <div className="space-y-2 text-xs">
+            {banners.map((b) => (
+              <div key={b.id} className="rounded-lg border border-neutral-800 bg-[#242A34]/40 p-3">
+                <span className="font-mono text-[#1AFF6E]">{b.code}</span> · {b.title || b.name} → {b.cta_link}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
-            {/* Imagen + opacidad + overlay */}
-            {(form.home_bg_type || "color") === "image" && (
-              <>
-                <Field label="Imagen de fondo">
-                  <FileInput value={files.home_bg_image}
-                    previewUrl={form.home_bg_image_url}
-                    onChange={f => setFile("home_bg_image", f)} />
-                </Field>
-                <div style={{ padding: "12px 14px", borderRadius: "var(--r-md)", marginBottom: "16px",
-                  background: "rgba(255,255,255,0.03)", border: "1px solid var(--border)",
-                  fontSize: "12px", color: "var(--text-3)", lineHeight: 1.6 }}>
-                  <strong style={{ color: "var(--text-2)" }}>📐 Para que se vea nítida:</strong> subí una
-                  imagen <strong>horizontal</strong> (apaisada) de al menos <strong>1920×1080 px</strong>.
-                  Lo ideal es 2560×1440. La imagen se centra y cubre la pantalla sin deformarse.
-                  Evitá imágenes verticales o chicas: se ven pixeladas al estirarse.
-                </div>
+      {activeTab === "announcements" && (
+        <div className="space-y-4 rounded-xl border border-neutral-800 bg-[#0B0E14] p-5">
+          <h2 className="text-sm font-semibold text-white">Barra de Anuncios Programable</h2>
+          <form onSubmit={handleAddAnnouncement} className="grid grid-cols-1 gap-3 md:grid-cols-3">
+            <input required placeholder="Texto del anuncio" value={annForm.text} onChange={(e) => setAnnForm({ ...annForm, text: e.target.value })} className={INPUT_CLS} />
+            <input placeholder="Enlace (/shop)" value={annForm.link_url} onChange={(e) => setAnnForm({ ...annForm, link_url: e.target.value })} className={INPUT_CLS} />
+            <select value={annForm.currency} onChange={(e) => setAnnForm({ ...annForm, currency: e.target.value })} className={INPUT_CLS}>
+              <option value="ALL">Todas las monedas</option>
+              <option value="CLP">CLP</option>
+              <option value="USD">USD</option>
+              <option value="ARS">ARS</option>
+            </select>
+            <div className="md:col-span-3">
+              <PrimaryButton type="submit" disabled={busy || !isEditable}>Guardar Anuncio</PrimaryButton>
+            </div>
+          </form>
+        </div>
+      )}
 
-                {/* Modo de la imagen: cubrir o mosaico */}
-                <Field label="Modo de la imagen">
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    {[["cover", "Cubrir", "Una foto que llena la pantalla"],
-                      ["tile", "Mosaico", "Una textura que se repite (grano, piedra)"]].map(([val, lbl, desc]) => (
-                      <button key={val} type="button"
-                        onClick={() => set("home_bg_image_mode", val)}
-                        style={{
-                          flex: 1, padding: "12px 14px", borderRadius: "var(--r-md)", cursor: "pointer",
-                          textAlign: "left",
-                          border: (form.home_bg_image_mode || "cover") === val ? "2px solid var(--accent)" : "1px solid var(--border)",
-                          background: (form.home_bg_image_mode || "cover") === val ? "rgba(26,255,110,0.08)" : "transparent",
-                        }}>
-                        <div style={{ fontSize: "13px", fontWeight: 700,
-                          color: (form.home_bg_image_mode || "cover") === val ? "var(--accent)" : "var(--text)" }}>
-                          {lbl}
-                        </div>
-                        <div style={{ fontSize: "11px", color: "var(--text-3)", marginTop: "3px" }}>{desc}</div>
-                      </button>
-                    ))}
-                  </div>
-                </Field>
+      {activeTab === "sections" && (
+        <form onSubmit={handleSaveDraft} className="rounded-xl border border-neutral-800 bg-[#0B0E14] p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-white">Visibilidad de Secciones del Home</h2>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {[
+              ["show_trust_strip", "Barra de Confianza"],
+              ["show_pillars", "Pilares (Tienda / Academia / Servicios)"],
+              ["show_products", "Productos Destacados"],
+              ["show_courses", "Cursos Academia"],
+              ["show_services", "Servicios Profesionales"],
+              ["show_about", "Conoce LevelPro"],
+              ["show_testimonial", "Testimonio Destacado"],
+              ["show_brands", "Marcas"],
+              ["show_final_cta", "CTA Final"],
+            ].map(([key, label]) => (
+              <label key={key} className="flex items-center justify-between rounded-lg border border-neutral-800 bg-[#242A34]/40 px-3.5 py-2.5 text-xs">
+                <span>{label}</span>
+                <input type="checkbox" checked={Boolean(draftPayload[key])} onChange={(e) => setDraftPayload({ ...draftPayload, [key]: e.target.checked })} />
+              </label>
+            ))}
+          </div>
+          <PrimaryButton type="submit" disabled={busy || !isEditable}>Guardar Secciones</PrimaryButton>
+        </form>
+      )}
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
-                  <Field label={`Opacidad de la imagen: ${form.home_bg_image_opacity ?? 100}%`}>
-                    <input type="range" min="0" max="100"
-                      value={form.home_bg_image_opacity ?? 100}
-                      onChange={e => set("home_bg_image_opacity", Number(e.target.value))}
-                      style={{ width: "100%" }} />
-                  </Field>
-                  <Field label={`Overlay oscuro: ${form.home_bg_overlay_opacity ?? 0}%`}>
-                    <input type="range" min="0" max="100"
-                      value={form.home_bg_overlay_opacity ?? 0}
-                      onChange={e => set("home_bg_overlay_opacity", Number(e.target.value))}
-                      style={{ width: "100%" }} />
-                  </Field>
-                </div>
-                <p style={{ fontSize: "12px", color: "var(--text-3)", marginTop: "12px" }}>
-                  La opacidad controla qué tan visible es la imagen. El overlay es una capa negra
-                  encima: subilo si el texto cuesta leerse sobre la foto.
-                </p>
-              </>
-            )}
-          </>
-        )}
+      {activeTab === "buttons" && (
+        <form onSubmit={handleSaveDraft} className="rounded-xl border border-neutral-800 bg-[#0B0E14] p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-white">Botones y Enlaces CTA (Validación Segura)</h2>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <FormField label="CTA 1 Texto"><input value={draftPayload.hero_cta1_text || ""} onChange={(e) => setDraftPayload({ ...draftPayload, hero_cta1_text: e.target.value })} className={INPUT_CLS} /></FormField>
+            <FormField label="CTA 1 Enlace"><input value={draftPayload.hero_cta1_link || ""} onChange={(e) => setDraftPayload({ ...draftPayload, hero_cta1_link: e.target.value })} className={INPUT_CLS} /></FormField>
+            <FormField label="CTA 2 Texto"><input value={draftPayload.hero_cta2_text || ""} onChange={(e) => setDraftPayload({ ...draftPayload, hero_cta2_text: e.target.value })} className={INPUT_CLS} /></FormField>
+            <FormField label="CTA 2 Enlace"><input value={draftPayload.hero_cta2_link || ""} onChange={(e) => setDraftPayload({ ...draftPayload, hero_cta2_link: e.target.value })} className={INPUT_CLS} /></FormField>
+          </div>
+          <PrimaryButton type="submit" disabled={busy || !isEditable}>Guardar CTA</PrimaryButton>
+        </form>
+      )}
 
-      </div>
+      {activeTab === "seo" && (
+        <form onSubmit={handleSaveDraft} className="rounded-xl border border-neutral-800 bg-[#0B0E14] p-5 space-y-3">
+          <h2 className="text-sm font-semibold text-white">Metadatos SEO Dinámicos (Solo activos tras publicación)</h2>
+          <FormField label="SEO Title"><input value={draftPayload.seo_title || ""} onChange={(e) => setDraftPayload({ ...draftPayload, seo_title: e.target.value })} className={INPUT_CLS} /></FormField>
+          <FormField label="Meta Description"><textarea rows={2} value={draftPayload.seo_description || ""} onChange={(e) => setDraftPayload({ ...draftPayload, seo_description: e.target.value })} className={INPUT_CLS} /></FormField>
+          <PrimaryButton type="submit" disabled={busy || !isEditable}>Guardar SEO en Borrador</PrimaryButton>
+        </form>
+      )}
+
+      {activeTab === "drafts" && (
+        <div className="rounded-xl border border-neutral-800 bg-[#0B0E14] p-5 space-y-3 text-xs">
+          <h2 className="text-sm font-semibold text-white">Borradores y Flujo de Revisión</h2>
+          {versions.map((v) => (
+            <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-800 bg-[#242A34]/40 p-3">
+              <div>
+                <span className="font-mono font-bold text-[#1AFF6E]">v{v.version_number}</span> · {v.status} · {v.change_summary}
+              </div>
+              <div className="flex gap-2">
+                {v.status === "draft" && (
+                  <SecondaryButton onClick={() => reviewCmsVersion(v.id, "in_review").then(loadCms)}>Enviar a Revisión</SecondaryButton>
+                )}
+                {v.status === "in_review" && (
+                  <SecondaryButton onClick={() => reviewCmsVersion(v.id, "approved").then(loadCms)}>Aprobar</SecondaryButton>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "history" && (
+        <div className="rounded-xl border border-neutral-800 bg-[#0B0E14] p-5 space-y-2 text-xs">
+          <h2 className="text-sm font-semibold text-white">Historial Auditable de Publicaciones</h2>
+          {events.map((ev) => (
+            <div key={ev.id} className="rounded-lg border border-neutral-800 bg-[#242A34]/40 p-3">
+              <span className="font-mono text-[#1AFF6E]">v{ev.version_number}</span> · {ev.event_type} · {ev.actor_email || "sistema"} · {ev.checksum_sha256?.slice(0, 12)}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "preview" && (
+        <div className="space-y-3 rounded-xl border border-neutral-800 bg-[#0B0E14] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-semibold text-white">Previsualización en Vivo del Home Real (Sin publicar borrador)</h2>
+            <div className="flex gap-2">
+              {[["desktop", "Desktop"], ["tablet", "Tablet"], ["mobile", "Mobile"]].map(([vp, lbl]) => (
+                <button
+                  key={vp}
+                  type="button"
+                  onClick={() => setPreviewViewport(vp)}
+                  className={`rounded-lg px-3 py-1 text-xs font-semibold ${previewViewport === vp ? "bg-[#1AFF6E] text-[#0B0E14]" : "bg-[#242A34] text-neutral-300"}`}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          </div>
+          {!previewData ? (
+            <SecondaryButton onClick={handleLoadPreview}>Cargar Previsualización</SecondaryButton>
+          ) : (
+            <div
+              data-testid="cms-live-preview-frame"
+              style={{
+                width: previewViewport === "mobile" ? "390px" : previewViewport === "tablet" ? "768px" : "100%",
+                maxWidth: "100%",
+                margin: "0 auto",
+                border: "1px solid #1AFF6E",
+                borderRadius: "12px",
+                overflow: "hidden",
+                maxHeight: "720px",
+                overflowY: "auto",
+              }}
+            >
+              <Home previewSettings={previewData} />
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === "publish" && (
+        <div className="rounded-xl border border-neutral-800 bg-[#0B0E14] p-5 space-y-3 text-xs">
+          <h2 className="text-sm font-semibold text-white">Publicación en Un Clic & Rollback Editorial</h2>
+          {versions.map((v) => (
+            <div key={v.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-neutral-800 bg-[#242A34]/40 p-3">
+              <div>
+                <span className="font-mono font-bold text-white">v{v.version_number}</span> · <span className="text-[#1AFF6E]">{v.status}</span> · {v.change_summary}
+              </div>
+              <div className="flex gap-2">
+                {["draft", "in_review", "approved"].includes(v.status) && (
+                  <PrimaryButton onClick={() => handlePublish(v.id)} disabled={busy}>Publicar versión</PrimaryButton>
+                )}
+                {["published", "superseded"].includes(v.status) && (
+                  <SecondaryButton onClick={() => handleRollback(v.id)} disabled={busy}>Restaurar (Rollback)</SecondaryButton>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {activeTab === "systemic" && (
+        <form onSubmit={handleSaveSystemic} className="rounded-xl border border-neutral-800 bg-[#0B0E14] p-5 space-y-4">
+          <h2 className="text-sm font-semibold text-amber-300">Configuración Sistémica Protegida (Aislada del CMS Editorial)</h2>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <FormField label="1 USD = ? CLP"><input value={systemForm.usd_to_clp} onChange={(e) => setSystemForm({ ...systemForm, usd_to_clp: e.target.value })} className={INPUT_CLS} /></FormField>
+            <FormField label="1 USD = ? ARS"><input value={systemForm.usd_to_ars} onChange={(e) => setSystemForm({ ...systemForm, usd_to_ars: e.target.value })} className={INPUT_CLS} /></FormField>
+            <FormField label="WhatsApp Operativo"><input value={systemForm.contact_whatsapp} onChange={(e) => setSystemForm({ ...systemForm, contact_whatsapp: e.target.value })} className={INPUT_CLS} /></FormField>
+            <FormField label="Email Operativo"><input value={systemForm.contact_email} onChange={(e) => setSystemForm({ ...systemForm, contact_email: e.target.value })} className={INPUT_CLS} /></FormField>
+          </div>
+          <PrimaryButton type="submit" disabled={busy}>Guardar Configuración Sistémica</PrimaryButton>
+        </form>
+      )}
     </div>
   )
 }

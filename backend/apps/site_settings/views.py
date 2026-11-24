@@ -15,15 +15,18 @@ from core.audit.constants import (
 from core.audit.sanitizer import sanitize_audit_payload
 from .models        import SiteSettings
 from .serializers   import SiteSettingsSerializer, SiteSettingsWriteSerializer
+from .cms_services  import get_public_cms_payload
 
 
 class PublicSiteSettingsView(views.APIView):
-    """GET /api/v1/site-settings/ — público, para toda la web."""
+    """GET /api/v1/site-settings/ — público, devuelve SiteSettings + versión CMS publicada vigente."""
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         obj = SiteSettings.get()
-        return Response(SiteSettingsSerializer(obj).data)
+        data = SiteSettingsSerializer(obj).data
+        data["cms"] = get_public_cms_payload()
+        return Response(data)
 
 
 class AdminSiteSettingsView(views.APIView):
