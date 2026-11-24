@@ -1,5 +1,6 @@
 # apps/loyalty/signals.py
 
+from decimal import Decimal
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -31,8 +32,8 @@ def award_points_on_purchase(sender, instance, **kwargs):
     if not config.is_active:
         return
 
-    # Calcular puntos: total × puntos_por_peso
-    puntos = int(float(instance.total) * float(config.puntos_por_peso))
+    # Calcular puntos: total × puntos_por_peso (Decimal sin float)
+    puntos = int(Decimal(str(instance.total)) * Decimal(str(config.puntos_por_peso)))
     if puntos <= 0:
         return
 

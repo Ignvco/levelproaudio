@@ -1,5 +1,6 @@
 # apps/orders/views.py
 
+from decimal import Decimal, ROUND_HALF_UP
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -166,22 +167,25 @@ class OrderViewSet(viewsets.ModelViewSet):
             target = item.get("variant") or item["product"]
             item["price"] = target.prices_by_currency(_rate_clp, _rate_ars)[currency]
 
+        q_step = Decimal("1") if currency == "CLP" else Decimal("0.01")
         subtotal = sum(
-            float(item["price"]) * item["quantity"]
-            for item in validated_items
-        )
+            (Decimal(str(item["price"])) * Decimal(str(item["quantity"])) for item in validated_items),
+            Decimal("0.00"),
+        ).quantize(q_step, rounding=ROUND_HALF_UP)
 
-        # ── Canje de puntos de fidelización (opcional) ──
+        # ── Canje de puntos de fidelización (opcional, Decimal + solo CLP sin FX explícito) ──
         loyalty_points_redeemed = requested_points
-        loyalty_discount        = 0
+        loyalty_discount        = Decimal("0.00")
         account = None
         if loyalty_points_redeemed > 0:
+            if currency != "CLP":
+                return Response(
+                    {"error": "El canje monetario de puntos Loyalty solo está habilitado en CLP sin política FX explícita."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             from apps.loyalty.models import LoyaltyAccount, LoyaltyConfig
             config     = LoyaltyConfig.get()
             account, _ = LoyaltyAccount.objects.get_or_create(user=request.user)
-            # Validamos acá para devolver un mensaje claro; el canje real
-            # (con bloqueo de fila) se hace después de crear la orden,
-            # una vez que sabemos su id.
             if loyalty_points_redeemed < config.minimo_canje:
                 return Response(
                     {"error": f"Mínimo de canje: {config.minimo_canje} puntos."},
@@ -192,12 +196,12 @@ class OrderViewSet(viewsets.ModelViewSet):
                     {"error": "No tenés suficientes puntos disponibles."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            loyalty_discount = min(
-                subtotal,
-                loyalty_points_redeemed * float(config.peso_por_punto),
+            raw_disc = (Decimal(loyalty_points_redeemed) * Decimal(str(config.peso_por_punto))).quantize(
+                q_step, rounding=ROUND_HALF_UP
             )
+            loyalty_discount = max(Decimal("0.00"), min(subtotal, raw_disc))
 
-        total = max(0, subtotal - float(loyalty_discount))
+        total = max(Decimal("0.00"), (subtotal - loyalty_discount).quantize(q_step, rounding=ROUND_HALF_UP))
 
         order = Order.objects.create(
             user=request.user,
