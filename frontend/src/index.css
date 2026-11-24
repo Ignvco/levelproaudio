@@ -1037,3 +1037,24 @@ h1 em, h2 em, h3 em {
   position: relative;
   z-index: 1;
 }
+
+/* ── Gate 12 CMS: Aislamiento de tokens públicos dentro de previsualización ── */
+.cms-public-preview-scope {
+  --bg:           #0a0a0a;
+  --bg-2:         #111111;
+  --surface:      #141414;
+  --surface-2:    #1c1c1c;
+  --surface-3:    #242424;
+  --border:       #262626;
+  --border-hover: #3a3a3a;
+  --text:         #fafafa;
+  --text-2:       #a0a0a0;
+  --text-3:       #8a8a8a;
+  --accent:       #1aff6e;
+  color: #fafafa;
+}
+.admin-root .cms-public-preview-scope h1,
+.admin-root .cms-public-preview-scope h2,
+.admin-root .cms-public-preview-scope h3 {
+  color: #fafafa;
+}

@@ -15,15 +15,19 @@ from core.audit.constants import (
 from core.audit.sanitizer import sanitize_audit_payload
 from .models        import SiteSettings
 from .serializers   import SiteSettingsSerializer, SiteSettingsWriteSerializer
+from .cms_preflight import VERSIONED_EDITORIAL_FIELDS
+from .cms_services  import get_public_cms_payload
 
 
 class PublicSiteSettingsView(views.APIView):
-    """GET /api/v1/site-settings/ — público, para toda la web."""
+    """GET /api/v1/site-settings/ — público, devuelve SiteSettings + versión CMS publicada vigente."""
     permission_classes = [permissions.AllowAny]
 
     def get(self, request):
         obj = SiteSettings.get()
-        return Response(SiteSettingsSerializer(obj).data)
+        data = SiteSettingsSerializer(obj).data
+        data["cms"] = get_public_cms_payload()
+        return Response(data)
 
 
 class AdminSiteSettingsView(views.APIView):
@@ -42,6 +46,18 @@ class AdminSiteSettingsView(views.APIView):
         return resp
 
     def patch(self, request):
+        versioned_hit = VERSIONED_EDITORIAL_FIELDS.intersection(request.data.keys())
+        if versioned_hit:
+            return Response(
+                {
+                    "error": (
+                        "Los campos editoriales sujetos a versionado deben actualizarse "
+                        "mediante borradores y publicación CMS (/api/v1/admin/cms/versions/)."
+                    ),
+                    "fields": sorted(versioned_hit),
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         if any(f in request.data for f in self.RESTRICTED_SYSTEM_FIELDS):
             if not is_effective_super_admin(request.user) and not user_has_capability(request.user, PERM_MANAGE_SETTINGS):
                 return Response(

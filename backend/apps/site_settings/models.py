@@ -142,3 +142,13 @@ class SiteSettings(TimeStampedModel):
         """Devuelve la instancia singleton (crea si no existe)."""
         obj = cls.objects.first()
         return obj or cls.objects.create()
+
+
+from .cms_models import (  # noqa: F401, E402
+    CMSAnnouncement,
+    CMSAsset,
+    CMSBanner,
+    CMSHeroSlide,
+    CMSPublicationEvent,
+    CMSVersion,
+)

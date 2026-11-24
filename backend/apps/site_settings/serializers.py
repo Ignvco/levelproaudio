@@ -1,5 +1,7 @@
 from rest_framework import serializers
+from django.core.exceptions import ValidationError as DjangoValidationError
 from .models import SiteSettings
+from .cms_preflight import validate_cms_image_upload, validate_safe_cms_url
 from core.media import media_url as _media_url
 
 
@@ -83,3 +85,28 @@ class SiteSettingsWriteSerializer(SiteSettingsSerializer):
             "logo", "og_image", "testimonial_photo",
             "home_bg_image",
         ]
+
+    def validate_hero_cta1_link(self, value):
+        try:
+            return validate_safe_cms_url(value)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.messages)
+
+    def validate_hero_cta2_link(self, value):
+        try:
+            return validate_safe_cms_url(value)
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(exc.messages)
+
+    def validate(self, attrs):
+        for img_field in (
+            "hero_image", "hero_image_2", "hero_image_3",
+            "pillar_shop_image", "pillar_academy_image", "pillar_services_image",
+            "logo", "og_image", "testimonial_photo", "home_bg_image",
+        ):
+            if img_field in attrs and attrs[img_field] is not None:
+                try:
+                    validate_cms_image_upload(attrs[img_field])
+                except DjangoValidationError as exc:
+                    raise serializers.ValidationError({img_field: exc.messages})
+        return attrs
