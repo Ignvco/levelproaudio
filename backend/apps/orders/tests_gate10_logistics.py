@@ -29,7 +29,7 @@ from apps.orders.logistics_models import (
     WarrantyClaim,
     WarrantyPolicySnapshot,
 )
-from apps.orders.logistics_pdf import render_shipping_label_pdf, render_shipping_manifest_pdf
+from apps.orders.logistics_pdf import classify_label_document, render_shipping_label_pdf, render_shipping_manifest_pdf
 from apps.orders.logistics_services import (
     LogisticsServiceError,
     add_package_to_shipment,
@@ -300,3 +300,88 @@ class Gate10LogisticsAndAfterSalesTests(TransactionTestCase):
         ]:
             resp = client.get(path)
             self.assertEqual(resp.status_code, 200, f"GET {path} failed: {resp.status_code}")
+
+    def test_log10_accept_01_02_label_manifest_classification_and_determinism(self):
+        """LOG10-ACCEPT-01 & 02: Clasificación de etiquetas sin depender solo del prefijo y manifiesto determinista."""
+        order, _ = self._create_paid_reserved_order()
+        shp = create_shipment_for_order(order, warehouse=self.wh, carrier=self.chilexpress, actor=self.admin)
+        add_package_to_shipment(
+            shp, gross_weight_kg=Decimal("2.0"), length_cm=Decimal("30"), width_cm=Decimal("20"), height_cm=Decimal("20"),
+            commercial_content="Audio Pro"
+        )
+        labels = generate_shipment_labels(shp, label_type=ShipmentLabel.LabelType.COURIER_LABEL, actor=self.admin)
+        lbl = labels[0]
+
+        # Incluso si el tracking no tuviera prefijo SIM-, carrier integration_pending jamás se clasifica real_carrier_api
+        lbl.tracking_number = "CLX-TEST-999999"
+        lbl.save(update_fields=["tracking_number"])
+        cls = classify_label_document(lbl)
+        self.assertEqual(cls["document_class"], "qa_simulation")
+        self.assertTrue(cls["is_qa_simulation"])
+        self.assertFalse(cls["is_official_courier_label"])
+        self.assertFalse(cls["deducts_wms_inventory"])
+        self.assertFalse(cls["is_official_dte"])
+
+        # Manifiesto cerrado -> reimpresión determinista byte-a-byte e inmutable ante cambios posteriores
+        man = create_shipping_manifest(warehouse=self.wh, carrier=self.chilexpress, actor=self.admin)
+        add_shipment_to_manifest(man, shp)
+        man = close_shipping_manifest(man, actor=self.admin)
+        _, sha1 = render_shipping_manifest_pdf(man)
+        _, sha2 = render_shipping_manifest_pdf(man)
+        self.assertEqual(sha1, sha2)
+
+        # Mutar envío posterior al cierre no altera closed_snapshot ni SHA del manifiesto
+        shp.tracking_number = "MODIFIED-AFTER-CLOSE"
+        shp.save(update_fields=["tracking_number"])
+        _, sha3 = render_shipping_manifest_pdf(man)
+        self.assertEqual(sha1, sha3)
+
+    def test_log10_accept_03_04_oms_wms_rollback_partial_and_workshop_isolation(self):
+        """LOG10-ACCEPT-03 & 04: Rollback en despacho, cancelación post-despacho sin restitución, RBAC y taller aislado."""
+        from unittest.mock import patch
+        from apps.orders.oms_services import OMSServiceError, transition_order_dimensions
+
+        order, _ = self._create_paid_reserved_order()
+        shp = create_shipment_for_order(order, warehouse=self.wh, carrier=self.chilexpress, actor=self.admin)
+        add_package_to_shipment(shp, gross_weight_kg=Decimal("1.5"), length_cm=Decimal("20"), width_cm=Decimal("20"), height_cm=Decimal("20"))
+        man = create_shipping_manifest(warehouse=self.wh, carrier=self.chilexpress, actor=self.admin)
+        add_shipment_to_manifest(man, shp)
+        man = close_shipping_manifest(man, actor=self.admin)
+
+        stock_before = WarehouseStock.objects.get(warehouse=self.wh, product=self.product).physical_quantity
+
+        # Fallo intermedio en handover -> rollback íntegro
+        with patch("apps.orders.logistics_services.confirm_physical_dispatch_once", side_effect=RuntimeError("Fallo simulado")):
+            with self.assertRaises(RuntimeError):
+                handover_shipping_manifest(man, handover_evidence="Retiro fallido", actor=self.admin)
+        man.refresh_from_db()
+        self.assertEqual(man.status, ShippingManifest.Status.CLOSED)
+        self.assertEqual(WarehouseStock.objects.get(warehouse=self.wh, product=self.product).physical_quantity, stock_before)
+
+        # Handover exitoso descuenta 1 vez; cancelación posterior bloqueada sin RMA y NO restituye stock
+        handover_shipping_manifest(man, handover_evidence="Retiro OK", actor=self.admin)
+        stock_after_dispatch = WarehouseStock.objects.get(warehouse=self.wh, product=self.product).physical_quantity
+        self.assertEqual(stock_after_dispatch, stock_before - 1)
+        with self.assertRaises(OMSServiceError):
+            transition_order_dimensions(order, commercial_status=CommercialStatus.CANCELLED.value, reason="Cancelación post despacho", actor=self.admin)
+        self.assertEqual(WarehouseStock.objects.get(warehouse=self.wh, product=self.product).physical_quantity, stock_after_dispatch)
+
+        # LOG10-ACCEPT-04: Serial no vendido -> pending_verification; RBAC bloquea buyer; taller no suma stock vendible
+        unsold = validate_serial_warranty(serial_number="SN-NO-VENDIDO-999")
+        self.assertEqual(unsold["status"], "pending_verification")
+
+        buyer_client = APIClient()
+        buyer_client.force_authenticate(user=self.buyer)
+        self.assertEqual(buyer_client.get("/api/v1/admin/logistics/warranties/").status_code, 403)
+        self.assertEqual(buyer_client.post("/api/v1/admin/logistics/warranties/validate/", {"serial_number": "SN-NO-VENDIDO-999"}, format="json").status_code, 403)
+
+        stock_before_rwo = WarehouseStock.objects.get(warehouse=self.wh, product=self.product).physical_quantity
+        rwo = create_repair_work_order(
+            equipment_model=self.product.name,
+            reported_symptoms="Ruido en entrada",
+            serial_number="SN-CLIENTE-EXT-1",
+            product=self.product,
+            actor=self.admin,
+        )
+        self.assertEqual(WarehouseStock.objects.get(warehouse=self.wh, product=self.product).physical_quantity, stock_before_rwo)
+        self.assertIsNone(rwo.rma_id)
