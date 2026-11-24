@@ -132,30 +132,32 @@ print(json.dumps({"token": token, "admin_id": str(admin.id), "cust_id": str(cust
     await page.waitForSelector("text=Promociones, Cupones & Recuperación de Carritos")
 
     // E2E A: Create USD 10% coupon via real UI -> real Django -> PostgreSQL 16 QA
-    await page.getByRole("button", { name: "3. Creador Cupón" }).click()
+    await page.getByRole("tab", { name: "3. Creador Cupón" }).click()
     await page.getByPlaceholder("Código (ej. STUDIO10)").fill(couponCode)
     await page.getByPlaceholder("Nombre comercial").fill("E2E 10% USD")
     await page.locator("form select").first().selectOption("USD")
+    await page.getByPlaceholder("Margen mínimo %").fill("")
     await page.getByRole("button", { name: "Guardar Cupón" }).click()
     await page.waitForSelector(`text=Cupón ${couponCode} (USD) creado correctamente.`)
 
     // E2E A2: Pricing preview via real UI
-    await page.getByRole("button", { name: "8. Previsualización" }).click()
+    await page.getByRole("tab", { name: "8. Previsualización" }).click()
     await page.locator("form select").first().selectOption("USD")
     await page.getByPlaceholder("Subtotal").fill("250.00")
     await page.getByPlaceholder("Código cupón").fill(couponCode)
     await page.getByRole("button", { name: "Simular Cálculo Comercial" }).click()
-    await page.waitForSelector("pre")
-    const preText = await page.locator("pre").textContent()
-    assert.ok(preText.includes('"coupon_discount": "25.00"'), `Unexpected preview output: ${preText}`)
+    await page.waitForSelector('[data-testid="preview-coupon-discount"]')
+    const discText = await page.locator('[data-testid="preview-coupon-discount"]').textContent()
+    assert.equal(discText.trim(), "25.00")
 
     // E2E B: Record opt-in consent, detect abandoned cart, dispatch QA outbox
-    await page.getByRole("button", { name: "11. Consentimiento & Outbox" }).click()
+    await page.getByRole("tab", { name: "11. Consentimiento & Outbox" }).click()
     await page.getByPlaceholder("cliente@dominio.cl").fill(custEmail)
+    await page.getByPlaceholder("Evidencia (ej. TKT-2026-8841)").fill(`E2E-TKT-${ts}`)
     await page.getByRole("button", { name: "Registrar" }).click()
     await page.waitForSelector(`text=Consentimiento actualizado para ${custEmail}`)
 
-    await page.getByRole("button", { name: "9. Carritos Abandonados" }).click()
+    await page.getByRole("tab", { name: "9. Carritos Abandonados" }).click()
     await page.getByRole("button", { name: "Detectar Inactivos (60m)" }).click()
     await page.waitForSelector(`text=${custEmail}`)
     await page.locator("div.flex.flex-wrap.items-center.justify-between", { hasText: custEmail }).getByRole("button", { name: "Preparar Recuperación QA" }).click()

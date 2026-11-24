@@ -163,8 +163,11 @@ class MarketingConsent(TimeStampedModel):
     promotional_opt_in = models.BooleanField(default=False)
     transactional_enabled = models.BooleanField(default=True)
     channel = models.CharField(max_length=20, default="email")
+    consent_origin = models.CharField(max_length=30, default="customer_direct")
     consent_source = models.CharField(max_length=80, default="explicit_form")
+    evidence_reference = models.CharField(max_length=255, blank=True, default="")
     policy_version = models.CharField(max_length=30, default="2026.11")
+    recorded_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name="recorded_marketing_consents")
     consented_at = models.DateTimeField(null=True, blank=True)
     revoked_at = models.DateTimeField(null=True, blank=True)
 

@@ -390,10 +390,15 @@ def validate_and_price_coupon(
     final_total = max(ZERO, _q2(reference_subtotal - total_discount))
 
     margin_pct, cost_status = _compute_margin_info(items, final_total, cur)
-    if coupon.min_margin_percent is not None and margin_pct is not None and margin_pct < coupon.min_margin_percent:
-        raise ValidationError(
-            f"Cupón bloqueado por margen mínimo ({margin_pct}% < {coupon.min_margin_percent}%)."
-        )
+    if coupon.min_margin_percent is not None:
+        if margin_pct is None:
+            raise ValidationError(
+                "Cupón bloqueado: costo desconocido en la moneda seleccionada para validar margen mínimo."
+            )
+        if margin_pct < coupon.min_margin_percent:
+            raise ValidationError(
+                f"Cupón bloqueado por margen mínimo ({margin_pct}% < {coupon.min_margin_percent}%)."
+            )
 
     applied_rule_ids = []
     if promo and promo_discount > ZERO:
@@ -456,7 +461,7 @@ def evaluate_commercial_pricing(
         total_discount = _q2(b2b_discount + promo_discount + loyalty_discount)
         final_total = max(ZERO, _q2(reference_subtotal - total_discount))
         margin_pct, cost_status = _compute_margin_info(items, final_total, cur)
-        if promo and promo.min_margin_percent is not None and margin_pct is not None and margin_pct < promo.min_margin_percent:
+        if promo and promo.min_margin_percent is not None and (margin_pct is None or margin_pct < promo.min_margin_percent):
             promo = None
             promo_discount = ZERO
             total_discount = _q2(b2b_discount + loyalty_discount)
@@ -523,6 +528,7 @@ def reserve_coupon_redemption(
     user=None,
     items: list[dict[str, Any]] | None = None,
     idempotency_key: str | None = None,
+    loyalty_discount: Decimal = ZERO,
 ) -> CouponRedemption:
     """
     Reserva un uso de cupón con lock transaccional sobre Coupon para evitar race conditions.
@@ -553,6 +559,7 @@ def reserve_coupon_redemption(
         currency=getattr(order, "currency", "CLP") or "CLP",
         items=items,
         user=user or order.user,
+        loyalty_discount=loyalty_discount,
     )
 
     redemption, created = CouponRedemption.objects.get_or_create(
@@ -635,20 +642,33 @@ def record_marketing_consent(
     email: str,
     promotional_opt_in: bool,
     user=None,
+    channel: str = "email",
+    consent_origin: str = "customer_direct",
     consent_source: str = "explicit_form",
+    evidence_reference: str = "",
     policy_version: str = "2026.11",
+    recorded_by=None,
 ) -> MarketingConsent:
     norm_email = (email or "").strip().lower()
     if not norm_email:
         raise ValidationError("Email requerido para consentimiento.")
+    clean_evidence = (evidence_reference or "").strip()
+    if consent_origin == "admin_documented" and promotional_opt_in and not clean_evidence:
+        raise ValidationError(
+            "Un administrador no puede atribuir opt-in promocional sin fuente y evidencia documental."
+        )
     now = timezone.now()
     consent, _ = MarketingConsent.objects.update_or_create(
         email=norm_email,
         defaults={
             "user": user if getattr(user, "is_authenticated", False) else None,
             "promotional_opt_in": promotional_opt_in,
+            "channel": (channel or "email").strip().lower(),
+            "consent_origin": consent_origin,
             "consent_source": consent_source,
+            "evidence_reference": clean_evidence,
             "policy_version": policy_version,
+            "recorded_by": recorded_by if getattr(recorded_by, "is_authenticated", False) else None,
             "consented_at": now if promotional_opt_in else None,
             "revoked_at": None if promotional_opt_in else now,
         },
@@ -851,10 +871,10 @@ def prepare_and_dispatch_cart_recovery(
     }
 
 
-def resolve_cart_recovery_token(token: str, now=None) -> dict[str, Any]:
+def resolve_cart_recovery_token(token: str, user=None, now=None) -> dict[str, Any]:
     """
     Resuelve un enlace opaco de recuperación de carrito sin exponer PII de terceros.
-    Revalida vigencia de token, disponibilidad de stock y estado activo del carrito.
+    Revalida vigencia de token, pertenencia del usuario, precios, disponibilidad de stock y estado activo del carrito.
     """
     now = now or timezone.now()
     clean_token = (token or "").strip()
@@ -864,6 +884,8 @@ def resolve_cart_recovery_token(token: str, now=None) -> dict[str, Any]:
     trigger = AbandonedCartTrigger.objects.select_related("cart").filter(recovery_token=clean_token).first()
     if not trigger:
         raise ValidationError("Enlace de recuperación inválido o adulterado.")
+    if user and getattr(user, "is_authenticated", False) and trigger.user_id and trigger.user_id != user.id:
+        raise ValidationError("No está autorizado a recuperar el carrito de otro usuario.")
     if now >= trigger.token_expires_at:
         trigger.status = AbandonedCartTrigger.Status.EXPIRED
         trigger.save(update_fields=["status", "updated_at"])
@@ -878,7 +900,9 @@ def resolve_cart_recovery_token(token: str, now=None) -> dict[str, Any]:
     items_summary = []
     stock_warnings = []
     for ci in cart.items.select_related("product", "variant").all():
-        available = getattr(ci.variant, "stock", None) if ci.variant else getattr(ci.product, "stock", None)
+        target = ci.variant or ci.product
+        available = getattr(target, "stock", None)
+        unit_price = getattr(target, "price", ZERO) or ZERO
         if available is not None and available < ci.quantity:
             stock_warnings.append(f"{ci.product.name}: stock disponible {available}")
         items_summary.append({
@@ -886,6 +910,8 @@ def resolve_cart_recovery_token(token: str, now=None) -> dict[str, Any]:
             "product_name": ci.product.name,
             "sku": getattr(ci.variant, "sku", None) or getattr(ci.product, "sku", ""),
             "quantity": ci.quantity,
+            "unit_price": str(_q2(unit_price)),
+            "currency": "CLP",
             "available_stock": available,
         })
 

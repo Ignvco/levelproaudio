@@ -201,7 +201,56 @@ class OrderViewSet(viewsets.ModelViewSet):
             )
             loyalty_discount = max(Decimal("0.00"), min(subtotal, raw_disc))
 
-        total = max(Decimal("0.00"), (subtotal - loyalty_discount).quantize(q_step, rounding=ROUND_HALF_UP))
+        # ── Cupón / Promoción comercial Gate 11 (Decimal, moneda aislada, idempotencia) ──
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from apps.orders.marketing_models import CouponRedemption
+        from apps.orders.marketing_services import (
+            evaluate_commercial_pricing,
+            mark_cart_recovered_for_order,
+            reserve_coupon_redemption,
+        )
+
+        coupon_code = (data.get("coupon_code") or "").strip().upper() or None
+        idempotency_key = (
+            data.get("idempotency_key")
+            or request.headers.get("Idempotency-Key")
+            or ""
+        ).strip() or None
+
+        if idempotency_key:
+            existing_redemption = (
+                CouponRedemption.objects.select_related("order")
+                .filter(idempotency_key=f"checkout:{idempotency_key}", order__user=request.user)
+                .first()
+            )
+            if existing_redemption and existing_redemption.order:
+                return Response(OrderSerializer(existing_redemption.order).data, status=status.HTTP_200_OK)
+
+        pricing_items = [
+            {
+                "product": item["product"],
+                "variant": item.get("variant"),
+                "quantity": item["quantity"],
+                "line_subtotal": (Decimal(str(item["price"])) * Decimal(str(item["quantity"]))).quantize(
+                    q_step, rounding=ROUND_HALF_UP
+                ),
+            }
+            for item in validated_items
+        ]
+        try:
+            pricing = evaluate_commercial_pricing(
+                currency=currency,
+                items=pricing_items,
+                coupon_code=coupon_code,
+                user=request.user,
+                loyalty_discount=loyalty_discount,
+            )
+        except DjangoValidationError as exc:
+            transaction.set_rollback(True)
+            msg = exc.messages[0] if getattr(exc, "messages", None) else str(exc)
+            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
+
+        total = max(Decimal("0.00"), pricing["final_total"].quantize(q_step, rounding=ROUND_HALF_UP))
 
         order = Order.objects.create(
             user=request.user,
@@ -252,6 +301,32 @@ class OrderViewSet(viewsets.ModelViewSet):
             transaction.set_rollback(True)
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
+        if coupon_code:
+            try:
+                reserve_coupon_redemption(
+                    code=coupon_code,
+                    order=order,
+                    user=request.user,
+                    items=pricing_items,
+                    idempotency_key=f"checkout:{idempotency_key}" if idempotency_key else f"checkout:{order.id}:{coupon_code}",
+                    loyalty_discount=loyalty_discount,
+                )
+            except DjangoValidationError as exc:
+                transaction.set_rollback(True)
+                msg = exc.messages[0] if getattr(exc, "messages", None) else str(exc)
+                return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
+        elif pricing.get("promotion"):
+            evaluate_commercial_pricing(
+                currency=currency,
+                items=pricing_items,
+                user=request.user,
+                loyalty_discount=loyalty_discount,
+                order=order,
+                persist_snapshot=True,
+            )
+
+        mark_cart_recovered_for_order(order)
+
         return Response(
             OrderSerializer(order).data,
             status=status.HTTP_201_CREATED
@@ -270,6 +345,9 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         order.status = OrderStatus.CANCELLED
         order.save(update_fields=["status"])
+
+        from apps.orders.marketing_services import release_or_reverse_coupon_redemption
+        release_or_reverse_coupon_redemption(order)
 
         return Response(
             {"detail": "Orden cancelada. Stock restablecido."},

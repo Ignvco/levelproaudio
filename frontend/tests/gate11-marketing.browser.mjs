@@ -131,7 +131,7 @@ async function main() {
     await page.waitForSelector("text=Promociones, Cupones & Recuperación de Carritos")
 
     for (const s of SHOTS) {
-      await page.getByRole("button", { name: s.tab, exact: true }).click()
+      await page.getByRole("tab", { name: s.tab, exact: true }).click()
       await page.waitForTimeout(150)
       if (s.tab === "8. Previsualización") {
         await page.getByRole("button", { name: "Simular Cálculo Comercial" }).click()
@@ -139,7 +139,11 @@ async function main() {
       }
       await page.screenshot({ path: path.join(OUT_DIR, s.file), fullPage: true })
     }
-    console.log("GATE11_SCREENSHOTS_OK:", SHOTS.length)
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.getByRole("tab", { name: "1. Dashboard", exact: true }).click()
+    await page.waitForTimeout(150)
+    await page.screenshot({ path: path.join(OUT_DIR, "gate11-mobile-responsive.png"), fullPage: true })
+    console.log("GATE11_SCREENSHOTS_OK:", SHOTS.length + 1)
   } finally {
     await browser.close()
     await server.httpServer.close()

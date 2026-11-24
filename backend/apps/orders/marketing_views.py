@@ -49,7 +49,21 @@ from apps.orders.marketing_services import (
 )
 from apps.products.models import Product
 from apps.rewards.models import Campaign as RewardsCampaign, StickerPurchase, Winner
-from core.admin_permissions import IsAdminOrStaff
+from core.admin_permissions import IsAdminOrStaff, rbac_endpoint
+from core.rbac.constants import (
+    ACTION_APPROVE,
+    ACTION_READ,
+    ACTION_UPDATE,
+    MODULE_MARKETING,
+    PERM_APPLY_DISCOUNTS,
+    PERM_VIEW_MARGINS,
+    ROLE_FINANCE,
+    ROLE_MANAGEMENT,
+    ROLE_MARKETING,
+    ROLE_SUPER_ADMIN,
+    ROLE_SUPPORT,
+)
+from core.rbac.permissions import is_effective_super_admin, user_has_capability
 
 
 class MarketingCouponThrottle(AnonRateThrottle):
@@ -138,6 +152,11 @@ def _build_items_from_payload(raw_items: list[dict]) -> list[dict]:
     return items
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    action=ACTION_READ,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING, ROLE_FINANCE],
+)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def marketing_dashboard_view(request):
@@ -196,6 +215,12 @@ def marketing_dashboard_view(request):
     })
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    capability_by_method={"POST": PERM_APPLY_DISCOUNTS},
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING, ROLE_FINANCE],
+    allowed_roles_by_method={"POST": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING]},
+)
 @api_view(["GET", "POST"])
 @permission_classes([IsAdminOrStaff])
 def marketing_coupons_view(request):
@@ -252,6 +277,11 @@ def marketing_coupons_view(request):
     return Response(_serialize_coupon(coupon), status=status.HTTP_201_CREATED)
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    capability=PERM_APPLY_DISCOUNTS,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+)
 @api_view(["PATCH", "DELETE"])
 @permission_classes([IsAdminOrStaff])
 def marketing_coupon_detail_view(request, coupon_id: int):
@@ -278,6 +308,11 @@ def marketing_coupon_detail_view(request, coupon_id: int):
     return Response(_serialize_coupon(coupon))
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    action=ACTION_READ,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING, ROLE_FINANCE],
+)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def marketing_coupon_redemptions_view(request, coupon_id: int):
@@ -302,6 +337,11 @@ def marketing_coupon_redemptions_view(request, coupon_id: int):
     })
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    action=ACTION_READ,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING, ROLE_FINANCE],
+)
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 def admin_pricing_preview_view(request):
@@ -322,6 +362,7 @@ def admin_pricing_preview_view(request):
     except ValidationError as exc:
         return Response({"valid": False, "detail": exc.messages[0] if getattr(exc, "messages", None) else str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
+    can_view_margins = is_effective_super_admin(request.user) or user_has_capability(request.user, PERM_VIEW_MARGINS)
     return Response({
         "valid": True,
         "currency": res["currency"],
@@ -332,13 +373,21 @@ def admin_pricing_preview_view(request):
         "loyalty_discount": str(res["loyalty_discount"]),
         "effective_discount": str(res["effective_discount"]),
         "final_total": str(res["final_total"]),
-        "calculated_margin_percent": str(res["calculated_margin_percent"]) if res["calculated_margin_percent"] is not None else None,
-        "cost_status": res["cost_status"],
+        "calculated_margin_percent": (
+            str(res["calculated_margin_percent"]) if (can_view_margins and res["calculated_margin_percent"] is not None) else None
+        ),
+        "cost_status": res["cost_status"] if can_view_margins else "restricted",
         "price_source": res["price_source"],
         "applied_rule_ids": res["applied_rule_ids"],
     })
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    capability_by_method={"POST": PERM_APPLY_DISCOUNTS},
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING, ROLE_FINANCE],
+    allowed_roles_by_method={"POST": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING]},
+)
 @api_view(["GET", "POST"])
 @permission_classes([IsAdminOrStaff])
 def marketing_promotions_view(request):
@@ -376,6 +425,12 @@ def marketing_promotions_view(request):
     return Response(_serialize_promotion(promo), status=status.HTTP_201_CREATED)
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    action=ACTION_APPROVE,
+    capability=PERM_APPLY_DISCOUNTS,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+)
 @api_view(["PATCH"])
 @permission_classes([IsAdminOrStaff])
 def marketing_promotion_detail_view(request, promo_id: int):
@@ -390,6 +445,11 @@ def marketing_promotion_detail_view(request, promo_id: int):
     return Response(_serialize_promotion(promo))
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    action=ACTION_UPDATE,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT],
+)
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 def marketing_scheduler_tick_view(request):
@@ -397,6 +457,11 @@ def marketing_scheduler_tick_view(request):
     return Response(res)
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    action=ACTION_READ,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING, ROLE_SUPPORT],
+)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def marketing_abandoned_carts_view(request):
@@ -421,6 +486,11 @@ def marketing_abandoned_carts_view(request):
     })
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    action=ACTION_UPDATE,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+)
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 def marketing_detect_abandoned_carts_view(request):
@@ -429,28 +499,50 @@ def marketing_detect_abandoned_carts_view(request):
     return Response({"detected_count": len(triggers), "trigger_ids": [t.id for t in triggers]})
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    action=ACTION_UPDATE,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+)
 @api_view(["POST"])
 @permission_classes([IsAdminOrStaff])
 def marketing_dispatch_cart_recovery_view(request, trigger_id: int):
-    if not AbandonedCartTrigger.objects.filter(id=trigger_id).exists():
+    trigger = AbandonedCartTrigger.objects.filter(id=trigger_id).first()
+    if not trigger:
         return Response({"detail": "Trigger no encontrado."}, status=status.HTTP_404_NOT_FOUND)
+    if trigger.status == AbandonedCartTrigger.Status.RECOVERED:
+        return Response(
+            {"detail": "El carrito ya fue recuperado; no se permiten nuevos recordatorios.", "status": "suppressed"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
     res = prepare_and_dispatch_cart_recovery(trigger_id)
+    if res.get("status") == "suppressed":
+        return Response(res, status=status.HTTP_400_BAD_REQUEST)
     return Response(res)
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING, ROLE_SUPPORT],
+    allowed_roles_by_method={"POST": [ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING]},
+)
 @api_view(["GET", "POST"])
 @permission_classes([IsAdminOrStaff])
 def marketing_consents_view(request):
     if request.method == "GET":
-        consents = MarketingConsent.objects.order_by("-updated_at")[:100]
+        consents = MarketingConsent.objects.select_related("recorded_by").order_by("-updated_at")[:100]
         return Response({
             "results": [
                 {
                     "id": c.id,
                     "email": c.email,
                     "promotional_opt_in": c.promotional_opt_in,
+                    "channel": c.channel,
+                    "consent_origin": c.consent_origin,
                     "consent_source": c.consent_source,
+                    "evidence_reference": c.evidence_reference,
                     "policy_version": c.policy_version,
+                    "recorded_by_email": c.recorded_by.email if c.recorded_by else None,
                     "consented_at": c.consented_at.isoformat() if c.consented_at else None,
                     "revoked_at": c.revoked_at.isoformat() if c.revoked_at else None,
                 }
@@ -462,17 +554,34 @@ def marketing_consents_view(request):
         consent = record_marketing_consent(
             email=request.data.get("email", ""),
             promotional_opt_in=bool(request.data.get("promotional_opt_in", False)),
+            channel=request.data.get("channel", "email"),
+            consent_origin="admin_documented",
             consent_source=request.data.get("consent_source", "admin_panel"),
+            evidence_reference=request.data.get("evidence_reference", ""),
+            policy_version=request.data.get("policy_version", "2026.11"),
+            recorded_by=request.user,
         )
     except ValidationError as exc:
-        return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        msg = exc.messages[0] if getattr(exc, "messages", None) else str(exc)
+        return Response({"detail": msg}, status=status.HTTP_400_BAD_REQUEST)
     return Response({
         "id": consent.id,
         "email": consent.email,
         "promotional_opt_in": consent.promotional_opt_in,
+        "channel": consent.channel,
+        "consent_origin": consent.consent_origin,
+        "consent_source": consent.consent_source,
+        "evidence_reference": consent.evidence_reference,
+        "policy_version": consent.policy_version,
+        "recorded_by_email": request.user.email,
     }, status=status.HTTP_201_CREATED)
 
 
+@rbac_endpoint(
+    module=MODULE_MARKETING,
+    action=ACTION_READ,
+    allowed_roles=[ROLE_SUPER_ADMIN, ROLE_MANAGEMENT, ROLE_MARKETING],
+)
 @api_view(["GET"])
 @permission_classes([IsAdminOrStaff])
 def marketing_outbox_view(request):
@@ -532,7 +641,7 @@ def public_validate_coupon_view(request):
 @throttle_classes([MarketingCouponThrottle])
 def public_resolve_recovery_token_view(request, token: str):
     try:
-        res = resolve_cart_recovery_token(token)
+        res = resolve_cart_recovery_token(token, user=request.user if request.user.is_authenticated else None)
     except ValidationError as exc:
         return Response({"valid": False, "detail": exc.messages[0] if getattr(exc, "messages", None) else str(exc)}, status=status.HTTP_400_BAD_REQUEST)
     return Response(res)

@@ -425,3 +425,199 @@ class Gate11MarketingTests(TransactionTestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertNotIn("calculated_margin_percent", resp.data)
         self.assertNotIn("average_unit_cost", resp.data)
+
+    def test_mkt11_accept_01_real_checkout_coupon_idempotency_and_reversal(self):
+        """MKT11-ACCEPT-01: Checkout real USD 10% con variante, snapshot, idempotencia, costo desconocido y reverso."""
+        from apps.products.models import ProductVariant
+
+        variant = ProductVariant.objects.create(
+            product=self.product,
+            name="Edición Studio USD",
+            sku="INT-G11-VAR-01",
+            price=Decimal("200000.00"),
+            price_usd=Decimal("300.00"),
+            price_ars=Decimal("350000.00"),
+            stock=4,
+        )
+        now = timezone.now()
+        Coupon.objects.create(
+            code="REALUSD10",
+            name="Checkout Real 10% USD",
+            currency="USD",
+            discount_type=Coupon.DiscountType.PERCENTAGE,
+            discount_value=Decimal("10.00"),
+            starts_at=now - timedelta(hours=1),
+            ends_at=now + timedelta(days=5),
+            status=Coupon.Status.ACTIVE,
+            max_total_uses=2,
+            max_uses_per_customer=1,
+            min_margin_percent=Decimal("15.00"),
+        )
+
+        client = APIClient()
+        client.force_authenticate(user=self.customer)
+        payload = {
+            "currency": "USD",
+            "coupon_code": "REALUSD10",
+            "idempotency_key": "chk-usd-001",
+            "shipping_address": "Av. Providencia 1000",
+            "items": [{"product": str(self.product.id), "variant": str(variant.id), "quantity": 1}],
+        }
+        r1 = client.post("/api/v1/orders/", payload, format="json")
+        self.assertEqual(r1.status_code, 201, r1.data)
+        self.assertEqual(Decimal(str(r1.data["total"])), Decimal("270.00"))
+
+        order_id = r1.data["id"]
+        self.assertEqual(CouponRedemption.objects.filter(order_id=order_id, status=CouponRedemption.Status.RESERVED).count(), 1)
+        snap = PricingAdjustmentSnapshot.objects.get(order_id=order_id)
+        self.assertEqual(snap.coupon_discount, Decimal("30.00"))
+        self.assertEqual(snap.final_total, Decimal("270.00"))
+
+        # Repetir confirmación con misma idempotency_key: no duplica orden ni descuento
+        r2 = client.post("/api/v1/orders/", payload, format="json")
+        self.assertEqual(r2.status_code, 200)
+        self.assertEqual(r2.data["id"], order_id)
+        self.assertEqual(CouponRedemption.objects.filter(coupon__code="REALUSD10").count(), 1)
+
+        # Rechazo de cupón USD en CLP y ARS
+        r_clp = client.post(
+            "/api/v1/orders/",
+            {
+                "currency": "CLP",
+                "coupon_code": "REALUSD10",
+                "shipping_address": "Santiago",
+                "items": [{"product": str(self.product.id), "quantity": 1}],
+            },
+            format="json",
+        )
+        self.assertEqual(r_clp.status_code, 400)
+
+        # Cancelación libera redención auditablemente
+        r_cancel = client.delete(f"/api/v1/orders/{order_id}/")
+        self.assertEqual(r_cancel.status_code, 200)
+        self.assertEqual(
+            CouponRedemption.objects.get(order_id=order_id).status,
+            CouponRedemption.Status.RELEASED,
+        )
+
+        # Costo desconocido en ARS cuando min_margin_percent está configurado -> bloqueado
+        Coupon.objects.create(
+            code="ARSMARGIN",
+            name="ARS Margen",
+            currency="ARS",
+            discount_type=Coupon.DiscountType.PERCENTAGE,
+            discount_value=Decimal("10.00"),
+            starts_at=now - timedelta(hours=1),
+            ends_at=now + timedelta(days=5),
+            status=Coupon.Status.ACTIVE,
+            min_margin_percent=Decimal("10.00"),
+        )
+        r_unk = client.post(
+            "/api/v1/orders/",
+            {
+                "currency": "ARS",
+                "coupon_code": "ARSMARGIN",
+                "shipping_address": "Buenos Aires",
+                "items": [{"product": str(self.product.id), "quantity": 1}],
+            },
+            format="json",
+        )
+        self.assertEqual(r_unk.status_code, 400)
+
+    def test_mkt11_accept_02_granular_rbac_and_margin_redaction(self):
+        """MKT11-ACCEPT-02: RBAC granular Zero Trust y redacción de márgenes sin PERM_VIEW_MARGINS."""
+        from django.contrib.auth.models import Group
+        from core.rbac.constants import ROLE_MARKETING, ROLE_SUPPORT
+
+        mkt_user = User.objects.create_user(username="g11_mkt_staff", email="mktstaff@levelpro.cl", password="pw", is_staff=True)
+        sup_user = User.objects.create_user(username="g11_sup_staff", email="supstaff@levelpro.cl", password="pw", is_staff=True)
+        plain_staff = User.objects.create_user(username="g11_plain_staff", email="plain@levelpro.cl", password="pw", is_staff=True)
+
+        mkt_group, _ = Group.objects.get_or_create(name=ROLE_MARKETING)
+        sup_group, _ = Group.objects.get_or_create(name=ROLE_SUPPORT)
+        mkt_user.groups.add(mkt_group)
+        sup_user.groups.add(sup_group)
+
+        # Staff sin rol denegado (Zero Trust)
+        c = APIClient()
+        c.force_authenticate(user=plain_staff)
+        self.assertEqual(c.get("/api/v1/admin/marketing/dashboard/").status_code, 403)
+
+        # Soporte no puede crear cupones ni ejecutar scheduler
+        c.force_authenticate(user=sup_user)
+        self.assertEqual(c.post("/api/v1/admin/marketing/coupons/", {"code": "X"}, format="json").status_code, 403)
+        self.assertEqual(c.post("/api/v1/admin/marketing/scheduler/tick/").status_code, 403)
+
+        # Marketing puede consultar dashboard, NO puede ejecutar scheduler, y preview redacta margen
+        c.force_authenticate(user=mkt_user)
+        self.assertEqual(c.get("/api/v1/admin/marketing/dashboard/").status_code, 200)
+        self.assertEqual(c.post("/api/v1/admin/marketing/scheduler/tick/").status_code, 403)
+        prev = c.post(
+            "/api/v1/admin/marketing/pricing-preview/",
+            {
+                "currency": "CLP",
+                "items": [{"product_id": self.product.id, "quantity": 1, "unit_price": "200000.00"}],
+            },
+            format="json",
+        )
+        self.assertEqual(prev.status_code, 200)
+        self.assertIsNone(prev.data["calculated_margin_percent"])
+        self.assertEqual(prev.data["cost_status"], "restricted")
+
+        # Super Admin sí ve margen
+        c.force_authenticate(user=self.admin)
+        prev_admin = c.post(
+            "/api/v1/admin/marketing/pricing-preview/",
+            {
+                "currency": "CLP",
+                "items": [{"product_id": self.product.id, "quantity": 1, "unit_price": "200000.00"}],
+            },
+            format="json",
+        )
+        self.assertEqual(prev_admin.status_code, 200)
+        self.assertIsNotNone(prev_admin.data["calculated_margin_percent"])
+
+    def test_mkt11_accept_03_and_04_recovered_dispatch_rejection_and_consent_evidence(self):
+        """MKT11-ACCEPT-03/04: Bloqueo API sobre trigger recuperado, pertenencia de token y evidencia documental en consentimiento."""
+        now = timezone.now()
+        c = APIClient()
+        c.force_authenticate(user=self.admin)
+
+        # Sin evidencia documental, admin no puede atribuir opt-in promocional
+        r_no_ev = c.post(
+            "/api/v1/admin/marketing/consents/",
+            {"email": self.customer.email, "promotional_opt_in": True, "consent_source": "ticket"},
+            format="json",
+        )
+        self.assertEqual(r_no_ev.status_code, 400)
+
+        # Con evidencia documental sí persiste trazabilidad completa
+        r_ok = c.post(
+            "/api/v1/admin/marketing/consents/",
+            {
+                "email": self.customer.email,
+                "promotional_opt_in": True,
+                "consent_source": "zendesk_ticket",
+                "evidence_reference": "TKT-2026-8841",
+            },
+            format="json",
+        )
+        self.assertEqual(r_ok.status_code, 201)
+        self.assertEqual(r_ok.data["consent_origin"], "admin_documented")
+        self.assertEqual(r_ok.data["evidence_reference"], "TKT-2026-8841")
+
+        cart = Cart.objects.create(user=self.customer, is_active=True)
+        CartItem.objects.create(cart=cart, product=self.product, quantity=1)
+        Cart.objects.filter(id=cart.id).update(updated_at=now - timedelta(minutes=90))
+        trg = detect_abandoned_carts(inactivity_minutes=60, now=now)[0]
+
+        # Otro usuario no puede resolver token ajeno
+        other_client = APIClient()
+        other_client.force_authenticate(user=self.other_customer)
+        self.assertEqual(other_client.get(f"/api/v1/marketing/recovery/{trg.recovery_token}/").status_code, 400)
+
+        # Trigger recuperado rechaza nuevo dispatch por API con HTTP 400
+        order = Order.objects.create(user=self.customer, total=Decimal("200000.00"), status=OrderStatus.PAID)
+        mark_cart_recovered_for_order(order, cart=cart)
+        r_disp = c.post(f"/api/v1/admin/marketing/abandoned-carts/{trg.id}/dispatch/")
+        self.assertEqual(r_disp.status_code, 400)
