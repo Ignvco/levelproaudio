@@ -470,3 +470,49 @@ export const addRepairTest = (rwoId, data) =>
 
 export const deliverRepairOrder = (rwoId, data) =>
   api.post(`${BASE}/logistics/repairs/${rwoId}/deliver/`, data).then(r => r.data)
+
+// ── Gate 11: Marketing & Customer Growth (BF-26, BF-27, BF-28) ──
+export const getMarketingDashboard = () =>
+  api.get(`${BASE}/marketing/dashboard/`).then(r => r.data)
+
+export const getMarketingCoupons = (params = {}) =>
+  api.get(`${BASE}/marketing/coupons/`, { params }).then(r => r.data)
+
+export const createMarketingCoupon = (data) =>
+  api.post(`${BASE}/marketing/coupons/`, data).then(r => r.data)
+
+export const updateMarketingCoupon = (couponId, data) =>
+  api.patch(`${BASE}/marketing/coupons/${couponId}/`, data).then(r => r.data)
+
+export const previewMarketingPricing = (data) =>
+  api.post(`${BASE}/marketing/pricing-preview/`, data).then(r => r.data)
+
+export const getMarketingPromotions = () =>
+  api.get(`${BASE}/marketing/promotions/`).then(r => r.data)
+
+export const createMarketingPromotion = (data) =>
+  api.post(`${BASE}/marketing/promotions/`, data).then(r => r.data)
+
+export const updateMarketingPromotion = (promoId, data) =>
+  api.patch(`${BASE}/marketing/promotions/${promoId}/`, data).then(r => r.data)
+
+export const runMarketingSchedulerTick = () =>
+  api.post(`${BASE}/marketing/scheduler/tick/`).then(r => r.data)
+
+export const getMarketingAbandonedCarts = () =>
+  api.get(`${BASE}/marketing/abandoned-carts/`).then(r => r.data)
+
+export const detectMarketingAbandonedCarts = (inactivityMinutes = 60) =>
+  api.post(`${BASE}/marketing/abandoned-carts/detect/`, { inactivity_minutes: inactivityMinutes }).then(r => r.data)
+
+export const dispatchMarketingCartRecovery = (triggerId) =>
+  api.post(`${BASE}/marketing/abandoned-carts/${triggerId}/dispatch/`).then(r => r.data)
+
+export const getMarketingConsents = () =>
+  api.get(`${BASE}/marketing/consents/`).then(r => r.data)
+
+export const recordMarketingConsentAdmin = (data) =>
+  api.post(`${BASE}/marketing/consents/`, data).then(r => r.data)
+
+export const getMarketingOutbox = () =>
+  api.get(`${BASE}/marketing/outbox/`).then(r => r.data)

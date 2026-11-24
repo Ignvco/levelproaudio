@@ -4,6 +4,24 @@
 from django.urls import path
 from rest_framework.routers import DefaultRouter
 from .views import CartViewSet, OrderViewSet
+from .marketing_views import (
+    admin_pricing_preview_view,
+    marketing_abandoned_carts_view,
+    marketing_consents_view,
+    marketing_coupon_detail_view,
+    marketing_coupon_redemptions_view,
+    marketing_coupons_view,
+    marketing_dashboard_view,
+    marketing_detect_abandoned_carts_view,
+    marketing_dispatch_cart_recovery_view,
+    marketing_outbox_view,
+    marketing_promotion_detail_view,
+    marketing_promotions_view,
+    marketing_scheduler_tick_view,
+    public_marketing_unsubscribe_view,
+    public_resolve_recovery_token_view,
+    public_validate_coupon_view,
+)
 from .views_b2b import (
     b2b_quote_create,
     admin_b2b_quotes,
@@ -117,4 +135,21 @@ urlpatterns = [
     path('admin/logistics/repairs/<uuid:rwo_id>/parts/', admin_logistics_repair_parts_view, name='admin-logistics-repair-parts'),
     path('admin/logistics/repairs/<uuid:rwo_id>/tests/', admin_logistics_repair_tests_view, name='admin-logistics-repair-tests'),
     path('admin/logistics/repairs/<uuid:rwo_id>/deliver/', admin_logistics_repair_deliver_view, name='admin-logistics-repair-deliver'),
+    # GATE 11: Marketing & Customer Growth
+    path('admin/marketing/dashboard/', marketing_dashboard_view, name='admin-marketing-dashboard'),
+    path('admin/marketing/coupons/', marketing_coupons_view, name='admin-marketing-coupons'),
+    path('admin/marketing/coupons/<uuid:coupon_id>/', marketing_coupon_detail_view, name='admin-marketing-coupon-detail'),
+    path('admin/marketing/coupons/<uuid:coupon_id>/redemptions/', marketing_coupon_redemptions_view, name='admin-marketing-coupon-redemptions'),
+    path('admin/marketing/pricing-preview/', admin_pricing_preview_view, name='admin-marketing-pricing-preview'),
+    path('admin/marketing/promotions/', marketing_promotions_view, name='admin-marketing-promotions'),
+    path('admin/marketing/promotions/<uuid:promo_id>/', marketing_promotion_detail_view, name='admin-marketing-promotion-detail'),
+    path('admin/marketing/scheduler/tick/', marketing_scheduler_tick_view, name='admin-marketing-scheduler-tick'),
+    path('admin/marketing/abandoned-carts/', marketing_abandoned_carts_view, name='admin-marketing-abandoned-carts'),
+    path('admin/marketing/abandoned-carts/detect/', marketing_detect_abandoned_carts_view, name='admin-marketing-abandoned-carts-detect'),
+    path('admin/marketing/abandoned-carts/<uuid:trigger_id>/dispatch/', marketing_dispatch_cart_recovery_view, name='admin-marketing-abandoned-carts-dispatch'),
+    path('admin/marketing/consents/', marketing_consents_view, name='admin-marketing-consents'),
+    path('admin/marketing/outbox/', marketing_outbox_view, name='admin-marketing-outbox'),
+    path('marketing/coupons/validate/', public_validate_coupon_view, name='public-marketing-coupon-validate'),
+    path('marketing/recovery/<str:token>/', public_resolve_recovery_token_view, name='public-marketing-recovery-resolve'),
+    path('marketing/unsubscribe/', public_marketing_unsubscribe_view, name='public-marketing-unsubscribe'),
 ] + router.urls
