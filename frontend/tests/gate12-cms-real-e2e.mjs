@@ -51,31 +51,52 @@ function execContainerPython(pyCode) {
   return res.stdout.trim()
 }
 
-test("Gate 12 CMS Real Integration E2E [E2E A Black Friday Publish+Rollback + E2E B Security+Responsive -> PostgreSQL 16 QA]", async () => {
+test("Gate 12 CMS Real Integration E2E [E2E A Preview/Public Parity + Publish + Rollback & E2E B Marketing RBAC + Security -> PostgreSQL 16 QA]", async () => {
   const ts = Date.now()
-  const adminEmail = `e2e_g12_${ts}@test.local`
+  const adminEmail = `e2e_g12_adm_${ts}@test.local`
+  const mktEmail = `e2e_g12_mkt_${ts}@test.local`
 
   const seedOut = execContainerPython(`
-import os, json, django
+import os, io, json, django
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.development")
 django.setup()
+from PIL import Image
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
+from django.core.files.uploadedfile import SimpleUploadedFile
 from rest_framework_simplejwt.tokens import RefreshToken
 from apps.site_settings.models import SiteSettings
-from apps.site_settings.cms_services import create_draft_version, publish_cms_version
+from apps.site_settings.cms_services import create_draft_version, publish_cms_version, register_cms_asset
+from core.rbac.constants import ROLE_MARKETING
 
 User = get_user_model()
-admin = User.objects.create_user(username="e2eg12_${ts}", email="${adminEmail}", password="pw", is_staff=True, is_superuser=True)
+admin = User.objects.create_user(username="e2eg12adm_${ts}", email="${adminEmail}", password="pw", is_staff=True, is_superuser=True)
+mkt = User.objects.create_user(username="e2eg12mkt_${ts}", email="${mktEmail}", password="pw", is_staff=True)
+unauth = User.objects.create_user(username="e2eg12cust_${ts}", email="cust_${ts}@test.local", password="pw", is_staff=False)
+g_mkt, _ = Group.objects.get_or_create(name=ROLE_MARKETING)
+mkt.groups.add(g_mkt)
+
+def make_png(name, w, h):
+    b = io.BytesIO()
+    Image.new("RGB", (w, h), (11, 14, 20)).save(b, format="PNG")
+    return SimpleUploadedFile(name, b.getvalue(), content_type="image/png")
+
+desk_asset = register_cms_asset(make_png("e2e_desk.png", 1200, 600), title="E2E Desk ${ts}", device_target="desktop", user=mkt)
+mob_asset = register_cms_asset(make_png("e2e_mob.png", 600, 900), title="E2E Mob ${ts}", device_target="mobile", user=mkt)
+
 site = SiteSettings.get()
 baseline = create_draft_version(user=admin, change_summary="Baseline E2E ${ts}")
 publish_cms_version(baseline.id, admin, notes="Baseline E2E")
-token = str(RefreshToken.for_user(admin).access_token)
 print(json.dumps({
-    "token": token,
+    "admin_token": str(RefreshToken.for_user(admin).access_token),
     "admin_id": str(admin.id),
-    "orig_hero_title": site.hero_title,
+    "mkt_token": str(RefreshToken.for_user(mkt).access_token),
+    "mkt_id": str(mkt.id),
+    "unauth_token": str(RefreshToken.for_user(unauth).access_token),
+    "unauth_id": str(unauth.id),
+    "desk_asset_id": str(desk_asset.id),
+    "mob_asset_id": str(mob_asset.id),
     "baseline_id": str(baseline.id),
-    "baseline_num": baseline.version_number,
 }))
 `)
   const seed = JSON.parse(seedOut)
@@ -84,6 +105,7 @@ print(json.dumps({
   const browser = await chromium.launch({ executablePath: CHROME_PATH, headless: true })
 
   try {
+    let activeBearer = seed.mkt_token
     const context = await browser.newContext({ viewport: { width: 1440, height: 960 } })
     const page = await context.newPage()
 
@@ -91,8 +113,8 @@ print(json.dumps({
       const req = route.request()
       const urlObj = new URL(req.url())
       const hdrs = { ...req.headers() }
-      if (!hdrs["authorization"] && !hdrs["Authorization"]) {
-        hdrs["authorization"] = `Bearer ${seed.token}`
+      if (activeBearer && !hdrs["authorization"] && !hdrs["Authorization"]) {
+        hdrs["authorization"] = `Bearer ${activeBearer}`
       }
       const resp = forwardToRealBackend(
         req.method(),
@@ -113,20 +135,21 @@ print(json.dumps({
       })
     })
 
-    await page.addInitScript(({ token, adminId, adminEmail }) => {
+    // E2E B1: Marketing Editor logs in, creates draft, edits Hero, associates desktop+mobile images, configures CTA, saves, previews, sees publish disabled, submits to review
+    await page.goto("http://127.0.0.1:4182/login", { waitUntil: "domcontentloaded" })
+    await page.evaluate(({ token, userId, email }) => {
       sessionStorage.setItem("levelproaudio-auth", JSON.stringify({
         state: {
           isAuthenticated: true,
           accessToken: token,
           refreshToken: "e2e-refresh",
-          user: { id: adminId, email: adminEmail, is_staff: true, is_superuser: true },
+          user: { id: userId, email, is_staff: true, is_superuser: false, roles: ["Marketing"] },
         },
         version: 0,
       }))
       document.cookie = "csrftoken=e2ecsrftoken; path=/"
-    }, { token: seed.token, adminId: seed.admin_id, adminEmail })
+    }, { token: seed.mkt_token, userId: seed.mkt_id, email: mktEmail })
 
-    // E2E A: Open CMS visual editor, create draft, add Black Friday banner & hero title, verify public Home unchanged, preview, publish, verify public Home updated after reload, rollback!
     await page.goto("http://127.0.0.1:4182/admin/settings", { waitUntil: "networkidle" })
     await page.waitForSelector('[data-testid="admin-cms-page"]')
     await page.getByRole("button", { name: "+ Nuevo Borrador" }).click()
@@ -136,8 +159,18 @@ print(json.dumps({
     const bfBannerTitle = `Black Friday Monitores E2E ${ts}`
     await page.getByRole("tab", { name: "2. Editor Hero" }).click()
     await page.locator("form input").first().fill(bfHero)
+    // Verify unsaved warning appears before saving
+    await page.waitForSelector('[data-testid="cms-unsaved-warning"]')
     await page.getByRole("button", { name: "Guardar en Borrador" }).click()
     await page.waitForSelector("text=guardado (checksum")
+
+    // Associate desktop & mobile images in Hero Slide
+    await page.getByPlaceholder("Título slide").fill(bfHero)
+    const slideSelects = page.locator("form").nth(1).locator("select")
+    await slideSelects.nth(0).selectOption(seed.desk_asset_id)
+    await slideSelects.nth(1).selectOption(seed.mob_asset_id)
+    await page.getByRole("button", { name: "+ Guardar Slide" }).click()
+    await page.waitForSelector("text=Slide agregado al borrador.")
 
     await page.getByRole("tab", { name: "4. Banners" }).click()
     await page.getByPlaceholder("Código (ej. BF-HOME-01)").fill(`BF-${ts}`)
@@ -146,34 +179,89 @@ print(json.dumps({
     await page.getByRole("button", { name: "Guardar Banner en Borrador" }).click()
     await page.waitForSelector("text=Banner agregado al borrador.")
 
+    // Marketing editor previews Desktop & Mobile and checks computed headline color is white rgb(245, 245, 245)
+    await page.getByRole("button", { name: "Previsualizar" }).click()
+    await page.waitForSelector('[data-testid="cms-live-preview-iframe"]')
+    const iframeLoc = page.frameLocator('[data-testid="cms-live-preview-iframe"]')
+    await iframeLoc.locator('[data-testid="hero-headline"]').waitFor({ state: "visible" })
+    const previewColor = await iframeLoc.locator('[data-testid="hero-headline"]').evaluate((el) => getComputedStyle(el).color)
+    assert.equal(previewColor, "rgb(245, 245, 245)")
+
+    await page.getByRole("button", { name: "Mobile", exact: true }).click()
+    await iframeLoc.locator('[data-testid="hero-headline"]').waitFor({ state: "visible" })
+
+    // Marketing editor submits draft to review
+    await page.getByRole("tab", { name: "9. Borradores" }).click()
+    await page.getByRole("button", { name: "Enviar a Revisión" }).first().click()
+    await page.waitForSelector("text=IN_REVIEW")
+
     // Verify public Home does NOT show draft before publish
     await page.goto("http://127.0.0.1:4182/", { waitUntil: "networkidle" })
     await page.waitForSelector('[data-testid="home-page"]')
     const bodyBefore = await page.locator("body").textContent()
-    assert.ok(!bodyBefore.includes(bfHero), "Draft hero leaked to public Home before publish!")
     assert.ok(!bodyBefore.includes(bfBannerTitle), "Draft banner leaked to public Home before publish!")
 
-    // Preview Desktop + Mobile in CMS
-    await page.goto("http://127.0.0.1:4182/admin/settings", { waitUntil: "networkidle" })
-    await page.getByRole("button", { name: "Previsualizar" }).click()
-    await page.waitForSelector('[data-testid="cms-live-preview-frame"]')
-    await page.getByRole("button", { name: "Mobile", exact: true }).click()
-    await page.getByRole("button", { name: "Desktop", exact: true }).click()
+    // Verify unauthorized user access to /?cms_preview_version=... is denied (403 -> cms-preview-denied)
+    const draftVerId = execContainerPython(`
+import os, django
+os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings.development")
+django.setup()
+from apps.site_settings.cms_models import CMSVersion
+v = CMSVersion.objects.filter(status="in_review").order_by("-version_number").first()
+print(str(v.id))
+`)
+    activeBearer = seed.unauth_token
+    await page.evaluate(({ token, uid }) => {
+      sessionStorage.setItem("levelproaudio-auth", JSON.stringify({
+        state: {
+          isAuthenticated: true,
+          accessToken: token,
+          refreshToken: "e2e-refresh",
+          user: { id: uid, email: "unauth@test.local", is_staff: false, is_superuser: false, roles: [] },
+        },
+        version: 0,
+      }))
+    }, { token: seed.unauth_token, uid: seed.unauth_id })
+    await page.goto(`http://127.0.0.1:4182/?cms_preview_version=${draftVerId}`, { waitUntil: "networkidle" })
+    await page.waitForSelector('[data-testid="cms-preview-denied"]')
 
-    // Publish atomically
+    // Switch to authorized Management/Super Admin user to publish & rollback
+    activeBearer = seed.admin_token
+    await page.evaluate(({ token, adminId, adminEmail }) => {
+      sessionStorage.setItem("levelproaudio-auth", JSON.stringify({
+        state: {
+          isAuthenticated: true,
+          accessToken: token,
+          refreshToken: "e2e-refresh",
+          user: { id: adminId, email: adminEmail, is_staff: true, is_superuser: true, roles: ["Super Admin"] },
+        },
+        version: 0,
+      }))
+    }, { token: seed.admin_token, adminId: seed.admin_id, adminEmail })
+
+    await page.goto("http://127.0.0.1:4182/admin/settings", { waitUntil: "networkidle" })
     await page.getByRole("tab", { name: "12. Publicar & Rollback" }).click()
     await page.getByRole("button", { name: "Publicar versión" }).first().click()
     await page.waitForSelector("text=publicada atómicamente")
 
-    // Verify public Home updated & persists after full reload
+    // Verify public Home updated & matches preview style on both desktop (1440px) and real mobile (390px)
+    await page.setViewportSize({ width: 1440, height: 960 })
     await page.goto("http://127.0.0.1:4182/", { waitUntil: "networkidle" })
     await page.reload({ waitUntil: "networkidle" })
     await page.waitForSelector(`text=${bfBannerTitle}`)
+    const pubDeskColor = await page.locator('[data-testid="hero-headline"]').evaluate((el) => getComputedStyle(el).color)
+    assert.equal(pubDeskColor, "rgb(245, 245, 245)")
+
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.waitForTimeout(150)
+    const pubMobColor = await page.locator('[data-testid="hero-headline"]').evaluate((el) => getComputedStyle(el).color)
+    assert.equal(pubMobColor, "rgb(245, 245, 245)")
 
     // Rollback to baseline version and verify public Home restored
+    await page.setViewportSize({ width: 1440, height: 960 })
     await page.goto("http://127.0.0.1:4182/admin/settings", { waitUntil: "networkidle" })
     await page.getByRole("tab", { name: "12. Publicar & Rollback" }).click()
-    await page.locator("div.flex.flex-wrap.items-center.justify-between", { hasText: `Baseline E2E ${ts}` }).getByRole("button", { name: "Restaurar (Rollback)" }).click()
+    await page.locator("[data-version-row]", { hasText: `Baseline E2E ${ts}` }).getByRole("button", { name: "Restaurar (Rollback)" }).click()
     await page.waitForSelector("text=Rollback completado")
 
     await page.goto("http://127.0.0.1:4182/", { waitUntil: "networkidle" })

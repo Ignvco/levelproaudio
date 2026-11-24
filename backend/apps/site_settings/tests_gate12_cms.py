@@ -244,3 +244,76 @@ class Gate12CMSTests(TransactionTestCase):
         c.force_authenticate(user=self.mgr_publisher)
         pub_resp = c.post(f"/api/v1/admin/cms/versions/{v.id}/publish/")
         self.assertEqual(pub_resp.status_code, 200)
+
+    def test_cms12_accept_03_legacy_patch_guard_and_concurrent_publish_conflict(self):
+        """CMS12-ACCEPT-03: PATCH legacy bloquea campos editoriales versionados; concurrencia de publicación y preservación de FX/contacto."""
+        from apps.analytics.models import AuditEvent
+
+        c = APIClient()
+        c.force_authenticate(user=self.super_admin)
+
+        # PATCH legacy sobre hero_title o seo_title es rechazado (400) para no eludir el versionado CMS
+        r_bypass = c.patch("/api/v1/admin/site-settings/", {"hero_title": "Bypass Directo"}, format="json")
+        self.assertEqual(r_bypass.status_code, 400)
+        self.assertIn("hero_title", r_bypass.data.get("fields", []))
+
+        # PATCH sistémico (tasas FX y contacto operativo) sí funciona y queda aislado de publicaciones CMS
+        r_sys = c.patch(
+            "/api/v1/admin/site-settings/",
+            {"usd_to_clp": "965.00", "contact_whatsapp": "+56911223344"},
+            format="json",
+        )
+        self.assertEqual(r_sys.status_code, 200)
+
+        # Publicar baseline v1
+        v1 = create_draft_version(user=self.mkt_editor, change_summary="Base v1")
+        publish_cms_version(v1.id, self.mgr_publisher)
+
+        # Dos editores crean borradores concurrentes (v_a y v_b) desde la misma base v1
+        v_a = create_draft_version(user=self.mkt_editor, change_summary="Editor A")
+        v_b = create_draft_version(user=self.mkt_editor, change_summary="Editor B")
+        save_draft_editorial_payload(v_a.id, {"hero_title": "Título Ganador A"}, user=self.mkt_editor)
+        save_draft_editorial_payload(v_b.id, {"hero_title": "Título Conflicto B"}, user=self.mkt_editor)
+
+        # Gerencia publica v_a primero -> éxito
+        publish_cms_version(v_a.id, self.mgr_publisher)
+        self.assertEqual(SiteSettings.get().hero_title, "Título Ganador A")
+
+        # Intento concurrente de publicar v_b con base_version obsoleta (v1 != v_a) -> rechazado sin estado parcial
+        with self.assertRaises(ValidationError):
+            publish_cms_version(v_b.id, self.mgr_publisher)
+
+        s = SiteSettings.get()
+        self.assertEqual(s.hero_title, "Título Ganador A")
+        self.assertEqual(s.usd_to_clp, Decimal("965.00"))
+        self.assertEqual(s.contact_whatsapp, "+56911223344")
+        self.assertTrue(AuditEvent.objects.filter(action="CMS_VERSION_PUBLISHED", resource_id=str(v_a.id)).exists())
+
+    def test_cms12_accept_04_archived_asset_preservation_and_sitemap_exclusion(self):
+        """CMS12-ACCEPT-04: Assets archivados no destruyen versiones históricas y sitemap no expone borradores ni rutas privadas."""
+        v1 = create_draft_version(user=self.mkt_editor, change_summary="Con Asset v1")
+        asset = register_cms_asset(_png_file("hist.png", 400, 200), title="Asset Histórico", device_target="desktop", user=self.mkt_editor)
+        upsert_hero_slide(v1.id, {"order": 1, "title": "Slide Histórico", "desktop_image_id": asset.id})
+        publish_cms_version(v1.id, self.mgr_publisher)
+
+        # Archivar asset (soft delete) no destruye la versión publicada ni impide rollback posterior
+        asset.is_archived = True
+        asset.save(update_fields=["is_archived"])
+
+        v2 = create_draft_version(user=self.mkt_editor, change_summary="Sin slides v2")
+        v2.hero_slides.all().delete()
+        publish_cms_version(v2.id, self.mgr_publisher)
+        self.assertEqual(len(get_public_cms_payload()["hero_slides"]), 0)
+
+        v3 = rollback_to_version(v1.id, self.mgr_publisher, notes="Restaurar con asset histórico")
+        self.assertEqual(v3.status, CMSVersion.Status.PUBLISHED)
+        self.assertEqual(len(get_public_cms_payload()["hero_slides"]), 1)
+        self.assertEqual(get_public_cms_payload()["hero_slides"][0]["desktop_image"]["id"], str(asset.id))
+
+        # Sitemap público no incluye /admin, /preview ni borradores
+        pub_client = APIClient()
+        sm = pub_client.get("/api/v1/seo/sitemap.xml")
+        self.assertEqual(sm.status_code, 200)
+        body = sm.content.decode("utf-8")
+        self.assertNotIn("/admin", body)
+        self.assertNotIn("cms_preview_version", body)

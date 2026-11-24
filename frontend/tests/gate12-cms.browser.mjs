@@ -1,3 +1,4 @@
+import assert from "node:assert/strict"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
 import { preview } from "vite"
@@ -10,8 +11,8 @@ const CHROME_PATH = process.env.CHROME_PATH || "/Applications/Google Chrome.app/
 
 const MOCK_VERSIONS = {
   results: [
-    { id: "ver-2", version_number: 2, status: "draft", change_summary: "Black Friday Audio Pro", checksum_sha256: "b1c2d3e4f5a67890", is_rollback: false, created_at: "2026-11-24T03:00:00Z" },
-    { id: "ver-1", version_number: 1, status: "published", change_summary: "Baseline Oficial", checksum_sha256: "a1b2c3d4e5f60987", is_rollback: false, published_at: "2026-11-24T02:00:00Z", created_at: "2026-11-24T01:50:00Z" },
+    { id: "ver-2", version_number: 2, status: "draft", change_summary: "Black Friday Audio Pro", checksum_sha256: "b1c2d3e4f5a67890", is_rollback: false, created_by_email: "marketing@levelpro.cl", created_at: "2026-11-24T03:00:00Z" },
+    { id: "ver-1", version_number: 1, status: "published", change_summary: "Baseline Oficial", checksum_sha256: "a1b2c3d4e5f60987", is_rollback: false, published_by_email: "gerencia@levelpro.cl", published_at: "2026-11-24T02:00:00Z", created_at: "2026-11-24T01:50:00Z" },
   ],
 }
 
@@ -29,6 +30,7 @@ const MOCK_VERSION_DETAIL = {
     hero_cta2_text: "Ver academia",
     hero_cta2_link: "/academy",
     site_name: "LevelPro Audio",
+    tagline: "Audio profesional · Chile & Argentina",
     seo_title: "Black Friday LevelPro Audio",
     seo_description: "Equipamiento de audio profesional en Chile y Argentina.",
     show_trust_strip: true,
@@ -42,7 +44,18 @@ const MOCK_VERSION_DETAIL = {
     show_final_cta: true,
   },
   hero_slides: [
-    { id: "sl-1", order: 1, title: "Consolas & Interfaces", subtitle: "Studio Series", desktop_image: null, mobile_image: null, cta1_text: "Explorar", cta1_link: "/shop" },
+    {
+      id: "sl-1",
+      order: 1,
+      title: "Black Friday Studio Pro",
+      subtitle: "Equipos profesionales seleccionados en edición limitada.",
+      desktop_image: { id: "as-1", title: "Hero Studio Desktop", url: "/og-image.png" },
+      mobile_image: { id: "as-2", title: "Hero Studio Mobile", url: "/og-image.png" },
+      cta1_text: "Ver Black Friday",
+      cta1_link: "/shop",
+      cta2_text: "Ver academia",
+      cta2_link: "/academy",
+    },
   ],
   banners: [
     { id: "bn-1", code: "BF-HOME-01", name: "Banner Black Friday", banner_type: "home_mid", target_page: "home", title: "Black Friday Monitores", body_text: "Stock real verificado", cta_text: "Ver catálogo", cta_link: "/shop", status: "active" },
@@ -54,8 +67,8 @@ const MOCK_VERSION_DETAIL = {
 
 const MOCK_ASSETS = {
   results: [
-    { id: "as-1", title: "Hero Studio Desktop", device_target: "desktop", width: 1920, height: 1080, file_format: "WEBP", url: "/og-image.png" },
-    { id: "as-2", title: "Hero Studio Mobile", device_target: "mobile", width: 800, height: 1200, file_format: "PNG", url: "/og-image.png" },
+    { id: "as-1", title: "Hero Studio Desktop", device_target: "desktop", width: 1920, height: 1080, file_format: "WEBP", sha256: "8f4b2e9c1a7d3e5f00112233", url: "/og-image.png" },
+    { id: "as-2", title: "Hero Studio Mobile", device_target: "mobile", width: 800, height: 1200, file_format: "PNG", sha256: "9a1c3d5e7f2b4a6c88990011", url: "/og-image.png" },
   ],
 }
 
@@ -124,21 +137,46 @@ async function main() {
       await page.screenshot({ path: path.join(OUT_DIR, s.file), fullPage: true })
     }
 
-    // 08. Preview Desktop & 09. Preview Mobile
+    // 08. Preview Desktop (1440px) — Wait for iframe Home to render and verify headline color is pure white #F5F5F5
     await page.getByRole("button", { name: "Previsualizar" }).click()
-    await page.waitForSelector('[data-testid="cms-live-preview-frame"]')
+    await page.waitForSelector('[data-testid="cms-live-preview-iframe"]')
+    const iframeLoc = page.frameLocator('[data-testid="cms-live-preview-iframe"]')
+    await iframeLoc.locator('[data-testid="hero-headline"]').waitFor({ state: "visible" })
+    const previewDeskColor = await iframeLoc.locator('[data-testid="hero-headline"]').evaluate((el) => getComputedStyle(el).color)
+    assert.equal(previewDeskColor, "rgb(245, 245, 245)", `Preview desktop headline color mismatch: ${previewDeskColor}`)
     await page.waitForTimeout(200)
     await page.screenshot({ path: path.join(OUT_DIR, "gate12-08-preview-desktop.png"), fullPage: true })
 
+    // Verify Tablet 768px and Mobile 320px viewports in preview
+    await page.getByRole("button", { name: "Tablet", exact: true }).click()
+    await iframeLoc.locator('[data-testid="hero-headline"]').waitFor({ state: "visible" })
+    await page.getByRole("button", { name: "Mobile 320px", exact: true }).click()
+    await iframeLoc.locator('[data-testid="hero-headline"]').waitFor({ state: "visible" })
+
+    // 09. Preview Mobile (390px) — Verify headline color & no clipping
     await page.getByRole("button", { name: "Mobile", exact: true }).click()
+    await iframeLoc.locator('[data-testid="hero-headline"]').waitFor({ state: "visible" })
+    const previewMobColor = await iframeLoc.locator('[data-testid="hero-headline"]').evaluate((el) => getComputedStyle(el).color)
+    assert.equal(previewMobColor, "rgb(245, 245, 245)", `Preview mobile headline color mismatch: ${previewMobColor}`)
     await page.waitForTimeout(200)
     await page.screenshot({ path: path.join(OUT_DIR, "gate12-09-preview-mobile.png"), fullPage: true })
 
-    // 15. Public Home updated with synthetic content
+    // 15. Public Home Desktop (1440x960) — Same content & version
+    await page.setViewportSize({ width: 1440, height: 960 })
     await page.goto("http://127.0.0.1:4181/", { waitUntil: "networkidle" })
     await page.waitForSelector('[data-testid="cms-announcement-bar"]')
+    const pubDeskColor = await page.locator('[data-testid="hero-headline"]').evaluate((el) => getComputedStyle(el).color)
+    assert.equal(pubDeskColor, previewDeskColor, "Public Home desktop color must match Preview desktop color")
     await page.screenshot({ path: path.join(OUT_DIR, "gate12-15-public-home-updated.png"), fullPage: true })
-    console.log("GATE12_SCREENSHOTS_OK: 15")
+
+    // 16. Public Home Mobile (390x844 real mobile viewport) — Same content & version
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.waitForTimeout(200)
+    const pubMobColor = await page.locator('[data-testid="hero-headline"]').evaluate((el) => getComputedStyle(el).color)
+    assert.equal(pubMobColor, previewMobColor, "Public Home mobile color must match Preview mobile color")
+    await page.screenshot({ path: path.join(OUT_DIR, "gate12-16-public-home-mobile.png"), fullPage: true })
+
+    console.log("GATE12_SCREENSHOTS_OK: 16")
   } finally {
     await browser.close()
     await server.httpServer.close()

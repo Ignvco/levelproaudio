@@ -44,7 +44,7 @@ const ROUTE_MODULE_RULES = [
   { prefix: "/admin/users", module: "dashboard", altModule: "roles", altModule2: "orders", label: "Usuarios y Clientes" },
   { prefix: "/admin/roles", module: "roles", capability: "manage_roles", label: "Roles y Control de Acceso (RBAC)" },
   { prefix: "/admin/audit", module: "audit", capability: "view_audit", label: "Registro de Actividad y Auditoría" },
-  { prefix: "/admin/settings", module: "settings", capability: "manage_settings", label: "Personalización y Configuración del Sistema" },
+  { prefix: "/admin/settings", module: "settings", altModule: "marketing", label: "Editor Visual CMS y Configuración del Sistema" },
 ]
 
 function resolveRouteGuard(pathname) {

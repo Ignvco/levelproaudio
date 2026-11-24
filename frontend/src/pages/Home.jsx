@@ -1,12 +1,12 @@
 // pages/Home.jsx — LevelPro Audio · SaaS Home (3 pilares reales: Tienda / Academia / Servicios)
 // UI inspirada en consola de estudio: LED, VU meter, digital readout, knob, fader, waveform
 import { useEffect, useRef, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link, useSearchParams } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
 import { getProducts, getBrands } from "../api/products.api"
 import { getCourses } from "../api/academy.api"
 import { getServices } from "../api/services.api"
-import { getSiteSettings } from "../api/siteSettings.api"
+import { getSiteSettings, previewCmsVersion } from "../api/siteSettings.api"
 import { mediaUrl } from "../utils/mediaUrl"
 import ProductCard from "../components/product/ProductCard"
 import CourseCard from "../components/academy/CourseCard"
@@ -77,7 +77,19 @@ function AnimatedNumber({ value }) {
 
 // ═══════════════════════════════════════════════════════════════
 export default function Home({ previewSettings = null } = {}) {
+  const [searchParams] = useSearchParams()
+  const cmsPreviewVersionId = searchParams.get("cms_preview_version")
   const { whatsappUrl } = useSiteSettings()
+  const [isMobileViewport, setIsMobileViewport] = useState(
+    () => typeof window !== "undefined" && window.innerWidth < 768
+  )
+  useEffect(() => {
+    if (typeof window === "undefined") return
+    const onResize = () => setIsMobileViewport(window.innerWidth < 768)
+    window.addEventListener("resize", onResize)
+    return () => window.removeEventListener("resize", onResize)
+  }, [])
+
   const { data: featuredData } = useQuery({
     queryKey: ["products", { featured: true }],
     queryFn:  () => getProducts({ is_featured: true, page_size: 4 }),
@@ -98,15 +110,34 @@ export default function Home({ previewSettings = null } = {}) {
     staleTime: 30 * 1000,  // 30s — para que cambios en admin se reflejen rápido
     enabled: !previewSettings,
   })
+  const { data: previewVerData, isError: isPreviewError } = useQuery({
+    queryKey: ["cms-preview", cmsPreviewVersionId],
+    queryFn: () => previewCmsVersion(cmsPreviewVersionId),
+    enabled: Boolean(cmsPreviewVersionId) && !previewSettings,
+    retry: false,
+  })
+
+  const previewFromUrl = previewVerData
+    ? {
+        ...(settings || {}),
+        ...(previewVerData.payload || {}),
+        cms: {
+          version_number: previewVerData.version_number,
+          hero_slides: previewVerData.hero_slides || [],
+          banners: previewVerData.banners || [],
+          announcements: previewVerData.announcements || [],
+        },
+      }
+    : null
 
   const featured  = featuredData?.results  || featuredData  || []
   const courses   = coursesData?.results   || coursesData   || []
   const services  = servicesData?.results  || servicesData  || []
   const brands    = brandsData?.results    || brandsData    || []
-  const s         = previewSettings || settings || {}
+  const s         = previewSettings || previewFromUrl || settings || {}
+  const isPreviewActive = Boolean(previewSettings || cmsPreviewVersionId)
 
   const cmsSlides = s.cms?.hero_slides || []
-  const isMobileViewport = typeof window !== "undefined" && window.innerWidth < 768
   const heroImages = cmsSlides.length > 0
     ? cmsSlides
         .map((sl) => (isMobileViewport ? (sl.mobile_image?.url || sl.desktop_image?.url) : (sl.desktop_image?.url || sl.mobile_image?.url)))
@@ -115,6 +146,13 @@ export default function Home({ previewSettings = null } = {}) {
   const cmsAnnouncements = s.cms?.announcements || []
   const cmsBanners = s.cms?.banners || []
   const [heroIdx, setHeroIdx] = useState(0)
+  const activeSlide = cmsSlides.length > 0 ? cmsSlides[heroIdx % cmsSlides.length] : null
+  const effectiveHeroTitle = activeSlide?.title || s.hero_title || "Llevá tu sonido al nivel profesional."
+  const effectiveHeroSubtitle = activeSlide?.subtitle || s.hero_subtitle || "El ecosistema completo para músicos, productores e ingenieros. Equipamiento, formación y servicios en un solo lugar."
+  const effectiveCta1Text = activeSlide?.cta1_text || s.hero_cta1_text || "Explorar tienda"
+  const effectiveCta1Link = activeSlide?.cta1_link || s.hero_cta1_link || "/shop"
+  const effectiveCta2Text = activeSlide?.cta2_text || s.hero_cta2_text || "Ver academia"
+  const effectiveCta2Link = activeSlide?.cta2_link || s.hero_cta2_link || "/academy"
   useEffect(() => {
     if (heroImages.length < 2) return
     const t = setInterval(
@@ -122,6 +160,26 @@ export default function Home({ previewSettings = null } = {}) {
     )
     return () => clearInterval(t)
   }, [heroImages.length])
+
+  if (cmsPreviewVersionId && isPreviewError) {
+    return (
+      <div
+        data-testid="cms-preview-denied"
+        style={{
+          background: "#0B0E14",
+          color: "#F5F5F5",
+          minHeight: "100vh",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "32px",
+          fontFamily: "var(--font-sans)",
+        }}
+      >
+        Acceso denegado: se requiere autorización RBAC para previsualizar borradores CMS.
+      </div>
+    )
+  }
 
   // ── Fondo del Home configurable desde el admin ──────────────────
   // Tipo "color": usa home_bg_color. Tipo "image": muestra la imagen con
@@ -151,7 +209,7 @@ export default function Home({ previewSettings = null } = {}) {
   const bodyTransparent = useColor || useImage
 
   return (
-    <div style={{
+    <div className="cms-public-preview-scope" style={{
       position: "relative",
       background: rootBg,
       display: "flex", flexDirection: "column",
@@ -188,7 +246,7 @@ export default function Home({ previewSettings = null } = {}) {
 
       {/* Contenido del Home por encima de las capas de fondo */}
       <div style={{ position: "relative", zIndex: 1, display: "flex", flexDirection: "column" }}>
-      {!previewSettings && <Seo />}
+      {!isPreviewActive && <Seo />}
 
       {cmsAnnouncements.length > 0 && (
         <div
@@ -304,18 +362,18 @@ export default function Home({ previewSettings = null } = {}) {
               fontFamily: "var(--font-hero)",
               fontSize: "clamp(2.8rem, 6.2vw, 5.4rem)",
               fontWeight: 700, lineHeight: 1,
-              letterSpacing: "-0.03em", color: "var(--text)",
+              letterSpacing: "-0.03em", color: "#F5F5F5",
               marginTop: "32px", marginBottom: "28px",
-              textShadow: s.hero_image_url ? "0 6px 40px rgba(0,0,0,0.5)" : "none",
+              textShadow: heroImages.length > 0 ? "0 6px 40px rgba(0,0,0,0.5)" : "none",
             }}>
-              {(s.hero_title || "Llevá tu sonido al nivel profesional.").split(" ").map((w, i, arr) => {
+              {effectiveHeroTitle.split(" ").map((w, i, arr) => {
                 const isLast = i === arr.length - 1
                 return isLast ? (
                   <span key={i} style={{
-                    color: "var(--accent)", fontStyle: "italic", fontWeight: 500,
+                    color: "#1AFF6E", fontStyle: "italic", fontWeight: 500,
                   }}>{w}</span>
                 ) : (
-                  <span key={i}>{w} </span>
+                  <span key={i} style={{ color: "#F5F5F5" }}>{w} </span>
                 )
               })}
             </h1>
@@ -345,28 +403,28 @@ export default function Home({ previewSettings = null } = {}) {
             maxWidth: "380px", paddingBottom: "6px" }}>
             <p style={{
               fontFamily: "var(--font-sans)", fontSize: "16px",
-              color: "var(--text-2)", lineHeight: 1.6, marginBottom: "24px",
+              color: "#A0A0A0", lineHeight: 1.6, marginBottom: "24px",
             }}>
-              {s.hero_subtitle || "El ecosistema completo para músicos, productores e ingenieros. Equipamiento, formación y servicios en un solo lugar."}
+              {effectiveHeroSubtitle}
             </p>
 
             <div className="hero-cta-row" style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
-              <Button to={s.hero_cta1_link || "/shop"} testId="hero-cta-primary"
+              <Button to={effectiveCta1Link} testId="hero-cta-primary"
                 variant="light" size="md" arrow>
-                {s.hero_cta1_text || "Explorar tienda"}
+                {effectiveCta1Text}
               </Button>
-              <Link to={s.hero_cta2_link || "/academy"} data-testid="hero-cta-secondary" style={{
+              <Link to={effectiveCta2Link} data-testid="hero-cta-secondary" style={{
                 display: "inline-flex", alignItems: "center", gap: "8px",
                 padding: "14px 22px", borderRadius: "var(--r-full)",
-                background: "rgba(255,255,255,0.06)", color: "var(--text)",
+                background: "rgba(255,255,255,0.06)", color: "#F5F5F5",
                 border: "1px solid rgba(255,255,255,0.16)",
                 fontSize: "14px", fontWeight: 600, textDecoration: "none",
                 fontFamily: "var(--font-sans)", backdropFilter: "blur(6px)",
                 transition: "all 200ms var(--ease)",
               }}
-                onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)" }}
-                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.16)"; e.currentTarget.style.color = "var(--text)" }}>
-                {s.hero_cta2_text || "Ver academia"}
+                onMouseEnter={e => { e.currentTarget.style.borderColor = "#1AFF6E"; e.currentTarget.style.color = "#1AFF6E" }}
+                onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.16)"; e.currentTarget.style.color = "#F5F5F5" }}>
+                {effectiveCta2Text}
               </Link>
             </div>
           </div>

@@ -75,6 +75,13 @@ SYSTEMIC_FIELDS = {
     "contact_email",
 }
 
+VERSIONED_EDITORIAL_FIELDS = (EDITORIAL_TEXT_FIELDS | EDITORIAL_IMAGE_FIELDS) - {
+    "site_name",
+    "tagline",
+    "logo",
+    "accent_color",
+}
+
 PUBLICATION_LIFECYCLE = (
     "draft",
     "in_review",
