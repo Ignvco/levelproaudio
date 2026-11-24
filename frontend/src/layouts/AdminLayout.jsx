@@ -21,6 +21,7 @@ const clpN = (n, currency) => formatCurrency(n, currency)
 const ROUTE_MODULE_RULES = [
   { exact: true, path: "/admin", module: "dashboard", label: "Dashboard Ejecutivo" },
   { prefix: "/admin/orders", module: "orders", label: "Órdenes y Ventas" },
+  { prefix: "/admin/logistics", module: "orders", label: "Logística & Posventa" },
   { prefix: "/admin/b2b", module: "orders", label: "Cotizaciones B2B" },
   { prefix: "/admin/special-orders", module: "orders", label: "Solicitudes Bajo Pedido" },
   { prefix: "/admin/payments", module: "orders", altModule: "finances", label: "Pagos" },
@@ -73,6 +74,7 @@ const navGroups = [
     { to: "/admin/procurement",     label: "Órdenes de Compra", module: "purchases" },
     { to: "/admin/costing",         label: "Landed Cost & Márgenes", module: "purchases", capability: "view_costs" },
     { to: "/admin/inventory",       label: "Inventario", module: "inventory" },
+    { to: "/admin/logistics",       label: "Logística & Posventa", module: "orders" },
   ]},
   { key: "academia", label: "Academia", module: "academy", items: [
     { to: "/admin/academy",                label: "Cursos", module: "academy" },

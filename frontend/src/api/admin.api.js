@@ -382,3 +382,91 @@ export const downloadAccountingExportCsv = (currency = "CLP") =>
     params: { currency },
     responseType: "blob",
   }).then(r => r.data)
+
+// ── Gate 10: Logistics & After-Sales (BF-25, BF-22, BF-43) ──
+export const getLogisticsOverview = () =>
+  api.get(`${BASE}/logistics/overview/`).then(r => r.data)
+
+export const getLogisticsCarriers = () =>
+  api.get(`${BASE}/logistics/carriers/`).then(r => r.data)
+
+export const getLogisticsShipments = () =>
+  api.get(`${BASE}/logistics/shipments/`).then(r => r.data)
+
+export const createLogisticsShipment = (data) =>
+  api.post(`${BASE}/logistics/shipments/`, data).then(r => r.data)
+
+export const addShipmentPackage = (shipmentId, data) =>
+  api.post(`${BASE}/logistics/shipments/${shipmentId}/packages/`, data).then(r => r.data)
+
+export const advanceShipmentStatus = (shipmentId, targetStatus) =>
+  api.post(`${BASE}/logistics/shipments/${shipmentId}/advance/`, { target_status: targetStatus }).then(r => r.data)
+
+export const quoteShipmentCarrier = (shipmentId, data) =>
+  api.post(`${BASE}/logistics/shipments/${shipmentId}/quote/`, data).then(r => r.data)
+
+export const getLogisticsLabels = () =>
+  api.get(`${BASE}/logistics/labels/`).then(r => r.data)
+
+export const generateShipmentLabels = (shipmentId, labelType = "internal_logistic") =>
+  api.post(`${BASE}/logistics/labels/`, { shipment_id: shipmentId, label_type: labelType }).then(r => r.data)
+
+export const getLogisticsManifests = () =>
+  api.get(`${BASE}/logistics/manifests/`).then(r => r.data)
+
+export const createLogisticsManifest = (data) =>
+  api.post(`${BASE}/logistics/manifests/`, data).then(r => r.data)
+
+export const addShipmentToManifest = (manifestId, shipmentId) =>
+  api.post(`${BASE}/logistics/manifests/${manifestId}/add-shipment/`, { shipment_id: shipmentId }).then(r => r.data)
+
+export const closeLogisticsManifest = (manifestId) =>
+  api.post(`${BASE}/logistics/manifests/${manifestId}/close/`, {}).then(r => r.data)
+
+export const handoverLogisticsManifest = (manifestId, data) =>
+  api.post(`${BASE}/logistics/manifests/${manifestId}/handover/`, data).then(r => r.data)
+
+export const getLogisticsTracking = () =>
+  api.get(`${BASE}/logistics/tracking/`).then(r => r.data)
+
+export const recordLogisticsTracking = (data) =>
+  api.post(`${BASE}/logistics/tracking/`, data).then(r => r.data)
+
+export const getLogisticsIncidents = () =>
+  api.get(`${BASE}/logistics/incidents/`).then(r => r.data)
+
+export const reportLogisticsIncident = (data) =>
+  api.post(`${BASE}/logistics/incidents/`, data).then(r => r.data)
+
+export const getLogisticsWarranties = () =>
+  api.get(`${BASE}/logistics/warranties/`).then(r => r.data)
+
+export const createLogisticsWarranty = (data) =>
+  api.post(`${BASE}/logistics/warranties/`, data).then(r => r.data)
+
+export const validateSerialWarranty = (data) =>
+  api.post(`${BASE}/logistics/warranties/validate/`, data).then(r => r.data)
+
+export const getLogisticsRepairs = () =>
+  api.get(`${BASE}/logistics/repairs/`).then(r => r.data)
+
+export const createLogisticsRepair = (data) =>
+  api.post(`${BASE}/logistics/repairs/`, data).then(r => r.data)
+
+export const transitionRepairOrder = (rwoId, targetStatus) =>
+  api.post(`${BASE}/logistics/repairs/${rwoId}/transition/`, { target_status: targetStatus }).then(r => r.data)
+
+export const addRepairDiagnosis = (rwoId, data) =>
+  api.post(`${BASE}/logistics/repairs/${rwoId}/diagnosis/`, data).then(r => r.data)
+
+export const setRepairBudget = (rwoId, data) =>
+  api.post(`${BASE}/logistics/repairs/${rwoId}/budget/`, data).then(r => r.data)
+
+export const consumeRepairPart = (rwoId, data) =>
+  api.post(`${BASE}/logistics/repairs/${rwoId}/parts/`, data).then(r => r.data)
+
+export const addRepairTest = (rwoId, data) =>
+  api.post(`${BASE}/logistics/repairs/${rwoId}/tests/`, data).then(r => r.data)
+
+export const deliverRepairOrder = (rwoId, data) =>
+  api.post(`${BASE}/logistics/repairs/${rwoId}/deliver/`, data).then(r => r.data)

@@ -93,6 +93,7 @@ const AdminLessons                 = lazy(() => import("./pages/admin/AdminLesso
 const AdminEnrollments             = lazy(() => import("./pages/admin/AdminEnrollments"))
 const AdminProductImport           = lazy(() => import("./pages/admin/AdminProductImport"))
 const AdminFinance                 = lazy(() => import("./pages/admin/AdminFinance"))
+const AdminLogistics               = lazy(() => import("./pages/admin/AdminLogistics"))
 const AdminInventory               = lazy(() => import("./pages/admin/AdminInventory"))
 const AdminLoyalty                 = lazy(() => import("./pages/admin/AdminLoyalty"))
 const AdminBilling                 = lazy(() => import("./pages/admin/AdminBilling"))
@@ -194,6 +195,7 @@ function App() {
           <Route path="/admin/billing" element={<Suspense fallback={<AdminLoading />}><AdminBilling /></Suspense>} />
           <Route path="/admin/loyalty" element={<Suspense fallback={<AdminLoading />}><AdminLoyalty /></Suspense>} />
           <Route path="orders" element={<Suspense fallback={<AdminLoading />}><AdminOrders /></Suspense>} />
+          <Route path="logistics" element={<Suspense fallback={<AdminLoading />}><AdminLogistics /></Suspense>} />
           <Route path="special-orders" element={<Suspense fallback={<AdminLoading />}><AdminSpecialOrders /></Suspense>} />
           <Route path="b2b" element={<Suspense fallback={<AdminLoading />}><AdminB2BQuotes /></Suspense>} />
           <Route path="products" element={<Suspense fallback={<AdminLoading />}><AdminProducts /></Suspense>} />

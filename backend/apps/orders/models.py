@@ -980,5 +980,25 @@ from .crm_models import (  # noqa: E402, F401
     CustomerProfile,
     CustomerTechnicalProfile,
 )
+from .logistics_models import (  # noqa: F401, E402
+    Carrier,
+    CarrierService,
+    DeliveryIncident,
+    LogisticsNotificationOutbox,
+    RepairDelivery,
+    RepairDiagnosis,
+    RepairPartUsage,
+    RepairTestResult,
+    RepairWorkOrder,
+    Shipment,
+    ShipmentLabel,
+    ShipmentPackage,
+    ShippingManifest,
+    ShippingManifestItem,
+    ShippingQuoteSnapshot,
+    TrackingEvent,
+    WarrantyClaim,
+    WarrantyPolicySnapshot,
+)
 
 
