@@ -1000,5 +1000,18 @@ from .logistics_models import (  # noqa: F401, E402
     WarrantyClaim,
     WarrantyPolicySnapshot,
 )
+from .marketing_models import (  # noqa: F401, E402
+    AbandonedCartTrigger,
+    CartRecoveryAttempt,
+    Coupon,
+    CouponRedemption,
+    MarketingConsent,
+    MarketingDeliveryEvent,
+    MarketingMessageOutbox,
+    MarketingSuppression,
+    PricingAdjustmentSnapshot,
+    PromotionActivationEvent,
+    PromotionCampaign,
+)
 
 

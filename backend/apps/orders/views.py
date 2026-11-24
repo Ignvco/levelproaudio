@@ -1,5 +1,6 @@
 # apps/orders/views.py
 
+from decimal import Decimal, ROUND_HALF_UP
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
@@ -166,22 +167,25 @@ class OrderViewSet(viewsets.ModelViewSet):
             target = item.get("variant") or item["product"]
             item["price"] = target.prices_by_currency(_rate_clp, _rate_ars)[currency]
 
+        q_step = Decimal("1") if currency == "CLP" else Decimal("0.01")
         subtotal = sum(
-            float(item["price"]) * item["quantity"]
-            for item in validated_items
-        )
+            (Decimal(str(item["price"])) * Decimal(str(item["quantity"])) for item in validated_items),
+            Decimal("0.00"),
+        ).quantize(q_step, rounding=ROUND_HALF_UP)
 
-        # ── Canje de puntos de fidelización (opcional) ──
+        # ── Canje de puntos de fidelización (opcional, Decimal + solo CLP sin FX explícito) ──
         loyalty_points_redeemed = requested_points
-        loyalty_discount        = 0
+        loyalty_discount        = Decimal("0.00")
         account = None
         if loyalty_points_redeemed > 0:
+            if currency != "CLP":
+                return Response(
+                    {"error": "El canje monetario de puntos Loyalty solo está habilitado en CLP sin política FX explícita."},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
             from apps.loyalty.models import LoyaltyAccount, LoyaltyConfig
             config     = LoyaltyConfig.get()
             account, _ = LoyaltyAccount.objects.get_or_create(user=request.user)
-            # Validamos acá para devolver un mensaje claro; el canje real
-            # (con bloqueo de fila) se hace después de crear la orden,
-            # una vez que sabemos su id.
             if loyalty_points_redeemed < config.minimo_canje:
                 return Response(
                     {"error": f"Mínimo de canje: {config.minimo_canje} puntos."},
@@ -192,12 +196,61 @@ class OrderViewSet(viewsets.ModelViewSet):
                     {"error": "No tenés suficientes puntos disponibles."},
                     status=status.HTTP_400_BAD_REQUEST,
                 )
-            loyalty_discount = min(
-                subtotal,
-                loyalty_points_redeemed * float(config.peso_por_punto),
+            raw_disc = (Decimal(loyalty_points_redeemed) * Decimal(str(config.peso_por_punto))).quantize(
+                q_step, rounding=ROUND_HALF_UP
             )
+            loyalty_discount = max(Decimal("0.00"), min(subtotal, raw_disc))
 
-        total = max(0, subtotal - float(loyalty_discount))
+        # ── Cupón / Promoción comercial Gate 11 (Decimal, moneda aislada, idempotencia) ──
+        from django.core.exceptions import ValidationError as DjangoValidationError
+        from apps.orders.marketing_models import CouponRedemption
+        from apps.orders.marketing_services import (
+            evaluate_commercial_pricing,
+            mark_cart_recovered_for_order,
+            reserve_coupon_redemption,
+        )
+
+        coupon_code = (data.get("coupon_code") or "").strip().upper() or None
+        idempotency_key = (
+            data.get("idempotency_key")
+            or request.headers.get("Idempotency-Key")
+            or ""
+        ).strip() or None
+
+        if idempotency_key:
+            existing_redemption = (
+                CouponRedemption.objects.select_related("order")
+                .filter(idempotency_key=f"checkout:{idempotency_key}", order__user=request.user)
+                .first()
+            )
+            if existing_redemption and existing_redemption.order:
+                return Response(OrderSerializer(existing_redemption.order).data, status=status.HTTP_200_OK)
+
+        pricing_items = [
+            {
+                "product": item["product"],
+                "variant": item.get("variant"),
+                "quantity": item["quantity"],
+                "line_subtotal": (Decimal(str(item["price"])) * Decimal(str(item["quantity"]))).quantize(
+                    q_step, rounding=ROUND_HALF_UP
+                ),
+            }
+            for item in validated_items
+        ]
+        try:
+            pricing = evaluate_commercial_pricing(
+                currency=currency,
+                items=pricing_items,
+                coupon_code=coupon_code,
+                user=request.user,
+                loyalty_discount=loyalty_discount,
+            )
+        except DjangoValidationError as exc:
+            transaction.set_rollback(True)
+            msg = exc.messages[0] if getattr(exc, "messages", None) else str(exc)
+            return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
+
+        total = max(Decimal("0.00"), pricing["final_total"].quantize(q_step, rounding=ROUND_HALF_UP))
 
         order = Order.objects.create(
             user=request.user,
@@ -248,6 +301,32 @@ class OrderViewSet(viewsets.ModelViewSet):
             transaction.set_rollback(True)
             return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
+        if coupon_code:
+            try:
+                reserve_coupon_redemption(
+                    code=coupon_code,
+                    order=order,
+                    user=request.user,
+                    items=pricing_items,
+                    idempotency_key=f"checkout:{idempotency_key}" if idempotency_key else f"checkout:{order.id}:{coupon_code}",
+                    loyalty_discount=loyalty_discount,
+                )
+            except DjangoValidationError as exc:
+                transaction.set_rollback(True)
+                msg = exc.messages[0] if getattr(exc, "messages", None) else str(exc)
+                return Response({"error": msg}, status=status.HTTP_400_BAD_REQUEST)
+        elif pricing.get("promotion"):
+            evaluate_commercial_pricing(
+                currency=currency,
+                items=pricing_items,
+                user=request.user,
+                loyalty_discount=loyalty_discount,
+                order=order,
+                persist_snapshot=True,
+            )
+
+        mark_cart_recovered_for_order(order)
+
         return Response(
             OrderSerializer(order).data,
             status=status.HTTP_201_CREATED
@@ -266,6 +345,9 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         order.status = OrderStatus.CANCELLED
         order.save(update_fields=["status"])
+
+        from apps.orders.marketing_services import release_or_reverse_coupon_redemption
+        release_or_reverse_coupon_redemption(order)
 
         return Response(
             {"detail": "Orden cancelada. Stock restablecido."},
