@@ -7,7 +7,9 @@ Chile (CL) & Argentina (AR):
 - Generación y desglose de comprobantes DTE (SII Chile) y Facturas A/B (AFIP Argentina).
 """
 import re
-from decimal import Decimal
+from datetime import timedelta
+from decimal import Decimal, ROUND_HALF_UP
+from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiTypes
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
@@ -191,13 +193,166 @@ def generate_afip_invoice_payload(order, cuit: str, recipient_name: str, invoice
 # 3. ENDPOINTS API: ESTIMADOR LOGÍSTICO Y VALIDADOR FISCAL
 # ═══════════════════════════════════════════════════════════════
 
+QUOTE_CLASS_REAL_API = "real_carrier_api"
+QUOTE_CLASS_CONFIGURED_TABLE = "configured_tariff_table"
+QUOTE_CLASS_QA_SIMULATION = "qa_simulation"
+
+VERSIONED_SHIPPING_TARIFFS = {
+    "CL": {
+        "currency": "CLP",
+        "origin": "Santiago RM, CL",
+        "tariff_version": "CL-2026.11-v1",
+        "services": [
+            {
+                "carrier_code": "chilexpress",
+                "service_code": "chilexpress_std",
+                "service_name": "Chilexpress Estándar",
+                "delivery_window": "2 a 3 días hábiles",
+                "base_fee": Decimal("4990"),
+                "per_kg": Decimal("1200"),
+                "volumetric_divisor": Decimal("4000"),
+                "rate_table_id": "TBL-CLX-STD-202611",
+            },
+            {
+                "carrier_code": "chilexpress",
+                "service_code": "chilexpress_exp",
+                "service_name": "Chilexpress Día Hábil Siguiente",
+                "delivery_window": "24 horas hábiles",
+                "base_fee": Decimal("7990"),
+                "per_kg": Decimal("2000"),
+                "volumetric_divisor": Decimal("4000"),
+                "rate_table_id": "TBL-CLX-EXP-202611",
+            },
+            {
+                "carrier_code": "starken",
+                "service_code": "starken_agencia",
+                "service_name": "Starken Retiro en Sucursal",
+                "delivery_window": "2 a 4 días hábiles",
+                "base_fee": Decimal("3990"),
+                "per_kg": Decimal("1000"),
+                "volumetric_divisor": Decimal("4000"),
+                "rate_table_id": "TBL-STK-AG-202611",
+            },
+        ],
+    },
+    "AR": {
+        "currency": "ARS",
+        "origin": "CABA, AR",
+        "tariff_version": "AR-2026.11-v1",
+        "services": [
+            {
+                "carrier_code": "andreani",
+                "service_code": "andreani_dom",
+                "service_name": "Andreani Estándar a Domicilio",
+                "delivery_window": "3 a 5 días hábiles",
+                "base_fee": Decimal("12500"),
+                "per_kg": Decimal("3000"),
+                "volumetric_divisor": Decimal("4000"),
+                "rate_table_id": "TBL-AND-DOM-202611",
+            },
+            {
+                "carrier_code": "correo_argentino",
+                "service_code": "correo_ar_suc",
+                "service_name": "Correo Argentino Sucursal",
+                "delivery_window": "4 a 6 días hábiles",
+                "base_fee": Decimal("9500"),
+                "per_kg": Decimal("2200"),
+                "volumetric_divisor": Decimal("5000"),
+                "rate_table_id": "TBL-CA-SUC-202611",
+            },
+        ],
+    },
+}
+
+
+def compute_shipping_quote_candidates(
+    *,
+    country: str,
+    destination: str,
+    currency: str,
+    physical_weight_kg: Decimal,
+    length_cm: Decimal = Decimal("0"),
+    width_cm: Decimal = Decimal("0"),
+    height_cm: Decimal = Decimal("0"),
+    explicit_fx_rate: Decimal | None = None,
+    quote_mode: str = QUOTE_CLASS_CONFIGURED_TABLE,
+) -> list[dict]:
+    """
+    LOG10-PF-01: Calcula cotizaciones estructuradas sin factores FX hardcoded.
+    Distingue explícitamente:
+    - real_carrier_api
+    - configured_tariff_table
+    - qa_simulation
+    """
+    table = VERSIONED_SHIPPING_TARIFFS.get(country)
+    if not table:
+        raise ValueError(f"País '{country}' sin tabla tarifaria configurada.")
+
+    native_currency = table["currency"]
+    if currency != native_currency:
+        if explicit_fx_rate is None or explicit_fx_rate <= Decimal("0"):
+            raise ValueError(
+                f"Cotización en {currency} para {country} requiere tarifa nativa o tasa de cambio explícita (prohibido FX hardcoded)."
+            )
+        fx = explicit_fx_rate
+    else:
+        fx = Decimal("1.0")
+
+    now = timezone.now()
+    valid_until = (now + timedelta(hours=24)).isoformat()
+    phys = max(Decimal("0.50"), Decimal(str(physical_weight_kg))).quantize(Decimal("0.01"))
+    has_dims = length_cm > 0 and width_cm > 0 and height_cm > 0
+    volume_cm3 = (length_cm * width_cm * height_cm) if has_dims else Decimal("0")
+
+    is_qa = quote_mode == QUOTE_CLASS_QA_SIMULATION
+    verification_status = (
+        "verified"
+        if quote_mode == QUOTE_CLASS_REAL_API
+        else ("simulated_qa_only" if is_qa else "estimated")
+    )
+
+    rates = []
+    for svc in table["services"]:
+        vol_weight = (
+            (volume_cm3 / svc["volumetric_divisor"]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            if has_dims
+            else Decimal("0.00")
+        )
+        billable = max(phys, vol_weight).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        raw_amount = (svc["base_fee"] + (billable * svc["per_kg"])) * fx
+        q_step = Decimal("1") if currency == "CLP" else Decimal("0.01")
+        amount = raw_amount.quantize(q_step, rounding=ROUND_HALF_UP)
+        rates.append({
+            "carrier_code": svc["carrier_code"],
+            "service_code": svc["service_code"],
+            "service_name": svc["service_name"],
+            "origin": table["origin"],
+            "destination": destination,
+            "currency": currency,
+            "physical_weight_kg": float(phys),
+            "volumetric_weight_kg": float(vol_weight),
+            "billable_weight_kg": float(billable),
+            "delivery_window": svc["delivery_window"],
+            "quoted_at": now.isoformat(),
+            "quote_source": quote_mode,
+            "rate_table_id": svc["rate_table_id"],
+            "tariff_version": table["tariff_version"],
+            "valid_until": valid_until,
+            "price": float(amount),
+            "verification_status": verification_status,
+            "is_commercial_valid": not is_qa,
+            "tracking_available": True,
+        })
+    return rates
+
+
 @extend_schema(request=OpenApiTypes.OBJECT, responses={200: OpenApiTypes.OBJECT})
 @api_view(["POST"])
 @permission_classes([AllowAny])
 def estimate_shipping_rates(request):
     """
     POST /api/v1/billing/shipping/estimate/
-    Cotización de flete automatizada para Chile y Argentina con tiempos de tránsito.
+    Cotización de flete automatizada para Chile y Argentina con tabla versionada (LOG10-PF-01).
     """
     country   = (request.data.get("country") or "CL").strip().upper()
     city      = (request.data.get("city") or request.data.get("commune") or "Metropolitana").strip()
@@ -208,77 +363,38 @@ def estimate_shipping_rates(request):
     except (ValueError, TypeError):
         weight_kg = Decimal("1.0")
 
+    fx_raw = request.data.get("explicit_fx_rate")
+    explicit_fx = None
+    if fx_raw is not None:
+        try:
+            explicit_fx = Decimal(str(fx_raw))
+        except Exception:
+            return Response({"error": "Tasa de cambio explícita inválida."}, status=status.HTTP_400_BAD_REQUEST)
+
     if country == "CL" and currency not in ("CLP", "USD"):
         return Response({"error": "Envíos en Chile admiten cotización en CLP o USD."}, status=status.HTTP_400_BAD_REQUEST)
 
     if country == "AR" and currency not in ("ARS", "USD"):
         return Response({"error": "Envíos en Argentina admiten cotización en ARS o USD."}, status=status.HTTP_400_BAD_REQUEST)
 
-    rates = []
-    if country == "CL":
-        # Tarifas Chile en CLP
-        factor = Decimal("1.0") if currency == "CLP" else Decimal("0.00105")  # ~950 CLP/USD
-
-        # 1. Chilexpress Estándar
-        price_std = (Decimal("4990") + (weight_kg * Decimal("1200"))) * factor
-        rates.append({
-            "carrier_code": "chilexpress",
-            "service_name": "Chilexpress Estándar",
-            "delivery_window": "2 a 3 días hábiles",
-            "price": float(price_std.quantize(Decimal("1") if currency == "CLP" else Decimal("0.01"))),
-            "currency": currency,
-            "tracking_available": True,
-        })
-        # 2. Chilexpress Express
-        price_exp = (Decimal("7990") + (weight_kg * Decimal("2000"))) * factor
-        rates.append({
-            "carrier_code": "chilexpress",
-            "service_name": "Chilexpress Día Hábil Siguiente",
-            "delivery_window": "24 horas hábiles",
-            "price": float(price_exp.quantize(Decimal("1") if currency == "CLP" else Decimal("0.01"))),
-            "currency": currency,
-            "tracking_available": True,
-        })
-        # 3. Starken Agencia
-        price_sta = (Decimal("3990") + (weight_kg * Decimal("1000"))) * factor
-        rates.append({
-            "carrier_code": "starken",
-            "service_name": "Starken Retiro en Sucursal",
-            "delivery_window": "2 a 4 días hábiles",
-            "price": float(price_sta.quantize(Decimal("1") if currency == "CLP" else Decimal("0.01"))),
-            "currency": currency,
-            "tracking_available": True,
-        })
-    elif country == "AR":
-        # Tarifas Argentina en ARS
-        factor = Decimal("1.0") if currency == "ARS" else Decimal("0.00085")
-
-        # 1. Andreani Domicilio
-        price_and = (Decimal("12500") + (weight_kg * Decimal("3000"))) * factor
-        rates.append({
-            "carrier_code": "andreani",
-            "service_name": "Andreani Estándar a Domicilio",
-            "delivery_window": "3 a 5 días hábiles",
-            "price": float(price_and.quantize(Decimal("1") if currency == "ARS" else Decimal("0.01"))),
-            "currency": currency,
-            "tracking_available": True,
-        })
-        # 2. Correo Argentino
-        price_ca = (Decimal("9500") + (weight_kg * Decimal("2200"))) * factor
-        rates.append({
-            "carrier_code": "correo_argentino",
-            "service_name": "Correo Argentino Sucursal",
-            "delivery_window": "4 a 6 días hábiles",
-            "price": float(price_ca.quantize(Decimal("1") if currency == "ARS" else Decimal("0.01"))),
-            "currency": currency,
-            "tracking_available": True,
-        })
+    try:
+        rates = compute_shipping_quote_candidates(
+            country=country,
+            destination=city,
+            currency=currency,
+            physical_weight_kg=weight_kg,
+            explicit_fx_rate=explicit_fx,
+            quote_mode=QUOTE_CLASS_CONFIGURED_TABLE,
+        )
+    except ValueError as exc:
+        return Response({"error": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
 
     return Response({
         "country": country,
         "destination": city,
         "currency": currency,
         "weight_kg": float(weight_kg),
+        "quote_source": QUOTE_CLASS_CONFIGURED_TABLE,
         "rates": rates,
     })
 
