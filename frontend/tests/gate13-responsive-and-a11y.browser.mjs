@@ -71,6 +71,8 @@ function sha256File(filePath) {
   return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex")
 }
 
+const AUDIT_ONLY = process.argv.includes("--audit-only")
+
 async function main() {
   const server = await preview({ root: FRONTEND_DIR, preview: { port: 4186, host: "127.0.0.1" } })
   const browser = await chromium.launch({ executablePath: CHROME_PATH, headless: true })
@@ -127,16 +129,13 @@ async function main() {
         document.cookie = "csrftoken=mockcsrftoken; path=/"
       })
 
-      // On 1440x900 desktop & 390x844 mobile, audit ALL 39 routes; on other viewports, audit representative matrix
-      const routesToTest =
-        vp.width === 1440 || vp.width === 390
-          ? ALL_39_ADMIN_ROUTES
-          : ALL_39_ADMIN_ROUTES.filter((r) => r.captureInMatrix)
+      // Audit ALL 39 routes across ALL 6 viewports = 234 route × viewport checks
+      const routesToTest = ALL_39_ADMIN_ROUTES
 
       for (const r of routesToTest) {
         pageErrors.length = 0
         await page.goto(`http://127.0.0.1:4186${r.path}`, { waitUntil: "networkidle" })
-        await page.waitForTimeout(220)
+        await page.waitForTimeout(180)
 
         const metrics = await page.evaluate(() => {
           const bodyText = document.body?.innerText || ""
@@ -180,13 +179,14 @@ async function main() {
           route: r.path,
           family: r.family,
           viewport: `${vp.width}x${vp.height}`,
+          test_mode: "synthetic_fixture_audit",
           render_ok: !metrics.hasCrash && pageErrors.length === 0,
           overflow_px: Math.max(0, metrics.overflowDelta),
           js_errors: pageErrors.length,
         })
 
         const shouldSavePng =
-          r.captureInMatrix && (vp.width < 3840 || r.id <= 15)
+          !AUDIT_ONLY && r.captureInMatrix && (vp.width < 3840 || r.id <= 15)
         if (shouldSavePng) {
           const outFile = path.join(vpDir, `${r.slug}.png`)
           await page.screenshot({ path: outFile, fullPage: vp.width < 3840 })
@@ -195,7 +195,7 @@ async function main() {
       }
 
       // Interactive states on 1440x900 desktop
-      if (vp.width === 1440) {
+      if (!AUDIT_ONLY && vp.width === 1440) {
         await page.goto("http://127.0.0.1:4186/admin", { waitUntil: "networkidle" })
         await page.waitForTimeout(150)
 
@@ -242,7 +242,7 @@ async function main() {
       }
 
       // Mobile navigation drawer & CMS mobile on 390x844
-      if (vp.width === 390) {
+      if (!AUDIT_ONLY && vp.width === 390) {
         await page.goto("http://127.0.0.1:4186/admin/settings", { waitUntil: "networkidle" })
         await page.waitForTimeout(200)
         await page.screenshot({ path: path.join(vpDir, "state-cms-mobile-390.png") })
