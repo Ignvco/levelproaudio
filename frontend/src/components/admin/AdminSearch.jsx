@@ -305,8 +305,8 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
             style={{
               width: "100%",
               maxWidth: 640,
-              background: "#121316",
-              border: "1px solid rgba(255,255,255,0.14)",
+              background: "#0B0E14",
+              border: "1px solid #242A34",
               borderRadius: 16,
               overflow: "hidden",
               boxShadow: "0 28px 80px rgba(0,0,0,0.65)",
@@ -319,8 +319,8 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
                 alignItems: "center",
                 gap: 10,
                 padding: "14px 16px",
-                borderBottom: "1px solid rgba(255,255,255,0.09)",
-                background: "#16171B",
+                borderBottom: "1px solid #242A34",
+                background: "#131822",
               }}
             >
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1AFF6E" strokeWidth="2.2" aria-hidden="true">
@@ -381,7 +381,7 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
                   fontSize: 10,
                   color: "#d4d4d8",
                   cursor: "pointer",
-                  fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                  fontFamily: "var(--font-mono, 'Geist Mono', monospace)",
                 }}
               >
                 ESC
@@ -497,7 +497,7 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
                               fontSize: 11,
                               fontWeight: 700,
                               color: entry.rightColor || "#F5F5F7",
-                              fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)",
+                              fontFamily: "var(--font-mono, 'Geist Mono', monospace)",
                               fontVariantNumeric: "tabular-nums",
                               flexShrink: 0,
                               padding: "2px 8px",
@@ -524,14 +524,14 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
                 flexWrap: "wrap",
                 gap: 8,
                 padding: "9px 16px",
-                borderTop: "1px solid rgba(255,255,255,0.08)",
-                background: "#0D0E10",
+                borderTop: "1px solid #242A34",
+                background: "#0B0E14",
                 fontSize: 11,
                 color: "#9CA3AF",
               }}
             >
               <span>↑↓ Navegar · ↵ Abrir módulo · ESC Cerrar</span>
-              <span style={{ fontFamily: "var(--font-mono, 'JetBrains Mono', monospace)", fontSize: 10 }}>
+              <span style={{ fontFamily: "var(--font-mono, 'Geist Mono', monospace)", fontSize: 10 }}>
                 RBAC Zero-Trust · Multi-moneda Original
               </span>
             </div>

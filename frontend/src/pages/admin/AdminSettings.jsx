@@ -236,15 +236,26 @@ export default function AdminSettings() {
       setEvents(eRes.results || [])
 
       const targetDraft =
-        (preferredVersionId && vList.find((v) => v.id === preferredVersionId)) ||
+        (preferredVersionId && vList.find((v) => (v.version_id || v.id) === preferredVersionId)) ||
         vList.find((v) => v.status === "draft" || v.status === "in_review" || v.status === "approved") ||
         vList[0]
       if (targetDraft) {
-        const detail = await getCmsVersion(targetDraft.id)
-        setActiveDraft(detail)
-        setDraftPayload((prev) => ({ ...prev, ...(detail.payload || {}) }))
+        const draftId = targetDraft.version_id || targetDraft.id
+        const detail = await getCmsVersion(draftId)
+        const normalizedDetail = {
+          ...targetDraft,
+          ...(detail || {}),
+          id: detail?.id || detail?.version_id || draftId,
+          version_id: detail?.version_id || detail?.id || draftId,
+          version_number: detail?.version_number ?? targetDraft.version_number ?? 1,
+          status: detail?.status || targetDraft.status || "draft",
+          hero_slides: Array.isArray(detail?.hero_slides) ? detail.hero_slides : [],
+          announcements: Array.isArray(detail?.announcements) ? detail.announcements : [],
+        }
+        setActiveDraft(normalizedDetail)
+        setDraftPayload((prev) => ({ ...prev, ...(normalizedDetail.payload || {}) }))
         setIsDirty(false)
-        const bRes = await getCmsBanners(targetDraft.id)
+        const bRes = await getCmsBanners(draftId)
         setBanners(bRes.results || [])
       }
     } catch (err) {
@@ -513,7 +524,7 @@ export default function AdminSettings() {
               {activeDraft?.status === "published" ? "Versión Seleccionada (Publicada)" : "Borrador en Edición (No Publicado)"}
             </span>
             <p style={{ margin: "6px 0 2px", fontSize: "14px", fontWeight: 700, color: "#F5F5F5" }}>
-              {activeDraft ? `Versión v${activeDraft.version_number} [${activeDraft.status.toUpperCase()}]` : "Cree un borrador para editar"}
+              {activeDraft ? `Versión v${activeDraft.version_number ?? 1} [${String(activeDraft.status || "draft").toUpperCase()}]` : "Cree un borrador para editar"}
             </p>
             <p style={{ margin: 0, fontSize: "11px", color: "#9CA3AF" }}>
               {!canPublish ? "Modo Editor (Marketing): puede guardar y enviar a revisión; publicación reservada a Gerencia." : "Modo Publicador Autorizado: puede guardar, aprobar, publicar y restaurar."}

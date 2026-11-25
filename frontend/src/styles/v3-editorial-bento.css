@@ -5,19 +5,20 @@
    ========================================================================== */
 
 :root {
-  --v3-obsidian:        #0C0D0E;
-  --v3-carbon:          #151719;
-  --v3-canvas:          #F7F8FA;
+  --v3-obsidian:        #0B0E14;
+  --v3-carbon:          #131822;
+  --v3-graphite:        #242A34;
+  --v3-canvas:          #F5F5F5;
   --v3-surface:         #FFFFFF;
-  --v3-surface-soft:    #F0F2F5;
-  --v3-border:          #EAECEF;
-  --v3-border-light:    rgba(0, 0, 0, 0.05);
-  --v3-border-dark:     rgba(255, 255, 255, 0.12);
-  --v3-text-primary:    #101214;
-  --v3-text-muted:      #7D858E;
+  --v3-surface-soft:    #ECEFF3;
+  --v3-border:          #DDE2EA;
+  --v3-border-light:    rgba(11, 14, 20, 0.06);
+  --v3-border-dark:     #242A34;
+  --v3-text-primary:    #0B0E14;
+  --v3-text-muted:      #525B6C;
   --v3-text-dark-muted: #9BA3AF;
   --v3-accent:          #1AFF6E;
-  --v3-accent-dim:      rgba(26, 255, 110, 0.12);
+  --v3-accent-dim:      rgba(26, 255, 110, 0.14);
   --v3-accent-glow:     rgba(26, 255, 110, 0.35);
   --btn-green:          #1A9D4E;
 
@@ -26,14 +27,17 @@
   --v3-radius-tile:     20px;
   --v3-radius-pill:     9999px;
 
-  --v3-shadow-card:     0 4px 20px -2px rgba(12, 13, 14, 0.03), 0 1px 3px rgba(12, 13, 14, 0.02);
-  --v3-shadow-hero:     0 24px 50px -12px rgba(12, 13, 14, 0.45);
-  --v3-shadow-tile:     0 12px 30px -4px rgba(26, 255, 110, 0.35);
+  --v3-shadow-card:     0 12px 32px -8px rgba(11, 14, 20, 0.07), 0 2px 6px rgba(11, 14, 20, 0.03);
+  --v3-shadow-hero:     0 28px 60px -14px rgba(11, 14, 20, 0.55);
+  --v3-shadow-tile:     0 14px 34px -6px rgba(26, 255, 110, 0.38);
 }
 
 /* Base Canvas */
 .v3-shell {
-  background: var(--v3-canvas);
+  background:
+    radial-gradient(circle at 12% 0%, rgba(26, 255, 110, 0.07) 0%, transparent 38%),
+    radial-gradient(circle at 88% 8%, rgba(36, 42, 52, 0.06) 0%, transparent 42%),
+    var(--v3-canvas);
   min-height: 100vh;
   color: var(--v3-text-primary);
   font-family: var(--font-sans, "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
@@ -47,12 +51,12 @@
   box-sizing: border-box;
 }
 
-/* Floating Top Navigation */
+/* Floating Top Navigation — Deep Black (#0B0E14) × Graphite (#242A34) × Level Green (#1AFF6E) */
 .v3-floating-header {
   position: sticky;
   top: 14px;
   z-index: 100;
-  max-width: 1400px;
+  max-width: 1420px;
   margin: 14px auto 0;
   padding: 0 16px;
   pointer-events: none;
@@ -63,14 +67,14 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 60px;
-  padding: 0 14px 0 20px;
-  background: rgba(255, 255, 255, 0.94);
+  height: 64px;
+  padding: 0 16px 0 22px;
+  background: rgba(11, 14, 20, 0.96);
   backdrop-filter: blur(24px) saturate(1.8);
   -webkit-backdrop-filter: blur(24px) saturate(1.8);
-  border: 1px solid var(--v3-border);
+  border: 1px solid #242A34;
   border-radius: var(--v3-radius-pill);
-  box-shadow: 0 10px 36px -6px rgba(12, 13, 14, 0.06);
+  box-shadow: 0 20px 48px -12px rgba(11, 14, 20, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.07);
   transition: all 0.2s ease;
 }
 
@@ -79,7 +83,7 @@
   align-items: center;
   gap: 10px;
   text-decoration: none;
-  color: var(--v3-text-primary);
+  color: #F5F5F5;
   flex-shrink: 0;
 }
 
@@ -93,8 +97,8 @@
   height: 22px;
   max-width: 125px;
   object-fit: contain;
-  /* On white navbar, white PNG logo is rendered in crisp obsidian black */
-  filter: brightness(0);
+  /* On Deep Black navbar, white PNG logo renders in crisp pure white */
+  filter: none;
   transition: opacity 0.18s ease;
 }
 
@@ -103,18 +107,21 @@
 }
 
 .v3-brand:hover .v3-brand-logo-img {
-  opacity: 0.8;
+  opacity: 0.85;
 }
 
 .v3-brand-tag {
   display: inline-flex;
   align-items: center;
-  padding: 3px 8px;
+  gap: 5px;
+  padding: 4px 10px;
   border-radius: 9999px;
-  font-size: 8.5px;
+  font-family: var(--font-mono, "Geist Mono", monospace);
+  font-size: 9.5px;
   font-weight: 800;
   letter-spacing: 0.14em;
-  background: var(--v3-obsidian);
+  background: rgba(26, 255, 110, 0.14);
+  border: 1px solid rgba(26, 255, 110, 0.38);
   color: var(--v3-accent);
   line-height: 1;
 }
@@ -175,38 +182,39 @@
   border-radius: var(--v3-radius-pill);
   font-size: 13px;
   font-weight: 500;
-  color: var(--v3-text-muted);
+  color: rgba(245, 245, 245, 0.72);
   text-decoration: none;
   transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
   white-space: nowrap;
   cursor: pointer;
-  border: none;
+  border: 1px solid transparent;
   background: transparent;
 }
 
 .v3-nav-pill:hover:not(.active) {
-  color: var(--v3-text-primary);
-  background: rgba(0, 0, 0, 0.04);
+  color: #F5F5F5;
+  background: rgba(36, 42, 52, 0.75);
+  border-color: #242A34;
 }
 
 .v3-nav-pill.active {
-  background: var(--v3-obsidian);
-  color: #FFFFFF !important;
-  font-weight: 600;
-  box-shadow: 0 2px 10px rgba(12, 13, 14, 0.2);
+  background: var(--v3-accent);
+  color: #0B0E14 !important;
+  font-weight: 750;
+  box-shadow: 0 4px 18px rgba(26, 255, 110, 0.32);
 }
 
-/* Nav Dropdown Flyout */
+/* Nav Dropdown Flyout — Deep Black & Graphite */
 .v3-nav-flyout {
   position: absolute;
   top: calc(100% + 10px);
   left: 0;
-  min-width: 200px;
-  background: #FFFFFF;
-  border: 1px solid var(--v3-border);
-  border-radius: 16px;
-  padding: 6px;
-  box-shadow: 0 18px 40px -8px rgba(12, 13, 14, 0.15);
+  min-width: 220px;
+  background: #0B0E14;
+  border: 1px solid #242A34;
+  border-radius: 18px;
+  padding: 8px;
+  box-shadow: 0 24px 54px -10px rgba(11, 14, 20, 0.65);
   z-index: 120;
   animation: v3FadeIn 0.15s ease-out;
 }
@@ -215,24 +223,24 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 12px;
-  border-radius: 10px;
+  padding: 9px 13px;
+  border-radius: 11px;
   font-size: 13px;
   font-weight: 500;
-  color: var(--v3-text-primary);
+  color: rgba(245, 245, 245, 0.85);
   text-decoration: none;
-  transition: background 0.12s ease;
+  transition: background 0.12s ease, color 0.12s ease;
 }
 
 .v3-flyout-item:hover {
-  background: var(--v3-surface-soft);
-  color: #000;
+  background: #242A34;
+  color: #F5F5F5;
 }
 
 .v3-flyout-item.active {
-  background: var(--v3-obsidian);
-  color: #FFFFFF;
-  font-weight: 600;
+  background: var(--v3-accent);
+  color: #0B0E14;
+  font-weight: 700;
 }
 
 /* Right Tool Controls */
@@ -244,15 +252,15 @@
 }
 
 .v3-circle-btn {
-  width: 36px;
-  height: 36px;
+  width: 38px;
+  height: 38px;
   border-radius: 50%;
-  background: var(--v3-surface-soft);
-  border: 1px solid var(--v3-border);
+  background: #131822;
+  border: 1px solid #242A34;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: var(--v3-text-primary);
+  color: #F5F5F5;
   cursor: pointer;
   transition: all 0.15s ease;
   text-decoration: none;
@@ -260,8 +268,9 @@
 }
 
 .v3-circle-btn:hover {
-  background: #E8ECEF;
-  border-color: #D1D5DB;
+  background: #242A34;
+  border-color: rgba(26, 255, 110, 0.45);
+  color: var(--v3-accent);
   transform: translateY(-1px);
 }
 
@@ -773,12 +782,14 @@
   bottom: 0;
   width: 300px;
   max-width: 85vw;
-  background: #FFFFFF;
+  background: #0B0E14;
+  border-right: 1px solid #242A34;
+  color: #F5F5F5;
   z-index: 210;
   display: flex;
   flex-direction: column;
   padding: 24px 20px;
-  box-shadow: 10px 0 40px rgba(0, 0, 0, 0.2);
+  box-shadow: 16px 0 50px rgba(0, 0, 0, 0.55);
   overflow-y: auto;
 }
 

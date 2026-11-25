@@ -768,49 +768,59 @@ h1 em, h2 em, h3 em {
 }
 
 /* ═══════════════════════════════════════════════════════════════
-   ADMIN — Tema claro scopeado (no afecta el sitio público)
+   ADMIN — Editorial Bento × Premium Enterprise Software × Minimalist Fintech
+   Paleta Oficial: Deep Black #0B0E14 · Level Green #1AFF6E · Pure White #F5F5F5 · Graphite #242A34
+   Tipografías Oficiales: Geist (--font-sans) · Geist Mono (--font-mono)
    ═══════════════════════════════════════════════════════════════ */
 .admin-root {
-  --bg:           #F4F5F7;
+  --bg:           #F5F5F5;
   --bg-2:         #FFFFFF;
   --surface:      #FFFFFF;
-  --surface-2:    #F7F8FA;
-  --surface-3:    #EFF1F4;
-  --border:       #ECEEF2;
-  --border-hover: #E2E5EA;
-  --text:         #14161A;
-  --text-2:       #5B6472;
-  --text-3:       #98A2B3;
-  --accent-glow:  rgba(26,255,110,0.14);
+  --surface-2:    #F0F2F5;
+  --surface-3:    #E5E9F0;
+  --border:       #DCE1EA;
+  --border-hover: #C8D0DC;
+  --text:         #0B0E14;
+  --text-2:       #475263;
+  --text-3:       #7A869A;
+  --accent-glow:  rgba(26,255,110,0.16);
   --accent-dim:   rgba(26,255,110,0.12);
-  --accent-text:  #0F9940;
-  --success:      #0F9940;
+  --accent-text:  #0C8A3D;
+  --success:      #0C8A3D;
   --warning:      #D97706;
   --danger:       #EF4444;
-  --card-shadow:  0 10px 30px rgba(20,30,24,0.07);
-  --admin-page-text:       #14161A;
-  --admin-page-text-muted: #5B6472;
+  --card-shadow:  0 14px 34px -8px rgba(11,14,20,0.08);
+  --admin-page-text:       #0B0E14;
+  --admin-page-text-muted: #475263;
   /* ── Design tokens del panel admin (biblioteca au-*) ── */
+  --admin-obsidian:           #0B0E14;
+  --admin-graphite:           #242A34;
+  --admin-pure-white:         #F5F5F5;
   --admin-primary:            #1AFF6E;
   --admin-primary-hover:      #00E653;
-  --admin-primary-soft:       rgba(26,255,110,0.12);
-  --admin-primary-text:       #0F9940;
-  --admin-background:         #F4F5F7;
+  --admin-primary-soft:       rgba(26,255,110,0.14);
+  --admin-primary-text:       #0C8A3D;
+  --admin-background:         #F5F5F5;
   --admin-surface:            #FFFFFF;
-  --admin-surface-secondary:  #F7F8FA;
-  --admin-border:             #ECEEF2;
-  --admin-text:               #14161A;
-  --admin-text-muted:         #6B7280;
-  --admin-success:            #0F9940;
+  --admin-surface-secondary:  #F0F2F5;
+  --admin-surface-soft:       #F5F7FA;
+  --admin-surface-muted:      #E9EDF2;
+  --admin-border:             #DCE1EA;
+  --admin-border-strong:      #242A34;
+  --admin-text:               #0B0E14;
+  --admin-text-secondary:     #3B4454;
+  --admin-text-muted:         #5E6878;
+  --admin-success:            #0C8A3D;
   --admin-warning:            #D97706;
   --admin-danger:             #EF4444;
   --admin-radius-sm:          12px;
   --admin-radius-md:          16px;
   --admin-radius-lg:          24px;
-  --admin-shadow-sm:          0 4px 14px rgba(20,30,24,0.05);
-  --admin-shadow-md:          0 10px 30px rgba(20,30,24,0.07);
+  --admin-shadow-sm:          0 4px 14px rgba(11,14,20,0.06);
+  --admin-shadow-md:          0 14px 36px -8px rgba(11,14,20,0.09);
   background: var(--bg);
   color: var(--text);
+  font-family: var(--font-sans);
 }
 .admin-root ::selection { background: rgba(26,255,110,0.2); color: #0F9940; }
 

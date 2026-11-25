@@ -260,6 +260,64 @@ print(json.dumps({
       "Real coupon creation in unified AdminMarketing must persist and confirm in UI"
     )
 
+    // ── UX13-ACCEPT-02: CMS Workflow on /admin/settings (Dashboard -> Hero Editor -> Draft -> Save -> Real Iframe Preview Desktop/Mobile -> Public Home Parity) ──
+    const cmsJsErrors = []
+    page.on("pageerror", (err) => cmsJsErrors.push(String(err?.message || err)))
+
+    await page.goto("http://127.0.0.1:4187/admin/settings", { waitUntil: "networkidle" })
+    await page.waitForTimeout(400)
+    const cmsBodyText = await page.locator("body").innerText()
+    assert.ok(!cmsBodyText.includes("Algo salió mal"), "CMS /admin/settings must NEVER render ErrorBoundary")
+    assert.ok(cmsBodyText.includes("Editor Visual CMS & Versionado"), "CMS dashboard header must render")
+
+    // Create or edit draft
+    const newDraftBtn = page.getByRole("button", { name: /\+ Nuevo Borrador/i })
+    if (await newDraftBtn.count()) {
+      await newDraftBtn.click()
+      await page.waitForTimeout(500)
+    }
+
+    // Open Hero Editor tab
+    const heroTab = page.getByRole("tab", { name: /2\. Editor Hero/i })
+    await heroTab.click()
+    await page.waitForTimeout(250)
+
+    const syntheticHeroTitle = `Sonido Mastering Gate 13 E2E ${ts}`
+    const heroInput = page.locator("form input").first()
+    await heroInput.fill(syntheticHeroTitle)
+    await page.getByRole("button", { name: /Guardar en Borrador/i }).click()
+    await page.waitForTimeout(500)
+
+    const afterSaveText = await page.locator("body").innerText()
+    assert.ok(!afterSaveText.includes("Algo salió mal"), "Saving CMS draft must not trigger ErrorBoundary")
+    assert.ok(afterSaveText.includes("guardado"), "CMS must confirm draft save with SHA-256 checksum")
+
+    // Open Live Iframe Preview tab (Desktop & Mobile)
+    await page.getByRole("button", { name: /Previsualizar/i }).click()
+    await page.waitForTimeout(600)
+    const iframeLoc = page.locator('[data-testid="cms-live-preview-iframe"]')
+    await iframeLoc.waitFor({ state: "visible", timeout: 10000 })
+
+    // Switch preview to Mobile and verify
+    await page.getByRole("button", { name: "Mobile", exact: true }).click()
+    await page.waitForTimeout(400)
+    const previewContainerWidth = await page.locator('[data-testid="cms-live-preview-frame"]').evaluate((el) => el.style.width)
+    assert.equal(previewContainerWidth, "390px", "Mobile preview frame must resize to 390px")
+
+    // Verify public home remains unaltered by un-published draft & zero CSS contamination
+    await page.goto("http://127.0.0.1:4187/", { waitUntil: "networkidle" })
+    await page.waitForTimeout(300)
+    const publicHomeInfo = await page.evaluate(() => {
+      const cs = window.getComputedStyle(document.body)
+      return {
+        text: document.body?.innerText || "",
+        bgColor: cs.backgroundColor,
+      }
+    })
+    assert.ok(!publicHomeInfo.text.includes(syntheticHeroTitle), "Unpublished CMS draft must not alter public Home")
+    assert.equal(publicHomeInfo.bgColor, "rgb(10, 10, 10)", "Public Home must retain dark theme without admin CSS contamination")
+    assert.equal(cmsJsErrors.length, 0, `CMS workflow must produce 0 JS errors, got: ${cmsJsErrors.join("; ")}`)
+
     // ── E2E A RBAC Verification: Switch to Warehouse user (no access to /admin/finance) ──
     currentAccess = seed.wh_access
     await page.evaluate((s) => {

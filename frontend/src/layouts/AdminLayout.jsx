@@ -669,16 +669,28 @@ export default function AdminLayout() {
 
           {/* Right Tools Controls */}
           <div className="v3-nav-tools">
-            {/* Quick Search Button */}
+            {/* Quick Search Command Pill (Cmd+K) */}
             <button
               type="button"
               className="v3-circle-btn"
-              aria-label="Buscar en LevelPro"
+              aria-label="Buscar en LevelPro (Cmd+K)"
               onClick={() => setSearchOpen(true)}
               data-testid="admin-search-btn"
-              title="Buscar (⌘K)"
+              title="Buscar SKU, serie, pedido o cliente (⌘K)"
+              style={{
+                width: "auto",
+                borderRadius: 999,
+                padding: "0 13px",
+                gap: 8,
+                background: "#131822",
+                border: "1px solid #242A34",
+                color: "#F5F5F5",
+                fontSize: 12,
+                fontWeight: 600,
+              }}
             >
-              <Search size={16} strokeWidth={2} />
+              <Search size={14} strokeWidth={2.2} style={{ color: "#1AFF6E" }} />
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "#C0C7D2" }}>⌘K</span>
             </button>
 
             {/* Date Pill (Lumin Ref C) */}
@@ -706,21 +718,21 @@ export default function AdminLayout() {
                     position: "absolute",
                     top: "calc(100% + 10px)",
                     right: 0,
-                    minWidth: 200,
-                    background: "#FFFFFF",
-                    border: "1px solid var(--v3-border)",
-                    borderRadius: 16,
+                    minWidth: 210,
+                    background: "#0B0E14",
+                    border: "1px solid #242A34",
+                    borderRadius: 18,
                     padding: 8,
-                    boxShadow: "0 18px 40px -8px rgba(12, 13, 14, 0.15)",
+                    boxShadow: "0 22px 50px -10px rgba(11, 14, 20, 0.65)",
                     zIndex: 150,
                     animation: "v3FadeIn 0.15s ease-out",
                   }}
                 >
-                  <div style={{ padding: "8px 12px", borderBottom: "1px solid var(--v3-border-light)" }}>
-                    <p style={{ fontSize: 13, fontWeight: 700, margin: 0, color: "var(--v3-text-primary)" }}>
+                  <div style={{ padding: "8px 12px", borderBottom: "1px solid #242A34" }}>
+                    <p style={{ fontSize: 13, fontWeight: 700, margin: 0, color: "#F5F5F5" }}>
                       {user?.first_name ? `${user.first_name} ${user.last_name || ""}` : "Administrador"}
                     </p>
-                    <p style={{ fontSize: 11, margin: 0, color: "var(--v3-text-muted)" }}>{user?.email}</p>
+                    <p style={{ fontSize: 11, margin: 0, color: "#9BA3AF", fontFamily: "var(--font-mono)" }}>{user?.email}</p>
                   </div>
 
                   <Link
@@ -851,7 +863,17 @@ export default function AdminLayout() {
       )}
 
       {/* Main Content Workspace */}
-      <main id="admin-main" style={{ width: "100%", minHeight: "calc(100vh - 88px)" }}>
+      <main
+        id="admin-main"
+        className="v3-main-container"
+        style={{
+          width: "100%",
+          maxWidth: 1440,
+          margin: "22px auto 0",
+          padding: "0 clamp(14px, 2.5vw, 28px) 48px",
+          minHeight: "calc(100vh - 88px)",
+        }}
+      >
         {!isRouteAuthorized ? (
           <div
             className="au-page"
