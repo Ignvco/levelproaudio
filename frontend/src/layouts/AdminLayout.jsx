@@ -1,5 +1,4 @@
-// layouts/AdminLayout.jsx — LevelPro Audio Dashboard Experience V3
-// High-Fidelity Editorial Bento & Minimalist Fintech Design System (Inspired by Lumin)
+// layouts/AdminLayout.jsx — LevelPro Precision (Tiendanube / Nimbus Architecture)
 import { useState, useEffect, useRef } from "react"
 import { NavLink, Link, useNavigate, useLocation, Outlet } from "react-router-dom"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -10,38 +9,39 @@ import AdminSearch from "../components/admin/AdminSearch"
 import { useSiteSettings } from "../hooks/useSiteSettings"
 import logoImg from "../assets/logo.png"
 import {
-  Search, Bell, Menu, X, ChevronDown, CheckCircle2,
-  Clock, AlertTriangle, MessageSquare, ExternalLink, LogOut,
-  LayoutDashboard, ShoppingBag, Package, GraduationCap, Wrench, Gift, Wallet, Settings, ShieldAlert
+  House, ShoppingBag, Package, Users, Layers, Truck, SlidersHorizontal,
+  Landmark, Percent, LayoutGrid, GraduationCap, Settings, ExternalLink,
+  PanelLeftClose, PanelLeftOpen, Search, Bell, Menu, X, ChevronDown,
+  ChevronRight, CheckCircle2, LogOut, ShieldAlert
 } from "lucide-react"
 
 const ROUTE_MODULE_RULES = [
-  { exact: true, path: "/admin", module: "dashboard", label: "Dashboard Ejecutivo" },
-  { prefix: "/admin/orders", module: "orders", label: "Órdenes y Ventas" },
-  { prefix: "/admin/logistics", module: "orders", label: "Logística & Posventa" },
-  { prefix: "/admin/marketing", module: "orders", label: "Marketing & Growth" },
+  { exact: true, path: "/admin", module: "dashboard", label: "Inicio" },
+  { prefix: "/admin/orders", module: "orders", label: "Lista de ventas" },
+  { prefix: "/admin/logistics", module: "orders", label: "Logística y taller" },
+  { prefix: "/admin/marketing", module: "orders", label: "Cupones y promos" },
   { prefix: "/admin/b2b", module: "orders", label: "Cotizaciones B2B" },
-  { prefix: "/admin/special-orders", module: "orders", label: "Solicitudes Bajo Pedido" },
-  { prefix: "/admin/payments", module: "orders", altModule: "finances", label: "Pagos" },
-  { prefix: "/admin/payment-methods", module: "finances", label: "Métodos de Pago y Cuentas Bancarias" },
-  { prefix: "/admin/billing", module: "finances", label: "Documentación Tributaria (SII)" },
-  { prefix: "/admin/products/import", module: "catalog", capability: "edit_prices", label: "Importación Masiva de Catálogo" },
-  { prefix: "/admin/products", module: "catalog", label: "Catálogo de Productos" },
-  { prefix: "/admin/suppliers", module: "purchases", label: "Proveedores y Listas de Costos" },
-  { prefix: "/admin/procurement", module: "purchases", label: "Órdenes de Compra y Recepciones" },
-  { prefix: "/admin/costing", module: "purchases", altModule: "finances", capability: "view_costs", label: "Landed Cost, Capas y Rentabilidad" },
+  { prefix: "/admin/special-orders", module: "orders", label: "Bajo pedido" },
+  { prefix: "/admin/payments", module: "orders", altModule: "finances", label: "Transacciones de pago" },
+  { prefix: "/admin/payment-methods", module: "finances", label: "Medios de pago" },
+  { prefix: "/admin/billing", module: "finances", label: "Doc. tributarios (DTE)" },
+  { prefix: "/admin/products/import", module: "catalog", capability: "edit_prices", label: "Importar catálogo" },
+  { prefix: "/admin/products", module: "catalog", label: "Productos" },
+  { prefix: "/admin/suppliers", module: "purchases", label: "Proveedores" },
+  { prefix: "/admin/procurement", module: "purchases", label: "Compras e importaciones" },
+  { prefix: "/admin/costing", module: "purchases", altModule: "finances", capability: "view_costs", label: "Costos y precios" },
   { prefix: "/admin/brands", module: "catalog", label: "Marcas" },
   { prefix: "/admin/categories", module: "catalog", label: "Categorías" },
-  { prefix: "/admin/inventory", module: "inventory", label: "Inventario y Bodega" },
-  { prefix: "/admin/academy", module: "academy", label: "Academia y Cursos" },
-  { prefix: "/admin/services", module: "services", label: "Servicios Técnicos" },
-  { prefix: "/admin/loyalty", module: "marketing", label: "Fidelización y Loyalty" },
-  { prefix: "/admin/rewards", module: "marketing", label: "Campañas Rewards" },
-  { prefix: "/admin/finance", module: "finances", capability: "view_finances", label: "Módulo Financiero" },
-  { prefix: "/admin/users", module: "dashboard", altModule: "roles", altModule2: "orders", label: "Usuarios y Clientes" },
-  { prefix: "/admin/roles", module: "roles", capability: "manage_roles", label: "Roles y Control de Acceso (RBAC)" },
-  { prefix: "/admin/audit", module: "audit", capability: "view_audit", label: "Registro de Actividad y Auditoría" },
-  { prefix: "/admin/settings", module: "settings", altModule: "marketing", label: "Editor Visual CMS y Configuración del Sistema" },
+  { prefix: "/admin/inventory", module: "inventory", label: "Inventario y WMS" },
+  { prefix: "/admin/academy", module: "academy", label: "Academia" },
+  { prefix: "/admin/services", module: "services", label: "Servicios técnicos" },
+  { prefix: "/admin/loyalty", module: "marketing", label: "Fidelización (Loyalty)" },
+  { prefix: "/admin/rewards", module: "marketing", label: "Rewards y sorteos" },
+  { prefix: "/admin/finance", module: "finances", capability: "view_finances", label: "Finanzas y tesorería" },
+  { prefix: "/admin/users", module: "dashboard", altModule: "roles", altModule2: "orders", label: "Clientes CRM" },
+  { prefix: "/admin/roles", module: "roles", capability: "manage_roles", label: "Roles y permisos RBAC" },
+  { prefix: "/admin/audit", module: "audit", capability: "view_audit", label: "Auditoría forense" },
+  { prefix: "/admin/settings", module: "settings", altModule: "marketing", label: "Tienda online (CMS)" },
 ]
 
 function resolveRouteGuard(pathname) {
@@ -52,57 +52,173 @@ function resolveRouteGuard(pathname) {
   return null
 }
 
-// Mapa de navegación agrupado con asignación de módulos RBAC
-const navGroups = [
-  { key: "inicio", label: "Dashboard", to: "/admin", end: true, module: "dashboard" },
-  { key: "ventas", label: "Ventas", module: "orders", items: [
-    { to: "/admin/orders",          label: "Órdenes", module: "orders" },
-    { to: "/admin/b2b",             label: "Cotizaciones B2B", module: "orders" },
-    { to: "/admin/special-orders",  label: "Bajo pedido", module: "orders" },
-    { to: "/admin/payments",        label: "Pagos", module: "orders" },
-    { to: "/admin/payment-methods", label: "Métodos de pago", module: "finances" },
-    { to: "/admin/billing",         label: "Doc. tributaria", module: "finances" },
-  ]},
-  { key: "catalogo", label: "Catálogo", module: "catalog", items: [
-    { to: "/admin/products",        label: "Catálogo", module: "catalog" },
-    { to: "/admin/brands",          label: "Marcas", module: "catalog" },
-    { to: "/admin/categories",      label: "Categorías", module: "catalog" },
-    { to: "/admin/products/import", label: "Importar", module: "catalog", capability: "edit_prices" },
-    { to: "/admin/suppliers",       label: "Proveedores", module: "purchases" },
-    { to: "/admin/procurement",     label: "Órdenes de Compra", module: "purchases" },
-    { to: "/admin/costing",         label: "Landed Cost & Márgenes", module: "purchases", capability: "view_costs" },
-    { to: "/admin/inventory",       label: "Inventario", module: "inventory" },
-    { to: "/admin/logistics",       label: "Logística & Posventa", module: "orders" },
-    { to: "/admin/marketing",       label: "Marketing & Growth",   module: "orders" },
-  ]},
-  { key: "academia", label: "Academia", module: "academy", items: [
-    { to: "/admin/academy",                label: "Cursos", module: "academy" },
-    { to: "/admin/academy/modules",        label: "Módulos", module: "academy" },
-    { to: "/admin/academy/lessons",        label: "Lecciones", module: "academy" },
-    { to: "/admin/academy/enrollments",    label: "Inscripciones", module: "academy" },
-    { to: "/admin/academy/certifications", label: "Certificaciones", module: "academy" },
-  ]},
-  { key: "servicios", label: "Servicios", to: "/admin/services", module: "services" },
-  { key: "fidelizacion", label: "Fidelización", module: "marketing", items: [
-    { to: "/admin/loyalty",           label: "Puntos y niveles", module: "marketing" },
-    { to: "/admin/rewards",           label: "Rewards", module: "marketing" },
-    { to: "/admin/rewards/campaigns", label: "Campañas", module: "marketing" },
-    { to: "/admin/rewards/entries",   label: "Participaciones", module: "marketing" },
-    { to: "/admin/rewards/winners",   label: "Ganadores", module: "marketing" },
-  ]},
-  { key: "negocio", label: "Negocio", items: [
-    { to: "/admin/finance",  label: "Finanzas", module: "finances", capability: "view_finances" },
-    { to: "/admin/users",    label: "Clientes", module: "dashboard" },
-    { to: "/admin/roles",    label: "Roles y Permisos", module: "roles", capability: "manage_roles" },
-    { to: "/admin/audit",    label: "Registro de Actividad", module: "audit", capability: "view_audit" },
-    { to: "/admin/settings", label: "Personalización", module: "settings", capability: "manage_settings" },
-  ]},
+// Estructura jerárquica Tiendanube / Nimbus agrupada por secciones
+const SIDEBAR_SECTIONS = [
+  {
+    key: "root",
+    title: null,
+    entries: [
+      { key: "inicio", label: "Inicio", to: "/admin", end: true, icon: House, module: "dashboard", testId: "admin-nav-inicio" },
+    ],
+  },
+  {
+    key: "comercial",
+    title: "Gestión comercial",
+    entries: [
+      {
+        key: "ventas",
+        label: "Ventas",
+        icon: ShoppingBag,
+        module: "orders",
+        testId: "admin-nav-ventas",
+        items: [
+          { to: "/admin/orders", label: "Lista de ventas", module: "orders" },
+          { to: "/admin/b2b", label: "Cotizaciones B2B", module: "orders" },
+          { to: "/admin/special-orders", label: "Bajo pedido", module: "orders" },
+          { to: "/admin/payments", label: "Transacciones", module: "orders" },
+        ],
+      },
+      {
+        key: "productos",
+        label: "Productos",
+        icon: Package,
+        module: "catalog",
+        testId: "admin-nav-catalogo",
+        items: [
+          { to: "/admin/products", label: "Lista de productos", module: "catalog" },
+          { to: "/admin/inventory", label: "Inventario y WMS", module: "inventory" },
+          { to: "/admin/categories", label: "Categorías", module: "catalog" },
+          { to: "/admin/brands", label: "Marcas", module: "catalog" },
+          { to: "/admin/products/import", label: "Importar catálogo", module: "catalog", capability: "edit_prices" },
+        ],
+      },
+      {
+        key: "clientes",
+        label: "Clientes CRM",
+        to: "/admin/users",
+        icon: Users,
+        module: "dashboard",
+        testId: "admin-nav-clientes",
+      },
+    ],
+  },
+  {
+    key: "operaciones",
+    title: "Operaciones & Finanzas",
+    entries: [
+      {
+        key: "compras",
+        label: "Compras e import.",
+        icon: Layers,
+        module: "purchases",
+        testId: "admin-nav-compras",
+        items: [
+          { to: "/admin/procurement", label: "Órdenes de compra", module: "purchases" },
+          { to: "/admin/procurement?tab=receipts", label: "Recepciones (GR)", module: "purchases" },
+          { to: "/admin/suppliers", label: "Proveedores", module: "purchases" },
+        ],
+      },
+      { key: "logistica", label: "Logística y taller", to: "/admin/logistics", icon: Truck, module: "orders", testId: "admin-nav-logistica" },
+      { key: "costos", label: "Costos y precios", to: "/admin/costing", icon: SlidersHorizontal, module: "purchases", capability: "view_costs", testId: "admin-nav-costos" },
+      {
+        key: "finanzas",
+        label: "Finanzas y DTE",
+        icon: Landmark,
+        module: "finances",
+        testId: "admin-nav-negocio",
+        items: [
+          { to: "/admin/finance", label: "Finanzas y tesorería", module: "finances", capability: "view_finances" },
+          { to: "/admin/billing", label: "Doc. tributarios", module: "finances" },
+        ],
+      },
+    ],
+  },
+  {
+    key: "canales",
+    title: "Marketing & Canales",
+    entries: [
+      {
+        key: "marketing",
+        label: "Cupones y growth",
+        icon: Percent,
+        module: "orders",
+        testId: "admin-nav-fidelizacion",
+        items: [
+          { to: "/admin/marketing", label: "Cupones y promos", module: "orders" },
+          { to: "/admin/loyalty", label: "Fidelización", module: "marketing" },
+          { to: "/admin/rewards", label: "Resumen Rewards", module: "marketing" },
+          { to: "/admin/rewards/campaigns", label: "Campañas Rewards", module: "marketing" },
+          { to: "/admin/rewards/entries", label: "Participaciones", module: "marketing" },
+          { to: "/admin/rewards/winners", label: "Ganadores", module: "marketing" },
+        ],
+      },
+      { key: "tienda", label: "Tienda online", to: "/admin/settings", icon: LayoutGrid, module: "settings", capability: "manage_settings", testId: "admin-nav-settings" },
+      {
+        key: "academia",
+        label: "Academia y serv.",
+        icon: GraduationCap,
+        module: "academy",
+        testId: "admin-nav-academia",
+        items: [
+          { to: "/admin/academy", label: "Cursos", module: "academy" },
+          { to: "/admin/academy/modules", label: "Módulos", module: "academy" },
+          { to: "/admin/academy/lessons", label: "Lecciones", module: "academy" },
+          { to: "/admin/academy/enrollments", label: "Inscripciones", module: "academy" },
+          { to: "/admin/academy/certifications", label: "Certificaciones", module: "academy" },
+          { to: "/admin/services", label: "Servicios técnicos", module: "services" },
+        ],
+      },
+    ],
+  },
 ]
 
-function isGroupActive(group, pathname) {
-  if (group.to) return group.end ? pathname === group.to : pathname.startsWith(group.to)
-  if (group.items) return group.items.some((it) => pathname.startsWith(it.to))
+const FOOTER_SECURITY_GROUP = {
+  key: "configuracion",
+  label: "Configuración",
+  icon: Settings,
+  testId: "admin-nav-configuracion",
+  items: [
+    { to: "/admin/payment-methods", label: "Medios de pago", module: "finances" },
+    { to: "/admin/roles", label: "Roles y permisos", module: "roles", capability: "manage_roles" },
+    { to: "/admin/audit", label: "Auditoría forense", module: "audit", capability: "view_audit" },
+  ],
+}
+
+function entryMatchesPath(entry, fullPath) {
+  const [pathname] = fullPath.split("?")
+  if (entry.to) return entry.end ? pathname === entry.to : pathname === entry.to || pathname.startsWith(entry.to + "/")
+  if (entry.items) {
+    return entry.items.some((it) => {
+      const [itemPath, itemQuery] = it.to.split("?")
+      if (itemQuery) return fullPath === it.to
+      return pathname === itemPath || pathname.startsWith(itemPath + "/")
+    })
+  }
   return false
+}
+
+function BrandLogo({ siteName, logoUrl }) {
+  const isDefaultWhiteAsset = !logoUrl
+  if (isDefaultWhiteAsset) {
+    return (
+      <span
+        className="lp-brand-logo-positive"
+        role="img"
+        aria-label={siteName || "LevelPro Audio"}
+        style={{
+          WebkitMaskImage: `url(${logoImg})`,
+          maskImage: `url(${logoImg})`,
+        }}
+      />
+    )
+  }
+  return (
+    <img
+      src={logoUrl}
+      alt={siteName || "LevelPro Audio"}
+      style={{ height: 24, maxWidth: 112, objectFit: "contain" }}
+    />
+  )
 }
 
 function NotificationsBell() {
@@ -134,11 +250,9 @@ function NotificationsBell() {
 
   const allNotifications = notifData?.notifications || []
   const unreadCount = typeof notifData?.unread_count === "number" ? notifData.unread_count : 0
-
-  const filteredNotifications =
-    categoryFilter === "all"
-      ? allNotifications
-      : allNotifications.filter((n) => n.category === categoryFilter)
+  const filteredNotifications = categoryFilter === "all"
+    ? allNotifications
+    : allNotifications.filter((n) => n.category === categoryFilter)
 
   const handleMarkOneRead = async (item, shouldNavigate = false) => {
     try {
@@ -147,7 +261,7 @@ function NotificationsBell() {
         await queryClient.invalidateQueries({ queryKey: ["admin-notifications-center"] })
       }
     } catch {
-      // Best-effort read state persistence
+      // Best-effort read persistence
     }
     if (shouldNavigate && item.target_route) {
       setOpen(false)
@@ -168,14 +282,10 @@ function NotificationsBell() {
 
   const priorityMeta = (priority) => {
     switch (priority) {
-      case "critical":
-        return { label: "CRÍTICA", bg: "rgba(239,68,68,0.12)", color: "#DC2626" }
-      case "high":
-        return { label: "ALTA", bg: "rgba(245,158,11,0.14)", color: "#D97706" }
-      case "warning":
-        return { label: "ATENCIÓN", bg: "rgba(234,179,8,0.14)", color: "#B45309" }
-      default:
-        return { label: "OPERATIVA", bg: "rgba(26,157,78,0.12)", color: "#15803D" }
+      case "critical": return { label: "Crítica", tone: "danger" }
+      case "high": return { label: "Prioritaria", tone: "warning" }
+      case "warning": return { label: "Stock mínimo", tone: "warning" }
+      default: return { label: "Operativa", tone: "success" }
     }
   }
 
@@ -183,34 +293,35 @@ function NotificationsBell() {
     <div style={{ position: "relative" }} ref={ref}>
       <button
         type="button"
-        className="v3-circle-btn"
+        className="lp-topbar-icon-btn"
         aria-label="Centro de notificaciones operativas"
         data-testid="admin-notifications-btn"
         aria-expanded={open}
         aria-haspopup="dialog"
         onClick={() => setOpen((o) => !o)}
       >
-        <Bell size={17} strokeWidth={2} />
+        <Bell size={16} strokeWidth={1.75} />
         {unreadCount > 0 && (
           <span
             data-testid="admin-notifications-badge"
             style={{
               position: "absolute",
-              top: -2,
-              right: -2,
-              minWidth: 18,
-              height: 18,
+              top: -4,
+              right: -4,
+              minWidth: 17,
+              height: 17,
               padding: "0 4px",
-              borderRadius: 999,
-              background: "#EF4444",
-              color: "#fff",
+              borderRadius: 9999,
+              background: "#09090B",
+              color: "#FFFFFF",
               fontSize: 10,
-              fontWeight: 800,
+              fontWeight: 700,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              border: "2px solid #fff",
+              border: "2px solid #FFFFFF",
               lineHeight: 1,
+              fontVariantNumeric: "tabular-nums",
             }}
           >
             {unreadCount > 9 ? "9+" : unreadCount}
@@ -221,28 +332,15 @@ function NotificationsBell() {
       {open && (
         <div
           role="dialog"
-          aria-label="Centro de Notificaciones Operativas BF-32"
+          aria-label="Centro de Notificaciones"
           data-testid="admin-notifications-panel"
-          style={{
-            position: "absolute",
-            top: "calc(100% + 10px)",
-            right: 0,
-            zIndex: 180,
-            width: 390,
-            maxWidth: "calc(100vw - 24px)",
-            background: "#FFFFFF",
-            border: "1px solid var(--v3-border)",
-            borderRadius: 20,
-            boxShadow: "0 24px 60px rgba(0,0,0,.18)",
-            overflow: "hidden",
-            animation: "v3FadeIn 0.15s ease-out",
-          }}
+          className="lp-popover-panel"
+          style={{ width: 380, maxWidth: "calc(100vw - 24px)" }}
         >
-          {/* Header */}
           <div
             style={{
-              padding: "14px 18px 10px",
-              borderBottom: "1px solid var(--v3-border)",
+              padding: "12px 16px",
+              borderBottom: "1px solid #E4E4E7",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
@@ -250,11 +348,11 @@ function NotificationsBell() {
             }}
           >
             <div>
-              <p style={{ fontSize: 14, fontWeight: 800, margin: 0, color: "var(--v3-text-primary)" }}>
+              <p style={{ fontSize: 13.5, fontWeight: 600, margin: 0, color: "#09090B" }}>
                 Centro de Notificaciones
               </p>
-              <span style={{ fontSize: 10.5, color: "var(--v3-text-muted)" }}>
-                {notifData?.delivery_disclosure || "Polling controlado (60s) · Eventos verificables"}
+              <span style={{ fontSize: 11, color: "#71717A" }}>
+                {notifData?.delivery_disclosure || "Polling controlado (60s)"}
               </span>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -265,17 +363,16 @@ function NotificationsBell() {
                   disabled={markingAll}
                   data-testid="admin-notifications-mark-all"
                   style={{
-                    fontSize: 11,
-                    fontWeight: 700,
-                    color: "#15803D",
-                    background: "rgba(26,157,78,0.1)",
-                    border: "1px solid rgba(26,157,78,0.22)",
-                    padding: "4px 9px",
-                    borderRadius: 999,
+                    fontSize: 11.5,
+                    fontWeight: 600,
+                    color: "#0F7A38",
+                    background: "transparent",
+                    border: "none",
+                    padding: "3px 6px",
                     cursor: "pointer",
                   }}
                 >
-                  {markingAll ? "Marcando..." : "Marcar todo leído"}
+                  {markingAll ? "Marcando..." : "Marcar todas leídas"}
                 </button>
               )}
               <button
@@ -285,12 +382,12 @@ function NotificationsBell() {
                 aria-label="Actualizar notificaciones"
                 style={{
                   fontSize: 11,
-                  fontWeight: 600,
-                  color: "var(--v3-text-secondary)",
-                  background: "var(--v3-surface-subtle, #F4F5F7)",
-                  border: "1px solid var(--v3-border)",
-                  padding: "4px 8px",
-                  borderRadius: 8,
+                  fontWeight: 500,
+                  color: "#52525B",
+                  background: "#FAFAFA",
+                  border: "1px solid #E4E4E7",
+                  padding: "3px 8px",
+                  borderRadius: 6,
                   cursor: "pointer",
                 }}
               >
@@ -299,15 +396,14 @@ function NotificationsBell() {
             </div>
           </div>
 
-          {/* Category filter pills */}
           <div
             style={{
               display: "flex",
               gap: 6,
-              padding: "8px 16px",
-              borderBottom: "1px solid var(--v3-border-light)",
+              padding: "8px 14px",
+              borderBottom: "1px solid #E4E4E7",
               overflowX: "auto",
-              background: "#FAFBFC",
+              background: "#FAFAFA",
             }}
           >
             {[
@@ -325,13 +421,13 @@ function NotificationsBell() {
                   data-testid={`admin-notif-filter-${tab.id}`}
                   onClick={() => setCategoryFilter(tab.id)}
                   style={{
-                    fontSize: 11,
-                    fontWeight: 700,
+                    fontSize: 11.5,
+                    fontWeight: active ? 600 : 500,
                     padding: "4px 10px",
-                    borderRadius: 999,
-                    border: active ? "1px solid #0C0D0E" : "1px solid var(--v3-border)",
-                    background: active ? "#0C0D0E" : "#FFFFFF",
-                    color: active ? "#FFFFFF" : "var(--v3-text-secondary)",
+                    borderRadius: 9999,
+                    border: active ? "1px solid #09090B" : "1px solid #E4E4E7",
+                    background: active ? "#09090B" : "#FFFFFF",
+                    color: active ? "#FFFFFF" : "#52525B",
                     cursor: "pointer",
                     whiteSpace: "nowrap",
                   }}
@@ -342,19 +438,15 @@ function NotificationsBell() {
             })}
           </div>
 
-          {/* Notification items */}
-          <div style={{ maxHeight: 380, overflowY: "auto" }}>
+          <div style={{ maxHeight: 360, overflowY: "auto" }}>
             {filteredNotifications.length === 0 ? (
-              <div
-                data-testid="admin-notifications-empty"
-                style={{ padding: "34px 20px", textAlign: "center", color: "var(--v3-text-muted)" }}
-              >
-                <CheckCircle2 size={30} style={{ color: "#1A9D4E", margin: "0 auto 8px" }} />
-                <p style={{ fontSize: 13, fontWeight: 700, margin: "4px 0 2px", color: "var(--v3-text-primary)" }}>
+              <div data-testid="admin-notifications-empty" style={{ padding: "32px 20px", textAlign: "center", color: "#71717A" }}>
+                <CheckCircle2 size={26} style={{ color: "#16A34A", margin: "0 auto 8px" }} />
+                <p style={{ fontSize: 13, fontWeight: 600, margin: "4px 0 2px", color: "#09090B" }}>
                   Bandeja operativa al día
                 </p>
                 <p style={{ fontSize: 12, margin: 0 }}>
-                  No hay alertas operativas activas en esta categoría para tu rol.
+                  No hay alertas operativas activas en esta categoría.
                 </p>
               </div>
             ) : (
@@ -365,64 +457,35 @@ function NotificationsBell() {
                     key={item.key}
                     data-testid={`admin-notification-item-${item.category}`}
                     style={{
-                      padding: "12px 18px",
-                      borderBottom: "1px solid var(--v3-border-light)",
-                      background: item.is_read ? "#FFFFFF" : "rgba(26, 157, 78, 0.04)",
+                      padding: "12px 16px",
+                      borderBottom: "1px solid #E4E4E7",
+                      background: item.is_read ? "#FFFFFF" : "#FAFAFA",
                       display: "flex",
                       flexDirection: "column",
-                      gap: 6,
+                      gap: 5,
                     }}
                   >
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                      <span
-                        style={{
-                          fontSize: 10,
-                          fontWeight: 800,
-                          padding: "2px 7px",
-                          borderRadius: 999,
-                          background: pMeta.bg,
-                          color: pMeta.color,
-                          letterSpacing: "0.04em",
-                        }}
-                      >
+                      <span className={`au-badge au-badge--${pMeta.tone}`}>
                         {pMeta.label}
                       </span>
-                      <span
-                        style={{
-                          fontSize: 10.5,
-                          fontWeight: 700,
-                          color: item.is_read ? "var(--v3-text-muted)" : "#15803D",
-                        }}
-                      >
-                        {item.is_read ? "Leída" : "● No leída"}
+                      <span style={{ fontSize: 11, fontWeight: 500, color: item.is_read ? "#71717A" : "#0F7A38" }}>
+                        {item.is_read ? "Leída" : "No leída"}
                       </span>
                     </div>
-
-                    <div
-                      onClick={() => handleMarkOneRead(item, true)}
-                      style={{ cursor: "pointer" }}
-                    >
-                      <p style={{ fontSize: 13, fontWeight: 700, margin: "0 0 2px", color: "var(--v3-text-primary)" }}>
+                    <div onClick={() => handleMarkOneRead(item, true)} style={{ cursor: "pointer" }}>
+                      <p style={{ fontSize: 13, fontWeight: 600, margin: "0 0 2px", color: "#09090B" }}>
                         {item.title}
                       </p>
-                      <p style={{ fontSize: 11.5, margin: 0, color: "var(--v3-text-secondary)", lineHeight: 1.4 }}>
+                      <p style={{ fontSize: 12, margin: 0, color: "#52525B", lineHeight: 1.4 }}>
                         {item.description}
                       </p>
                     </div>
-
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
                       <button
                         type="button"
                         onClick={() => handleMarkOneRead(item, true)}
-                        style={{
-                          background: "none",
-                          border: "none",
-                          padding: 0,
-                          fontSize: 11,
-                          fontWeight: 700,
-                          color: "#15803D",
-                          cursor: "pointer",
-                        }}
+                        style={{ background: "none", border: "none", padding: 0, fontSize: 11.5, fontWeight: 600, color: "#0F7A38", cursor: "pointer" }}
                       >
                         Ir al módulo →
                       </button>
@@ -431,15 +494,7 @@ function NotificationsBell() {
                           type="button"
                           data-testid={`admin-notif-mark-read-${item.category}`}
                           onClick={() => handleMarkOneRead(item, false)}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            padding: 0,
-                            fontSize: 11,
-                            fontWeight: 600,
-                            color: "var(--v3-text-muted)",
-                            cursor: "pointer",
-                          }}
+                          style={{ background: "none", border: "none", padding: 0, fontSize: 11.5, color: "#71717A", cursor: "pointer" }}
                         >
                           Marcar leída
                         </button>
@@ -462,13 +517,28 @@ export default function AdminLayout() {
   const navigate = useNavigate()
   const location = useLocation()
   const queryClient = useQueryClient()
-  const [openFlyout, setOpenFlyout] = useState(null)
+
+  const [collapsed, setCollapsed] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
-  const flyoutTimeout = useRef(null)
-  const userMenuRef = useRef(null)
+  const [railFlyout, setRailFlyout] = useState(null)
+  const [expandedGroups, setExpandedGroups] = useState(() => {
+    const initial = {}
+    for (const sec of SIDEBAR_SECTIONS) {
+      for (const entry of sec.entries) {
+        if (entry.items && entryMatchesPath(entry, location.pathname + location.search)) {
+          initial[entry.key] = true
+        }
+      }
+    }
+    if (entryMatchesPath(FOOTER_SECURITY_GROUP, location.pathname)) {
+      initial[FOOTER_SECURITY_GROUP.key] = true
+    }
+    return initial
+  })
 
+  const userMenuRef = useRef(null)
   const prevPermSig = useRef(null)
 
   const handleLogout = () => {
@@ -484,8 +554,6 @@ export default function AdminLayout() {
     staleTime: 60 * 1000,
   })
 
-  // Si los permisos/roles efectivos del usuario cambian o son revocados en caliente,
-  // cancelar peticiones pendientes y purgar de la caché cualquier consulta de otros módulos.
   useEffect(() => {
     if (!myPerms) return
     const sig = JSON.stringify({
@@ -495,20 +563,14 @@ export default function AdminLayout() {
       capabilities: myPerms.capabilities,
     })
     if (prevPermSig.current && prevPermSig.current !== sig) {
-      queryClient.cancelQueries({
-        predicate: (q) => q.queryKey?.[0] !== "my-permissions",
-      })
-      queryClient.removeQueries({
-        predicate: (q) => q.queryKey?.[0] !== "my-permissions",
-      })
+      queryClient.cancelQueries({ predicate: (q) => q.queryKey?.[0] !== "my-permissions" })
+      queryClient.removeQueries({ predicate: (q) => q.queryKey?.[0] !== "my-permissions" })
     }
     prevPermSig.current = sig
   }, [myPerms, queryClient])
 
   const canAccessModule = (mod, cap = null) => {
     if (myPerms?.is_superuser) return true
-    // Legacy compatibility: if myPerms hasn't returned modules yet (e.g., unit mock without RBAC endpoint),
-    // only allow when user is explicitly superuser or myPerms is undefined & not loading.
     if (!myPerms) return !permsLoading
     if (cap && myPerms.capabilities && myPerms.capabilities[cap] === false) return false
     if (!mod) return true
@@ -520,9 +582,7 @@ export default function AdminLayout() {
     if (!rule) return true
     if (myPerms?.is_superuser) return true
     if (!myPerms || !Array.isArray(myPerms.modules)) return true
-    if (rule.capability && myPerms.capabilities && myPerms.capabilities[rule.capability] === false) {
-      return false
-    }
+    if (rule.capability && myPerms.capabilities && myPerms.capabilities[rule.capability] === false) return false
     const allowedMods = [rule.module, rule.altModule, rule.altModule2].filter(Boolean)
     if (allowedMods.length === 0) return true
     return allowedMods.some((m) => myPerms.modules.includes(m))
@@ -541,21 +601,37 @@ export default function AdminLayout() {
     return "/"
   })()
 
-  const filteredNavGroups = navGroups.map((group) => {
-    if (group.items) {
-      const visibleItems = group.items.filter((it) => canAccessModule(it.module, it.capability))
-      if (visibleItems.length === 0) return null
-      return { ...group, items: visibleItems }
-    }
-    if (!canAccessModule(group.module, group.capability)) return null
-    return group
-  }).filter(Boolean)
+  const filterSection = (sec) => {
+    const entries = sec.entries.map((entry) => {
+      if (entry.items) {
+        const vis = entry.items.filter((it) => canAccessModule(it.module, it.capability))
+        if (vis.length === 0) return null
+        return { ...entry, items: vis }
+      }
+      if (!canAccessModule(entry.module, entry.capability)) return null
+      return entry
+    }).filter(Boolean)
+    if (entries.length === 0) return null
+    return { ...sec, entries }
+  }
+
+  const visibleSections = SIDEBAR_SECTIONS.map(filterSection).filter(Boolean)
+  const visibleSecurityItems = FOOTER_SECURITY_GROUP.items.filter((it) => canAccessModule(it.module, it.capability))
+
+  useEffect(() => {
+    setMobileOpen(false)
+    setRailFlyout(null)
+  }, [location.pathname, location.search])
 
   useEffect(() => {
     const onKey = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault()
         setSearchOpen(true)
+      } else if (e.key === "Escape") {
+        setMobileOpen(false)
+        setRailFlyout(null)
+        setUserMenuOpen(false)
       }
     }
     const onClickOutside = (e) => {
@@ -571,443 +647,369 @@ export default function AdminLayout() {
     }
   }, [])
 
-  const initial = (user?.first_name?.[0] || user?.email?.[0] || "L").toUpperCase()
-  const secondInitial = (user?.last_name?.[0] || "P").toUpperCase()
-  const avatarText = user?.first_name ? `${initial}${user?.last_name ? secondInitial : ""}` : "LP"
+  const initial = (user?.first_name?.[0] || user?.email?.[0] || "A").toUpperCase()
+  const secondInitial = (user?.last_name?.[0] || "").toUpperCase()
+  const avatarText = `${initial}${secondInitial}`
+  const displayName = user?.first_name ? `${user.first_name}${user.last_name ? ` ${user.last_name[0]}.` : ""}` : (user?.email?.split("@")[0] || "Administrador")
+  const fullPath = location.pathname + location.search
 
-  const handleMouseEnter = (key) => {
-    if (flyoutTimeout.current) clearTimeout(flyoutTimeout.current)
-    setOpenFlyout(key)
+  const toggleGroup = (key) => {
+    if (collapsed) {
+      setRailFlyout((prev) => (prev === key ? null : key))
+      return
+    }
+    setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }))
   }
 
-  const handleMouseLeave = () => {
-    flyoutTimeout.current = setTimeout(() => {
-      setOpenFlyout(null)
-    }, 120)
+  const renderGroup = (entry) => {
+    const Icon = entry.icon
+    const isActive = entryMatchesPath(entry, fullPath)
+    if (!entry.items) {
+      return (
+        <NavLink
+          key={entry.key}
+          to={entry.to}
+          end={entry.end}
+          data-testid={entry.testId}
+          title={collapsed ? entry.label : undefined}
+          className={`lp-nav-item${isActive ? " is-active" : ""}`}
+        >
+          <Icon size={16} strokeWidth={1.75} style={{ flexShrink: 0 }} aria-hidden="true" />
+          {!collapsed && <span style={{ flex: 1 }}>{entry.label}</span>}
+        </NavLink>
+      )
+    }
+
+    const isOpen = Boolean(expandedGroups[entry.key]) || isActive
+    return (
+      <div
+        key={entry.key}
+        className={collapsed ? "lp-rail-group" : undefined}
+        onMouseEnter={() => collapsed && setRailFlyout(entry.key)}
+        onMouseLeave={() => collapsed && setRailFlyout((p) => (p === entry.key ? null : p))}
+      >
+        <button
+          type="button"
+          className={`lp-nav-item${isActive ? " is-active" : ""}`}
+          data-testid={entry.testId}
+          title={collapsed ? entry.label : undefined}
+          aria-expanded={collapsed ? railFlyout === entry.key : isOpen}
+          onClick={() => toggleGroup(entry.key)}
+        >
+          <Icon size={16} strokeWidth={1.75} style={{ flexShrink: 0 }} aria-hidden="true" />
+          {!collapsed && (
+            <>
+              <span style={{ flex: 1 }}>{entry.label}</span>
+              {isOpen ? <ChevronDown size={14} style={{ color: "#71717A" }} /> : <ChevronRight size={14} style={{ color: "#71717A" }} />}
+            </>
+          )}
+        </button>
+
+        {!collapsed && isOpen && (
+          <div className="lp-nav-sublist">
+            {entry.items.map((it) => {
+              const [itPath, itQuery] = it.to.split("?")
+              const subActive = itQuery
+                ? fullPath === it.to
+                : (location.pathname === itPath && !location.search) || (location.pathname.startsWith(itPath + "/") && itPath !== "/admin")
+              return (
+                <Link
+                  key={it.to}
+                  to={it.to}
+                  className={`lp-nav-subitem${subActive ? " active" : ""}`}
+                >
+                  <span>{it.label}</span>
+                </Link>
+              )
+            })}
+          </div>
+        )}
+
+        {collapsed && railFlyout === entry.key && (
+          <div className="lp-rail-popover" role="menu" data-testid={`admin-flyout-${entry.key}`}>
+            <div className="lp-rail-popover__title">{entry.label}</div>
+            {entry.items.map((it) => (
+              <Link
+                key={it.to}
+                to={it.to}
+                role="menuitem"
+                className="lp-nav-subitem"
+                onClick={() => setRailFlyout(null)}
+              >
+                {it.label}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
-    <div className="v3-shell admin-root" id="admin-shell">
-      {/* Hidden container to satisfy existing test queries for data-testid="admin-sidebar" */}
-      <div style={{ display: "none" }} data-testid="admin-sidebar" aria-hidden="true">
-        <Link to="/admin/settings" data-testid="admin-nav-settings">Configuración</Link>
-        <Link to="/" data-testid="admin-view-site">Ver sitio</Link>
-        <button type="button" data-testid="admin-logout" onClick={handleLogout}>Logout</button>
-      </div>
+    <div
+      className={`admin-root admin-precision${collapsed ? " is-collapsed" : ""}${mobileOpen ? " is-mobile-open" : ""}`}
+      id="admin-shell"
+    >
+      {mobileOpen && <div className="lp-mobile-backdrop" onClick={() => setMobileOpen(false)} />}
 
-      {/* Floating Top Navigation Header (Inspired by Lumin) */}
-      <header className="v3-floating-header">
-        <div className="v3-nav-island">
-          {/* Brand */}
-          <Link to="/admin" className="v3-brand" aria-label={siteName || "LevelPro Audio Workspace"}>
-            <div className="v3-brand-logo-wrap">
-              <img
-                src={logoUrl || logoImg}
-                alt={siteName || "LevelPro Audio"}
-                className={`v3-brand-logo-img${logoUrl ? " has-custom" : ""}`}
-              />
-            </div>
-            <span className="v3-brand-tag">ADMIN</span>
+      {/* Sidebar Nimbus 240px Expandido / 48px Rail / Drawer Mobile */}
+      <aside className="lp-sidebar" data-testid="admin-sidebar" aria-label="Menú administrativo LevelPro">
+        <div className="lp-sidebar__head">
+          <Link
+            to="/admin"
+            data-testid="admin-logo-home"
+            style={{ display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none", minWidth: 0 }}
+            aria-label={siteName || "LevelPro Audio"}
+          >
+            {collapsed ? (
+              <img src="/favicon.png?v=2" alt="LevelPro Audio" style={{ width: 24, height: 24, objectFit: "contain" }} />
+            ) : (
+              <BrandLogo siteName={siteName} logoUrl={logoUrl} />
+            )}
           </Link>
 
-          {/* Navigation Pills (Desktop) */}
-          <nav className="v3-nav-pills" aria-label="Navegación principal">
-            {filteredNavGroups.map((group) => {
-              const active = isGroupActive(group, location.pathname)
-              const hasItems = !!group.items
+          <button
+            type="button"
+            className="lp-sidebar__collapse-btn"
+            data-testid="admin-sidebar-toggle"
+            aria-label={collapsed ? "Expandir barra lateral" : "Colapsar barra lateral a 48px"}
+            title={collapsed ? "Expandir menú (240px)" : "Colapsar menú (48px)"}
+            onClick={() => { setCollapsed((c) => !c); setRailFlyout(null) }}
+          >
+            {collapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+          </button>
 
-              if (!hasItems) {
-                return (
-                  <NavLink
-                    key={group.key}
-                    to={group.to}
-                    end={group.end}
-                    className={`v3-nav-pill${active ? " active" : ""}`}
-                    data-testid={`admin-nav-${group.key}`}
-                  >
-                    {group.label}
-                  </NavLink>
-                )
-              }
-
-              return (
-                <div
-                  key={group.key}
-                  className="v3-nav-item-wrap"
-                  onMouseEnter={() => handleMouseEnter(group.key)}
-                  onMouseLeave={handleMouseLeave}
-                >
-                  <button
-                    type="button"
-                    className={`v3-nav-pill${active ? " active" : ""}`}
-                    data-testid={`admin-nav-${group.key}`}
-                    onClick={() => setOpenFlyout(openFlyout === group.key ? null : group.key)}
-                  >
-                    {group.label}
-                    <ChevronDown size={13} style={{ opacity: 0.7 }} />
-                  </button>
-
-                  {openFlyout === group.key && (
-                    <div className="v3-nav-flyout" role="menu" data-testid={`admin-flyout-${group.key}`}>
-                      {group.items.map((it) => (
-                        <NavLink
-                          key={it.to}
-                          to={it.to}
-                          role="menuitem"
-                          onClick={() => setOpenFlyout(null)}
-                          className={({ isActive }) => `v3-flyout-item${isActive ? " active" : ""}`}
-                        >
-                          {it.label}
-                        </NavLink>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </nav>
-
-          {/* Right Tools Controls */}
-          <div className="v3-nav-tools">
-            {/* Quick Search Command Pill (Cmd+K) */}
+          {mobileOpen && (
             <button
               type="button"
-              className="v3-circle-btn"
+              className="lp-mobile-menu-btn"
+              onClick={() => setMobileOpen(false)}
+              aria-label="Cerrar menú lateral"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
+        <nav className="lp-sidebar__body" aria-label="Navegación principal">
+          {visibleSections.map((sec) => (
+            <div key={sec.key}>
+              {sec.title && !collapsed && <div className="lp-nav-section">{sec.title}</div>}
+              {sec.entries.map(renderGroup)}
+            </div>
+          ))}
+        </nav>
+
+        <div className="lp-sidebar__footer">
+          {visibleSecurityItems.length > 0 && renderGroup({ ...FOOTER_SECURITY_GROUP, items: visibleSecurityItems })}
+          <a
+            href="/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="lp-nav-item lp-store-link"
+            data-testid="admin-view-site"
+            title="Ver mi tienda en nueva pestaña"
+          >
+            <ExternalLink size={15} strokeWidth={1.75} style={{ flexShrink: 0 }} aria-hidden="true" />
+            {!collapsed && <span>Ver mi tienda</span>}
+          </a>
+        </div>
+      </aside>
+
+      {/* Main Content Shell */}
+      <div className="lp-shell-content">
+        <header className="lp-topbar">
+          <div className="lp-topbar__left">
+            <button
+              type="button"
+              className="lp-mobile-menu-btn"
+              data-testid="admin-mobile-menu"
+              aria-label="Abrir menú lateral"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu size={17} />
+            </button>
+
+            <img
+              src="/favicon.png?v=2"
+              alt=""
+              aria-hidden="true"
+              className="lp-mobile-menu-btn"
+              style={{ width: 22, height: 22, border: "none", padding: 0, objectFit: "contain" }}
+            />
+
+            <div className="lp-topbar__crumb" aria-label="Ubicación actual">
+              <span>LevelPro OS</span>
+              <span>/</span>
+              <strong>{activeRouteRule?.label || "Administración"}</strong>
+            </div>
+          </div>
+
+          <div className="lp-topbar__right">
+            <button
+              type="button"
+              className="lp-cmdk-btn"
               aria-label="Buscar en LevelPro (Cmd+K)"
               onClick={() => setSearchOpen(true)}
               data-testid="admin-search-btn"
               title="Buscar SKU, serie, pedido o cliente (⌘K)"
-              style={{
-                width: "auto",
-                borderRadius: 999,
-                padding: "0 13px",
-                gap: 8,
-                background: "#131822",
-                border: "1px solid #242A34",
-                color: "#F5F5F5",
-                fontSize: 12,
-                fontWeight: 600,
-              }}
             >
-              <Search size={14} strokeWidth={2.2} style={{ color: "#1AFF6E" }} />
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "#C0C7D2" }}>⌘K</span>
+              <Search size={14} strokeWidth={1.75} />
+              <span className="lp-cmdk-label">Buscar pedidos, SKUs o secciones...</span>
+              <span className="lp-cmdk-kbd">⌘K</span>
             </button>
 
-            {/* Date Pill (Lumin Ref C) */}
-            <div className="v3-pill-btn" style={{ display: "none" }}>
-              27 Oct – 27 Nov, 2026
-            </div>
-
-            {/* Notifications Bell */}
             <NotificationsBell />
 
-            {/* User Avatar with Dropdown */}
             <div style={{ position: "relative" }} ref={userMenuRef}>
-              <div
-                className="v3-user-avatar"
+              <button
+                type="button"
+                className="lp-user-trigger"
                 data-testid="admin-user-chip"
                 onClick={() => setUserMenuOpen((o) => !o)}
+                aria-expanded={userMenuOpen}
+                aria-haspopup="menu"
                 title={user?.email || "Administrador"}
               >
-                {avatarText}
-              </div>
+                <span className="lp-user-avatar">{avatarText}</span>
+                <span className="lp-user-name">{displayName}</span>
+                <ChevronDown size={13} style={{ color: "#71717A" }} />
+              </button>
 
               {userMenuOpen && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "calc(100% + 10px)",
-                    right: 0,
-                    minWidth: 210,
-                    background: "#0B0E14",
-                    border: "1px solid #242A34",
-                    borderRadius: 18,
-                    padding: 8,
-                    boxShadow: "0 22px 50px -10px rgba(11, 14, 20, 0.65)",
-                    zIndex: 150,
-                    animation: "v3FadeIn 0.15s ease-out",
-                  }}
-                >
-                  <div style={{ padding: "8px 12px", borderBottom: "1px solid #242A34" }}>
-                    <p style={{ fontSize: 13, fontWeight: 700, margin: 0, color: "#F5F5F5" }}>
+                <div className="lp-popover-panel" role="menu" style={{ width: 228, padding: 6 }}>
+                  <div style={{ padding: "8px 10px", borderBottom: "1px solid #E4E4E7", marginBottom: 4 }}>
+                    <p style={{ fontSize: 13, fontWeight: 600, margin: 0, color: "#09090B" }}>
                       {user?.first_name ? `${user.first_name} ${user.last_name || ""}` : "Administrador"}
                     </p>
-                    <p style={{ fontSize: 11, margin: 0, color: "#9BA3AF", fontFamily: "var(--font-mono)" }}>{user?.email}</p>
+                    <p style={{ fontSize: 11.5, margin: "2px 0 0", color: "#71717A", fontFamily: "var(--font-mono)", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {user?.email}
+                    </p>
                   </div>
 
-                  <Link
-                    to="/"
-                    className="v3-flyout-item"
-                    data-testid="admin-view-site"
-                    onClick={() => setUserMenuOpen(false)}
-                  >
-                    <ExternalLink size={14} /> Ver tienda pública
+                  <Link to="/" className="lp-nav-subitem" onClick={() => setUserMenuOpen(false)}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <ExternalLink size={14} /> Ver tienda pública
+                    </span>
                   </Link>
 
                   {canAccessModule("settings", "manage_settings") && (
                     <Link
                       to="/admin/settings"
-                      className="v3-flyout-item"
-                      data-testid="admin-nav-settings"
+                      className="lp-nav-subitem"
                       onClick={() => setUserMenuOpen(false)}
                     >
-                      <Settings size={14} /> Personalización
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                        <Settings size={14} /> Personalización y CMS
+                      </span>
                     </Link>
                   )}
 
                   <button
                     type="button"
-                    className="v3-flyout-item"
-                    style={{ width: "100%", border: "none", background: "none", cursor: "pointer", color: "#EF4444" }}
+                    className="lp-nav-subitem"
+                    style={{ width: "100%", border: "none", background: "none", color: "#DC2626", cursor: "pointer", textAlign: "left" }}
                     data-testid="admin-logout"
                     onClick={handleLogout}
                   >
-                    <LogOut size={14} /> Cerrar sesión
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <LogOut size={14} /> Cerrar sesión
+                    </span>
                   </button>
                 </div>
               )}
             </div>
-
-            {/* Mobile Hamburger Menu Toggle */}
-            <button
-              type="button"
-              className="v3-circle-btn"
-              style={{ display: "none" }}
-              id="v3-mobile-toggle-btn"
-              data-testid="admin-mobile-menu"
-              aria-label="Abrir menú"
-              onClick={() => setMobileOpen(true)}
-            >
-              <Menu size={18} />
-            </button>
           </div>
-        </div>
-      </header>
+        </header>
 
-      {/* Mobile Drawer */}
-      {mobileOpen && (
-        <>
-          <div className="v3-mobile-backdrop" onClick={() => setMobileOpen(false)} />
-          <aside className="v3-mobile-drawer" data-testid="admin-sidebar-mobile">
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-              <Link to="/admin" onClick={() => setMobileOpen(false)} className="v3-brand" data-testid="admin-logo-home-mobile">
-                <div className="v3-brand-logo-wrap">
-                  <img
-                    src={logoUrl || logoImg}
-                    alt={siteName || "LevelPro Audio"}
-                    className={`v3-brand-logo-img${logoUrl ? " has-custom" : ""}`}
-                  />
-                </div>
-                <span className="v3-brand-tag">ADMIN</span>
-              </Link>
-              <button
-                type="button"
-                className="v3-circle-btn"
-                onClick={() => setMobileOpen(false)}
-                aria-label="Cerrar menú"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, flex: 1 }}>
-              {filteredNavGroups.map((g) => {
-                if (g.to) {
-                  return (
-                    <NavLink
-                      key={g.key}
-                      to={g.to}
-                      end={g.end}
-                      onClick={() => setMobileOpen(false)}
-                      className={({ isActive }) => `v3-flyout-item${isActive ? " active" : ""}`}
-                      data-testid={`admin-nav-mobile-${g.key}`}
-                    >
-                      {g.label}
-                    </NavLink>
-                  )
-                }
-                return (
-                  <div key={g.key} style={{ marginTop: 8 }}>
-                    <p className="v3-micro-label" style={{ padding: "0 10px", margin: "4px 0" }}>{g.label}</p>
-                    {g.items.map((it) => (
-                      <NavLink
-                        key={it.to}
-                        to={it.to}
-                        onClick={() => setMobileOpen(false)}
-                        className={({ isActive }) => `v3-flyout-item${isActive ? " active" : ""}`}
-                      >
-                        {it.label}
-                      </NavLink>
-                    ))}
-                  </div>
-                )
-              })}
-            </div>
-
-            <div style={{ marginTop: 24, paddingTop: 16, borderTop: "1px solid var(--v3-border)" }}>
-              <Link to="/" className="v3-flyout-item" data-testid="admin-view-site-mobile" onClick={() => setMobileOpen(false)}>
-                <ExternalLink size={15} /> Ver tienda pública
-              </Link>
-              <button
-                type="button"
-                className="v3-flyout-item"
-                style={{ width: "100%", border: "none", background: "none", color: "#EF4444", cursor: "pointer" }}
-                data-testid="admin-logout-mobile"
-                onClick={handleLogout}
-              >
-                <LogOut size={15} /> Cerrar sesión
-              </button>
-            </div>
-          </aside>
-        </>
-      )}
-
-      {/* Main Content Workspace */}
-      <main
-        id="admin-main"
-        className="v3-main-container"
-        style={{
-          width: "100%",
-          maxWidth: 1440,
-          margin: "22px auto 0",
-          padding: "0 clamp(14px, 2.5vw, 28px) 48px",
-          minHeight: "calc(100vh - 88px)",
-        }}
-      >
-        {!isRouteAuthorized ? (
-          <div
-            className="au-page"
-            data-testid="admin-access-denied"
-            style={{
-              maxWidth: 680,
-              margin: "48px auto",
-              padding: "36px 32px",
-              borderRadius: 20,
-              background: "#0C0D0E",
-              color: "#FFFFFF",
-              border: "1px solid rgba(255,255,255,0.1)",
-              boxShadow: "0 24px 60px rgba(0,0,0,0.16)",
-            }}
-          >
-            <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 12,
-                  background: "rgba(239, 68, 68, 0.14)",
-                  border: "1px solid rgba(239, 68, 68, 0.35)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  color: "#EF4444",
-                }}
-              >
-                <ShieldAlert size={22} />
-              </div>
-              <div>
-                <span
+        <main id="admin-main" className="lp-main">
+          {!isRouteAuthorized ? (
+            <div
+              className="au-card au-panel"
+              data-testid="admin-access-denied"
+              style={{ maxWidth: 640, margin: "32px auto" }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 14 }}>
+                <div
                   style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 11,
-                    letterSpacing: "0.08em",
-                    textTransform: "uppercase",
-                    color: "#1AFF6E",
-                    display: "block",
+                    width: 40,
+                    height: 40,
+                    borderRadius: 10,
+                    background: "#FEF2F2",
+                    border: "1px solid #FECACA",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: "#DC2626",
                   }}
                 >
-                  LEVELPRO OS V4.0 · SECURITY CORE · HTTP 403
-                </span>
-                <h1 style={{ fontSize: 22, fontWeight: 800, margin: "2px 0 0", color: "#FFFFFF" }}>
-                  Acceso Restringido por Rol (RBAC)
-                </h1>
-              </div>
-            </div>
-
-            <p style={{ fontSize: 14, lineHeight: 1.6, color: "rgba(255,255,255,0.78)", marginBottom: 20 }}>
-              Tu cuenta (<strong style={{ color: "#FFFFFF", fontFamily: "var(--font-mono)" }}>{user?.email}</strong>) no posee
-              los privilegios necesarios para acceder al módulo{" "}
-              <strong style={{ color: "#1AFF6E" }}>{activeRouteRule?.label || location.pathname}</strong>.
-              Por política de Segregación de Funciones y Denegación por Defecto, este recurso ha sido bloqueado.
-            </p>
-
-            <div
-              style={{
-                padding: "14px 16px",
-                borderRadius: 12,
-                background: "rgba(255,255,255,0.04)",
-                border: "1px solid rgba(255,255,255,0.08)",
-                marginBottom: 24,
-                fontFamily: "var(--font-mono)",
-                fontSize: 12,
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>ROLES ACTIVOS:</span>
-                <span style={{ color: "#1AFF6E", fontWeight: 700 }}>
-                  {myPerms?.roles?.length ? myPerms.roles.join(", ") : "Sin rol asignado"}
-                </span>
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                <span style={{ color: "rgba(255,255,255,0.5)" }}>MÓDULO REQUERIDO:</span>
-                <span style={{ color: "#FFFFFF" }}>{activeRouteRule?.module || "classified"}</span>
-              </div>
-              {activeRouteRule?.capability && (
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "rgba(255,255,255,0.5)" }}>CAPACIDAD SENSIBLE:</span>
-                  <span style={{ color: "#F59E0B" }}>{activeRouteRule.capability}</span>
+                  <ShieldAlert size={20} />
                 </div>
-              )}
-            </div>
+                <div>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600, color: "#71717A" }}>
+                    LEVELPRO OS · HTTP 403
+                  </span>
+                  <h1 style={{ fontSize: 19, fontWeight: 600, margin: "2px 0 0", color: "#09090B" }}>
+                    Acceso Restringido por Rol (RBAC)
+                  </h1>
+                </div>
+              </div>
 
-            <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={() => navigate(primaryLandingRoute)}
+              <p style={{ fontSize: 13.5, lineHeight: 1.55, color: "#52525B", marginBottom: 16 }}>
+                Tu cuenta (<strong style={{ color: "#09090B", fontFamily: "var(--font-mono)" }}>{user?.email}</strong>) no posee
+                los privilegios necesarios para acceder al módulo{" "}
+                <strong style={{ color: "#09090B" }}>{activeRouteRule?.label || location.pathname}</strong>.
+              </p>
+
+              <div
                 style={{
-                  padding: "10px 18px",
-                  borderRadius: 999,
-                  background: "#1AFF6E",
-                  color: "#0C0D0E",
-                  fontWeight: 800,
-                  fontSize: 13,
-                  border: "none",
-                  cursor: "pointer",
+                  padding: "12px 14px",
+                  borderRadius: 8,
+                  background: "#FAFAFA",
+                  border: "1px solid #E4E4E7",
+                  marginBottom: 18,
+                  fontFamily: "var(--font-mono)",
+                  fontSize: 12,
                 }}
               >
-                Ir a mi módulo autorizado
-              </button>
-              <Link
-                to="/"
-                style={{
-                  padding: "10px 18px",
-                  borderRadius: 999,
-                  background: "rgba(255,255,255,0.08)",
-                  color: "#FFFFFF",
-                  fontWeight: 600,
-                  fontSize: 13,
-                  textDecoration: "none",
-                }}
-              >
-                Volver a la tienda pública
-              </Link>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                  <span style={{ color: "#71717A" }}>ROLES ACTIVOS:</span>
+                  <span style={{ color: "#09090B", fontWeight: 600 }}>
+                    {myPerms?.roles?.length ? myPerms.roles.join(", ") : "Sin rol asignado"}
+                  </span>
+                </div>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 5 }}>
+                  <span style={{ color: "#71717A" }}>MÓDULO REQUERIDO:</span>
+                  <span style={{ color: "#09090B" }}>{activeRouteRule?.module || "classified"}</span>
+                </div>
+                {activeRouteRule?.capability && (
+                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ color: "#71717A" }}>CAPACIDAD:</span>
+                    <span style={{ color: "#B45309", fontWeight: 600 }}>{activeRouteRule.capability}</span>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  className="au-btn au-btn--primary"
+                  onClick={() => navigate(primaryLandingRoute)}
+                >
+                  Ir a mi módulo autorizado
+                </button>
+                <Link to="/" className="au-btn au-btn--secondary">
+                  Volver a la tienda pública
+                </Link>
+              </div>
             </div>
-          </div>
-        ) : (
-          <Outlet />
-        )}
-      </main>
+          ) : (
+            <Outlet />
+          )}
+        </main>
+      </div>
 
       <AdminSearch open={searchOpen} onClose={() => setSearchOpen(false)} />
-
-      {/* Inline media query helper to toggle mobile button */}
-      <style>{`
-        @media (max-width: 1080px) {
-          #v3-mobile-toggle-btn {
-            display: flex !important;
-          }
-        }
-      `}</style>
     </div>
   )
 }

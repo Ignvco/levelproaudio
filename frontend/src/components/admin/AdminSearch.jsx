@@ -1,20 +1,21 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from "react"
 import { useNavigate } from "react-router-dom"
+import { Search, Mic, Layers, Hash, ShoppingBag, Users, ArrowUpRight } from "lucide-react"
 import { globalAdminSearch } from "../../api/admin.api"
 import { formatCurrency } from "../../utils/accountingCurrency"
 
 const QUICK_ROUTES = [
-  { id: "route-dashboard", label: "Dashboard Ejecutivo", hint: "/admin", route: "/admin", badge: "PANEL" },
+  { id: "route-dashboard", label: "Inicio · Panel Ejecutivo", hint: "/admin", route: "/admin", badge: "PANEL" },
   { id: "route-pim", label: "Catálogo de Productos (PIM)", hint: "/admin/products", route: "/admin/products", badge: "PIM" },
-  { id: "route-oms", label: "Órdenes y Ventas (OMS)", hint: "/admin/orders", route: "/admin/orders", badge: "OMS" },
+  { id: "route-oms", label: "Lista de Ventas y OMS", hint: "/admin/orders", route: "/admin/orders", badge: "OMS" },
   { id: "route-wms", label: "Inventario y Kardex (WMS)", hint: "/admin/inventory", route: "/admin/inventory", badge: "WMS" },
   { id: "route-proc", label: "Órdenes de Compra & Recepciones", hint: "/admin/procurement", route: "/admin/procurement", badge: "PROC" },
-  { id: "route-cost", label: "Landed Cost & Márgenes", hint: "/admin/costing", route: "/admin/costing", badge: "COST" },
+  { id: "route-cost", label: "Costos, Landed Cost & Márgenes", hint: "/admin/costing", route: "/admin/costing", badge: "COST" },
   { id: "route-fin", label: "Finanzas, Tesorería & Conciliación", hint: "/admin/finance", route: "/admin/finance", badge: "FIN" },
   { id: "route-b2b", label: "Cotizaciones & Crédito B2B", hint: "/admin/b2b", route: "/admin/b2b", badge: "B2B" },
   { id: "route-log", label: "Logística, Garantías y Taller", hint: "/admin/logistics", route: "/admin/logistics", badge: "LOG" },
   { id: "route-mkt", label: "Marketing, Cupones y Promociones", hint: "/admin/marketing", route: "/admin/marketing", badge: "MKT" },
-  { id: "route-cms", label: "Editorial Bento CMS & Personalización", hint: "/admin/settings", route: "/admin/settings", badge: "CMS" },
+  { id: "route-cms", label: "Tienda Online (CMS) & Configuración", hint: "/admin/settings", route: "/admin/settings", badge: "CMS" },
 ]
 
 export default function AdminSearch({ open: controlledOpen, onClose, renderTrigger = false }) {
@@ -58,7 +59,6 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
     }, 0)
   }, [setOpenState])
 
-  // Global keyboard shortcut Cmd+K / Ctrl+K + Escape
   useEffect(() => {
     const handler = (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -77,14 +77,12 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
     return () => window.removeEventListener("keydown", handler)
   }, [open, isControlled, closePalette])
 
-  // Focus input on open
   useEffect(() => {
     if (open) {
       setTimeout(() => inputRef.current?.focus(), 20)
     }
   }, [open])
 
-  // Debounced global search with AbortController cancellation
   useEffect(() => {
     const trimmed = q.trim()
     if (trimmed.length < 2) {
@@ -134,17 +132,16 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
     }
   }, [q])
 
-  // Flatten items for keyboard navigation
   const flatItems = useMemo(() => {
     const trimmed = q.trim()
     if (trimmed.length < 2) {
       return QUICK_ROUTES.map((r) => ({
         key: r.id,
-        section: "Accesos Rápidos",
+        section: "Accesos directos",
         primary: r.label,
         secondary: r.hint,
         rightTag: r.badge,
-        rightColor: "#1AFF6E",
+        iconType: "route",
         route: r.route,
       }))
     }
@@ -153,22 +150,22 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
     for (const p of results.products || []) {
       items.push({
         key: `prod-${p.id}`,
-        section: "Productos (PIM)",
+        section: "Productos y SKUs",
         primary: p.name,
-        secondary: `${p.sku ? `SKU: ${p.sku} · ` : ""}${p.brand_name || "Catálogo"} · Stock: ${p.stock}`,
+        secondary: `${p.sku ? `${p.sku} · ` : ""}${p.brand_name || "Catálogo"} · ${p.stock} disp.`,
         rightTag: formatCurrency(p.price, p.currency || "CLP"),
-        rightColor: "#F5F5F7",
+        iconType: "product",
         route: `/admin/products?highlight=${p.id}`,
       })
     }
     for (const v of results.variants || []) {
       items.push({
         key: `var-${v.id}`,
-        section: "Variantes / SKU",
+        section: "Variantes",
         primary: `${v.sku} — ${v.name}`,
-        secondary: `${v.product_name || "Producto"} · Stock: ${v.stock}`,
+        secondary: `${v.product_name || "Producto"} · ${v.stock} disp.`,
         rightTag: formatCurrency(v.price, v.currency || "CLP"),
-        rightColor: "#60a5fa",
+        iconType: "variant",
         route: `/admin/products?highlight=${v.product_id || v.id}`,
       })
     }
@@ -179,29 +176,31 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
         primary: s.serial_number,
         secondary: `${s.product_name || "Equipo"}${s.sku ? ` (${s.sku})` : ""} · Bodega: ${s.warehouse_code || "N/A"}`,
         rightTag: String(s.status || "").toUpperCase(),
-        rightColor: "#1AFF6E",
+        badgeTone: "success",
+        iconType: "serial",
         route: s.target_route === "/admin/logistica" ? "/admin/logistics" : "/admin/inventory",
       })
     }
     for (const o of results.orders || []) {
       items.push({
         key: `ord-${o.id}`,
-        section: "Pedidos (OMS)",
+        section: "Órdenes recientes",
         primary: `#${o.short_id || String(o.id).slice(0, 8).toUpperCase()} — ${o.email}`,
         secondary: `Estado: ${o.status}${o.tracking_code ? ` · Tracking: ${o.tracking_code}` : ""}`,
         rightTag: formatCurrency(o.total, o.currency || "CLP"),
-        rightColor: "#fbbf24",
+        badgeTone: o.status === "paid" || o.status === "completed" ? "success" : "neutral",
+        iconType: "order",
         route: `/admin/orders?id=${o.id}`,
       })
     }
     for (const c of results.customers || []) {
       items.push({
         key: `cust-${c.id}`,
-        section: "Clientes",
+        section: "Clientes CRM",
         primary: c.full_name || c.email,
         secondary: c.email,
         rightTag: String(c.role || "customer").toUpperCase(),
-        rightColor: "#a78bfa",
+        iconType: "customer",
         route: "/admin/users",
       })
     }
@@ -253,6 +252,17 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
 
   const activeItemKey = flatItems[activeIndex]?.key || undefined
 
+  const renderEntryIcon = (type) => {
+    switch (type) {
+      case "product": return <Mic size={15} strokeWidth={1.75} />
+      case "variant": return <Layers size={15} strokeWidth={1.75} />
+      case "serial": return <Hash size={15} strokeWidth={1.75} />
+      case "order": return <ShoppingBag size={15} strokeWidth={1.75} />
+      case "customer": return <Users size={15} strokeWidth={1.75} />
+      default: return <ArrowUpRight size={15} strokeWidth={1.75} />
+    }
+  }
+
   return (
     <>
       {renderTrigger && (
@@ -263,26 +273,17 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
           aria-label="Abrir paleta de comandos y búsqueda global (Cmd+K)"
           aria-haspopup="dialog"
           aria-expanded={open}
-          style={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 10,
-            padding: "7px 13px",
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.12)",
-            borderRadius: 999,
-            color: "rgba(255,255,255,0.8)",
-            fontSize: 12,
-            cursor: "pointer",
-          }}
+          className="lp-cmdk-btn"
         >
+          <Search size={14} strokeWidth={1.75} />
           <span>Buscar...</span>
-          <kbd style={{ fontSize: 10, opacity: 0.7 }}>⌘K</kbd>
+          <kbd className="lp-cmdk-kbd">⌘K</kbd>
         </button>
       )}
 
       {open && (
         <div
+          className="admin-portal-root"
           role="dialog"
           aria-modal="true"
           aria-label="Paleta de comandos y búsqueda global administrativa"
@@ -291,42 +292,38 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(12, 13, 14, 0.72)",
-            backdropFilter: "blur(6px)",
+            background: "rgba(9, 9, 11, 0.45)",
             zIndex: 1200,
             display: "flex",
             alignItems: "flex-start",
             justifyContent: "center",
-            padding: "8vh 16px 24px",
+            padding: "9vh 16px 24px",
           }}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
               width: "100%",
-              maxWidth: 640,
-              background: "#0B0E14",
-              border: "1px solid #242A34",
-              borderRadius: 16,
+              maxWidth: 620,
+              background: "#FFFFFF",
+              border: "1px solid #E4E4E7",
+              borderRadius: 14,
               overflow: "hidden",
-              boxShadow: "0 28px 80px rgba(0,0,0,0.65)",
+              boxShadow: "0 20px 48px -12px rgba(9, 9, 11, 0.18), 0 0 0 1px rgba(9, 9, 11, 0.06)",
             }}
           >
-            {/* Combobox input bar */}
+            {/* Input Bar */}
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
                 gap: 10,
-                padding: "14px 16px",
-                borderBottom: "1px solid #242A34",
-                background: "#131822",
+                padding: "12px 16px",
+                borderBottom: "1px solid #E4E4E7",
+                background: "#FFFFFF",
               }}
             >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1AFF6E" strokeWidth="2.2" aria-hidden="true">
-                <circle cx="11" cy="11" r="8" />
-                <path d="m21 21-4.3-4.3" />
-              </svg>
+              <Search size={16} strokeWidth={1.75} style={{ color: "#52525B", flexShrink: 0 }} aria-hidden="true" />
               <input
                 ref={inputRef}
                 type="text"
@@ -340,14 +337,17 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 onKeyDown={handleInputKeyDown}
-                placeholder="Buscar SKU, producto, número de serie, pedido (#ID/tracking) o cliente..."
+                placeholder="Buscar SKU, producto, serie, pedido (#ID/tracking) o cliente..."
                 style={{
                   flex: 1,
                   background: "transparent",
                   border: "none",
                   outline: "none",
-                  color: "#F5F5F7",
-                  fontSize: 14,
+                  color: "#09090B",
+                  fontSize: 13.5,
+                  fontWeight: 500,
+                  boxShadow: "none",
+                  padding: 0,
                 }}
               />
               {q && (
@@ -356,11 +356,12 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
                   onClick={() => setQ("")}
                   aria-label="Limpiar búsqueda"
                   style={{
-                    background: "rgba(255,255,255,0.07)",
-                    border: "1px solid rgba(255,255,255,0.12)",
+                    background: "#F4F4F5",
+                    border: "1px solid #E4E4E7",
                     borderRadius: 6,
-                    color: "#a1a1aa",
+                    color: "#52525B",
                     fontSize: 11,
+                    fontWeight: 500,
                     padding: "2px 8px",
                     cursor: "pointer",
                   }}
@@ -374,51 +375,46 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
                 data-testid="admin-command-palette-close"
                 aria-label="Cerrar paleta de comandos"
                 style={{
-                  padding: "3px 8px",
-                  background: "rgba(255,255,255,0.06)",
-                  border: "1px solid rgba(255,255,255,0.12)",
+                  padding: "2px 8px",
+                  background: "#FAFAFA",
+                  border: "1px solid #E4E4E7",
                   borderRadius: 6,
-                  fontSize: 10,
-                  color: "#d4d4d8",
+                  fontSize: 10.5,
+                  fontWeight: 600,
+                  color: "#52525B",
                   cursor: "pointer",
-                  fontFamily: "var(--font-mono, 'Geist Mono', monospace)",
+                  fontFamily: "var(--font-mono)",
                 }}
               >
                 ESC
               </button>
             </div>
 
-            {/* Results listbox */}
+            {/* Results Listbox */}
             <div
               id="admin-command-palette-listbox"
               role="listbox"
               aria-label="Resultados de comando y búsqueda"
-              style={{ maxHeight: 420, overflowY: "auto", padding: "10px 8px" }}
+              style={{ maxHeight: 420, overflowY: "auto", padding: "8px" }}
             >
               {loading && (
-                <p
-                  role="status"
-                  style={{ textAlign: "center", color: "#a1a1aa", fontSize: 12, padding: "22px 12px", margin: 0 }}
-                >
+                <p role="status" style={{ textAlign: "center", color: "#71717A", fontSize: 12.5, padding: "22px 12px", margin: 0 }}>
                   Consultando índice administrativo (RBAC)...
                 </p>
               )}
 
               {!loading && errorMsg && (
-                <p
-                  role="alert"
-                  style={{ textAlign: "center", color: "#f87171", fontSize: 12, padding: "20px 12px", margin: 0 }}
-                >
+                <p role="alert" style={{ textAlign: "center", color: "#DC2626", fontSize: 12.5, padding: "20px 12px", margin: 0 }}>
                   {errorMsg}
                 </p>
               )}
 
               {!loading && !errorMsg && q.trim().length >= 2 && flatItems.length === 0 && (
                 <div style={{ textAlign: "center", padding: "28px 16px" }} data-testid="admin-command-palette-empty">
-                  <p style={{ color: "#e4e4e7", fontSize: 13, fontWeight: 600, margin: "0 0 4px" }}>
+                  <p style={{ color: "#09090B", fontSize: 13.5, fontWeight: 600, margin: "0 0 4px" }}>
                     Sin coincidencias para “{q.trim()}”
                   </p>
-                  <p style={{ color: "#8E8E98", fontSize: 12, margin: 0 }}>
+                  <p style={{ color: "#71717A", fontSize: 12, margin: 0 }}>
                     Verifica el SKU, número de serie, ID de pedido o tus permisos de módulo.
                   </p>
                 </div>
@@ -427,15 +423,13 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
               {!loading &&
                 !errorMsg &&
                 groupedSections.map((group) => (
-                  <div key={group.title} style={{ marginBottom: 10 }}>
+                  <div key={group.title} style={{ marginBottom: 8 }}>
                     <div
                       style={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        letterSpacing: "0.08em",
-                        color: "#9CA3AF",
-                        padding: "4px 12px 6px",
+                        fontSize: 11,
+                        fontWeight: 600,
+                        color: "#71717A",
+                        padding: "6px 10px 4px",
                       }}
                     >
                       {group.title}
@@ -452,58 +446,75 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
                           onMouseEnter={() => setActiveIndex(entry.index)}
                           onClick={() => handleSelect(entry)}
                           style={{
+                            position: "relative",
                             display: "flex",
                             alignItems: "center",
                             justifyContent: "space-between",
                             gap: 12,
-                            padding: "9px 12px",
+                            padding: "8px 12px",
                             borderRadius: 8,
                             cursor: "pointer",
-                            background: isSelected ? "rgba(26, 255, 110, 0.12)" : "transparent",
-                            border: isSelected
-                              ? "1px solid rgba(26, 255, 110, 0.35)"
-                              : "1px solid transparent",
-                            transition: "background 0.1s",
+                            background: isSelected ? "#F4F4F5" : "transparent",
+                            transition: "background 120ms ease",
                           }}
                         >
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <div
+                          {isSelected && (
+                            <span
+                              aria-hidden="true"
                               style={{
-                                fontSize: 13,
-                                fontWeight: 600,
-                                color: "#F5F5F7",
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
+                                position: "absolute",
+                                left: 2,
+                                top: 7,
+                                bottom: 7,
+                                width: 2.5,
+                                borderRadius: 99,
+                                background: "#1AFF6E",
                               }}
-                            >
-                              {entry.primary}
-                            </div>
-                            <div
-                              style={{
-                                fontSize: 11,
-                                color: "#A1A1AA",
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                                marginTop: 2,
-                              }}
-                            >
-                              {entry.secondary}
+                            />
+                          )}
+                          <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flex: 1 }}>
+                            <span style={{ color: isSelected ? "#09090B" : "#71717A", display: "inline-flex", flexShrink: 0 }}>
+                              {renderEntryIcon(entry.iconType)}
+                            </span>
+                            <div style={{ minWidth: 0, flex: 1 }}>
+                              <div
+                                style={{
+                                  fontSize: 13,
+                                  fontWeight: isSelected ? 600 : 500,
+                                  color: "#09090B",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                }}
+                              >
+                                {entry.primary}
+                              </div>
+                              <div
+                                style={{
+                                  fontSize: 11.5,
+                                  color: "#71717A",
+                                  whiteSpace: "nowrap",
+                                  overflow: "hidden",
+                                  textOverflow: "ellipsis",
+                                  marginTop: 1,
+                                }}
+                              >
+                                {entry.secondary}
+                              </div>
                             </div>
                           </div>
                           <span
                             style={{
                               fontSize: 11,
-                              fontWeight: 700,
-                              color: entry.rightColor || "#F5F5F7",
-                              fontFamily: "var(--font-mono, 'Geist Mono', monospace)",
+                              fontWeight: 600,
+                              color: entry.badgeTone === "success" ? "#0F7A38" : "#52525B",
+                              fontFamily: "var(--font-mono)",
                               fontVariantNumeric: "tabular-nums",
                               flexShrink: 0,
                               padding: "2px 8px",
-                              borderRadius: 6,
-                              background: "rgba(255,255,255,0.05)",
-                              border: "1px solid rgba(255,255,255,0.1)",
+                              borderRadius: 9999,
+                              background: entry.badgeTone === "success" ? "#ECFDF3" : "#FAFAFA",
+                              border: `1px solid ${entry.badgeTone === "success" ? "#BBF7D0" : "#E4E4E7"}`,
                             }}
                           >
                             {entry.rightTag}
@@ -515,7 +526,7 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
                 ))}
             </div>
 
-            {/* Footer keyboard hints */}
+            {/* Footer */}
             <div
               style={{
                 display: "flex",
@@ -523,16 +534,16 @@ export default function AdminSearch({ open: controlledOpen, onClose, renderTrigg
                 justifyContent: "space-between",
                 flexWrap: "wrap",
                 gap: 8,
-                padding: "9px 16px",
-                borderTop: "1px solid #242A34",
-                background: "#0B0E14",
+                padding: "8px 16px",
+                borderTop: "1px solid #E4E4E7",
+                background: "#FAFAFA",
                 fontSize: 11,
-                color: "#9CA3AF",
+                color: "#71717A",
               }}
             >
-              <span>↑↓ Navegar · ↵ Abrir módulo · ESC Cerrar</span>
-              <span style={{ fontFamily: "var(--font-mono, 'Geist Mono', monospace)", fontSize: 10 }}>
-                RBAC Zero-Trust · Multi-moneda Original
+              <span>↑↓ Navegar · ↵ Abrir · ESC Cerrar</span>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10.5 }}>
+                RBAC Zero-Trust · Multi-moneda
               </span>
             </div>
           </div>
