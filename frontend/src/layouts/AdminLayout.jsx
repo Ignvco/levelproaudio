@@ -834,8 +834,8 @@ export default function AdminLayout() {
 
             <img
               src="/favicon.png?v=2"
-              alt=""
-              aria-hidden="true"
+              alt="LevelPro Audio"
+              data-testid="admin-mobile-brand"
               className="lp-mobile-menu-btn"
               style={{ width: 22, height: 22, border: "none", padding: 0, objectFit: "contain" }}
             />

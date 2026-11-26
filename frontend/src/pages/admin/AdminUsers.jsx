@@ -418,7 +418,11 @@ export default function AdminUsers() {
       )}
 
       {activeTab === "rbac" && (
-        <DataTable
+        <>
+          {state === "ready" && totalCount > allUsers.length && (
+            <p className="au-formfield__help">Mostrando {allUsers.length} de {totalCount} usuarios. La búsqueda y los filtros se aplican a esta vista.</p>
+          )}
+          <DataTable
           columns={columns}
           data={users}
           loading={state === "loading"}
@@ -443,6 +447,7 @@ export default function AdminUsers() {
           emptyDesc="No hay usuarios con ese término o filtro."
           testId="users-table"
         />
+        </>
       )}
 
       {/* PANEL FICHA 360° */}

@@ -892,6 +892,7 @@
 /* Precision Tabs (Underline Nimbus pattern) */
 .admin-precision .au-tabs {
   display: flex;
+  flex-shrink: 0;
   gap: 4px;
   padding: 0 2px;
   background: transparent !important;

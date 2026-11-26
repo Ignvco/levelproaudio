@@ -25,6 +25,18 @@ before(async () => {
     ...(process.env.PAYMENT_TEST_CHROMIUM ? { executablePath: process.env.PAYMENT_TEST_CHROMIUM } : {}),
     args: ["--no-sandbox", "--disable-dev-shm-usage"],
   })
+  // Prewarm Vite dev server module graph so initial JSX transforms do not consume test timeouts
+  const warmCtx = await browser.newContext()
+  const warmPage = await warmCtx.newPage()
+  await warmPage.route("**/api/**", r => r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ results: [], count: 0 }) }))
+  await warmPage.addInitScript(() => {
+    sessionStorage.setItem("levelproaudio-auth", JSON.stringify({ state: { isAuthenticated: true, user: { id: "admin", email: "admin@example.test", is_staff: true, is_superuser: true } }, version: 0 }))
+  })
+  for (const warmRoute of ["/admin/academy/modules", "/admin/users"]) {
+    await warmPage.goto(`${baseURL}${warmRoute}`, { waitUntil: "domcontentloaded" })
+    await warmPage.waitForTimeout(300)
+  }
+  await warmCtx.close()
 })
 after(async () => {
   await browser?.close()
@@ -45,7 +57,7 @@ const views = [
   { path: "lessons", title: "Lecciones", empty: "Sin lecciones.", action: /Nueva lección/, retry: "Reintentar lecciones" },
   { path: "enrollments", title: "Inscripciones", empty: "Sin inscripciones todavía.", action: /Inscripción manual/, retry: "Reintentar inscripciones" },
   { path: "certifications", title: "Certificaciones", empty: "Sin certificaciones", action: "Nueva certificación", retry: "Reintentar certificaciones" },
-  { path: "users", title: "Usuarios", empty: "No hay usuarios", emptyExact: true, retry: "Reintentar" },
+  { path: "users", title: "CRM 360°, Organizaciones y Usuarios", tabSelector: '[data-testid="crm-tab-rbac"]', empty: "No hay usuarios", emptyExact: true, retry: "Reintentar" },
 ]
 const viewPath = v => v.path === "users" ? "/admin/users" : `/admin/academy/${v.path}`
 const viewEndpoint = v => v.path === "users" ? `${root}users/` : endpoint(v.path)
@@ -82,7 +94,8 @@ async function setup(t, width = 1280) {
     assert.ok(!url.search.includes("queryKey"), "React Query context must not become API query parameters")
     if (state.gates.has(url.pathname)) await state.gates.get(url.pathname)
     if (state.failures.has(url.pathname)) return send({ detail: "Synthetic outage" }, 503)
-    if (url.pathname === "/api/v1/auth/profile/") return send({ id: "admin", email: "admin@example.test", is_staff: true, is_superuser: true })
+    if (url.pathname === "/api/v1/auth/profile/") return send(state.profile || { id: "admin", email: "admin@example.test", is_staff: true, is_superuser: true })
+    if (url.pathname.startsWith("/api/v1/auth/me/permissions")) return send(state.permissions || { is_superuser: true, roles: ["Super Admin"], modules: ["dashboard", "catalog", "orders", "inventory", "purchases", "logistics", "finances", "marketing", "academy", "services", "roles", "settings", "audit", "users", "crm"], capabilities: {} })
     if (url.pathname === "/api/v1/site-settings/") return send({ site_name: "LevelPro Test" })
     return send(state.data[url.pathname] || { results: [], count: 0 })
   })
@@ -109,7 +122,7 @@ async function noOverflow(page) {
 }
 
 for (const view of views) {
-  test(`${view.title}: loading and failure are distinct from empty, retry recovers`, async t => {
+  test(`${view.path === "users" ? "Usuarios" : view.title}: loading and failure are distinct from empty, retry recovers`, async t => {
     const { page, state, goto } = await setup(t)
     const path = viewEndpoint(view)
     let release
@@ -119,9 +132,14 @@ for (const view of views) {
     state.data[path] = { results: [], count: 0 }
     await goto(viewPath(view))
     await page.getByRole("heading", { name: view.title, exact: true }).waitFor()
+    if (view.tabSelector) {
+      assert.equal(await page.getByTestId("crm-tab-crm").getAttribute("aria-selected"), "true")
+      await page.locator(view.tabSelector).click()
+    }
     if (view.action) assert.equal(await page.getByRole("button", { name: view.action }).isDisabled(), true)
     assert.equal(await page.getByText(view.empty, { exact: Boolean(view.emptyExact) }).count(), 0)
-    assert.ok((await page.locator(".au-lp__value").allTextContents()).every(text => text === "—"))
+    const kpiValues = await page.locator(".au-lp__value").allTextContents()
+    assert.ok(view.tabSelector ? kpiValues[kpiValues.length - 1] === "—" : kpiValues.every(text => text === "—"))
     release()
     await page.getByTestId("error-state").waitFor()
     assert.equal(await page.getByText(view.empty, { exact: Boolean(view.emptyExact) }).count(), 0)
@@ -382,29 +400,76 @@ test("users expose actual roles, filter the visible list and state the API limit
     { ...user, id: "u2", email: "staff@example.test", is_staff: true },
     { ...user, id: "u3", email: "super@example.test", is_staff: true, is_superuser: true }] }
   await goto("/admin/users")
+  assert.equal(await page.getByTestId("crm-tab-crm").getAttribute("aria-selected"), "true")
+  await page.getByTestId("crm-tab-rbac").click()
   await page.getByRole("cell", { name: "Super", exact: true }).waitFor()
-  assert.deepEqual(await page.locator(".au-lp__value").allTextContents(), ["150", "1", "2"])
+  const kpiValues = await page.locator(".au-lp__value").allTextContents()
+  assert.equal(kpiValues[kpiValues.length - 1], "150")
+  await page.getByText("Staff: 2 · Clientes: 1").waitFor()
   await page.getByText("Mostrando 3 de 150 usuarios.", { exact: false }).waitFor()
   await page.getByRole("combobox", { name: "Rol", exact: true }).selectOption("admin")
   assert.equal(await page.locator("tbody tr").count(), 1)
   assert.match(await page.locator("tbody").innerText(), /staff@example.test/)
+
+  // Verify restricted non-CRM/RBAC role is blocked at AdminLayout boundary
+  state.permissions = { is_superuser: false, roles: ["Bodega / Inventario"], modules: ["inventory"], capabilities: { adjust_inventory: true } }
+  await page.evaluate(() => {
+    sessionStorage.setItem("levelproaudio-auth", JSON.stringify({
+      state: { isAuthenticated: true, user: { id: "wh1", email: "bodega@example.test", is_staff: true, is_superuser: false, roles: ["Bodega / Inventario"] } },
+      version: 0,
+    }))
+  })
+  await goto("/admin/users")
+  await page.getByTestId("admin-access-denied").waitFor()
+  assert.equal(await page.getByTestId("users-table").count(), 0)
 })
 
 test("missing role flags are displayed as unavailable, never assumed to be a customer", async t => {
   const { page, state, goto } = await setup(t)
   state.data[`${root}users/`] = { count: 1, results: [{ ...user, is_staff: undefined, is_superuser: undefined }] }
   await goto("/admin/users")
+  await page.getByTestId("crm-tab-rbac").click()
   await page.getByRole("cell", { name: "Sin datos", exact: true }).waitFor()
-  assert.deepEqual(await page.locator(".au-lp__value").allTextContents(), ["1", "—", "—"])
+  const kpiValues = await page.locator(".au-lp__value").allTextContents()
+  assert.equal(kpiValues[kpiValues.length - 1], "1")
+  await page.getByText("Staff: — · Clientes: —").waitFor()
 })
 
 for (const width of [320, 390, 768, 1024, 1280, 1440]) {
   test(`Academy and users fit ${width}px; form actions remain visible and focus is contained`, async t => {
     const { page, goto } = await setup(t, width)
+    let testedDrawer = false
     for (const view of views) {
       await goto(viewPath(view))
+      if (view.tabSelector) await page.locator(view.tabSelector).click()
       await page.getByRole("table").waitFor()
       await noOverflow(page)
+      if (width < 1024 && !testedDrawer) {
+        testedDrawer = true
+        const closedLeft = await page.getByTestId("admin-sidebar").evaluate(el => el.getBoundingClientRect().right)
+        assert.ok(closedLeft <= 2, `Mobile sidebar drawer must start closed off-screen, got right=${closedLeft}`)
+        const mobBrand = await page.getByTestId("admin-mobile-brand").evaluate(el => {
+          const r = el.getBoundingClientRect()
+          return { x: r.x, width: r.width, height: r.height }
+        })
+        assert.ok(mobBrand.width > 0 && mobBrand.height > 0 && mobBrand.x >= 0, `Mobile brand must be visible, got ${JSON.stringify(mobBrand)}`)
+        await page.locator("#v3-mobile-toggle-btn").click()
+        await page.waitForTimeout(260)
+        const openBrand = await page.getByTestId("admin-logo-home").evaluate(el => {
+          const r = el.getBoundingClientRect()
+          return { x: r.x, width: r.width, height: r.height }
+        })
+        assert.ok(openBrand.x >= 0 && openBrand.width > 0, `Open mobile drawer must expose official brand, got ${JSON.stringify(openBrand)}`)
+        const navReachable = await page.locator(".lp-sidebar .lp-nav-item").first().evaluate(el => {
+          const r = el.getBoundingClientRect()
+          return r.x >= 0 && r.width > 0 && r.height >= 40
+        })
+        assert.equal(navReachable, true, "Mobile drawer navigation items must be accessible when open")
+        await page.locator(".lp-mobile-backdrop").click({ position: { x: Math.max(width - 12, 290), y: 120 } })
+        await page.waitForTimeout(260)
+        const reclosedRight = await page.getByTestId("admin-sidebar").evaluate(el => el.getBoundingClientRect().right)
+        assert.ok(reclosedRight <= 2, `Backdrop click must close mobile drawer, got right=${reclosedRight}`)
+      }
       if (!view.action) continue
       const trigger = page.getByRole("button", { name: view.action })
       await enabled(page, trigger)
@@ -422,7 +487,8 @@ for (const width of [320, 390, 768, 1024, 1280, 1440]) {
       }
       assert.ok(action.y >= 0 && action.y + action.height <= 900, `${view.path}: ${JSON.stringify({ bounds, action })}`)
       await noOverflow(page)
-      assert.equal(await page.locator(".v3-brand").evaluate(el => {
+      const brandLocator = width < 1024 ? page.getByTestId("admin-mobile-brand") : page.locator(".v3-brand")
+      assert.equal(await brandLocator.evaluate(el => {
         const box = el.getBoundingClientRect()
         return Boolean(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)?.closest(".au-modal__backdrop"))
       }), true, "The modal backdrop must cover navigation as well as page content")
