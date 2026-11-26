@@ -49,8 +49,8 @@ const CURRENCY_TONE = {
 }
 
 const subCardStyle = {
-  background: "rgba(255,255,255,0.025)",
-  border: "1px solid var(--border-subtle, rgba(255,255,255,0.08))",
+  background: "var(--admin-surface-secondary, #FAFAFA)",
+  border: "1px solid var(--admin-border, #E4E4F0)",
   borderRadius: 12,
   padding: 16,
 }
@@ -262,11 +262,11 @@ export default function AdminMarketing() {
           style={{
             padding: "12px 16px",
             borderRadius: 10,
-            background: "rgba(34, 197, 94, 0.12)",
-            border: "1px solid rgba(34, 197, 94, 0.3)",
-            color: "#4ade80",
+            background: "#F0FDF4",
+            border: "1px solid #86EFAC",
+            color: "#0F7A38",
             fontSize: 13,
-            fontWeight: 500,
+            fontWeight: 600,
           }}
         >
           {feedback}
@@ -279,11 +279,11 @@ export default function AdminMarketing() {
           style={{
             padding: "12px 16px",
             borderRadius: 10,
-            background: "rgba(239, 68, 68, 0.12)",
-            border: "1px solid rgba(239, 68, 68, 0.3)",
-            color: "#f87171",
+            background: "#FEF2F2",
+            border: "1px solid #FECACA",
+            color: "#B91C1C",
             fontSize: 13,
-            fontWeight: 500,
+            fontWeight: 600,
           }}
         >
           {error}
@@ -385,7 +385,7 @@ export default function AdminMarketing() {
                 <tbody>
                   {coupons.map((c) => (
                     <tr key={c.id}>
-                      <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "#1AFF6E" }}>{c.code}</td>
+                      <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "#0F7A38" }}>{c.code}</td>
                       <td>
                         <StatusBadge tone={CURRENCY_TONE[c.currency] || "neutral"}>{c.currency}</StatusBadge>
                       </td>
@@ -500,7 +500,7 @@ export default function AdminMarketing() {
           <div className="au-grid-2">
             {coupons.map((c) => (
               <div key={c.id} style={subCardStyle}>
-                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "#1AFF6E" }}>{c.code}</span> · Min:{" "}
+                <span style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "#0F7A38" }}>{c.code}</span> · Min:{" "}
                 {c.min_eligible_amount} {c.currency} · Margen min: {c.min_margin_percent ?? "N/A"}%
               </div>
             ))}
@@ -614,7 +614,7 @@ export default function AdminMarketing() {
                 >
                   <span style={{ fontSize: 13, color: "var(--text-primary)" }}>
                     {p.name} · {p.discount_value} ({p.currency}) ·{" "}
-                    <strong style={{ color: "#1AFF6E" }}>{p.status}</strong>
+                    <strong style={{ color: "#0F7A38" }}>{p.status}</strong>
                   </span>
                   <SecondaryButton
                     size="sm"
@@ -880,7 +880,7 @@ export default function AdminMarketing() {
               </p>
             </div>
             <div style={subCardStyle}>
-              <h3 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#1AFF6E" }}>
+              <h3 style={{ margin: "0 0 8px", fontSize: 14, fontWeight: 700, color: "#0F7A38" }}>
                 Rewards (Sorteos & Stickers)
               </h3>
               <p style={{ margin: "4px 0", fontSize: 13, color: "var(--text-secondary)" }}>

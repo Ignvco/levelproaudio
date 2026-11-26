@@ -93,10 +93,11 @@ const DARK_STATUS_BOX = {
   justifyContent: "space-between",
   gap: "12px",
   padding: "16px 20px",
-  borderRadius: "16px",
-  background: "#0B0E14",
-  border: "1px solid #242A34",
-  color: "#F5F5F5",
+  borderRadius: "12px",
+  background: "#FFFFFF",
+  border: "1px solid var(--admin-border, #E4E4F0)",
+  borderTop: "2.5px solid #09090B",
+  color: "#09090B",
 }
 
 export default function AdminSettings() {
@@ -462,7 +463,7 @@ export default function AdminSettings() {
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }} data-testid="admin-cms-page">
       <AdminPageHeader
         title="Editor Visual CMS & Versionado"
-        subtitle="Gate 12 · Editorial Bento (#0B0E14 / #1AFF6E) · Borradores, Previsualización en Vivo, Publicación Atómica y Rollback"
+        subtitle="Gate 12 · Borradores, Previsualización en Vivo del Storefront, Publicación Atómica y Rollback"
         actions={
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "10px" }}>
             <SecondaryButton onClick={handleCreateDraft} disabled={busy}>
@@ -495,20 +496,20 @@ export default function AdminSettings() {
           <div>
             <span style={{
               display: "inline-block", padding: "3px 8px", borderRadius: "6px",
-              background: "rgba(26,255,110,0.16)", color: "#1AFF6E",
+              background: "rgba(15,122,56,0.10)", color: "#0F7A38",
               fontSize: "10px", fontWeight: 700, fontFamily: "var(--font-mono)", textTransform: "uppercase",
             }}>
               Publicado en Sitio Público
             </span>
-            <p style={{ margin: "6px 0 2px", fontSize: "14px", fontWeight: 700, color: "#F5F5F5" }}>
+            <p style={{ margin: "6px 0 2px", fontSize: "14px", fontWeight: 700, color: "#09090B" }}>
               {publishedVer ? `Versión v${publishedVer.version_number} · ${publishedVer.change_summary || "Activa"}` : "Base SiteSettings (Sin versión CMS publicada)"}
             </p>
-            <p style={{ margin: 0, fontSize: "11px", color: "#9CA3AF" }}>
+            <p style={{ margin: 0, fontSize: "11px", color: "#52525B" }}>
               {publishedVer ? `Por: ${publishedVer.published_by_email || "admin"} · ${publishedVer.published_at?.slice(0, 19) || ""}` : "Compatible con configuración original"}
             </p>
           </div>
           {publishedVer && (
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", color: "#1AFF6E" }}>
+            <span style={{ fontFamily: "var(--font-mono)", fontSize: "11px", fontWeight: 700, color: "#0F7A38" }}>
               SHA: {publishedVer.checksum_sha256?.slice(0, 8)}
             </span>
           )}
@@ -518,15 +519,15 @@ export default function AdminSettings() {
           <div>
             <span style={{
               display: "inline-block", padding: "3px 8px", borderRadius: "6px",
-              background: "rgba(245,158,11,0.18)", color: "#FBBF24",
+              background: "#FEF3C7", color: "#92400E",
               fontSize: "10px", fontWeight: 700, fontFamily: "var(--font-mono)", textTransform: "uppercase",
             }}>
               {activeDraft?.status === "published" ? "Versión Seleccionada (Publicada)" : "Borrador en Edición (No Publicado)"}
             </span>
-            <p style={{ margin: "6px 0 2px", fontSize: "14px", fontWeight: 700, color: "#F5F5F5" }}>
+            <p style={{ margin: "6px 0 2px", fontSize: "14px", fontWeight: 700, color: "#09090B" }}>
               {activeDraft ? `Versión v${activeDraft.version_number ?? 1} [${String(activeDraft.status || "draft").toUpperCase()}]` : "Cree un borrador para editar"}
             </p>
-            <p style={{ margin: 0, fontSize: "11px", color: "#9CA3AF" }}>
+            <p style={{ margin: 0, fontSize: "11px", color: "#52525B" }}>
               {!canPublish ? "Modo Editor (Marketing): puede guardar y enviar a revisión; publicación reservada a Gerencia." : "Modo Publicador Autorizado: puede guardar, aprobar, publicar y restaurar."}
             </p>
           </div>
@@ -535,8 +536,8 @@ export default function AdminSettings() {
               data-testid="cms-unsaved-warning"
               style={{
                 padding: "6px 12px", borderRadius: "8px",
-                background: "rgba(245,158,11,0.22)", border: "1px solid #F59E0B",
-                color: "#FDE68A", fontSize: "11px", fontWeight: 700,
+                background: "#FEF3C7", border: "1px solid #F59E0B",
+                color: "#92400E", fontSize: "11px", fontWeight: 700,
               }}
             >
               Cambios sin guardar
@@ -549,9 +550,9 @@ export default function AdminSettings() {
         <div
           role="status"
           style={{
-            padding: "12px 16px", borderRadius: "12px",
-            background: "#0B0E14", border: "1px solid rgba(26,255,110,0.45)",
-            color: "#1AFF6E", fontSize: "13px", fontWeight: 600,
+            padding: "12px 16px", borderRadius: "10px",
+            background: "#F0FDF4", border: "1px solid #86EFAC",
+            color: "#0F7A38", fontSize: "13px", fontWeight: 600,
           }}
         >
           {feedback}
