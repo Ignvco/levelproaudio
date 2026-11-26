@@ -248,6 +248,23 @@ function OrderPanel({ order, onClose, canViewFinances = true, canApprovePayments
       testId="order-detail-sidemodal"
       subtitle={`Orden OMS · ${ORIGIN_LABELS[order.order_origin] || "Online"}`}
       title={<span className="lp-mono">#{order.id.slice(0, 8).toUpperCase()}</span>}
+      footer={
+        <>
+          {["shipped", "completed"].includes(order.status) && (
+            <SecondaryButton size="sm" onClick={() => setShowRmaBuilder((prev) => !prev)}>
+              {showRmaBuilder ? "Ocultar RMA" : "Solicitar RMA"}
+            </SecondaryButton>
+          )}
+          <SecondaryButton size="sm" onClick={onClose}>Cerrar</SecondaryButton>
+          <PrimaryButton
+            size="sm"
+            onClick={() => state3DMutation.mutate()}
+            disabled={state3DMutation.isPending}
+          >
+            {state3DMutation.isPending ? "Guardando..." : "Guardar transición"}
+          </PrimaryButton>
+        </>
+      }
     >
       <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {/* BF-13: Matriz Tri-Dimensional de Estados */}
@@ -467,14 +484,14 @@ function OrderPanel({ order, onClose, canViewFinances = true, canApprovePayments
                 fontSize: "11px", color: "var(--admin-text)", textTransform: "uppercase",
                 letterSpacing: "0.08em", fontWeight: 800, margin: 0,
               }}>
-                Productos ({order.items_count})
+                Productos ({order.items_count ?? order.items?.length ?? 0})
               </p>
               {["shipped", "completed"].includes(order.status) && (
                 <button
                   type="button"
                   onClick={() => setShowRmaBuilder(!showRmaBuilder)}
                   style={{
-                    fontSize: "11.5px", fontWeight: 700, color: "#065F46",
+                    fontSize: "11.5px", fontWeight: 700, color: "#0F7A38",
                     background: "#ECFDF5", border: "1px solid #A7F3D0",
                     borderRadius: "999px", padding: "4px 10px", cursor: "pointer",
                   }}
@@ -497,7 +514,7 @@ function OrderPanel({ order, onClose, canViewFinances = true, canApprovePayments
                     {item.product_name} {item.variant_name ? `(${item.variant_name})` : ""}
                   </p>
                   <p style={{ fontSize: "11.5px", color: "var(--admin-text-muted)", margin: "2px 0 0 0" }}>
-                    {formatCurrency(item.price, order.currency)} × {item.quantity}
+                    {formatCurrency(item.price ?? item.unit_price, order.currency)} × {item.quantity}
                   </p>
                 </div>
                 <span style={{ fontSize: "13px", fontWeight: 800, color: "var(--admin-text)", flexShrink: 0, marginLeft: "12px" }}>

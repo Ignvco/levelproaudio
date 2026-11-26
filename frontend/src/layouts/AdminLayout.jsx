@@ -758,6 +758,7 @@ export default function AdminLayout() {
           <Link
             to="/admin"
             data-testid="admin-logo-home"
+            className="v3-brand"
             style={{ display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none", minWidth: 0 }}
             aria-label={siteName || "LevelPro Audio"}
           >

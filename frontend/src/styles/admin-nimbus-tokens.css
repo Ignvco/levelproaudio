@@ -1318,6 +1318,18 @@
   box-shadow: var(--lp-shadow-modal);
 }
 
+.admin-precision .lp-unsaved-bar .au-btn--primary {
+  background: var(--lp-green-level) !important;
+  color: var(--lp-black-deep) !important;
+  border-color: var(--lp-green-level) !important;
+  font-weight: 600;
+}
+
+.admin-precision .lp-unsaved-bar .au-btn--primary:hover:not(:disabled) {
+  background: #3DFF88 !important;
+  border-color: #3DFF88 !important;
+}
+
 /* Form Layout Asymmetrical 2/3 + 1/3 */
 .admin-precision .lp-form-layout {
   display: grid;

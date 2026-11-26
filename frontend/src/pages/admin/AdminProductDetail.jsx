@@ -26,6 +26,7 @@ import {
   formInputStyle,
   AdminLayoutGrid,
   SwitchToggle,
+  UnsavedChangesBar,
   SkeletonCard,
   ErrorState,
 } from "../../components/admin/ui"
@@ -69,29 +70,48 @@ export default function AdminProductDetail() {
   const allAttrs = attrCatalog?.attributes || []
   const recommendedKeys = attrCatalog?.recommended_keys || []
 
+  const buildInitialForm = (p) => (p ? {
+    name: p.name || "",
+    sku: p.sku || "",
+    price: p.price ?? "",
+    compare_price: p.compare_price ?? "",
+    price_usd: p.price_usd ?? "",
+    price_ars: p.price_ars ?? "",
+    stock: p.stock ?? 0,
+    stock_min: p.stock_min ?? 3,
+    category: p.category?.id || "",
+    brand: p.brand?.id || "",
+    is_active: p.is_active ?? true,
+    short_description: p.short_description || "",
+    seo_title: p.seo_title || "",
+    seo_description: p.seo_description || "",
+  } : null)
+
   // General form
   const [form, setForm] = useState(null)
   const [savingGeneral, setSavingGeneral] = useState(false)
 
   useEffect(() => {
     if (!product) return
-    setForm({
-      name: product.name || "",
-      sku: product.sku || "",
-      price: product.price ?? "",
-      compare_price: product.compare_price ?? "",
-      price_usd: product.price_usd ?? "",
-      price_ars: product.price_ars ?? "",
-      stock: product.stock ?? 0,
-      stock_min: product.stock_min ?? 3,
-      category: product.category?.id || "",
-      brand: product.brand?.id || "",
-      is_active: product.is_active ?? true,
-      short_description: product.short_description || "",
-      seo_title: product.seo_title || "",
-      seo_description: product.seo_description || "",
-    })
+    setForm(buildInitialForm(product))
   }, [product])
+
+  const initialForm = buildInitialForm(product)
+  const isDirtyGeneral = Boolean(
+    form && initialForm && (
+      form.name !== initialForm.name
+      || form.sku !== initialForm.sku
+      || String(form.price) !== String(initialForm.price)
+      || String(form.compare_price) !== String(initialForm.compare_price)
+      || String(form.price_usd) !== String(initialForm.price_usd)
+      || String(form.price_ars) !== String(initialForm.price_ars)
+      || String(form.stock) !== String(initialForm.stock)
+      || String(form.category) !== String(initialForm.category)
+      || String(form.brand) !== String(initialForm.brand)
+      || Boolean(form.is_active) !== Boolean(initialForm.is_active)
+      || form.short_description !== initialForm.short_description
+    )
+  )
 
   // Variant form
   const emptyVariantForm = {
@@ -622,6 +642,13 @@ export default function AdminProductDetail() {
           </div>
         </AdminLayoutGrid>
       )}
+
+      <UnsavedChangesBar
+        dirty={tab === "general" && isDirtyGeneral}
+        saving={savingGeneral}
+        onSave={handleSaveGeneral}
+        onDiscard={() => product && setForm(buildInitialForm(product))}
+      />
     </div>
   )
 }
