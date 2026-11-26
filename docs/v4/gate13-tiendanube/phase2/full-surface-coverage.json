@@ -1,10 +1,9 @@
 {
-  "gate": "LEVELPRO OS V4.0 — GATE 13 PHASE 2.1",
+  "gate": "LEVELPRO OS V4.0 — GATE 13 PHASE 2.2",
   "inventory_source": "docs/v4/gate13-tiendanube/admin-surface-inventory.md",
   "total_unique_ids": 315,
   "classification_counts": {
-    "COMPLETE": 179,
-    "MIGRATED_CODE_ONLY_NOT_EXERCISED": 136
+    "COMPLETE": 315
   },
   "surfaces": [
     {
@@ -770,9 +769,9 @@
       "new_component": "Tabs Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: WMS tab Stock Dimensional rendered cleanly)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-014",
@@ -783,9 +782,9 @@
       "new_component": "Tabs Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: WMS tab Bodegas rendered cleanly)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-015",
@@ -796,9 +795,9 @@
       "new_component": "Tabs Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: WMS tab Kardex rendered cleanly)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-016",
@@ -809,9 +808,9 @@
       "new_component": "Tabs Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: WMS tab Transferencias rendered cleanly)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-017",
@@ -822,9 +821,9 @@
       "new_component": "Tabs Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: WMS tab Reservas rendered cleanly)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-018",
@@ -835,9 +834,9 @@
       "new_component": "Tabs Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: WMS tab Seriales rendered cleanly)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-019",
@@ -952,9 +951,9 @@
       "new_component": "Tabs Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: Finance tab /Retiros/i rendered)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-028",
@@ -965,9 +964,9 @@
       "new_component": "Tabs Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: Finance tab /^Configuración$/i rendered)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-029",
@@ -978,9 +977,9 @@
       "new_component": "Tabs Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: Finance tab /Por producto/i rendered)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-030",
@@ -991,9 +990,9 @@
       "new_component": "Tabs Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: Finance tab /Análisis/i rendered)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-031",
@@ -1576,9 +1575,9 @@
       "new_component": "Tabs Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:17-users-crm.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: CRM Organizations tab)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-076",
@@ -1589,9 +1588,9 @@
       "new_component": "Tabs Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:17-users-crm.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: CRM RBAC Users tab)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-077",
@@ -1706,9 +1705,9 @@
       "new_component": "SegmentedControl Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:07-datatable-orders.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: OMS Tabla mode active)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-086",
@@ -1719,9 +1718,9 @@
       "new_component": "SegmentedControl + Card Kanban claro",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:07-datatable-orders.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: OMS Kanban mode active)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-087",
@@ -1732,9 +1731,9 @@
       "new_component": "SegmentedControl Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:10-settings-cms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: CMS live preview viewport Desktop)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-088",
@@ -1745,9 +1744,9 @@
       "new_component": "SegmentedControl Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:10-settings-cms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: CMS live preview viewport Tablet)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-089",
@@ -1758,9 +1757,9 @@
       "new_component": "SegmentedControl Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:10-settings-cms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: CMS live preview viewport Mobile)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TAB-090",
@@ -1771,9 +1770,9 @@
       "new_component": "SegmentedControl Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:10-settings-cms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TAB: CMS live preview viewport Mobile 320px)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-001",
@@ -1810,9 +1809,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Finance Reconcile payment FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-004",
@@ -1823,9 +1822,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Finance Declared receipt FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-005",
@@ -1836,9 +1835,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Treasury New Account FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-006",
@@ -1849,9 +1848,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Treasury Transfer FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-007",
@@ -1862,9 +1861,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Treasury Import CSV FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-008",
@@ -1875,9 +1874,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: AR Allocate Payment FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-009",
@@ -1888,9 +1887,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: AP Pay Invoice FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-010",
@@ -1901,9 +1900,9 @@
       "new_component": "Modal Nimbus (FormModal)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: WMS New Warehouse FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-011",
@@ -1914,9 +1913,9 @@
       "new_component": "Modal Nimbus (FormModal)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: WMS Adjust Stock FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-012",
@@ -1927,9 +1926,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:20-academy.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Academy Course FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-013",
@@ -1940,9 +1939,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:20-academy.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Academy Course ConfirmationModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-014",
@@ -1966,9 +1965,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:14-b2b-quotes.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: B2B Quote Legacy FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-016",
@@ -1979,9 +1978,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:14-b2b-quotes.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: B2B PriceList FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-017",
@@ -1992,9 +1991,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:14-b2b-quotes.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: B2B Credit Request FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-018",
@@ -2005,9 +2004,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:14-b2b-quotes.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: B2B Credit Decision FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-019",
@@ -2018,9 +2017,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Billing DTE FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-020",
@@ -2031,9 +2030,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Brands FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-021",
@@ -2044,9 +2043,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Brands ConfirmationModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-022",
@@ -2057,9 +2056,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Categories FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-023",
@@ -2070,9 +2069,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Categories ConfirmationModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-024",
@@ -2083,9 +2082,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Academy Certification FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-025",
@@ -2096,9 +2095,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Academy Certification ConfirmationModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-026",
@@ -2109,9 +2108,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Academy Enrollment FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-027",
@@ -2122,9 +2121,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Finance Category FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-028",
@@ -2135,9 +2134,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Finance Withdrawal FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-029",
@@ -2148,9 +2147,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Finance Delete Withdrawal ConfirmationModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-030",
@@ -2161,9 +2160,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Finance Delete Category ConfirmationModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-031",
@@ -2174,9 +2173,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Academy Lesson FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-032",
@@ -2187,9 +2186,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Academy Lesson ConfirmationModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-033",
@@ -2200,9 +2199,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:15-logistics.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Logistics Package FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-034",
@@ -2213,9 +2212,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:15-logistics.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Logistics Courier Quote FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-035",
@@ -2226,9 +2225,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:15-logistics.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Logistics New Manifest FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-036",
@@ -2239,9 +2238,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:15-logistics.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Logistics Handover Confirmation FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-037",
@@ -2252,9 +2251,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:15-logistics.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Logistics Tracking Event FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-038",
@@ -2278,9 +2277,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:15-logistics.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Logistics Workshop Diagnosis FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-040",
@@ -2291,9 +2290,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:15-logistics.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Logistics Workshop Delivery FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-041",
@@ -2304,9 +2303,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:22-loyalty.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Loyalty Adjust Points FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-042",
@@ -2317,9 +2316,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Academy Module FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-043",
@@ -2330,9 +2329,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Academy Module ConfirmationModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-044",
@@ -2356,9 +2355,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: PaymentMethods Method FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-046",
@@ -2369,9 +2368,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: PaymentMethods Bank Account FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-047",
@@ -2382,9 +2381,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: PaymentMethods Delete ConfirmationModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-048",
@@ -2395,9 +2394,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Payments ConfirmationModal status transition (confirm-payment-status-modal))",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-049",
@@ -2408,9 +2407,9 @@
       "new_component": "Modal Nimbus (FormModal)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Procurement Create PO FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-050",
@@ -2421,9 +2420,9 @@
       "new_component": "Modal Nimbus (FormModal)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Procurement Receipt GR FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-051",
@@ -2434,9 +2433,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:05-product-form.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: ProductDetail variant deactivation ConfirmationModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-052",
@@ -2473,9 +2472,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:04-product-list.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: ConfirmationModal delete product)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-055",
@@ -2486,9 +2485,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:04-product-list.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Delete product image ConfirmationModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-056",
@@ -2499,9 +2498,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Rewards Campaign FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-057",
@@ -2512,9 +2511,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Rewards Campaign ConfirmationModal (delete-campaign-modal))",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-058",
@@ -2525,9 +2524,9 @@
       "new_component": "SideModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:18-roles-rbac.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: AdminRoles Role Detail SideModal/FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-059",
@@ -2538,9 +2537,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:21-services.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Services ConfirmationModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-060",
@@ -2551,9 +2550,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:21-services.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Services FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-061",
@@ -2564,9 +2563,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: SpecialOrder FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-062",
@@ -2577,9 +2576,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: SpecialOrder ConfirmationModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-063",
@@ -2590,9 +2589,9 @@
       "new_component": "ConfirmationModal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: SupplierDetail deactivate ConfirmationModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-064",
@@ -2616,9 +2615,9 @@
       "new_component": "Modal Nimbus (FormModal)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: Supplier price-list import FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-066",
@@ -2642,9 +2641,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:17-users-crm.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: CRM New Customer FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-068",
@@ -2655,9 +2654,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:17-users-crm.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: CRM Add Contact FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-069",
@@ -2668,9 +2667,9 @@
       "new_component": "Modal Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:17-users-crm.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: CRM User Roles FormModal)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-070",
@@ -2681,9 +2680,9 @@
       "new_component": "SideModal Nimbus (580px)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:17-users-crm.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: CRM 360 SideModal Drawer)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-OVL-071",
@@ -2720,9 +2719,9 @@
       "new_component": "DataTable.Dropdown Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (OVERLAY: DataTable RowMenu popover opened)",
       "responsive_status": "INHERITED_FROM_PARENT_ROUTE",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-001",
@@ -2733,9 +2732,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:04-product-list.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":4,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-002",
@@ -2746,9 +2745,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":7,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-003",
@@ -2759,9 +2758,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":6,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-004",
@@ -2772,9 +2771,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":7,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-005",
@@ -2785,9 +2784,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":7,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-006",
@@ -2798,9 +2797,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":8,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-007",
@@ -2811,9 +2810,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:05-product-form.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":7,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-008",
@@ -2863,9 +2862,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":6,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-012",
@@ -2876,9 +2875,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":6,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-013",
@@ -2941,9 +2940,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":5,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-018",
@@ -2980,9 +2979,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:08-forms-costing.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: SerialCostUnit table rendered)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-021",
@@ -2993,9 +2992,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:08-forms-costing.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: WAC table rendered)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-022",
@@ -3006,9 +3005,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:08-forms-costing.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: Costing layers sub-table rendered)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-023",
@@ -3019,9 +3018,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:08-forms-costing.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: Margin thresholds table)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-024",
@@ -3032,9 +3031,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:08-forms-costing.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: Profitability alerts table)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-025",
@@ -3045,9 +3044,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:08-forms-costing.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: Brand consolidated margin table)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-026",
@@ -3071,9 +3070,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:08-forms-costing.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: Pricing proposals table rendered)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-028",
@@ -3084,9 +3083,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":4,\"rows\":2})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-029",
@@ -3110,9 +3109,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":5,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-031",
@@ -3123,9 +3122,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:13-finance.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":5,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-032",
@@ -3149,9 +3148,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":5,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-034",
@@ -3162,9 +3161,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":6,\"rows\":2})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-035",
@@ -3201,9 +3200,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:15-logistics.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":5,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-038",
@@ -3214,9 +3213,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:15-logistics.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":6,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-039",
@@ -3227,9 +3226,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:15-logistics.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":5,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-040",
@@ -3240,9 +3239,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:15-logistics.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":4,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-041",
@@ -3253,9 +3252,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:15-logistics.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":6,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-042",
@@ -3279,9 +3278,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:22-loyalty.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":6,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-044",
@@ -3357,9 +3356,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":4,\"rows\":3})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-050",
@@ -3370,9 +3369,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":6,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-051",
@@ -3435,9 +3434,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":6,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-056",
@@ -3461,9 +3460,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":6,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-058",
@@ -3487,9 +3486,9 @@
       "new_component": "DataTable Nimbus (thead claro #F9FAFB)",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (TABLE: {\"headers\":5,\"rows\":1})",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-TBL-060",
@@ -3578,9 +3577,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: WMS New Warehouse form)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-003",
@@ -3591,9 +3590,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: WMS Adjust Stock form)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-004",
@@ -3604,9 +3603,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: WMS Transfer form)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-005",
@@ -3617,9 +3616,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:12-inventory-wms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: WMS Regularize Serials form)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-006",
@@ -3630,9 +3629,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:08-forms-costing.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: Costing Landed Cost form)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-007",
@@ -3643,9 +3642,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:08-forms-costing.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: Margin policy form)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-008",
@@ -3669,9 +3668,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:25-admin-login.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: AdminLogin email+password form interactive)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-010",
@@ -3695,9 +3694,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:16-marketing.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: Marketing Promotion form)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-012",
@@ -3708,9 +3707,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:16-marketing.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: Marketing Pricing preview form)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-013",
@@ -3721,9 +3720,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:16-marketing.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: Marketing Consent form)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-014",
@@ -3747,9 +3746,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: Procurement customs doc form)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-016",
@@ -3760,9 +3759,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: Procurement Create PO form validated)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-017",
@@ -3773,9 +3772,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: Procurement Receipt GR form)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-018",
@@ -3812,9 +3811,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:10-settings-cms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: CMS form /3\\. Imágenes/i verified)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-021",
@@ -3825,9 +3824,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:10-settings-cms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: CMS form /4\\. Banners/i verified)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-022",
@@ -3838,9 +3837,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:10-settings-cms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: CMS form /5\\. Anuncios/i verified)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-023",
@@ -3851,9 +3850,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:10-settings-cms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: CMS form /6\\. Secciones Home/i verified)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-024",
@@ -3864,9 +3863,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:10-settings-cms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: CMS form /7\\. Botones & Enlaces/i verified)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-025",
@@ -3877,9 +3876,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:10-settings-cms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: CMS form /8\\. SEO/i verified)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-026",
@@ -3890,9 +3889,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:10-settings-cms.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: CMS form /Config\\. Sistémica/i verified)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-027",
@@ -3903,9 +3902,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: SupplierDetail add contact form submitted)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-028",
@@ -3968,9 +3967,9 @@
       "new_component": "Layout 2 cols + Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "DOM/CSS token audit clean (not individually screenshot)",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: SupplierDetail profile editor saved)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-FRM-033",
@@ -3994,9 +3993,9 @@
       "new_component": "Card + FormField Nimbus",
       "migration_evidence": "source_present=true; admin_ui_primitives=true; zero_legacy_bento=true",
       "visual_test": "screenshot:22-loyalty.png + VIS-BAN:PASS",
-      "functional_test": "static_source_verified_only",
+      "functional_test": "Playwright Phase 2.2 interactive verification PASS (FORM: Loyalty Config editor)",
       "responsive_status": "PASS (6/6 viewports)",
-      "result": "MIGRATED_CODE_ONLY_NOT_EXERCISED"
+      "result": "COMPLETE"
     },
     {
       "id": "SURF-ST-001",

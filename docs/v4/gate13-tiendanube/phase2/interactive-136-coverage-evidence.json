@@ -1,0 +1,902 @@
+{
+  "gate": "LEVELPRO OS V4.0 — GATE 13 PHASE 2.2",
+  "suite": "frontend/tests/gate13-interactive-136.browser.mjs",
+  "total_recorded_events": 136,
+  "unique_surf_ids": 136,
+  "items": [
+    {
+      "id": "SURF-FRM-009",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "AdminLogin email+password form interactive"
+    },
+    {
+      "id": "SURF-TBL-001",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 4,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-073",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "DataTable RowMenu popover opened"
+    },
+    {
+      "id": "SURF-OVL-054",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "ConfirmationModal delete product"
+    },
+    {
+      "id": "SURF-TAB-086",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "OMS Kanban mode active"
+    },
+    {
+      "id": "SURF-TAB-085",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "OMS Tabla mode active"
+    },
+    {
+      "id": "SURF-TBL-059",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 5,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-061",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "SpecialOrder FormModal"
+    },
+    {
+      "id": "SURF-OVL-062",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "SpecialOrder ConfirmationModal"
+    },
+    {
+      "id": "SURF-OVL-020",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Brands FormModal"
+    },
+    {
+      "id": "SURF-OVL-021",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Brands ConfirmationModal"
+    },
+    {
+      "id": "SURF-OVL-022",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Categories FormModal"
+    },
+    {
+      "id": "SURF-OVL-023",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Categories ConfirmationModal"
+    },
+    {
+      "id": "SURF-OVL-051",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "ProductDetail variant deactivation ConfirmationModal"
+    },
+    {
+      "id": "SURF-TBL-007",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 7,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-055",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Delete product image ConfirmationModal"
+    },
+    {
+      "id": "SURF-TBL-055",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 6,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-065",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Supplier price-list import FormModal"
+    },
+    {
+      "id": "SURF-FRM-032",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "SupplierDetail profile editor saved"
+    },
+    {
+      "id": "SURF-OVL-063",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "SupplierDetail deactivate ConfirmationModal"
+    },
+    {
+      "id": "SURF-FRM-027",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "SupplierDetail add contact form submitted"
+    },
+    {
+      "id": "SURF-OVL-049",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Procurement Create PO FormModal"
+    },
+    {
+      "id": "SURF-FRM-016",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "Procurement Create PO form validated"
+    },
+    {
+      "id": "SURF-FRM-015",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "Procurement customs doc form"
+    },
+    {
+      "id": "SURF-OVL-050",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Procurement Receipt GR FormModal"
+    },
+    {
+      "id": "SURF-FRM-017",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "Procurement Receipt GR form"
+    },
+    {
+      "id": "SURF-FRM-006",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "Costing Landed Cost form"
+    },
+    {
+      "id": "SURF-TBL-020",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": "SerialCostUnit table rendered"
+    },
+    {
+      "id": "SURF-TBL-021",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": "WAC table rendered"
+    },
+    {
+      "id": "SURF-TBL-022",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": "Costing layers sub-table rendered"
+    },
+    {
+      "id": "SURF-TBL-023",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": "Margin thresholds table"
+    },
+    {
+      "id": "SURF-TBL-024",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": "Profitability alerts table"
+    },
+    {
+      "id": "SURF-TBL-025",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": "Brand consolidated margin table"
+    },
+    {
+      "id": "SURF-FRM-007",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "Margin policy form"
+    },
+    {
+      "id": "SURF-TBL-027",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": "Pricing proposals table rendered"
+    },
+    {
+      "id": "SURF-TAB-013",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "WMS tab Stock Dimensional rendered cleanly"
+    },
+    {
+      "id": "SURF-TAB-014",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "WMS tab Bodegas rendered cleanly"
+    },
+    {
+      "id": "SURF-TAB-015",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "WMS tab Kardex rendered cleanly"
+    },
+    {
+      "id": "SURF-TAB-016",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "WMS tab Transferencias rendered cleanly"
+    },
+    {
+      "id": "SURF-TAB-017",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "WMS tab Reservas rendered cleanly"
+    },
+    {
+      "id": "SURF-TAB-018",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "WMS tab Seriales rendered cleanly"
+    },
+    {
+      "id": "SURF-TBL-033",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 5,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-010",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "WMS New Warehouse FormModal"
+    },
+    {
+      "id": "SURF-FRM-002",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "WMS New Warehouse form"
+    },
+    {
+      "id": "SURF-OVL-011",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "WMS Adjust Stock FormModal"
+    },
+    {
+      "id": "SURF-FRM-003",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "WMS Adjust Stock form"
+    },
+    {
+      "id": "SURF-TBL-011",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 6,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-FRM-004",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "WMS Transfer form"
+    },
+    {
+      "id": "SURF-TBL-012",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 6,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-FRM-005",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "WMS Regularize Serials form"
+    },
+    {
+      "id": "SURF-OVL-033",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Logistics Package FormModal"
+    },
+    {
+      "id": "SURF-OVL-034",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Logistics Courier Quote FormModal"
+    },
+    {
+      "id": "SURF-TBL-037",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 5,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-TBL-038",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 6,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-035",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Logistics New Manifest FormModal"
+    },
+    {
+      "id": "SURF-OVL-036",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Logistics Handover Confirmation FormModal"
+    },
+    {
+      "id": "SURF-TBL-039",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 5,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-TBL-040",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 4,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-037",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Logistics Tracking Event FormModal"
+    },
+    {
+      "id": "SURF-TBL-041",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 6,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-039",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Logistics Workshop Diagnosis FormModal"
+    },
+    {
+      "id": "SURF-OVL-040",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Logistics Workshop Delivery FormModal"
+    },
+    {
+      "id": "SURF-TBL-002",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 7,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-TBL-003",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 6,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-003",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Finance Reconcile payment FormModal"
+    },
+    {
+      "id": "SURF-OVL-004",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Finance Declared receipt FormModal"
+    },
+    {
+      "id": "SURF-TBL-004",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 7,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-005",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Treasury New Account FormModal"
+    },
+    {
+      "id": "SURF-OVL-006",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Treasury Transfer FormModal"
+    },
+    {
+      "id": "SURF-OVL-007",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Treasury Import CSV FormModal"
+    },
+    {
+      "id": "SURF-TBL-005",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 7,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-008",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "AR Allocate Payment FormModal"
+    },
+    {
+      "id": "SURF-TBL-006",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 8,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-009",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "AP Pay Invoice FormModal"
+    },
+    {
+      "id": "SURF-TAB-027",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "Finance tab /Retiros/i rendered"
+    },
+    {
+      "id": "SURF-TAB-028",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "Finance tab /^Configuración$/i rendered"
+    },
+    {
+      "id": "SURF-TAB-029",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "Finance tab /Por producto/i rendered"
+    },
+    {
+      "id": "SURF-TAB-030",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "Finance tab /Análisis/i rendered"
+    },
+    {
+      "id": "SURF-TBL-030",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 5,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-028",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Finance Withdrawal FormModal"
+    },
+    {
+      "id": "SURF-OVL-029",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Finance Delete Withdrawal ConfirmationModal"
+    },
+    {
+      "id": "SURF-OVL-027",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Finance Category FormModal"
+    },
+    {
+      "id": "SURF-OVL-030",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Finance Delete Category ConfirmationModal"
+    },
+    {
+      "id": "SURF-TBL-031",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 5,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-019",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Billing DTE FormModal"
+    },
+    {
+      "id": "SURF-OVL-048",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Payments ConfirmationModal status transition (confirm-payment-status-modal)"
+    },
+    {
+      "id": "SURF-TBL-049",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 4,
+        "rows": 3
+      }
+    },
+    {
+      "id": "SURF-TBL-050",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 6,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-045",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "PaymentMethods Method FormModal"
+    },
+    {
+      "id": "SURF-OVL-046",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "PaymentMethods Bank Account FormModal"
+    },
+    {
+      "id": "SURF-OVL-047",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "PaymentMethods Delete ConfirmationModal"
+    },
+    {
+      "id": "SURF-OVL-015",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "B2B Quote Legacy FormModal"
+    },
+    {
+      "id": "SURF-OVL-016",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "B2B PriceList FormModal"
+    },
+    {
+      "id": "SURF-OVL-017",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "B2B Credit Request FormModal"
+    },
+    {
+      "id": "SURF-OVL-018",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "B2B Credit Decision FormModal"
+    },
+    {
+      "id": "SURF-OVL-067",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "CRM New Customer FormModal"
+    },
+    {
+      "id": "SURF-OVL-070",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "CRM 360 SideModal Drawer"
+    },
+    {
+      "id": "SURF-TAB-075",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "CRM Organizations tab"
+    },
+    {
+      "id": "SURF-OVL-068",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "CRM Add Contact FormModal"
+    },
+    {
+      "id": "SURF-TAB-076",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "CRM RBAC Users tab"
+    },
+    {
+      "id": "SURF-OVL-069",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "CRM User Roles FormModal"
+    },
+    {
+      "id": "SURF-OVL-058",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "AdminRoles Role Detail SideModal/FormModal"
+    },
+    {
+      "id": "SURF-FRM-011",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "Marketing Promotion form"
+    },
+    {
+      "id": "SURF-FRM-012",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "Marketing Pricing preview form"
+    },
+    {
+      "id": "SURF-FRM-013",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "Marketing Consent form"
+    },
+    {
+      "id": "SURF-FRM-020",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "CMS form /3\\. Imágenes/i verified"
+    },
+    {
+      "id": "SURF-FRM-021",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "CMS form /4\\. Banners/i verified"
+    },
+    {
+      "id": "SURF-FRM-022",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "CMS form /5\\. Anuncios/i verified"
+    },
+    {
+      "id": "SURF-FRM-023",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "CMS form /6\\. Secciones Home/i verified"
+    },
+    {
+      "id": "SURF-FRM-024",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "CMS form /7\\. Botones & Enlaces/i verified"
+    },
+    {
+      "id": "SURF-FRM-025",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "CMS form /8\\. SEO/i verified"
+    },
+    {
+      "id": "SURF-FRM-026",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "CMS form /Config\\. Sistémica/i verified"
+    },
+    {
+      "id": "SURF-TAB-087",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "CMS live preview viewport Desktop"
+    },
+    {
+      "id": "SURF-TAB-088",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "CMS live preview viewport Tablet"
+    },
+    {
+      "id": "SURF-TAB-089",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "CMS live preview viewport Mobile"
+    },
+    {
+      "id": "SURF-TAB-090",
+      "kind": "TAB",
+      "status": "PASS",
+      "detail": "CMS live preview viewport Mobile 320px"
+    },
+    {
+      "id": "SURF-OVL-012",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Academy Course FormModal"
+    },
+    {
+      "id": "SURF-OVL-013",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Academy Course ConfirmationModal"
+    },
+    {
+      "id": "SURF-OVL-042",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Academy Module FormModal"
+    },
+    {
+      "id": "SURF-OVL-043",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Academy Module ConfirmationModal"
+    },
+    {
+      "id": "SURF-TBL-034",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 6,
+        "rows": 2
+      }
+    },
+    {
+      "id": "SURF-OVL-031",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Academy Lesson FormModal"
+    },
+    {
+      "id": "SURF-OVL-032",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Academy Lesson ConfirmationModal"
+    },
+    {
+      "id": "SURF-TBL-028",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 4,
+        "rows": 2
+      }
+    },
+    {
+      "id": "SURF-OVL-026",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Academy Enrollment FormModal"
+    },
+    {
+      "id": "SURF-TBL-017",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 5,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-024",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Academy Certification FormModal"
+    },
+    {
+      "id": "SURF-OVL-025",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Academy Certification ConfirmationModal"
+    },
+    {
+      "id": "SURF-OVL-060",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Services FormModal"
+    },
+    {
+      "id": "SURF-OVL-059",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Services ConfirmationModal"
+    },
+    {
+      "id": "SURF-TBL-043",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 6,
+        "rows": 1
+      }
+    },
+    {
+      "id": "SURF-OVL-041",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Loyalty Adjust Points FormModal"
+    },
+    {
+      "id": "SURF-FRM-034",
+      "kind": "FORM",
+      "status": "PASS",
+      "detail": "Loyalty Config editor"
+    },
+    {
+      "id": "SURF-OVL-056",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Rewards Campaign FormModal"
+    },
+    {
+      "id": "SURF-OVL-057",
+      "kind": "OVERLAY",
+      "status": "PASS",
+      "detail": "Rewards Campaign ConfirmationModal (delete-campaign-modal)"
+    },
+    {
+      "id": "SURF-TBL-057",
+      "kind": "TABLE",
+      "status": "PASS",
+      "detail": {
+        "headers": 6,
+        "rows": 1
+      }
+    }
+  ]
+}

@@ -1,31 +1,35 @@
-# LEVELPRO OS V4.0 — GATE 13 · PHASE 2.1
-## QA Execution Report (Reporte Honesto Verificado Localmente)
+# LEVELPRO OS V4.0 — GATE 13 · PHASE 2.2
+## QA Execution Report (Regresión y Cobertura Interactiva Local)
 
-**Rama:** `feature/v4-gate13-admin-experience` @ `6299ce2cc6f9d8b28f750e8c7266523d05b7c683`  
+**Rama:** `feature/v4-gate13-admin-experience`  
 **Base Gate 12:** `6fa8254a8de68667aa8f578e40a378b82ba64628` · **Baseline Phase 2 (BEFORE):** `fa53c7f9b07ec6b13c4886a3ce4f322a58fe4bf6`  
-**Backend alterado desde Gate 12 / `fa53c7f`:** `0` archivos (motivo por el cual **no se repitieron los 1.039 tests backend**, manteniéndose verificación E2E real sobre Django + PostgreSQL 16 QA).
+**Commits previos en Phase 2.1:** `6299ce2cc6f9d8b28f750e8c7266523d05b7c683` (código), `2639c07`, `eba9c3e` (solo evidencias/documentación)  
+**Backend alterado desde Gate 12 / `fa53c7f`:** `0` archivos (`git diff --name-only fa53c7f..HEAD -- backend/` vacío; por QA proporcional **no se repitieron los 1.039 tests backend**, manteniéndose pruebas E2E reales sobre Django + PostgreSQL 16 QA).
 
-### Matriz de Verificación Ejecutada tras la Última Edición (`6299ce2`)
+### Ajustes Mínimos de Phase 2.2 (Sin Alterar Diseño LevelPro Precision ni Nimbus Shell)
 
-| Suite / Verificación | Modo de Ejecución | Resultado Real Observado | Estado | Notas Exactas |
+1. `frontend/src/layouts/AdminLayout.jsx`: agregado `alt="LevelPro Audio"` y `data-testid="admin-mobile-brand"` en el isotipo de barra móvil `< 1024px`.
+2. `frontend/src/pages/admin/AdminUsers.jsx`: restaurado el indicador de paginación `<p className="au-formfield__help">Mostrando {allUsers.length} de {totalCount} usuarios...</p>` sobre la tabla en la pestaña `"rbac"`.
+3. `frontend/src/styles/admin-nimbus-tokens.css`: agregado `flex-shrink: 0` en `.admin-precision .au-tabs` para evitar compresión vertical de la barra de pestañas dentro de modales con `scrollableBody`.
+4. `frontend/tests/v3-2-1-academy.browser.mjs`: precalentamiento Vite dev, aserción explícita del contrato CRM 360° inicial (`[data-testid="crm-tab-rbac"]`), cobertura RBAC deny (`Bodega / Inventario` -> `admin-access-denied`), y verificación real del drawer móvil Nimbus colapsado/abierto/cerrado con backdrop en `320px/390px/768px`.
+5. `frontend/tests/gate13-interactive-136.browser.mjs`: nueva suite automatizada reutilizable que ejerce las `136` superficies secundarias previamente no ejercidas (`18` tabs/modos/sub-viewports, `62` modales/confirmaciones/popovers, `33` tablas y `23` formularios/editores).
+
+### Matriz Completa de Verificación Tras la Última Edición de Código
+
+| Suite / Verificación | Modo de Ejecución | Resultado Real Observado | Estado | Evidencia / Alcance |
 | :--- | :--- | :--- | :---: | :--- |
-| `npm run lint` (`eslint . --max-warnings=0`) | Estático real | `0` errores, `0` warnings | `PASS` | Sobre código final `6299ce2` |
-| `npm run test:unit` (`node --test`, 12 suites) | Unitario real | `100 / 100` PASS (`0` fail, `0` skip) | `PASS` | Duración ~`680ms` |
-| `npm run build` + `npm run check:bundle` | Build producción Vite | Build OK · `initial_js_bytes: 472910` (`gzip: 146495`) | `PASS` | Presupuesto respetado |
-| `npm run test:browser` (Playwright `1.62.1` + Chromium `1234`) | Browser suite nativa del repo | **`81 / 91` PASS · `10` FAIL** (`164,875ms`) | `PARTIAL_FAIL` | Todas las `10` fallas ocurren en `tests/v3-2-1-academy.browser.mjs` (ver desglose debajo) |
-| `tests/gate2-pim.browser.mjs` | Browser PIM + Variantes + Importador | `1 / 1` PASS (`5,589ms`) | `PASS` | Flujo PIM + Variantes + BulkEdit OK |
-| `tests/gate13-admin-experience-real-e2e.mjs` | Real Playwright -> Django -> PostgreSQL 16 QA (`levelpro-v32-qa-db-1`) | `1 / 1` PASS (`111,845ms`) | `PASS` | E2E A/B/C + Marketing + CMS iframe + RBAC Deny |
-| Batería Real PostgreSQL 16 QA `E2E-PG-01..12` | Real Playwright -> Vite Preview -> Django -> PG16 (`levelpro_v32_qa`) | **`12 / 12` PASS · `0` FAIL · `0` JS errors** | `PASS` | Evidencia cruda en `e2e-postgres16-12flows.json` |
-| Auditoría Responsive + `VIS-BAN-01..08` (`39 × 6`) | Chromium Headless + fixtures deterministas | **`234 / 234` PASS** (`0` overflow, `0` JS errors, `0` ErrorBoundary, `0` VIS-BAN) | `PASS` | Evidencia cruda por celda en `responsive-matrix-234.json` |
-| Evidencia Visual (`BEFORE`/`AFTER` + `Target vs Impl` + Subvistas) | Chromium Headless (`1440×900` / `390×844`) | `25` BEFORE + `25` AFTER + `25` B/A + `11` Target vs Impl + `13` subvistas `ProductDetail/CMS/OMS` | `PASS` | `0` pares B/A idénticos; `/` público oscuro intacto |
+| `npm run lint` (`eslint . --max-warnings=0`) | Estático real | `0` errores, `0` warnings | `PASS` | Sobre el árbol final Phase 2.2 |
+| `npm run test:unit` (`node --test`, 12 archivos) | Unitario real | `100 / 100` PASS (`0` fail, `0` skip) | `PASS` | Presupuesto unitario intacto |
+| `npm run build` + `npm run check:bundle` | Build producción Vite | Build OK · `initial_js_bytes: 472910` (`gzip: 146492`) | `PASS` | Dentro del presupuesto |
+| `npm run test:browser` (`tests/v3-2-1-academy.browser.mjs` + nativa) | Playwright + Chromium (`146,933.77ms`) | **`91 / 91` PASS (`0` fail, `0` skip)** | `PASS` | Resueltas las `10` fallas previas |
+| `tests/gate2-pim.browser.mjs` | Playwright PIM (`5,809.29ms`) | **`1 / 1` PASS** | `PASS` | Tienda variantes, BulkEdit, Ficha PIM, Import CSV |
+| `tests/gate13-interactive-136.browser.mjs` | Playwright interactivo (`45,997.43ms`) | **`6 / 6` grupos PASS (`136 / 136` IDs únicos)** | `PASS` | Evidencia en `interactive-136-coverage-evidence.json` |
+| `tests/gate13-admin-experience-real-e2e.mjs` | Real Playwright -> Django -> PG16 (`88,496.80ms`) | **`1 / 1` PASS** | `PASS` | Navegación + Command Palette + Notification + RBAC Deny |
+| Batería E2E PG16 `E2E-PG-01..12` | Real Playwright -> PG16 (`levelpro_v32_qa`) | **`12 / 12` PASS** | `PASS` | `e2e-postgres16-12flows.json` |
+| Batería Profunda PG16 Phase 2.2 | Real Playwright -> PG16 (`levelpro_v32_qa`) | `4` `PASS` (`WMS`, `Costing`, `Fiscal->Billing`, `Product Contract`) + `1` `PASS_REPRODUCED_KNOWN_DEFECT` (`ISS-10`, HTTP `400`) | `PASS` / `ISS-10_OPEN` | `e2e-postgres16-deep-phase22.json` |
+| Auditoría Responsive + `VIS-BAN-01..08` (`39 × 6`) | Chromium Headless + fixtures deterministas | **`234 / 234` PASS (`0` overflow, `0` JS errors, `0` ErrorBoundary, `0` VIS-BAN)** | `PASS` | `responsive-matrix-234.json` · Shell `240px`/`48px`/`56px` |
 
-### Desglose Verificado de las `10` Fallas en `npm run test:browser` (`tests/v3-2-1-academy.browser.mjs`)
+### Clasificación Honesta (Fixtures Sintéticos vs Backend Real PostgreSQL 16 QA)
 
-1. **Pre-existente contrato Gate 8 (`dbba436`) en `/admin/users` (`6` fallas):** `v3-2-1-academy.browser.mjs` (líneas `48`, `121`, `385`, `397`, `406` en `1024/1280/1440px`) asume que `/admin/users` abre directamente en el heading `"Usuarios"` y renderiza inmediatamente la tabla heredada `/api/v1/admin/users/`. Desde Gate 8 (`dbba436`), `AdminUsers.jsx` inicia en el tab `"crm"` (*CRM 360°*), ubicando `"Usuarios y Roles RBAC"` en la pestaña `"rbac"`.
-2. **Selector `.v3-brand` en drawer colapsado móvil (`3` fallas en `320px`, `390px`, `768px`):** `v3-2-1-academy.browser.mjs` línea `425` evalúa `document.elementFromPoint(...)` sobre el centro de `.v3-brand`. Bajo la arquitectura Tiendanube/Nimbus (`< 1024px`), el sidebar completo se colapsa fuera de viewport (`translateX(-100%)`), por lo que `elementFromPoint` en coordenadas negativas retorna `null` aunque `.au-modal__backdrop` cubre `100vw × 100vh`.
-3. **Timeout frío inicial Vite dev server (`1` falla):** `Módulos: loading and failure are distinct from empty, retry recovers` excedió el timeout estricto de `7000ms` durante la primera compilación dev de Vite (`11,290ms`); los tres tests subsecuentes de `Módulos` dentro del mismo archivo pasaron.
-
-### Clasificación Honesta de Verificación E2E
-
-- **Suites con fixtures sintéticos:** `npm run test:browser` (`91` specs), `tests/gate2-pim.browser.mjs`, auditoría responsive `234` celdas y capturas visuales comparativas.
-- **Suites contra backend Django + PostgreSQL 16 QA real (`levelpro-v32-qa-backend-1` + `levelpro_v32_qa`):** `tests/gate13-admin-experience-real-e2e.mjs` (`1/1 PASS`) y los `12` flujos `E2E-PG-01..12` (`12/12 PASS`, sin pagos externos reales ni envío de correos/DTE).
+- **Suites con fixtures deterministas:** `npm run test:browser` (`91/91`), `tests/gate2-pim.browser.mjs`, `tests/gate13-interactive-136.browser.mjs` (`136/136`) y matriz responsive `234/234`.
+- **Suites contra backend Django + PostgreSQL 16 QA real (`levelpro-v32-qa-backend-1` + `levelpro_v32_qa`):** `tests/gate13-admin-experience-real-e2e.mjs`, `E2E-PG-01..12` y la batería profunda Phase 2.2 (`PG16-DEEP-WMS`, `PG16-DEEP-COSTING`, `PG16-DEEP-FINANCE-BILLING`, `PG16-DEEP-PRODUCT-CONTRACT`, más reproducción `PG16-REPRODUCE-ISS10`). No se disparan pasarelas externas reales ni envíos reales de correo/SII.

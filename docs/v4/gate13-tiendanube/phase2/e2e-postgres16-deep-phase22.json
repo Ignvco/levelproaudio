@@ -1,0 +1,51 @@
+{
+  "suite": "Phase 2.2 Deep PG16 Domain & Contract Suite",
+  "db": "levelpro_v32_qa",
+  "results": [
+    {
+      "id": "PG16-DEEP-WMS",
+      "status": "PASS",
+      "duration_ms": 12283,
+      "detail": {
+        "physical_after_adjust": 20,
+        "kardex_reason": "Ajuste QA PG16 P22 1795729184121"
+      }
+    },
+    {
+      "id": "PG16-DEEP-COSTING",
+      "status": "PASS",
+      "duration_ms": 8798,
+      "detail": {
+        "policy_persisted": "Policy-P22-1795729184121",
+        "simulation_ran": true
+      }
+    },
+    {
+      "id": "PG16-DEEP-FINANCE-BILLING",
+      "status": "PASS",
+      "duration_ms": 3406,
+      "detail": {
+        "redirect": "/admin/fiscal -> /admin/billing",
+        "persisted_dte_folio": "F-P22-184121"
+      }
+    },
+    {
+      "id": "PG16-DEEP-PRODUCT-CONTRACT",
+      "status": "PASS",
+      "duration_ms": 10679,
+      "detail": {
+        "all_fields_verified": true,
+        "long_description_preserved": "Descripción completa larga inicial preservada en PostgreSQL 16."
+      }
+    },
+    {
+      "id": "PG16-REPRODUCE-ISS10",
+      "status": "PASS_REPRODUCED_KNOWN_DEFECT",
+      "duration_ms": 3883,
+      "detail": {
+        "status": 400,
+        "body": "{\"error\":\"Debes seleccionar una variante para RME UFX III P22 1795729184121 Verified.\"}"
+      }
+    }
+  ]
+}
