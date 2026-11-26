@@ -70,7 +70,8 @@ export default function AdminRewardsEntries() {
           aria-label="Filtrar por campaña"
           data-testid="filter-campaign"
           onChange={e => setFilters(f => ({...f, campaign:e.target.value}))}
-          className="au-select">
+          className="au-select"
+          style={{ maxWidth: "100%" }}>
           <option value="">Todas las campañas</option>
           {campaigns.map(c => (
             <option key={c.id} value={c.id}>{c.name}</option>
@@ -80,7 +81,7 @@ export default function AdminRewardsEntries() {
           value={filters.search}
           onChange={e => setFilters(f => ({...f, search:e.target.value}))}
           className="au-input"
-          style={{ maxWidth:"280px" }} />
+          style={{ maxWidth:"100%", flex: "1 1 200px" }} />
         <input type="date" aria-label="Fecha desde" value={filters.date_from}
           onChange={e => setFilters(f => ({...f, date_from:e.target.value}))}
           className="au-select" />

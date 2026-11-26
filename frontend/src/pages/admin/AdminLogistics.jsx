@@ -262,20 +262,22 @@ export default function AdminLogistics() {
           {(overview.ready_orders || []).length === 0 ? (
             <p style={{ fontSize: "13px", color: "var(--admin-text-muted)" }}>No hay pedidos pendientes de preparación.</p>
           ) : (
-            <table className="lp-table" style={{ width: "100%" }}>
-              <thead><tr><th>Pedido</th><th>Cliente</th><th>Estado OMS</th><th>Destino</th><th>Acción</th></tr></thead>
-              <tbody>
-                {overview.ready_orders.map(o => (
-                  <tr key={o.id}>
-                    <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>#{o.order_short}</td>
-                    <td>{o.customer_email}</td>
-                    <td><StatusBadge value={o.fulfillment_status} /></td>
-                    <td>{o.shipping_address}</td>
-                    <td><PrimaryButton onClick={() => handleCreateShipment(o.id)} style={{ padding: "5px 10px", fontSize: "12px" }}>Crear envío</PrimaryButton></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="au-tscroll">
+              <table className="lp-table" style={{ width: "100%" }}>
+                <thead><tr><th>Pedido</th><th>Cliente</th><th>Estado OMS</th><th>Destino</th><th>Acción</th></tr></thead>
+                <tbody>
+                  {overview.ready_orders.map(o => (
+                    <tr key={o.id}>
+                      <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>#{o.order_short}</td>
+                      <td>{o.customer_email}</td>
+                      <td><StatusBadge value={o.fulfillment_status} /></td>
+                      <td>{o.shipping_address}</td>
+                      <td><PrimaryButton onClick={() => handleCreateShipment(o.id)} style={{ padding: "5px 10px", fontSize: "12px" }}>Crear envío</PrimaryButton></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </SectionCard>
       )}
@@ -283,27 +285,29 @@ export default function AdminLogistics() {
       {tab === "shipments" && (
         <SectionCard eyebrow="BF-25 · EMPAQUE Y DESPACHO" title="Envíos, bultos y estados operativos">
           {shipments.length === 0 ? <p style={{ fontSize: "13px", color: "var(--admin-text-muted)" }}>Sin envíos registrados.</p> : (
-            <table className="lp-table" style={{ width: "100%" }}>
-              <thead><tr><th>Envío</th><th>Pedido</th><th>Transportista</th><th>Bultos</th><th>Estado</th><th>Acciones</th></tr></thead>
-              <tbody>
-                {shipments.map(s => (
-                  <tr key={s.id}>
-                    <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{s.shipment_number}</td>
-                    <td style={{ fontFamily: "var(--font-mono)" }}>#{s.order_short}</td>
-                    <td>{s.carrier_name || "Sin asignar"}</td>
-                    <td>{s.packages_count}</td>
-                    <td><StatusBadge value={s.status} /></td>
-                    <td style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-                      <SecondaryButton onClick={() => setPkgTarget(s)} style={{ padding: "4px 8px", fontSize: "11px" }}>+ Bulto</SecondaryButton>
-                      <SecondaryButton onClick={() => { setQuoteTarget(s); setQuoteForm({ carrier_id: carriers[0]?.id || "", carrier_service_id: carriers[0]?.services?.[0]?.id || "" }) }} style={{ padding: "4px 8px", fontSize: "11px" }}>Cotizar</SecondaryButton>
-                      {s.status === "reserved" && <SecondaryButton onClick={() => handleAdvance(s, "preparing")} style={{ padding: "4px 8px", fontSize: "11px" }}>Preparar</SecondaryButton>}
-                      {s.status === "preparing" && <SecondaryButton onClick={() => handleAdvance(s, "packed")} style={{ padding: "4px 8px", fontSize: "11px" }}>Empacar</SecondaryButton>}
-                      {s.status === "packed" && <PrimaryButton onClick={() => handleLabels(s)} style={{ padding: "4px 8px", fontSize: "11px" }}>Etiqueta</PrimaryButton>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="au-tscroll">
+              <table className="lp-table" style={{ width: "100%" }}>
+                <thead><tr><th>Envío</th><th>Pedido</th><th>Transportista</th><th>Bultos</th><th>Estado</th><th>Acciones</th></tr></thead>
+                <tbody>
+                  {shipments.map(s => (
+                    <tr key={s.id}>
+                      <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{s.shipment_number}</td>
+                      <td style={{ fontFamily: "var(--font-mono)" }}>#{s.order_short}</td>
+                      <td>{s.carrier_name || "Sin asignar"}</td>
+                      <td>{s.packages_count}</td>
+                      <td><StatusBadge value={s.status} /></td>
+                      <td style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+                        <SecondaryButton onClick={() => setPkgTarget(s)} style={{ padding: "4px 8px", fontSize: "11px" }}>+ Bulto</SecondaryButton>
+                        <SecondaryButton onClick={() => { setQuoteTarget(s); setQuoteForm({ carrier_id: carriers[0]?.id || "", carrier_service_id: carriers[0]?.services?.[0]?.id || "" }) }} style={{ padding: "4px 8px", fontSize: "11px" }}>Cotizar</SecondaryButton>
+                        {s.status === "reserved" && <SecondaryButton onClick={() => handleAdvance(s, "preparing")} style={{ padding: "4px 8px", fontSize: "11px" }}>Preparar</SecondaryButton>}
+                        {s.status === "preparing" && <SecondaryButton onClick={() => handleAdvance(s, "packed")} style={{ padding: "4px 8px", fontSize: "11px" }}>Empacar</SecondaryButton>}
+                        {s.status === "packed" && <PrimaryButton onClick={() => handleLabels(s)} style={{ padding: "4px 8px", fontSize: "11px" }}>Etiqueta</PrimaryButton>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </SectionCard>
       )}
@@ -329,20 +333,22 @@ export default function AdminLogistics() {
 
       {tab === "labels" && (
         <SectionCard eyebrow="BF-25 · ETIQUETAS IMPRIMIBLES" title="Etiquetas generadas (No equivalen a DTE)">
-          <table className="lp-table" style={{ width: "100%" }}>
-            <thead><tr><th>Código de barras</th><th>Envío</th><th>Tipo</th><th>Tracking</th><th>SHA-256</th></tr></thead>
-            <tbody>
-              {(labelsData.results || []).map(l => (
-                <tr key={l.id}>
-                  <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{l.barcode_value}</td>
-                  <td>{l.shipment_number}</td>
-                  <td>{l.label_type}</td>
-                  <td style={{ fontFamily: "var(--font-mono)" }}>{l.tracking_number}</td>
-                  <td style={{ fontFamily: "var(--font-mono)", fontSize: "11px" }}>{(l.pdf_sha256 || "").slice(0, 12)}...</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="au-tscroll">
+            <table className="lp-table" style={{ width: "100%" }}>
+              <thead><tr><th>Código de barras</th><th>Envío</th><th>Tipo</th><th>Tracking</th><th>SHA-256</th></tr></thead>
+              <tbody>
+                {(labelsData.results || []).map(l => (
+                  <tr key={l.id}>
+                    <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{l.barcode_value}</td>
+                    <td>{l.shipment_number}</td>
+                    <td>{l.label_type}</td>
+                    <td style={{ fontFamily: "var(--font-mono)" }}>{l.tracking_number}</td>
+                    <td style={{ fontFamily: "var(--font-mono)", fontSize: "11px" }}>{(l.pdf_sha256 || "").slice(0, 12)}...</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </SectionCard>
       )}
 
@@ -352,31 +358,33 @@ export default function AdminLogistics() {
           title="Manifiestos de retiro"
           action={<PrimaryButton onClick={() => { setManifestCarrierId(carriers[0]?.id || ""); setManifestModal(true) }}><Plus size={14} /> Nuevo manifiesto</PrimaryButton>}
         >
-          <table className="lp-table" style={{ width: "100%" }}>
-            <thead><tr><th>Manifiesto</th><th>Fecha</th><th>Transportista</th><th>Envíos / Bultos</th><th>Estado</th><th>Acciones</th></tr></thead>
-            <tbody>
-              {manifests.map(m => (
-                <tr key={m.id}>
-                  <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{m.manifest_number}</td>
-                  <td>{m.operational_date}</td>
-                  <td>{m.carrier_name}</td>
-                  <td>{m.total_shipments} / {m.total_packages}</td>
-                  <td><StatusBadge value={m.status} /></td>
-                  <td style={{ display: "flex", gap: "6px" }}>
-                    {m.status === "draft" && shipments[0] && (
-                      <SecondaryButton onClick={() => addShipmentToManifest(m.id, shipments[0].id).then(() => refreshAll())} style={{ padding: "4px 8px", fontSize: "11px" }}>+ Envío</SecondaryButton>
-                    )}
-                    {(m.status === "draft" || m.status === "ready") && (
-                      <SecondaryButton onClick={() => closeLogisticsManifest(m.id).then(() => refreshAll())} style={{ padding: "4px 8px", fontSize: "11px" }}>Cerrar</SecondaryButton>
-                    )}
-                    {m.status === "closed" && (
-                      <PrimaryButton onClick={() => setHandoverTarget(m)} style={{ padding: "4px 8px", fontSize: "11px" }}>Confirmar retiro</PrimaryButton>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="au-tscroll">
+            <table className="lp-table" style={{ width: "100%" }}>
+              <thead><tr><th>Manifiesto</th><th>Fecha</th><th>Transportista</th><th>Envíos / Bultos</th><th>Estado</th><th>Acciones</th></tr></thead>
+              <tbody>
+                {manifests.map(m => (
+                  <tr key={m.id}>
+                    <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{m.manifest_number}</td>
+                    <td>{m.operational_date}</td>
+                    <td>{m.carrier_name}</td>
+                    <td>{m.total_shipments} / {m.total_packages}</td>
+                    <td><StatusBadge value={m.status} /></td>
+                    <td style={{ display: "flex", gap: "6px" }}>
+                      {m.status === "draft" && shipments[0] && (
+                        <SecondaryButton onClick={() => addShipmentToManifest(m.id, shipments[0].id).then(() => refreshAll())} style={{ padding: "4px 8px", fontSize: "11px" }}>+ Envío</SecondaryButton>
+                      )}
+                      {(m.status === "draft" || m.status === "ready") && (
+                        <SecondaryButton onClick={() => closeLogisticsManifest(m.id).then(() => refreshAll())} style={{ padding: "4px 8px", fontSize: "11px" }}>Cerrar</SecondaryButton>
+                      )}
+                      {m.status === "closed" && (
+                        <PrimaryButton onClick={() => setHandoverTarget(m)} style={{ padding: "4px 8px", fontSize: "11px" }}>Confirmar retiro</PrimaryButton>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </SectionCard>
       )}
 
@@ -387,31 +395,35 @@ export default function AdminLogistics() {
             title="Eventos de tracking normalizados"
             action={<PrimaryButton onClick={() => { setTrackForm({ shipment_id: shipments[0]?.id || "", original_code: "DELIVERED", location: "Santiago" }); setTrackModal(true) }}><MapPin size={14} /> Registrar evento</PrimaryButton>}
           >
-            <table className="lp-table" style={{ width: "100%" }}>
-              <thead><tr><th>Envío</th><th>Estado normalizado</th><th>Código origen</th><th>Ubicación</th><th>Verificación</th></tr></thead>
-              <tbody>
-                {(trackingData.results || []).map(t => (
-                  <tr key={t.id}>
-                    <td style={{ fontFamily: "var(--font-mono)" }}>{t.shipment_number}</td>
-                    <td><StatusBadge value={t.normalized_status} /></td>
-                    <td>{t.original_code}</td>
-                    <td>{t.location || "—"}</td>
-                    <td>{t.verification_status}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </SectionCard>
-          <SectionCard eyebrow="INCIDENCIAS" title="Incidencias de entrega">
-            {(incidentsData.results || []).length === 0 ? <p style={{ fontSize: "13px", color: "var(--admin-text-muted)" }}>Sin incidencias abiertas.</p> : (
+            <div className="au-tscroll">
               <table className="lp-table" style={{ width: "100%" }}>
-                <thead><tr><th>Envío</th><th>Tipo</th><th>Descripción</th><th>Estado</th></tr></thead>
+                <thead><tr><th>Envío</th><th>Estado normalizado</th><th>Código origen</th><th>Ubicación</th><th>Verificación</th></tr></thead>
                 <tbody>
-                  {incidentsData.results.map(i => (
-                    <tr key={i.id}><td>{i.shipment_number}</td><td>{i.incident_type}</td><td>{i.description}</td><td><StatusBadge value={i.status} /></td></tr>
+                  {(trackingData.results || []).map(t => (
+                    <tr key={t.id}>
+                      <td style={{ fontFamily: "var(--font-mono)" }}>{t.shipment_number}</td>
+                      <td><StatusBadge value={t.normalized_status} /></td>
+                      <td>{t.original_code}</td>
+                      <td>{t.location || "—"}</td>
+                      <td>{t.verification_status}</td>
+                    </tr>
                   ))}
                 </tbody>
               </table>
+            </div>
+          </SectionCard>
+          <SectionCard eyebrow="INCIDENCIAS" title="Incidencias de entrega">
+            {(incidentsData.results || []).length === 0 ? <p style={{ fontSize: "13px", color: "var(--admin-text-muted)" }}>Sin incidencias abiertas.</p> : (
+              <div className="au-tscroll">
+                <table className="lp-table" style={{ width: "100%" }}>
+                  <thead><tr><th>Envío</th><th>Tipo</th><th>Descripción</th><th>Estado</th></tr></thead>
+                  <tbody>
+                    {incidentsData.results.map(i => (
+                      <tr key={i.id}><td>{i.shipment_number}</td><td>{i.incident_type}</td><td>{i.description}</td><td><StatusBadge value={i.status} /></td></tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </SectionCard>
         </div>
@@ -420,8 +432,8 @@ export default function AdminLogistics() {
       {tab === "warranties" && (
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <SectionCard eyebrow="BF-22 · VALIDADOR DE SERIALES" title="Verificar cobertura por número de serie">
-            <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-              <input value={serialQuery} onChange={e => setSerialQuery(e.target.value)} placeholder="Ej: SN-G10-WAR-001" style={{ ...formInputStyle, maxWidth: "320px" }} />
+            <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap" }}>
+              <input value={serialQuery} onChange={e => setSerialQuery(e.target.value)} placeholder="Ej: SN-G10-WAR-001" style={{ ...formInputStyle, maxWidth: "320px", flex: "1 1 200px" }} />
               <PrimaryButton onClick={handleValidateSerial}><Search size={14} /> Validar serial</PrimaryButton>
             </div>
             {serialResult && (
@@ -431,21 +443,23 @@ export default function AdminLogistics() {
             )}
           </SectionCard>
           <SectionCard eyebrow="BF-22 · RECLAMOS" title="Garantías registradas">
-            <table className="lp-table" style={{ width: "100%" }}>
-              <thead><tr><th>Reclamo</th><th>Producto</th><th>Serial</th><th>Cobertura</th><th>RMA</th><th>Estado</th></tr></thead>
-              <tbody>
-                {(warrantiesData.results || []).map(w => (
-                  <tr key={w.id}>
-                    <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{w.claim_number}</td>
-                    <td>{w.product_name}</td>
-                    <td style={{ fontFamily: "var(--font-mono)" }}>{w.serial_number || "—"}</td>
-                    <td><StatusBadge value={w.coverage_status} /></td>
-                    <td>{w.rma_number || "—"}</td>
-                    <td><StatusBadge value={w.status} /></td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="au-tscroll">
+              <table className="lp-table" style={{ width: "100%" }}>
+                <thead><tr><th>Reclamo</th><th>Producto</th><th>Serial</th><th>Cobertura</th><th>RMA</th><th>Estado</th></tr></thead>
+                <tbody>
+                  {(warrantiesData.results || []).map(w => (
+                    <tr key={w.id}>
+                      <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{w.claim_number}</td>
+                      <td>{w.product_name}</td>
+                      <td style={{ fontFamily: "var(--font-mono)" }}>{w.serial_number || "—"}</td>
+                      <td><StatusBadge value={w.coverage_status} /></td>
+                      <td>{w.rma_number || "—"}</td>
+                      <td><StatusBadge value={w.status} /></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </SectionCard>
         </div>
       )}
@@ -456,27 +470,29 @@ export default function AdminLogistics() {
           title="Órdenes de trabajo de taller"
           action={<PrimaryButton onClick={() => setRepairModal(true)}><Plus size={14} /> Nueva orden taller</PrimaryButton>}
         >
-          <table className="lp-table" style={{ width: "100%" }}>
-            <thead><tr><th>OT</th><th>Equipo</th><th>Serial</th><th>Modalidad</th><th>Presupuesto</th><th>Estado</th><th>Acciones</th></tr></thead>
-            <tbody>
-              {(repairsData.results || []).map(r => (
-                <tr key={r.id}>
-                  <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{r.work_order_number}</td>
-                  <td>{r.equipment_brand} {r.equipment_model}</td>
-                  <td style={{ fontFamily: "var(--font-mono)" }}>{r.serial_number || "—"}</td>
-                  <td>{r.service_mode}</td>
-                  <td style={{ fontFamily: "var(--font-mono)" }}>{r.budget_total} {r.budget_currency}</td>
-                  <td><StatusBadge value={r.status} /></td>
-                  <td style={{ display: "flex", gap: "6px" }}>
-                    <SecondaryButton onClick={() => setDiagTarget(r)} style={{ padding: "4px 8px", fontSize: "11px" }}>Diagnóstico / Presupuesto</SecondaryButton>
-                    {r.status !== "closed" && (
-                      <PrimaryButton onClick={() => setDeliverTarget(r)} style={{ padding: "4px 8px", fontSize: "11px" }}><CheckCircle2 size={12} /> Entregar</PrimaryButton>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="au-tscroll">
+            <table className="lp-table" style={{ width: "100%" }}>
+              <thead><tr><th>OT</th><th>Equipo</th><th>Serial</th><th>Modalidad</th><th>Presupuesto</th><th>Estado</th><th>Acciones</th></tr></thead>
+              <tbody>
+                {(repairsData.results || []).map(r => (
+                  <tr key={r.id}>
+                    <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700 }}>{r.work_order_number}</td>
+                    <td>{r.equipment_brand} {r.equipment_model}</td>
+                    <td style={{ fontFamily: "var(--font-mono)" }}>{r.serial_number || "—"}</td>
+                    <td>{r.service_mode}</td>
+                    <td style={{ fontFamily: "var(--font-mono)" }}>{r.budget_total} {r.budget_currency}</td>
+                    <td><StatusBadge value={r.status} /></td>
+                    <td style={{ display: "flex", gap: "6px" }}>
+                      <SecondaryButton onClick={() => setDiagTarget(r)} style={{ padding: "4px 8px", fontSize: "11px" }}>Diagnóstico / Presupuesto</SecondaryButton>
+                      {r.status !== "closed" && (
+                        <PrimaryButton onClick={() => setDeliverTarget(r)} style={{ padding: "4px 8px", fontSize: "11px" }}><CheckCircle2 size={12} /> Entregar</PrimaryButton>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </SectionCard>
       )}
 

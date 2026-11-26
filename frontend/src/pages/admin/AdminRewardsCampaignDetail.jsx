@@ -211,7 +211,7 @@ export default function AdminRewardsCampaignDetail() {
       </div>
 
       {/* Panel de fechas + Precio por sticker */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "16px", alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", gap: "16px", alignItems: "start" }}>
         <SectionCard eyebrow="CRONOGRAMA" title="Fechas" description="Los cambios se guardan al hacer clic fuera del campo (blur).">
           <div style={{
             display:"grid",

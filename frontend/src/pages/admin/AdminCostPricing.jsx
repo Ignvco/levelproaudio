@@ -410,7 +410,7 @@ export default function AdminCostPricing() {
 
       {/* TAB 1: CALCULADORA LANDED COST & ASIGNACIONES */}
       {tab === "landed" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1.1fr 1.2fr", gap: "18px", alignItems: "start" }} data-testid="landed-cost-section">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: "18px", alignItems: "start" }} data-testid="landed-cost-section">
           <SectionCard
             eyebrow="BF-18 / MOTOR DE INTERNACIÓN"
             title="Calcular y Asignar Landed Cost por Recepción"
@@ -536,7 +536,7 @@ export default function AdminCostPricing() {
                     key={idx}
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "1.4fr 1.2fr 0.9fr 0.7fr",
+                      gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 140px), 1fr))",
                       gap: "6px",
                       marginBottom: "8px",
                       padding: "8px",
@@ -683,7 +683,7 @@ export default function AdminCostPricing() {
                       </div>
                     </div>
 
-                    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px", fontSize: "12px", marginBottom: "10px", padding: "8px", background: "#F9FAFB", borderRadius: "8px" }}>
+                    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 110px), 1fr))", gap: "8px", fontSize: "12px", marginBottom: "10px", padding: "8px", background: "#F9FAFB", borderRadius: "8px" }}>
                       <div>
                         <strong style={{ color: "var(--admin-text)" }}>Base CIF:</strong>{" "}
                         <span style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>
@@ -710,6 +710,7 @@ export default function AdminCostPricing() {
                       </div>
                     </div>
 
+                    <div className="au-tscroll">
                     <table className="au-table" style={{ fontSize: "12px" }}>
                       <thead>
                         <tr>
@@ -736,6 +737,7 @@ export default function AdminCostPricing() {
                         ))}
                       </tbody>
                     </table>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -823,7 +825,7 @@ export default function AdminCostPricing() {
             )}
           </SectionCard>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "18px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: "18px" }}>
             <SectionCard
               eyebrow="SECCIÓN 9 / IDENTIFICACIÓN ESPECÍFICA"
               title="Costeo Unitario por Número de Serie (SerialCostUnit)"
@@ -1008,7 +1010,7 @@ export default function AdminCostPricing() {
             </SectionCard>
           )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "18px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 340px), 1fr))", gap: "18px" }}>
             <SectionCard
               eyebrow="REPORTE EJECUTIVO POR MARCA"
               title="Rentabilidad Consolidada por Marca"
@@ -1053,7 +1055,7 @@ export default function AdminCostPricing() {
               eyebrow="GOBERNANZA DE MÁRGENES"
               title="Políticas de Margen Mínimo y Objetivo"
             >
-              <form onSubmit={handleCreatePolicy} style={{ display: "grid", gridTemplateColumns: "1.4fr 0.8fr 0.8fr auto", gap: "8px", alignItems: "end", marginBottom: "12px" }}>
+              <form onSubmit={handleCreatePolicy} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 140px), 1fr))", gap: "8px", alignItems: "end", marginBottom: "12px" }}>
                 <div>
                   <label style={labelStyle}>Nombre Política</label>
                   <input
@@ -1164,7 +1166,7 @@ export default function AdminCostPricing() {
 
       {/* TAB 4: SIMULADOR DE PRECIOS Y PROPUESTAS COMERCIALES */}
       {tab === "simulator" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr", gap: "18px", alignItems: "start" }} data-testid="pricing-simulator-section">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: "18px", alignItems: "start" }} data-testid="pricing-simulator-section">
           <SectionCard
             eyebrow="SECCIÓN 14 / SIMULADOR COMERCIAL"
             title="Simulador de Precios, Márgenes y Escenarios FX"

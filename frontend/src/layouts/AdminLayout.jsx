@@ -821,6 +821,7 @@ export default function AdminLayout() {
         <header className="lp-topbar">
           <div className="lp-topbar__left">
             <button
+              id="v3-mobile-toggle-btn"
               type="button"
               className="lp-mobile-menu-btn"
               data-testid="admin-mobile-menu"

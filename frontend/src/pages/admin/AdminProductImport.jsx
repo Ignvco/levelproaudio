@@ -71,7 +71,7 @@ export default function AdminProductImport() {
         }
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "18px", alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 260px), 1fr))", gap: "18px", alignItems: "start" }}>
         {/* Paso 1 — Descargar plantilla */}
         <SectionCard
           eyebrow="PASO 1"
@@ -161,7 +161,7 @@ export default function AdminProductImport() {
           </div>
 
           {activeReport.rows?.length > 0 && (
-            <div style={{ maxHeight: "340px", overflowY: "auto", border: "1px solid var(--admin-border)", borderRadius: "12px" }}>
+            <div className="au-tscroll" style={{ maxHeight: "340px", overflowY: "auto", border: "1px solid var(--admin-border)", borderRadius: "12px" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12.5px" }}>
                 <thead>
                   <tr style={{ background: "var(--admin-surface-soft)", textAlign: "left" }}>

@@ -141,7 +141,7 @@ export default function AdminRewardsWinners() {
 
       <div style={{
         display:"grid",
-        gridTemplateColumns:"repeat(auto-fill, minmax(340px, 1fr))",
+        gridTemplateColumns:"repeat(auto-fill, minmax(min(100%, 260px), 1fr))",
         gap:"14px",
       }}>
         {!winnersError && winners.map(w => <WinnerCard key={w.id} w={w} />)}

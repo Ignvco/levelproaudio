@@ -259,7 +259,7 @@ export default function AdminAudit() {
   const totalPages = eventsData?.total_pages || 1
 
   return (
-    <div style={{ maxWidth: 1400, margin: "0 auto", padding: "24px 20px" }}>
+    <div className="au-page" style={{ maxWidth: 1400, margin: "0 auto" }}>
       {/* ── Encabezado de Página ───────────────────────────────────── */}
       <AdminPageHeader
         title="Registro de Actividad y Auditoría"
@@ -375,9 +375,9 @@ export default function AdminAudit() {
           justifyContent: "space-between",
         }}
       >
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, flex: 1, minWidth: 280 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 10, flex: 1, minWidth: 0 }}>
           {/* Búsqueda libre */}
-          <div style={{ position: "relative", minWidth: 240, flex: "1 1 240px" }}>
+          <div style={{ position: "relative", minWidth: "min(100%, 220px)", flex: "1 1 220px" }}>
             <Search
               size={15}
               style={{

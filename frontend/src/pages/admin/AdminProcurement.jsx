@@ -340,7 +340,7 @@ export default function AdminProcurement() {
       </div>
 
       {tab === "orders" && (
-        <div style={{ display: "grid", gridTemplateColumns: "minmax(320px, 1.1fr) minmax(360px, 1.3fr)", gap: "16px", alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 320px), 1fr))", gap: "16px", alignItems: "start" }}>
           <SectionCard
             eyebrow="BF-03 / DIRECTORIO PO"
             title="Órdenes de Compra"
