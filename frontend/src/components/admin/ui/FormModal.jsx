@@ -1,17 +1,12 @@
-// components/admin/ui/FormModal.jsx
-//
-// Wrapper genérico para modales de crear/editar. Antes cada página de admin
-// reimplementaba su propio backdrop + panel + header + footer desde cero
-// (12 páginas con el mismo bloque de "position: fixed" copiado y pegado).
-// Ahora el layout vive en un solo lugar; el contenido del formulario sigue
-// siendo específico de cada página (children).
+// components/admin/ui/FormModal.jsx — LevelPro Precision Modal & FormField
 import { cloneElement, isValidElement, useEffect, useId, useRef } from "react"
+import { X, CheckCircle2, AlertTriangle, XCircle } from "lucide-react"
 import { PrimaryButton, SecondaryButton } from "./Buttons"
 
 export function FormModal({
   open: openProp, isOpen: isOpenProp, title, children, onClose, onSave,
   saving = false, saveDisabled = false, saveLabel = "Guardar", cancelLabel = "Cancelar",
-  error, maxWidth = "440px", scrollableBody = false, testId,
+  error, maxWidth = "460px", scrollableBody = false, testId,
 }) {
   const open = openProp ?? isOpenProp
   const titleId = useId()
@@ -44,11 +39,13 @@ export function FormModal({
   if (!open) return null
 
   return (
-    <div className="au-modal__backdrop" onClick={onClose} data-testid={testId || "form-modal"}>
+    <div className="admin-portal-root au-modal__backdrop" onClick={onClose} data-testid={testId || "form-modal"}>
       <div
         className="au-modal"
         style={{
-          maxWidth, textAlign: "left", padding: 0,
+          maxWidth,
+          textAlign: "left",
+          padding: 0,
           ...(scrollableBody ? { maxHeight: "90vh", display: "flex", flexDirection: "column" } : {}),
         }}
         onClick={(e) => e.stopPropagation()}
@@ -58,20 +55,58 @@ export function FormModal({
         aria-labelledby={titleId}
         aria-modal="true"
       >
-        <div style={{ padding: "20px 24px", borderBottom: "1px solid var(--border)",
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          flexShrink: 0 }}>
-          <p id={titleId} style={{ fontSize: "15px", fontWeight: 700, color: "var(--admin-text)" }}>{title}</p>
-          <button type="button" onClick={onClose} aria-label="Cerrar" style={{ background: "none",
-            border: "none", cursor: "pointer", color: "var(--text-3)", fontSize: "22px" }}>×</button>
+        <div
+          style={{
+            padding: "16px 20px",
+            borderBottom: "1px solid #E4E4E7",
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+        >
+          <p id={titleId} style={{ fontSize: 15, fontWeight: 600, color: "#09090B", margin: 0 }}>{title}</p>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Cerrar"
+            style={{
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              color: "#71717A",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              padding: 4,
+              borderRadius: 6,
+            }}
+          >
+            <X size={16} />
+          </button>
         </div>
 
-        <div style={{ padding: "24px", display: "flex", flexDirection: "column", gap: "16px",
-          ...(scrollableBody ? { flex: 1, overflowY: "auto" } : {}) }}>
+        <div
+          style={{
+            padding: "20px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "14px",
+            ...(scrollableBody ? { flex: 1, overflowY: "auto" } : {}),
+          }}
+        >
           {error && (
-            <div role="alert" style={{ padding: "10px 14px", borderRadius: "var(--r-md)",
-              background: "rgba(255,77,77,0.08)", border: "1px solid rgba(255,77,77,0.2)",
-              color: "var(--danger)", fontSize: "13px" }}>
+            <div
+              role="alert"
+              style={{
+                padding: "10px 12px",
+                borderRadius: 8,
+                background: "#FEF2F2",
+                border: "1px solid #FECACA",
+                color: "#DC2626",
+                fontSize: 12.5,
+              }}
+            >
               {error}
             </div>
           )}
@@ -79,10 +114,20 @@ export function FormModal({
         </div>
 
         {onSave && (
-          <div style={{ padding: "16px 24px", borderTop: "1px solid var(--border)",
-            display: "flex", gap: "10px", justifyContent: "flex-end", flexShrink: 0 }}>
+          <div
+            style={{
+              padding: "14px 20px",
+              borderTop: "1px solid #E4E4E7",
+              background: "#FAFAFA",
+              display: "flex",
+              gap: "8px",
+              justifyContent: "flex-end",
+              flexShrink: 0,
+              borderRadius: "0 0 14px 14px",
+            }}
+          >
             <SecondaryButton onClick={onClose}>{cancelLabel}</SecondaryButton>
-            <PrimaryButton onClick={onSave} disabled={saving || saveDisabled}>
+            <PrimaryButton onClick={onSave} loading={saving} disabled={saving || saveDisabled}>
               {saving ? "Guardando..." : saveLabel}
             </PrimaryButton>
           </div>
@@ -92,45 +137,90 @@ export function FormModal({
   )
 }
 
-// Estilo de input consistente, para que los formularios dentro de FormModal
-// no tengan que redefinir esto en cada página.
+// Estilo de input LevelPro Precision — SIEMPRE claro (#FFFFFF) con borde hairline #E4E4E7
 // eslint-disable-next-line react-refresh/only-export-components
 export const formInputStyle = {
-  width: "100%", padding: "10px 14px",
-  background: "var(--surface-2)", border: "1px solid var(--border)",
-  borderRadius: "var(--r-md)", color: "var(--text)",
-  fontSize: "13px", outline: "none",
+  width: "100%",
+  padding: "9px 12px",
+  background: "#FFFFFF",
+  border: "1px solid #E4E4E7",
+  borderRadius: "8px",
+  color: "#09090B",
+  fontSize: "13px",
+  outline: "none",
 }
 
-export function FormField({ label, children, id, description, error }) {
+const APPEARANCE_STYLES = {
+  success: { borderColor: "#0F7A38", messageColor: "#0F7A38", Icon: CheckCircle2 },
+  warning: { borderColor: "#B45309", messageColor: "#B45309", Icon: AlertTriangle },
+  danger: { borderColor: "#DC2626", messageColor: "#DC2626", Icon: XCircle },
+  none: null,
+}
+
+export function FormField({ label, required = false, appearance = "none", children, id, description, error }) {
   const generatedId = useId()
+  const resolvedAppearance = error ? "danger" : appearance
+  const meta = APPEARANCE_STYLES[resolvedAppearance]
   const directControl = isValidElement(children)
     && typeof children.type === "string"
     && ["input", "select", "textarea"].includes(children.type)
   const controlId = directControl ? (children.props.id || id || generatedId) : undefined
   const hintId = `${generatedId}-hint`
-  const style = { display: "block", fontSize: "12px", fontWeight: 600,
-    color: "var(--admin-text-secondary, var(--text-2))", marginBottom: "7px" }
+  const labelStyle = {
+    display: "block",
+    fontSize: "12.5px",
+    fontWeight: 500,
+    color: "#52525B",
+    marginBottom: "6px",
+  }
+
   const rendered = directControl
     ? cloneElement(children, {
         id: controlId,
         ...(description || error ? {
           "aria-describedby": [children.props["aria-describedby"], hintId].filter(Boolean).join(" "),
         } : {}),
-        ...(error ? { "aria-invalid": true } : {}),
+        ...(resolvedAppearance === "danger" ? { "aria-invalid": true } : {}),
+        style: {
+          ...children.props.style,
+          ...(meta ? { borderColor: meta.borderColor } : {}),
+        },
       })
     : children
 
+  const MsgIcon = meta?.Icon
+  const messageText = error || description
+
   return (
     <div className="au-formfield">
-      {directControl
-        ? <label htmlFor={controlId} style={style}>{label}</label>
-        : <span style={style}>{label}</span>}
+      {label && (
+        directControl ? (
+          <label htmlFor={controlId} style={labelStyle}>
+            {label}{required && <span style={{ color: "#DC2626", marginLeft: 3 }}>*</span>}
+          </label>
+        ) : (
+          <span style={labelStyle}>
+            {label}{required && <span style={{ color: "#DC2626", marginLeft: 3 }}>*</span>}
+          </span>
+        )
+      )}
       {rendered}
-      {(description || error) && (
-        <p id={hintId} role={error ? "alert" : undefined}
-          className={error ? "au-formfield__error" : "au-formfield__help"}>
-          {error || description}
+      {messageText && (
+        <p
+          id={hintId}
+          role={resolvedAppearance === "danger" ? "alert" : undefined}
+          className={resolvedAppearance === "danger" ? "au-formfield__error" : "au-formfield__help"}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 5,
+            margin: "5px 0 0",
+            fontSize: 12,
+            color: meta ? meta.messageColor : "#71717A",
+          }}
+        >
+          {MsgIcon && <MsgIcon size={13} strokeWidth={2} aria-hidden="true" />}
+          <span>{messageText}</span>
         </p>
       )}
     </div>
