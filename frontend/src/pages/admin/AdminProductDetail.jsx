@@ -1,4 +1,4 @@
-// pages/admin/AdminProductDetail.jsx — Editor PIM Avanzado (BF-14 & BF-44)
+// pages/admin/AdminProductDetail.jsx — Editor PIM Avanzado (BF-14 & BF-44) LevelPro Precision
 import { useState, useEffect } from "react"
 import { useParams, useNavigate } from "react-router-dom"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
@@ -15,22 +15,24 @@ import {
   getAdminProductSpecs,
   saveAdminProductSpecs,
 } from "../../api/admin.api"
-import { AdminPageHeader, SectionCard, PrimaryButton, SecondaryButton, StatusBadge } from "../../components/admin/ui"
+import {
+  AdminPageHeader,
+  SectionCard,
+  PrimaryButton,
+  SecondaryButton,
+  StatusBadge,
+  ConfirmationModal,
+  FormField,
+  formInputStyle,
+  AdminLayoutGrid,
+  SwitchToggle,
+  SkeletonCard,
+  ErrorState,
+} from "../../components/admin/ui"
 import ProductSuppliersTab from "../../components/admin/ProductSuppliersTab"
 import { showToast } from "../../utils/toast"
 import { formatCurrency } from "../../utils/accountingCurrency"
 import { Plus, Trash2, Save, SlidersHorizontal, Layers, Package, Truck } from "lucide-react"
-
-const bentoInput = {
-  width: "100%",
-  padding: "10px 12px",
-  background: "#0B0E14",
-  border: "1px solid rgba(255,255,255,0.12)",
-  borderRadius: "10px",
-  color: "#F8FAFC",
-  fontSize: "13px",
-  outline: "none",
-}
 
 export default function AdminProductDetail() {
   const { id } = useParams()
@@ -112,6 +114,7 @@ export default function AdminProductDetail() {
   const [variantForm, setVariantForm] = useState(emptyVariantForm)
   const [editingVariantId, setEditingVariantId] = useState(null)
   const [savingVariant, setSavingVariant] = useState(false)
+  const [confirmDeleteVariant, setConfirmDeleteVariant] = useState(null)
 
   // Specs state: { [key]: value }
   const [specValues, setSpecValues] = useState({})
@@ -120,7 +123,7 @@ export default function AdminProductDetail() {
 
   useEffect(() => {
     const map = {}
-    ;(productSpecsData?.specs || []).forEach(s => {
+    ;(productSpecsData?.specs || []).forEach((s) => {
       if (s.data_type === "boolean") {
         map[s.key] = s.value_json === true ? "true" : s.value_json === false ? "false" : ""
       } else {
@@ -220,15 +223,17 @@ export default function AdminProductDetail() {
     }
   }
 
-  const handleDeleteVariant = async (variantId) => {
-    if (!window.confirm("¿Desactivar esta variante? Se conservarán sus referencias históricas y reservas.")) return
+  const executeDeleteVariant = async () => {
+    if (!confirmDeleteVariant) return
     try {
-      await deleteAdminProductVariant(id, variantId)
+      await deleteAdminProductVariant(id, confirmDeleteVariant.id)
       refetchVariants()
       refetch()
       showToast("Variante desactivada")
     } catch {
       showToast("No se pudo desactivar la variante", "error")
+    } finally {
+      setConfirmDeleteVariant(null)
     }
   }
 
@@ -250,22 +255,53 @@ export default function AdminProductDetail() {
     }
   }
 
-  if (isLoading) return <div className="au-page"><p style={{ color: "var(--admin-text-muted)" }}>Cargando ficha PIM…</p></div>
-  if (isError || !product) return (
-    <div className="au-page">
-      <p style={{ color: "var(--admin-danger)" }}>No se encontró el producto.</p>
-      <SecondaryButton onClick={() => navigate("/admin/products")}>← Volver a Productos</SecondaryButton>
-    </div>
-  )
+  if (isLoading) {
+    return (
+      <div className="au-page">
+        <AdminPageHeader title="Ficha de producto" description="Cargando detalles del catálogo…" />
+        <SkeletonCard height={260} />
+      </div>
+    )
+  }
+
+  if (isError || !product) {
+    return (
+      <div className="au-page">
+        <ErrorState
+          title="No se encontró el producto"
+          description="Verifica el identificador o vuelve al catálogo."
+          action={<SecondaryButton onClick={() => navigate("/admin/products")}>← Volver a Productos</SecondaryButton>}
+        />
+      </div>
+    )
+  }
 
   const visibleAttrs = showAllSpecs || recommendedKeys.length === 0
     ? allAttrs
-    : allAttrs.filter(a => recommendedKeys.includes(a.key) || specValues[a.key])
+    : allAttrs.filter((a) => recommendedKeys.includes(a.key) || specValues[a.key])
+
+  const TABS = [
+    { key: "variants", label: `Variantes (${variants.length})`, Icon: Layers },
+    { key: "specs", label: `Especificaciones Técnicas (${product.technical_specs?.length || 0})`, Icon: SlidersHorizontal },
+    { key: "suppliers", label: "Proveedores", Icon: Truck },
+    { key: "general", label: "General & Precios", Icon: Package },
+  ]
 
   return (
     <div className="au-page">
+      <ConfirmationModal
+        open={!!confirmDeleteVariant}
+        title="¿Desactivar variante comercial?"
+        description={confirmDeleteVariant ? `Vas a desactivar "${confirmDeleteVariant.name}" (${confirmDeleteVariant.sku}) del catálogo público.` : ""}
+        warningNote="Se conservarán íntegramente sus órdenes históricas, números de serie y reservas de Kardex."
+        confirmLabel="Sí, desactivar variante"
+        danger
+        onConfirm={executeDeleteVariant}
+        onCancel={() => setConfirmDeleteVariant(null)}
+        testId="deactivate-variant-modal"
+      />
+
       <AdminPageHeader
-        eyebrow="LEVELPRO PIM / FICHA TÉCNICA & VARIANTES"
         title={product.name}
         description={`SKU Maestro: ${product.sku || "Sin SKU"} · ${variants.length} variantes · ${product.technical_specs?.length || 0} especificaciones`}
         breadcrumbs={[
@@ -273,102 +309,157 @@ export default function AdminProductDetail() {
           { label: product.name },
         ]}
         actions={
-          <SecondaryButton to="/admin/products" size="sm">← Volver al catálogo</SecondaryButton>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <StatusBadge tone={product.is_active ? "success" : "neutral"}>
+              {product.is_active ? "Activo" : "Inactivo"}
+            </StatusBadge>
+            <SecondaryButton to="/admin/products" size="sm">← Volver al catálogo</SecondaryButton>
+          </div>
         }
       />
 
-      {/* Tabs Editorial Bento */}
-      <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px" }}>
-        {[
-          { key: "variants", label: `Variantes (${variants.length})`, Icon: Layers },
-          { key: "specs", label: `Especificaciones Técnicas (${product.technical_specs?.length || 0})`, Icon: SlidersHorizontal },
-          { key: "suppliers", label: "Proveedores", Icon: Truck },
-          { key: "general", label: "General & Precios", Icon: Package },
-        ].map(({ key, label, Icon }) => (
-          <button
-            key={key}
-            type="button"
-            data-testid={`pim-tab-${key}`}
-            onClick={() => setTab(key)}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: "8px",
-              padding: "10px 16px", borderRadius: "12px", cursor: "pointer",
-              fontSize: "13px", fontWeight: 700,
-              background: tab === key ? "#1AFF6E" : "#121722",
-              color: tab === key ? "#0B0E14" : "#CBD5E1",
-              border: tab === key ? "none" : "1px solid rgba(255,255,255,0.1)",
-            }}
-          >
-            <Icon size={14} /> {label}
-          </button>
-        ))}
+      {/* Underline Nimbus Tabs */}
+      <div className="au-tabs hide-scroll" role="tablist" aria-label="Secciones de producto">
+        {TABS.map(({ key, label, Icon }) => {
+          const isActive = tab === key
+          return (
+            <button
+              key={key}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              data-testid={`pim-tab-${key}`}
+              onClick={() => setTab(key)}
+              className={`au-tab${isActive ? " is-active" : ""}`}
+              style={{ display: "inline-flex", alignItems: "center", gap: 7 }}
+            >
+              <Icon size={14} strokeWidth={1.75} aria-hidden="true" />
+              <span>{label}</span>
+            </button>
+          )
+        })}
       </div>
 
       {/* TAB VARIANTES (BF-14) */}
       {tab === "variants" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(340px, 1fr))", gap: "18px", alignItems: "start" }}>
+        <AdminLayoutGrid layout="asym">
           <SectionCard
-            eyebrow="VARIANTES COMERCIALES"
-            title={editingVariantId ? "Editar variante" : "Nueva variante"}
-            description="Cada variante administra su propio SKU único, precio (o herencia) y existencias."
+            title="Variantes registradas"
+            description="Cada variante mantiene su SKU, precio multimoneda o herencia del maestro y stock"
+            padding={false}
           >
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--admin-text-secondary)" }}>SKU Único *</label>
-                <input data-testid="variant-sku-input" value={variantForm.sku} onChange={e => setVariantForm(f => ({ ...f, sku: e.target.value }))} placeholder="Ej: DT770-250-BLK" style={bentoInput} />
+            {variants.length === 0 ? (
+              <p style={{ fontSize: 13, color: "#71717A", padding: 20 }}>
+                Este producto opera como producto simple sin variantes. Puedes agregar variantes cuando existan opciones de impedancia, color o conexión.
+              </p>
+            ) : (
+              <div className="au-tscroll">
+                <table className="au-table">
+                  <thead>
+                    <tr>
+                      <th>Variante</th>
+                      <th>SKU</th>
+                      <th style={{ textAlign: "right" }}>Precio</th>
+                      <th style={{ textAlign: "right" }}>Stock</th>
+                      <th style={{ textAlign: "right" }}>Acciones</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {variants.map((v) => (
+                      <tr key={v.id} data-testid={`variant-row-${v.sku}`}>
+                        <td>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                            <span style={{ fontWeight: 600, color: "#09090B" }}>{v.name}</span>
+                            {v.is_default && <StatusBadge tone="success">Default</StatusBadge>}
+                            {!v.is_active && <StatusBadge tone="danger">Inactiva</StatusBadge>}
+                          </div>
+                        </td>
+                        <td className="lp-mono" style={{ color: "#52525B" }}>{v.sku}</td>
+                        <td className="lp-mono" style={{ textAlign: "right", color: "#09090B", fontWeight: 500 }}>
+                          {formatCurrency(v.prices?.CLP ?? v.effective_price, "CLP")}
+                          {(v.prices?.USD ?? v.price_usd) && (
+                            <span style={{ display: "block", fontSize: 11, color: "#71717A" }}>
+                              {formatCurrency(v.prices?.USD ?? v.price_usd, "USD")} USD
+                            </span>
+                          )}
+                        </td>
+                        <td className="lp-mono" style={{ textAlign: "right", fontWeight: 600, color: "#09090B" }}>
+                          {v.stock}
+                        </td>
+                        <td style={{ textAlign: "right" }}>
+                          <div style={{ display: "inline-flex", gap: 6 }}>
+                            <SecondaryButton size="sm" onClick={() => handleEditVariant(v)}>Editar</SecondaryButton>
+                            <button
+                              type="button"
+                              onClick={() => setConfirmDeleteVariant(v)}
+                              aria-label="Eliminar variante"
+                              className="au-iconbtn"
+                              style={{ color: "#DC2626", borderColor: "#FECACA", background: "#FEF2F2" }}
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--admin-text-secondary)" }}>Código de barras</label>
-                <input value={variantForm.barcode} onChange={e => setVariantForm(f => ({ ...f, barcode: e.target.value }))} placeholder="EAN / UPC" style={bentoInput} />
-              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard
+            title={editingVariantId ? "Editar variante" : "Nueva variante"}
+            description="Captura de SKU y atributos técnicos"
+          >
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <FormField label="SKU Único" required>
+                <input data-testid="variant-sku-input" value={variantForm.sku} onChange={(e) => setVariantForm((f) => ({ ...f, sku: e.target.value }))} placeholder="Ej: DT770-250-BLK" style={formInputStyle} />
+              </FormField>
+              <FormField label="Código de barras">
+                <input value={variantForm.barcode} onChange={(e) => setVariantForm((f) => ({ ...f, barcode: e.target.value }))} placeholder="EAN / UPC" style={formInputStyle} />
+              </FormField>
               <div style={{ gridColumn: "1 / -1" }}>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--admin-text-secondary)" }}>Nombre comercial *</label>
-                <input data-testid="variant-name-input" value={variantForm.name} onChange={e => setVariantForm(f => ({ ...f, name: e.target.value }))} placeholder="Ej: 250 Ohm / Negro Mate" style={bentoInput} />
+                <FormField label="Nombre comercial" required>
+                  <input data-testid="variant-name-input" value={variantForm.name} onChange={(e) => setVariantForm((f) => ({ ...f, name: e.target.value }))} placeholder="Ej: 250 Ohm / Negro Mate" style={formInputStyle} />
+                </FormField>
               </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--admin-text-secondary)" }}>Impedancia</label>
-                <input value={variantForm.impedance} onChange={e => setVariantForm(f => ({ ...f, impedance: e.target.value }))} placeholder="Ej: 250 Ohm" style={bentoInput} />
-              </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--admin-text-secondary)" }}>Color</label>
-                <input value={variantForm.color} onChange={e => setVariantForm(f => ({ ...f, color: e.target.value }))} placeholder="Ej: Negro" style={bentoInput} />
-              </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--admin-text-secondary)" }}>Conexión</label>
-                <input value={variantForm.connection} onChange={e => setVariantForm(f => ({ ...f, connection: e.target.value }))} placeholder="Ej: XLR / Jack 6.3mm" style={bentoInput} />
-              </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--admin-text-secondary)" }}>Tamaño / Configuración</label>
-                <input value={variantForm.size} onChange={e => setVariantForm(f => ({ ...f, size: e.target.value }))} placeholder="Ej: 3m / Studio Pack" style={bentoInput} />
-              </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--admin-text-secondary)" }}>Precio CLP (vacío = hereda)</label>
-                <input data-testid="variant-price-input" type="number" value={variantForm.price} onChange={e => setVariantForm(f => ({ ...f, price: e.target.value }))} placeholder={String(product.price)} style={bentoInput} />
-              </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--admin-text-secondary)" }}>Precio USD (opcional)</label>
-                <input data-testid="variant-price-usd-input" type="number" step="0.01" value={variantForm.price_usd} onChange={e => setVariantForm(f => ({ ...f, price_usd: e.target.value }))} placeholder={product.price_usd != null ? String(product.price_usd) : ""} style={bentoInput} />
-              </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--admin-text-secondary)" }}>Precio ARS (opcional)</label>
-                <input data-testid="variant-price-ars-input" type="number" step="1" value={variantForm.price_ars} onChange={e => setVariantForm(f => ({ ...f, price_ars: e.target.value }))} placeholder={product.price_ars != null ? String(product.price_ars) : ""} style={bentoInput} />
-              </div>
-              <div>
-                <label style={{ fontSize: "11px", fontWeight: 600, color: "var(--admin-text-secondary)" }}>Stock *</label>
-                <input data-testid="variant-stock-input" type="number" min="0" value={variantForm.stock} onChange={e => setVariantForm(f => ({ ...f, stock: e.target.value }))} style={bentoInput} />
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "12px", paddingTop: "18px", color: "var(--admin-text)" }}>
-                <label style={{ fontSize: "12px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                  <input type="checkbox" checked={variantForm.is_active} onChange={e => setVariantForm(f => ({ ...f, is_active: e.target.checked }))} /> Activa
-                </label>
-                <label style={{ fontSize: "12px", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: "6px" }}>
-                  <input type="checkbox" checked={variantForm.is_default} onChange={e => setVariantForm(f => ({ ...f, is_default: e.target.checked }))} /> Default
-                </label>
-              </div>
+              <FormField label="Impedancia">
+                <input value={variantForm.impedance} onChange={(e) => setVariantForm((f) => ({ ...f, impedance: e.target.value }))} placeholder="Ej: 250 Ohm" style={formInputStyle} />
+              </FormField>
+              <FormField label="Color">
+                <input value={variantForm.color} onChange={(e) => setVariantForm((f) => ({ ...f, color: e.target.value }))} placeholder="Ej: Negro" style={formInputStyle} />
+              </FormField>
+              <FormField label="Conexión">
+                <input value={variantForm.connection} onChange={(e) => setVariantForm((f) => ({ ...f, connection: e.target.value }))} placeholder="Ej: XLR / Jack 6.3mm" style={formInputStyle} />
+              </FormField>
+              <FormField label="Tamaño / Config.">
+                <input value={variantForm.size} onChange={(e) => setVariantForm((f) => ({ ...f, size: e.target.value }))} placeholder="Ej: Studio Pack" style={formInputStyle} />
+              </FormField>
+              <FormField label="Precio CLP">
+                <input data-testid="variant-price-input" type="number" value={variantForm.price} onChange={(e) => setVariantForm((f) => ({ ...f, price: e.target.value }))} placeholder={String(product.price)} style={formInputStyle} />
+              </FormField>
+              <FormField label="Precio USD (opc.)">
+                <input data-testid="variant-price-usd-input" type="number" step="0.01" value={variantForm.price_usd} onChange={(e) => setVariantForm((f) => ({ ...f, price_usd: e.target.value }))} placeholder={product.price_usd != null ? String(product.price_usd) : ""} style={formInputStyle} />
+              </FormField>
+              <FormField label="Precio ARS (opc.)">
+                <input data-testid="variant-price-ars-input" type="number" step="1" value={variantForm.price_ars} onChange={(e) => setVariantForm((f) => ({ ...f, price_ars: e.target.value }))} placeholder={product.price_ars != null ? String(product.price_ars) : ""} style={formInputStyle} />
+              </FormField>
+              <FormField label="Stock" required>
+                <input data-testid="variant-stock-input" type="number" min="0" value={variantForm.stock} onChange={(e) => setVariantForm((f) => ({ ...f, stock: e.target.value }))} style={formInputStyle} />
+              </FormField>
             </div>
-            <div style={{ display: "flex", gap: "8px", marginTop: "14px" }}>
-              <PrimaryButton data-testid="save-variant-btn" onClick={handleSaveVariant} loading={savingVariant}>
-                <Plus size={14} /> {editingVariantId ? "Guardar variante" : "Agregar variante"}
+            <div style={{ display: "flex", alignItems: "center", gap: 16, marginTop: 12, color: "#09090B" }}>
+              <label style={{ fontSize: 12.5, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <input type="checkbox" checked={variantForm.is_active} onChange={(e) => setVariantForm((f) => ({ ...f, is_active: e.target.checked }))} /> Activa
+              </label>
+              <label style={{ fontSize: 12.5, fontWeight: 500, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <input type="checkbox" checked={variantForm.is_default} onChange={(e) => setVariantForm((f) => ({ ...f, is_default: e.target.checked }))} /> Default
+              </label>
+            </div>
+            <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+              <PrimaryButton data-testid="save-variant-btn" icon={Plus} onClick={handleSaveVariant} loading={savingVariant}>
+                {editingVariantId ? "Guardar variante" : "Agregar variante"}
               </PrimaryButton>
               {editingVariantId && (
                 <SecondaryButton onClick={() => { setEditingVariantId(null); setVariantForm(emptyVariantForm) }}>
@@ -377,75 +468,38 @@ export default function AdminProductDetail() {
               )}
             </div>
           </SectionCard>
-
-          <SectionCard eyebrow="LISTADO" title="Variantes registradas">
-            {variants.length === 0 ? (
-              <p style={{ fontSize: "13px", color: "#94A3B8" }}>
-                Este producto opera como producto simple sin variantes. Puedes agregar variantes cuando existan opciones de impedancia, color o conexión.
-              </p>
-            ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                {variants.map(v => (
-                  <div key={v.id} data-testid={`variant-row-${v.sku}`} style={{
-                    padding: "12px 14px", borderRadius: "12px",
-                    background: "#0B0E14", border: "1px solid rgba(255,255,255,0.08)",
-                    display: "flex", alignItems: "center", justifyContent: "space-between", gap: "10px",
-                  }}>
-                    <div>
-                      <p style={{ fontSize: "13.5px", fontWeight: 700, color: "#F8FAFC", display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                        {v.name}
-                        {v.is_default && <StatusBadge tone="success">Default</StatusBadge>}
-                        {!v.is_active && <StatusBadge tone="danger">Inactiva</StatusBadge>}
-                      </p>
-                      <p style={{ fontSize: "11.5px", fontFamily: "var(--font-mono)", color: "#94A3B8", marginTop: "3px" }}>
-                        SKU: {v.sku} · {formatCurrency(v.prices?.CLP ?? v.effective_price, "CLP")} · {formatCurrency(v.prices?.USD ?? v.price_usd, "USD")} · {formatCurrency(v.prices?.ARS ?? v.price_ars, "ARS")} · Stock: {v.stock}
-                      </p>
-                    </div>
-                    <div style={{ display: "flex", gap: "6px" }}>
-                      <SecondaryButton size="sm" onClick={() => handleEditVariant(v)}>Editar</SecondaryButton>
-                      <button type="button" onClick={() => handleDeleteVariant(v.id)} aria-label="Eliminar variante"
-                        style={{ background: "rgba(239,68,68,0.15)", color: "#F87171", border: "none", borderRadius: "8px", padding: "6px 10px", cursor: "pointer" }}>
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </SectionCard>
-        </div>
+        </AdminLayoutGrid>
       )}
 
       {/* TAB ESPECIFICACIONES TÉCNICAS (BF-44) */}
       {tab === "specs" && (
         <SectionCard
-          eyebrow="CATÁLOGO TÉCNICO AUDIO PRO"
           title="Especificaciones técnicas estructuradas"
           description="Atributos validados según familia de producto para ficha pública y comparador."
-          actions={
-            <div style={{ display: "flex", gap: "8px" }}>
-              <SecondaryButton size="sm" onClick={() => setShowAllSpecs(s => !s)}>
+          action={
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <SecondaryButton size="sm" onClick={() => setShowAllSpecs((s) => !s)}>
                 {showAllSpecs ? "Solo recomendados de categoría" : `Ver todos (${allAttrs.length})`}
               </SecondaryButton>
-              <PrimaryButton data-testid="save-specs-btn" onClick={handleSaveSpecs} loading={savingSpecs}>
-                <Save size={14} /> Guardar especificaciones
+              <PrimaryButton size="sm" icon={Save} data-testid="save-specs-btn" onClick={handleSaveSpecs} loading={savingSpecs}>
+                Guardar especificaciones
               </PrimaryButton>
             </div>
           }
         >
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: "14px" }}>
-            {visibleAttrs.map(attr => (
-              <div key={attr.key} style={{ padding: "12px", borderRadius: "12px", background: "#0B0E14", border: "1px solid rgba(255,255,255,0.08)" }}>
-                <label style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: 700, color: "#E2E8F0", marginBottom: "6px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 12 }}>
+            {visibleAttrs.map((attr) => (
+              <div key={attr.key} style={{ padding: 12, borderRadius: 8, background: "#FAFAFA", border: "1px solid #E4E4E7" }}>
+                <label style={{ display: "flex", justifyContent: "space-between", fontSize: 12, fontWeight: 600, color: "#09090B", marginBottom: 6 }}>
                   <span>{attr.label}</span>
-                  {attr.unit && <span style={{ color: "#1AFF6E", fontFamily: "var(--font-mono)", fontSize: "11px" }}>{attr.unit}</span>}
+                  {attr.unit && <span className="lp-mono" style={{ color: "#0F7A38", fontSize: 11 }}>{attr.unit}</span>}
                 </label>
 
                 {attr.data_type === "boolean" ? (
                   <select
                     value={specValues[attr.key] || ""}
-                    onChange={e => setSpecValues(p => ({ ...p, [attr.key]: e.target.value }))}
-                    style={bentoInput}
+                    onChange={(e) => setSpecValues((p) => ({ ...p, [attr.key]: e.target.value }))}
+                    style={formInputStyle}
                   >
                     <option value="">No especificado</option>
                     <option value="true">Sí</option>
@@ -454,11 +508,11 @@ export default function AdminProductDetail() {
                 ) : attr.data_type === "select" && attr.options?.length > 0 ? (
                   <select
                     value={specValues[attr.key] || ""}
-                    onChange={e => setSpecValues(p => ({ ...p, [attr.key]: e.target.value }))}
-                    style={bentoInput}
+                    onChange={(e) => setSpecValues((p) => ({ ...p, [attr.key]: e.target.value }))}
+                    style={formInputStyle}
                   >
                     <option value="">No especificado</option>
-                    {attr.options.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    {attr.options.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
                   </select>
                 ) : (
                   <input
@@ -466,9 +520,9 @@ export default function AdminProductDetail() {
                     type={attr.data_type === "number" || attr.data_type === "decimal" ? "number" : "text"}
                     step={attr.data_type === "decimal" ? "0.01" : "1"}
                     value={specValues[attr.key] || ""}
-                    onChange={e => setSpecValues(p => ({ ...p, [attr.key]: e.target.value }))}
+                    onChange={(e) => setSpecValues((p) => ({ ...p, [attr.key]: e.target.value }))}
                     placeholder={attr.options?.length ? attr.options.slice(0, 2).join(", ") : `Ingresa ${attr.label.toLowerCase()}`}
-                    style={bentoInput}
+                    style={formInputStyle}
                   />
                 )}
               </div>
@@ -482,58 +536,91 @@ export default function AdminProductDetail() {
         <ProductSuppliersTab product={product} variants={variants} />
       )}
 
-      {/* TAB GENERAL */}
+      {/* TAB GENERAL — Layout Asimétrico 2/3 + 1/3 Nimbus */}
       {tab === "general" && form && (
-        <SectionCard
-          eyebrow="DATOS COMERCIALES"
-          title="Información del producto maestro"
-          actions={
-            <PrimaryButton onClick={handleSaveGeneral} loading={savingGeneral}>
-              <Save size={14} /> Guardar cambios
-            </PrimaryButton>
-          }
-        >
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "12px" }}>
-            <div>
-              <label style={{ fontSize: "11px", color: "#94A3B8" }}>Nombre</label>
-              <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} style={bentoInput} />
-            </div>
-            <div>
-              <label style={{ fontSize: "11px", color: "#94A3B8" }}>SKU Maestro</label>
-              <input value={form.sku} onChange={e => setForm(f => ({ ...f, sku: e.target.value }))} style={bentoInput} />
-            </div>
-            <div>
-              <label style={{ fontSize: "11px", color: "#94A3B8" }}>Precio CLP</label>
-              <input type="number" value={form.price} onChange={e => setForm(f => ({ ...f, price: e.target.value }))} style={bentoInput} />
-            </div>
-            <div>
-              <label style={{ fontSize: "11px", color: "#94A3B8" }}>Precio USD</label>
-              <input type="number" step="0.01" value={form.price_usd} onChange={e => setForm(f => ({ ...f, price_usd: e.target.value }))} style={bentoInput} />
-            </div>
-            <div>
-              <label style={{ fontSize: "11px", color: "#94A3B8" }}>Precio ARS</label>
-              <input type="number" value={form.price_ars} onChange={e => setForm(f => ({ ...f, price_ars: e.target.value }))} style={bentoInput} />
-            </div>
-            <div>
-              <label style={{ fontSize: "11px", color: "#94A3B8" }}>Stock base</label>
-              <input type="number" value={form.stock} onChange={e => setForm(f => ({ ...f, stock: Number(e.target.value) }))} style={bentoInput} />
-            </div>
-            <div>
-              <label style={{ fontSize: "11px", color: "#94A3B8" }}>Categoría</label>
-              <select value={form.category} onChange={e => setForm(f => ({ ...f, category: e.target.value }))} style={bentoInput}>
-                <option value="">Sin categoría</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label style={{ fontSize: "11px", color: "#94A3B8" }}>Marca</label>
-              <select value={form.brand} onChange={e => setForm(f => ({ ...f, brand: e.target.value }))} style={bentoInput}>
-                <option value="">Sin marca</option>
-                {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
-            </div>
+        <AdminLayoutGrid layout="asym">
+          <div className="au-stack">
+            <SectionCard title="Nombre y descripción">
+              <div className="au-stack-sm">
+                <FormField label="Nombre del producto" required description="Nombre visible en el catálogo público.">
+                  <input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} style={formInputStyle} />
+                </FormField>
+                <FormField label="Descripción corta">
+                  <textarea
+                    rows={3}
+                    value={form.short_description}
+                    onChange={(e) => setForm((f) => ({ ...f, short_description: e.target.value }))}
+                    style={{ ...formInputStyle, resize: "vertical" }}
+                  />
+                </FormField>
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Precios por moneda (sin conversión implícita)">
+              <div className="au-grid-2">
+                <FormField label="Precio CLP" required>
+                  <input type="number" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))} style={formInputStyle} />
+                </FormField>
+                <FormField label="Precio comparativo CLP">
+                  <input type="number" value={form.compare_price} onChange={(e) => setForm((f) => ({ ...f, compare_price: e.target.value }))} style={formInputStyle} />
+                </FormField>
+                <FormField label="Precio USD (opcional)">
+                  <input type="number" step="0.01" value={form.price_usd} onChange={(e) => setForm((f) => ({ ...f, price_usd: e.target.value }))} style={formInputStyle} />
+                </FormField>
+                <FormField label="Precio ARS (opcional)">
+                  <input type="number" value={form.price_ars} onChange={(e) => setForm((f) => ({ ...f, price_ars: e.target.value }))} style={formInputStyle} />
+                </FormField>
+              </div>
+            </SectionCard>
           </div>
-        </SectionCard>
+
+          <div className="au-stack">
+            <SectionCard title="Publicación">
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                <div>
+                  <p style={{ fontSize: 13, fontWeight: 600, color: "#09090B", margin: 0 }}>Visible en tienda</p>
+                  <p style={{ fontSize: 12, color: "#71717A", margin: "2px 0 0" }}>Publicar en catálogo activo</p>
+                </div>
+                <SwitchToggle
+                  checked={form.is_active}
+                  onChange={(val) => setForm((f) => ({ ...f, is_active: val }))}
+                  label="Visible en tienda"
+                />
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Organización">
+              <div className="au-stack-sm">
+                <FormField label="Categoría">
+                  <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} style={formInputStyle}>
+                    <option value="">Sin categoría</option>
+                    {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                </FormField>
+                <FormField label="Marca">
+                  <select value={form.brand} onChange={(e) => setForm((f) => ({ ...f, brand: e.target.value }))} style={formInputStyle}>
+                    <option value="">Sin marca</option>
+                    {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                  </select>
+                </FormField>
+              </div>
+            </SectionCard>
+
+            <SectionCard title="Inventario base">
+              <div className="au-stack-sm">
+                <FormField label="SKU Maestro">
+                  <input value={form.sku} onChange={(e) => setForm((f) => ({ ...f, sku: e.target.value }))} className="lp-mono" style={formInputStyle} />
+                </FormField>
+                <FormField label="Stock base">
+                  <input type="number" value={form.stock} onChange={(e) => setForm((f) => ({ ...f, stock: Number(e.target.value) }))} style={formInputStyle} />
+                </FormField>
+                <PrimaryButton icon={Save} onClick={handleSaveGeneral} loading={savingGeneral} style={{ width: "100%", marginTop: 4 }}>
+                  Guardar cambios
+                </PrimaryButton>
+              </div>
+            </SectionCard>
+          </div>
+        </AdminLayoutGrid>
       )}
     </div>
   )

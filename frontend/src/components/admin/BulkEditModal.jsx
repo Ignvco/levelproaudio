@@ -1,4 +1,4 @@
-// components/admin/BulkEditModal.jsx — Edición Masiva de Catálogo (BF-15)
+// components/admin/BulkEditModal.jsx — Edición Masiva de Catálogo (BF-15) en SideModal Nimbus
 import { useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import {
@@ -6,18 +6,16 @@ import {
   applyBulkProductsUpdate,
 } from "../../api/admin.api"
 import { showToast } from "../../utils/toast"
-import { Layers, Eye, CheckCircle2, AlertTriangle, X } from "lucide-react"
-
-const bentoInput = {
-  width: "100%",
-  padding: "10px 12px",
-  background: "#121722",
-  border: "1px solid rgba(255,255,255,0.12)",
-  borderRadius: "10px",
-  color: "#F8FAFC",
-  fontSize: "13px",
-  outline: "none",
-}
+import { Eye, CheckCircle2, AlertTriangle } from "lucide-react"
+import {
+  SideModal,
+  FormField,
+  formInputStyle,
+  PrimaryButton,
+  SecondaryButton,
+  CalloutCard,
+  StatusBadge,
+} from "./ui"
 
 const OPERATIONS = [
   { value: "price_adjust_percent", label: "Ajustar precio (%)" },
@@ -52,8 +50,6 @@ export default function BulkEditModal({
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState("")
   const [applyResult, setApplyResult] = useState(null)
-
-  if (!open) return null
 
   const buildPayload = () => {
     const params = {}
@@ -116,231 +112,197 @@ export default function BulkEditModal({
   }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Edición masiva de catálogo"
-      data-testid="bulk-edit-modal"
-      style={{
-        position: "fixed", inset: 0, zIndex: 95,
-        background: "rgba(5,7,11,0.82)", backdropFilter: "blur(8px)",
-        display: "flex", alignItems: "center", justifyContent: "center", padding: "20px",
-      }}
+    <SideModal
+      open={open}
+      onClose={onClose}
+      maxWidth={720}
+      testId="bulk-edit-modal"
+      subtitle={`Catálogo PIM · ${selectedIds.length > 0 ? `${selectedIds.length} seleccionados` : "Por filtros activos"}`}
+      title="Edición masiva de catálogo"
+      footer={
+        <>
+          <SecondaryButton onClick={onClose}>Cerrar</SecondaryButton>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <SecondaryButton
+              icon={Eye}
+              onClick={handlePreview}
+              loading={loading}
+              disabled={loading}
+              testId="bulk-preview-btn"
+            >
+              {loading ? "Calculando..." : "Previsualizar cambios"}
+            </SecondaryButton>
+            {preview && preview.valid_count > 0 && !applyResult && (
+              <PrimaryButton
+                icon={CheckCircle2}
+                onClick={handleApply}
+                loading={loading}
+                disabled={loading}
+                testId="bulk-apply-btn"
+              >
+                Confirmar y aplicar ({preview.valid_count})
+              </PrimaryButton>
+            )}
+          </div>
+        </>
+      }
     >
-      <div
-        style={{
-          width: "min(960px, 100%)", maxHeight: "90vh", overflowY: "auto",
-          background: "#0B0E14", border: "1px solid rgba(255,255,255,0.12)",
-          borderRadius: "20px", padding: "24px", color: "#F8FAFC",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.7)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "18px", paddingBottom: "14px", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
-          <div>
-            <p style={{ fontSize: "11px", fontWeight: 700, color: "#1AFF6E", letterSpacing: "0.14em", textTransform: "uppercase", display: "flex", alignItems: "center", gap: "6px" }}>
-              <Layers size={13} /> Edición Masiva PIM · {selectedIds.length > 0 ? `${selectedIds.length} seleccionados` : "Por filtros activos"}
-            </p>
-            <h2 style={{ fontSize: "20px", fontWeight: 800, marginTop: "4px" }}>
-              Actualización masiva con previsualización y auditoría
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Cerrar edición masiva"
-            style={{ width: "36px", height: "36px", borderRadius: "50%", background: "rgba(255,255,255,0.06)", border: "1px solid rgba(255,255,255,0.12)", color: "#fff", cursor: "pointer", display: "grid", placeItems: "center" }}
-          >
-            <X size={16} />
-          </button>
-        </div>
+      {/* Controls Grid */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))", gap: 12 }}>
+        <FormField label="Alcance">
+          <select value={targetScope} onChange={(e) => { setTargetScope(e.target.value); setPreview(null) }} style={formInputStyle}>
+            <option value="products">Productos maestros</option>
+            <option value="variants">Variantes de los productos</option>
+          </select>
+        </FormField>
 
-        {/* Controles */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "12px", marginBottom: "16px" }}>
-          <div>
-            <label style={{ display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "6px", fontWeight: 600 }}>Alcance</label>
-            <select value={targetScope} onChange={e => { setTargetScope(e.target.value); setPreview(null) }} style={bentoInput}>
-              <option value="products">Productos maestros</option>
-              <option value="variants">Variantes de los productos</option>
+        <FormField label="Operación">
+          <select data-testid="bulk-operation-select" value={operation} onChange={(e) => { setOperation(e.target.value); setPreview(null) }} style={formInputStyle}>
+            {OPERATIONS.map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}
+          </select>
+        </FormField>
+
+        {(operation === "price_adjust_percent" || operation === "price_set") && (
+          <FormField label="Moneda aislada">
+            <select value={currency} onChange={(e) => { setCurrency(e.target.value); setPreview(null) }} style={formInputStyle}>
+              <option value="CLP">CLP (Pesos chilenos)</option>
+              <option value="USD">USD (Dólares)</option>
+              <option value="ARS">ARS (Pesos argentinos)</option>
             </select>
-          </div>
+          </FormField>
+        )}
 
-          <div>
-            <label style={{ display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "6px", fontWeight: 600 }}>Operación</label>
-            <select data-testid="bulk-operation-select" value={operation} onChange={e => { setOperation(e.target.value); setPreview(null) }} style={bentoInput}>
-              {OPERATIONS.map(op => <option key={op.value} value={op.value}>{op.label}</option>)}
+        {operation === "price_adjust_percent" && (
+          <FormField label="Porcentaje (% ej: 10 o -15)">
+            <input data-testid="bulk-percent-input" type="number" step="0.1" value={percent} onChange={(e) => { setPercent(e.target.value); setPreview(null) }} style={formInputStyle} />
+          </FormField>
+        )}
+
+        {operation === "price_set" && (
+          <FormField label={`Nuevo precio (${currency})`}>
+            <input type="number" step="0.01" value={amount} onChange={(e) => { setAmount(e.target.value); setPreview(null) }} style={formInputStyle} />
+          </FormField>
+        )}
+
+        {(operation === "stock_set" || operation === "stock_delta") && (
+          <FormField label={operation === "stock_set" ? "Stock exacto" : "Delta (+/- unidades)"}>
+            <input type="number" value={stockVal} onChange={(e) => { setStockVal(e.target.value); setPreview(null) }} style={formInputStyle} />
+          </FormField>
+        )}
+
+        {operation === "set_active" && (
+          <FormField label="Estado">
+            <select value={isActiveVal} onChange={(e) => { setIsActiveVal(e.target.value); setPreview(null) }} style={formInputStyle}>
+              <option value="true">Activar</option>
+              <option value="false">Desactivar</option>
             </select>
-          </div>
+          </FormField>
+        )}
 
-          {(operation === "price_adjust_percent" || operation === "price_set") && (
-            <div>
-              <label style={{ display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "6px", fontWeight: 600 }}>Moneda aislada</label>
-              <select value={currency} onChange={e => { setCurrency(e.target.value); setPreview(null) }} style={bentoInput}>
-                <option value="CLP">CLP (Pesos chilenos)</option>
-                <option value="USD">USD (Dólares)</option>
-                <option value="ARS">ARS (Pesos argentinos)</option>
+        {operation === "set_fields" && (
+          <>
+            <FormField label="Nueva Marca (opcional)">
+              <select value={brandId} onChange={(e) => { setBrandId(e.target.value); setPreview(null) }} style={formInputStyle}>
+                <option value="">Sin cambio</option>
+                {brands.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
               </select>
-            </div>
-          )}
-
-          {operation === "price_adjust_percent" && (
-            <div>
-              <label style={{ display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "6px", fontWeight: 600 }}>Porcentaje (% ej: 10 o -15)</label>
-              <input data-testid="bulk-percent-input" type="number" step="0.1" value={percent} onChange={e => { setPercent(e.target.value); setPreview(null) }} style={bentoInput} />
-            </div>
-          )}
-
-          {operation === "price_set" && (
-            <div>
-              <label style={{ display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "6px", fontWeight: 600 }}>Nuevo precio ({currency})</label>
-              <input type="number" step="0.01" value={amount} onChange={e => { setAmount(e.target.value); setPreview(null) }} style={bentoInput} />
-            </div>
-          )}
-
-          {(operation === "stock_set" || operation === "stock_delta") && (
-            <div>
-              <label style={{ display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "6px", fontWeight: 600 }}>
-                {operation === "stock_set" ? "Stock exacto" : "Delta (+/- unidades)"}
-              </label>
-              <input type="number" value={stockVal} onChange={e => { setStockVal(e.target.value); setPreview(null) }} style={bentoInput} />
-            </div>
-          )}
-
-          {operation === "set_active" && (
-            <div>
-              <label style={{ display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "6px", fontWeight: 600 }}>Estado</label>
-              <select value={isActiveVal} onChange={e => { setIsActiveVal(e.target.value); setPreview(null) }} style={bentoInput}>
-                <option value="true">Activar</option>
-                <option value="false">Desactivar</option>
+            </FormField>
+            <FormField label="Nueva Categoría (opcional)">
+              <select value={categoryId} onChange={(e) => { setCategoryId(e.target.value); setPreview(null) }} style={formInputStyle}>
+                <option value="">Sin cambio</option>
+                {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
               </select>
-            </div>
-          )}
+            </FormField>
+          </>
+        )}
 
-          {operation === "set_fields" && (
-            <>
-              <div>
-                <label style={{ display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "6px", fontWeight: 600 }}>Nueva Marca (opcional)</label>
-                <select value={brandId} onChange={e => { setBrandId(e.target.value); setPreview(null) }} style={bentoInput}>
-                  <option value="">Sin cambio</option>
-                  {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "6px", fontWeight: 600 }}>Nueva Categoría (opcional)</label>
-                <select value={categoryId} onChange={e => { setCategoryId(e.target.value); setPreview(null) }} style={bentoInput}>
-                  <option value="">Sin cambio</option>
-                  {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </div>
-            </>
-          )}
+        <FormField label="Política ante errores">
+          <select value={atomicMode} onChange={(e) => setAtomicMode(e.target.value)} style={formInputStyle}>
+            <option value="all_or_nothing">Todo o nada (Rollback si hay error)</option>
+            <option value="best_effort">Parcial (Aplica válidos, reporta errores)</option>
+          </select>
+        </FormField>
+      </div>
 
-          <div>
-            <label style={{ display: "block", fontSize: "11px", color: "#94A3B8", marginBottom: "6px", fontWeight: 600 }}>Política ante errores</label>
-            <select value={atomicMode} onChange={e => setAtomicMode(e.target.value)} style={bentoInput}>
-              <option value="all_or_nothing">Todo o nada (Rollback si hay error)</option>
-              <option value="best_effort">Parcial (Aplica válidos, reporta errores)</option>
-            </select>
-          </div>
-        </div>
+      {error && <CalloutCard tone="danger" description={error} />}
 
-        <div style={{ display: "flex", gap: "10px", marginBottom: "18px", flexWrap: "wrap" }}>
-          <button
-            type="button"
-            data-testid="bulk-preview-btn"
-            onClick={handlePreview}
-            disabled={loading}
+      {applyResult && (
+        <CalloutCard
+          tone="success"
+          testId="bulk-apply-result"
+          title="Edición masiva aplicada"
+          description={`Estado: ${applyResult.status} · Aplicados: ${applyResult.applied_count} · Fallidos: ${applyResult.failed_count}`}
+        />
+      )}
+
+      {preview && (
+        <div
+          data-testid="bulk-preview-table"
+          className="au-card au-table-wrap"
+          style={{ overflow: "hidden" }}
+        >
+          <div
             style={{
-              display: "inline-flex", alignItems: "center", gap: "8px",
-              padding: "10px 18px", borderRadius: "10px", cursor: "pointer",
-              background: "rgba(26,255,110,0.12)", color: "#1AFF6E",
-              border: "1px solid rgba(26,255,110,0.35)", fontSize: "13px", fontWeight: 700,
+              padding: "10px 14px",
+              background: "#FAFAFA",
+              borderBottom: "1px solid #E4E4E7",
+              display: "flex",
+              gap: 12,
+              flexWrap: "wrap",
+              alignItems: "center",
+              fontSize: 12,
             }}
           >
-            <Eye size={15} /> {loading ? "Calculando..." : "Previsualizar cambios"}
-          </button>
-
-          {preview && preview.valid_count > 0 && !applyResult && (
-            <button
-              type="button"
-              data-testid="bulk-apply-btn"
-              onClick={handleApply}
-              disabled={loading}
-              style={{
-                display: "inline-flex", alignItems: "center", gap: "8px",
-                padding: "10px 20px", borderRadius: "10px", cursor: "pointer",
-                background: "#1AFF6E", color: "#0B0E14",
-                border: "none", fontSize: "13px", fontWeight: 800,
-              }}
-            >
-              <CheckCircle2 size={15} /> Confirmar y aplicar ({preview.valid_count})
-            </button>
-          )}
-        </div>
-
-        {error && (
-          <div style={{ padding: "12px 14px", borderRadius: "12px", background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.3)", color: "#FCA5A5", fontSize: "13px", marginBottom: "14px" }}>
-            {error}
+            <span>Coincidencias: <strong>{preview.total_matched}</strong></span>
+            <StatusBadge tone="success">Válidos: {preview.valid_count}</StatusBadge>
+            <StatusBadge tone={preview.error_count > 0 ? "danger" : "neutral"}>
+              Errores: {preview.error_count}
+            </StatusBadge>
+            {preview.warnings_count > 0 && (
+              <span style={{ color: "#B45309", display: "inline-flex", alignItems: "center", gap: 4, fontWeight: 500 }}>
+                <AlertTriangle size={13} /> Alertas: {preview.warnings_count}
+              </span>
+            )}
           </div>
-        )}
 
-        {applyResult && (
-          <div data-testid="bulk-apply-result" style={{ padding: "14px 16px", borderRadius: "12px", background: "rgba(26,255,110,0.1)", border: "1px solid rgba(26,255,110,0.3)", marginBottom: "16px" }}>
-            <p style={{ fontSize: "13.5px", fontWeight: 700, color: "#1AFF6E" }}>
-              Estado: {applyResult.status} · Aplicados: {applyResult.applied_count} · Fallidos: {applyResult.failed_count}
-            </p>
-          </div>
-        )}
-
-        {preview && (
-          <div data-testid="bulk-preview-table" style={{ border: "1px solid rgba(255,255,255,0.08)", borderRadius: "14px", overflow: "hidden" }}>
-            <div style={{ padding: "12px 16px", background: "#121722", display: "flex", gap: "16px", flexWrap: "wrap", fontSize: "12px", fontFamily: "var(--font-mono)" }}>
-              <span>Coincidencias: <strong>{preview.total_matched}</strong></span>
-              <span style={{ color: "#1AFF6E" }}>Válidos: <strong>{preview.valid_count}</strong></span>
-              <span style={{ color: preview.error_count > 0 ? "#F87171" : "#94A3B8" }}>Errores: <strong>{preview.error_count}</strong></span>
-              {preview.warnings_count > 0 && (
-                <span style={{ color: "#FBBF24", display: "inline-flex", alignItems: "center", gap: "4px" }}>
-                  <AlertTriangle size={12} /> Alertas: {preview.warnings_count}
-                </span>
-              )}
-            </div>
-
-            <div style={{ maxHeight: "300px", overflowY: "auto" }}>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "12.5px" }}>
-                <thead>
-                  <tr style={{ background: "rgba(255,255,255,0.03)", textAlign: "left", color: "#94A3B8" }}>
-                    <th style={{ padding: "10px 14px" }}>Registro</th>
-                    <th style={{ padding: "10px 14px" }}>SKU</th>
-                    <th style={{ padding: "10px 14px" }}>Actual</th>
-                    <th style={{ padding: "10px 14px" }}>Propuesto</th>
+          <div style={{ maxHeight: 320, overflowY: "auto" }} className="au-tscroll">
+            <table className="au-table">
+              <thead>
+                <tr>
+                  <th>Registro</th>
+                  <th>SKU</th>
+                  <th>Actual</th>
+                  <th>Propuesto</th>
+                </tr>
+              </thead>
+              <tbody>
+                {preview.items.map((it) => (
+                  <tr key={it.id}>
+                    <td style={{ fontWeight: 600, color: "#09090B" }}>
+                      {it.name}
+                      {it.warnings?.length > 0 && (
+                        <p style={{ fontSize: 11.5, color: "#B45309", margin: "2px 0 0", fontWeight: 500 }}>
+                          {it.warnings.join(" · ")}
+                        </p>
+                      )}
+                    </td>
+                    <td className="lp-mono">{it.sku}</td>
+                    <td className="lp-mono" style={{ fontSize: 12, color: "#71717A" }}>{JSON.stringify(it.before)}</td>
+                    <td className="lp-mono" style={{ fontSize: 12, color: "#0F7A38", fontWeight: 600 }}>{JSON.stringify(it.after)}</td>
                   </tr>
-                </thead>
-                <tbody>
-                  {preview.items.map(it => (
-                    <tr key={it.id} style={{ borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-                      <td style={{ padding: "10px 14px", fontWeight: 600 }}>
-                        {it.name}
-                        {it.warnings?.length > 0 && (
-                          <p style={{ fontSize: "11px", color: "#FBBF24", marginTop: "2px" }}>{it.warnings.join(" · ")}</p>
-                        )}
-                      </td>
-                      <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", color: "#94A3B8" }}>{it.sku}</td>
-                      <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", color: "#94A3B8" }}>{JSON.stringify(it.before)}</td>
-                      <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)", color: "#1AFF6E" }}>{JSON.stringify(it.after)}</td>
-                    </tr>
-                  ))}
-                  {preview.errors.map(err => (
-                    <tr key={err.id} style={{ borderTop: "1px solid rgba(255,255,255,0.06)", background: "rgba(239,68,68,0.06)" }}>
-                      <td style={{ padding: "10px 14px", fontWeight: 600 }}>{err.name}</td>
-                      <td style={{ padding: "10px 14px", fontFamily: "var(--font-mono)" }}>{err.sku}</td>
-                      <td colSpan={2} style={{ padding: "10px 14px", color: "#FCA5A5" }}>{err.error}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+                {preview.errors.map((err) => (
+                  <tr key={err.id} style={{ background: "#FEF2F2" }}>
+                    <td style={{ fontWeight: 600, color: "#09090B" }}>{err.name}</td>
+                    <td className="lp-mono">{err.sku}</td>
+                    <td colSpan={2} style={{ color: "#DC2626" }}>{err.error}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        )}
-      </div>
-    </div>
+        </div>
+      )}
+    </SideModal>
   )
 }

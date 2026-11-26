@@ -10,19 +10,13 @@ import {
 } from "../../api/admin.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { showToast } from "../../utils/toast"
-import { DataTable, StatusBadge, AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, ConfirmationModal } from "../../components/admin/ui"
+import { DataTable, StatusBadge, AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, ConfirmationModal, FilterChipBar, formInputStyle } from "../../components/admin/ui"
 import BulkEditModal from "../../components/admin/BulkEditModal"
 import { useSiteSettings } from "../../hooks/useSiteSettings"
 import { formatCurrency } from "../../utils/accountingCurrency"
-import { Pencil, Trash2, Package, CheckCircle2, Star, AlertTriangle, Layers, Download, SlidersHorizontal } from "lucide-react"
+import { Pencil, Trash2, Package, CheckCircle2, Star, AlertTriangle, Layers, Download, SlidersHorizontal, Image, Upload, Loader2, Plus, X } from "lucide-react"
 
-const inputSt = {
-  width: "100%", padding: "10px 14px",
-  background: "var(--surface-2)", border: "1px solid var(--border)",
-  borderRadius: "var(--r-md)", color: "var(--text)",
-  fontSize: "13px", outline: "none",
-  transition: "border-color var(--dur)",
-}
+const inputSt = formInputStyle
 
 // ── Formulario de producto ────────────────────────────────────
 // ── Picker de "Completá tu setup con" — busca entre TODOS los
@@ -222,6 +216,7 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
   // Imágenes
   const [images, setImages]         = useState(product?.images || [])
   const [uploadingImg, setUploadingImg] = useState(false)
+  const [imgToDelete, setImgToDelete] = useState(null)
   const fileRef = useRef(null)
 
   const handleSave = async () => {
@@ -279,13 +274,16 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
     } finally { setUploadingImg(false) }
   }
 
-  const handleDeleteImg = async (imgId) => {
-    if (!window.confirm("¿Eliminar imagen?")) return
+  const handleDeleteImg = async () => {
+    if (!imgToDelete) return
     try {
-      await deleteProductImage(imgId)
-      setImages(prev => prev.filter(i => i.id !== imgId))
+      await deleteProductImage(imgToDelete)
+      setImages(prev => prev.filter(i => i.id !== imgToDelete))
+      showToast("Imagen eliminada")
     } catch {
       showToast("No se pudo eliminar la imagen. Intentá de nuevo.", "error")
+    } finally {
+      setImgToDelete(null)
     }
   }
 
@@ -327,19 +325,9 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
       )}
 
       {/* Tabs internos */}
-      <div style={{
-        display: "flex", gap: "0", borderBottom: "1px solid var(--border)",
-        flexShrink: 0, overflowX: "auto", margin: "0 -24px", padding: "0 24px",
-      }}>
+      <div className="au-tabs hide-scroll" style={{ margin: "0 -20px", padding: "0 20px" }}>
         {FORM_TABS.map(t => (
-          <button key={t} type="button" onClick={() => setActiveTab(t)} style={{
-            padding: "10px 20px", fontSize: "13px", cursor: "pointer",
-            background: "none", border: "none",
-            borderBottom: activeTab === t ? "2px solid var(--accent)" : "2px solid transparent",
-            color: activeTab === t ? "var(--accent)" : "var(--text-3)",
-            fontWeight: activeTab === t ? 500 : 400,
-            marginBottom: "-1px", whiteSpace: "nowrap",
-          }}>
+          <button key={t} type="button" onClick={() => setActiveTab(t)} className={`au-tab${activeTab === t ? " is-active" : ""}`}>
             {TAB_LABELS[t]}
           </button>
         ))}
@@ -733,13 +721,23 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
           {/* TAB IMÁGENES */}
           {activeTab === "images" && (
             <>
+              <ConfirmationModal
+                open={!!imgToDelete}
+                title="¿Eliminar imagen del producto?"
+                description="Esta imagen dejará de mostrarse en la ficha pública de la tienda."
+                confirmLabel="Sí, eliminar"
+                danger
+                onConfirm={handleDeleteImg}
+                onCancel={() => setImgToDelete(null)}
+                testId="delete-product-image-modal"
+              />
               {!product?.id ? (
-                <div style={{ textAlign: "center", padding: "32px",
-                  color: "var(--text-3)", fontSize: "14px",
-                  background: "var(--surface-2)", borderRadius: "var(--r-xl)",
-                  border: "1px dashed var(--border)" }}>
-                  <p style={{ fontSize: "32px", marginBottom: "10px" }}>🖼️</p>
-                  Guarda el producto primero para poder subir imágenes.
+                <div style={{ textAlign: "center", padding: "28px 20px",
+                  color: "#71717A", fontSize: "13px",
+                  background: "#FAFAFA", borderRadius: "10px",
+                  border: "1px dashed #D4D4D8" }}>
+                  <Image size={26} style={{ margin: "0 auto 8px", color: "#71717A" }} />
+                  <p style={{ margin: 0 }}>Guarda el producto primero para poder subir imágenes.</p>
                 </div>
               ) : (
                 <>
@@ -747,17 +745,17 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                   <div>
                     <input ref={fileRef} type="file" accept="image/*"
                       onChange={handleImageUpload} style={{ display: "none" }} />
-                    <button onClick={() => fileRef.current?.click()}
+                    <button type="button" onClick={() => fileRef.current?.click()}
                       disabled={uploadingImg}
                       style={{
-                        width: "100%", padding: "32px",
-                        borderRadius: "var(--r-xl)", cursor: "pointer",
-                        background: "var(--surface-2)",
-                        border: "2px dashed var(--border)",
-                        color: "var(--text-3)", fontSize: "14px",
-                        transition: "all var(--dur) var(--ease)",
+                        width: "100%", padding: "24px",
+                        borderRadius: "10px", cursor: "pointer",
+                        background: "#FAFAFA",
+                        border: "1.5px dashed #D4D4D8",
+                        color: "#52525B", fontSize: "13px", fontWeight: 500,
+                        display: "flex", alignItems: "center", justifyContent: "center", gap: 8,
                       }}>
-                      {uploadingImg ? "⏳ Subiendo..." : "＋ Subir imagen"}
+                      {uploadingImg ? <><Loader2 size={16} className="spin" /> Subiendo imagen…</> : <><Upload size={16} /> Subir imagen del producto</>}
                     </button>
                   </div>
 
@@ -767,9 +765,9 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                       gridTemplateColumns: "repeat(3, 1fr)", gap: "10px" }}>
                       {images.map(img => (
                         <div key={img.id} style={{
-                          position: "relative", borderRadius: "var(--r-lg)",
+                          position: "relative", borderRadius: "8px",
                           overflow: "hidden",
-                          border: `2px solid ${img.is_primary ? "var(--accent)" : "var(--border)"}`,
+                          border: `2px solid ${img.is_primary ? "#09090B" : "#E4E4E7"}`,
                           aspectRatio: "1",
                         }}>
                           <img src={mediaUrl(img.image)} alt=""
@@ -777,45 +775,45 @@ function ProductForm({ product, categories, brands, onClose, onSave }) {
                           {img.is_primary && (
                             <div style={{
                               position: "absolute", top: "6px", left: "6px",
-                              background: "var(--accent)", color: "#000",
-                              fontSize: "9px", fontWeight: 700,
-                              padding: "2px 6px", borderRadius: "3px",
+                              background: "#09090B", color: "#FFFFFF",
+                              fontSize: "9.5px", fontWeight: 600,
+                              padding: "2px 6px", borderRadius: "4px",
                             }}>
                               PRINCIPAL
                             </div>
                           )}
                           <div style={{
                             position: "absolute", inset: 0,
-                            background: "rgba(0,0,0,0)",
+                            background: "rgba(9,9,11,0)",
                             display: "flex", alignItems: "center",
                             justifyContent: "center", gap: "6px",
-                            transition: "background var(--dur)",
+                            transition: "background 150ms",
                             opacity: 0,
                           }}
                             onMouseEnter={e => {
-                              e.currentTarget.style.background = "rgba(0,0,0,0.5)"
+                              e.currentTarget.style.background = "rgba(9,9,11,0.55)"
                               e.currentTarget.style.opacity = "1"
                             }}
                             onMouseLeave={e => {
-                              e.currentTarget.style.background = "rgba(0,0,0,0)"
+                              e.currentTarget.style.background = "rgba(9,9,11,0)"
                               e.currentTarget.style.opacity = "0"
                             }}
                           >
                             {!img.is_primary && (
-                              <button onClick={() => handleSetPrimary(img.id)} style={{
-                                padding: "4px 8px", borderRadius: "4px", fontSize: "10px",
-                                background: "var(--accent)", color: "#000",
+                              <button type="button" onClick={() => handleSetPrimary(img.id)} style={{
+                                padding: "4px 8px", borderRadius: "6px", fontSize: "11px",
+                                background: "#FFFFFF", color: "#09090B",
                                 border: "none", cursor: "pointer", fontWeight: 600,
                               }}>
                                 Principal
                               </button>
                             )}
-                            <button onClick={() => handleDeleteImg(img.id)} style={{
-                              padding: "4px 8px", borderRadius: "4px", fontSize: "10px",
-                              background: "rgba(248,113,113,0.9)", color: "#fff",
-                              border: "none", cursor: "pointer",
+                            <button type="button" onClick={() => setImgToDelete(img.id)} aria-label="Eliminar imagen" style={{
+                              padding: "4px 6px", borderRadius: "6px",
+                              background: "#DC2626", color: "#FFFFFF",
+                              border: "none", cursor: "pointer", display: "inline-flex", alignItems: "center",
                             }}>
-                              ×
+                              <X size={13} />
                             </button>
                           </div>
                         </div>
@@ -936,19 +934,18 @@ export default function AdminProducts() {
       const img = primaryImg ? mediaUrl(primaryImg.image) : null
       return (
         <div style={{ display:"flex", alignItems:"center", gap:"10px", minWidth:0 }}>
-          <div style={{ width:"40px", height:"40px", borderRadius:"var(--r-md)",
-            overflow:"hidden", background:"var(--admin-primary-soft, #e9fff2)",
-            border:"1px solid var(--admin-border, #e5e5e5)", flexShrink:0,
+          <div style={{ width:"40px", height:"40px", borderRadius:"8px",
+            overflow:"hidden", background:"#F4F4F5",
+            border:"1px solid #E4E4E7", flexShrink:0,
             display:"flex", alignItems:"center", justifyContent:"center" }}>
             {img
               ? <img src={img} alt={p.name} style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-              : <Package size={16} style={{ color:"var(--admin-primary-text, #0F9940)", opacity:.7 }} />}
+              : <Package size={16} style={{ color:"#52525B" }} />}
           </div>
           <div style={{ minWidth:0 }}>
-            <p style={{ fontSize:"13.5px", fontWeight:700, color:"var(--admin-text)", overflow:"hidden",
-              textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.name}</p>
-            {p.sku && <p style={{ fontSize:"11px", color:"var(--admin-text-muted)",
-              fontFamily:"monospace" }}>{p.sku}</p>}
+            <p style={{ fontSize:"13.5px", fontWeight:600, color:"#09090B", overflow:"hidden",
+              textOverflow:"ellipsis", whiteSpace:"nowrap", margin:0 }}>{p.name}</p>
+            {p.sku && <p className="lp-mono" style={{ fontSize:"11.5px", color:"#71717A", margin:"1px 0 0" }}>{p.sku}</p>}
           </div>
         </div>
       )
@@ -1056,8 +1053,8 @@ export default function AdminProducts() {
             <SecondaryButton to="/admin/inventory" size="sm">
               Inventario
             </SecondaryButton>
-            <PrimaryButton onClick={() => setModal("new")} data-testid="new-product-btn">
-              + Nuevo producto
+            <PrimaryButton icon={Plus} onClick={() => setModal("new")} data-testid="new-product-btn">
+              Nuevo producto
             </PrimaryButton>
           </>
         }
@@ -1103,53 +1100,85 @@ export default function AdminProducts() {
         </div>
       )}
 
-      {/* Barra de búsqueda, categoría y estado */}
-      <div className="au-card" style={{ padding: "14px 18px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
-        <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", flex: "1 1 340px" }}>
-          <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar producto por nombre o SKU..." aria-label="Buscar producto por nombre o SKU" data-testid="products-search"
-            className="au-input"
-            style={{ flex: "1 1 260px", maxWidth: "340px" }} />
-          <select value={catFilter} onChange={e => setCatFilter(e.target.value)} aria-label="Filtrar por categoría"
-            className="au-select"
-            style={{ maxWidth: "200px" }}>
-            <option value="">Todas las categorías</option>
-            {categories.map(c => (
-              <option key={c.id} value={c.slug}>{c.name}</option>
+      {/* Barra de búsqueda, categoría y estado + chips y bulk bar */}
+      <div className="au-card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: "12px 16px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", flex: "1 1 340px" }}>
+            <input value={search} onChange={e => setSearch(e.target.value)}
+              placeholder="Buscar producto por nombre o SKU..." aria-label="Buscar producto por nombre o SKU" data-testid="products-search"
+              className="au-input"
+              style={{ flex: "1 1 240px", maxWidth: "320px", padding: "0 12px", height: "34px" }} />
+            <select value={catFilter} onChange={e => setCatFilter(e.target.value)} aria-label="Filtrar por categoría"
+              className="au-select"
+              style={{ maxWidth: "190px", height: "34px" }}>
+              <option value="">Todas las categorías</option>
+              {categories.map(c => (
+                <option key={c.id} value={c.slug}>{c.name}</option>
+              ))}
+            </select>
+            <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} aria-label="Filtrar por marca"
+              className="au-select"
+              style={{ maxWidth: "170px", height: "34px" }}>
+              <option value="">Todas las marcas</option>
+              {brands.map(b => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
+            </select>
+            <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} aria-label="Filtrar por tipo"
+              className="au-select"
+              style={{ maxWidth: "155px", height: "34px" }}>
+              <option value="">Todos los tipos</option>
+              <option value="stock">En Stock</option>
+              <option value="preorder">Preorden</option>
+              <option value="on_demand">A pedido</option>
+              <option value="bundle">Kit / Combo</option>
+            </select>
+          </div>
+
+          <div className="lp-seg-tabs">
+            {[
+              ["active",   "Activos"  ],
+              ["inactive", "Inactivos"],
+              ["all",      "Todos"    ],
+            ].map(([val, label]) => (
+              <button key={val} type="button" aria-pressed={statusFilter === val} onClick={() => setStatusFilter(val)}
+                data-testid={`filter-status-${val}`}
+                className={`lp-seg-tab${statusFilter === val ? " is-active" : ""}`}>
+                {label}
+              </button>
             ))}
-          </select>
-          <select value={brandFilter} onChange={e => setBrandFilter(e.target.value)} aria-label="Filtrar por marca"
-            className="au-select"
-            style={{ maxWidth: "180px" }}>
-            <option value="">Todas las marcas</option>
-            {brands.map(b => (
-              <option key={b.id} value={b.id}>{b.name}</option>
-            ))}
-          </select>
-          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} aria-label="Filtrar por tipo"
-            className="au-select"
-            style={{ maxWidth: "160px" }}>
-            <option value="">Todos los tipos</option>
-            <option value="stock">En Stock</option>
-            <option value="preorder">Preorden</option>
-            <option value="on_demand">A pedido</option>
-            <option value="bundle">Kit / Combo</option>
-          </select>
+          </div>
         </div>
 
-        <div className="lp-seg-tabs">
-          {[
-            ["active",   "Activos"  ],
-            ["inactive", "Inactivos"],
-            ["all",      "Todos"    ],
-          ].map(([val, label]) => (
-            <button key={val} type="button" aria-pressed={statusFilter === val} onClick={() => setStatusFilter(val)}
-              data-testid={`filter-status-${val}`}
-              className={`lp-seg-tab${statusFilter === val ? " is-active" : ""}`}>
-              {label}
-            </button>
-          ))}
-        </div>
+        <FilterChipBar
+          chips={[
+            ...(search ? [{ key: "q", label: `Búsqueda: ${search}`, onRemove: () => setSearch("") }] : []),
+            ...(catFilter ? [{ key: "cat", label: `Categoría: ${catFilter}`, onRemove: () => setCatFilter("") }] : []),
+            ...(brandFilter ? [{ key: "br", label: "Marca filtrada", onRemove: () => setBrandFilter("") }] : []),
+            ...(typeFilter ? [{ key: "type", label: `Tipo: ${typeFilter}`, onRemove: () => setTypeFilter("") }] : []),
+          ]}
+          onClearAll={() => { setSearch(""); setCatFilter(""); setBrandFilter(""); setTypeFilter("") }}
+        />
+
+        {selectedIds.length > 0 && (
+          <div className="lp-bulkbar" data-testid="products-bulk-bar">
+            <span style={{ fontWeight: 600 }}>
+              {selectedIds.length} producto{selectedIds.length === 1 ? "" : "s"} seleccionado{selectedIds.length === 1 ? "" : "s"}
+            </span>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <SecondaryButton size="sm" onClick={() => setBulkOpen(true)}>
+                <Layers size={13} /> Edición masiva
+              </SecondaryButton>
+              <button
+                type="button"
+                onClick={() => setSelectedIds([])}
+                style={{ background: "transparent", border: "none", color: "#D4D4D8", fontSize: 12, cursor: "pointer" }}
+              >
+                Deseleccionar todo
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       <DataTable
