@@ -1,100 +1,126 @@
-// pages/admin/AdminLogin.jsx
+// pages/admin/AdminLogin.jsx — LevelPro Precision Nimbus Login Template
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
+import { Lock } from "lucide-react"
 import { useAuthStore } from "../../store/authStore"
 import logo from "../../assets/logo.png"
 import { useSiteSettings } from "../../hooks/useSiteSettings"
+import { FormField, formInputStyle, PrimaryButton, CalloutCard } from "../../components/admin/ui"
 
 export default function AdminLogin() {
   const { siteName, logoUrl } = useSiteSettings()
-  const [email, setEmail]       = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
-  const [error, setError]       = useState("")
-  const [loading, setLoading]   = useState(false)
-  const { login }               = useAuthStore()
-  const navigate                = useNavigate()
+  const [error, setError] = useState("")
+  const [loading, setLoading] = useState(false)
+  const { login } = useAuthStore()
+  const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setLoading(true); setError("")
+    setLoading(true)
+    setError("")
     try {
       const user = await login(email, password)
-      if (!user?.is_staff) {
+      if (!user?.is_staff && !user?.is_superuser) {
         setError("No tenés permisos de administrador.")
         return
       }
       navigate("/admin")
     } catch {
       setError("Credenciales incorrectas.")
-    } finally { setLoading(false) }
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex", alignItems: "center", justifyContent: "center",
-      padding: "clamp(24px, 5vw, 60px)",
-      background: `radial-gradient(ellipse 55% 45% at 50% 22%,
-        rgba(26,255,110,0.08) 0%, transparent 70%), #0A0B0D`,
-    }}>
-      <div style={{
-        width: "100%", maxWidth: "400px",
-        background: "#13161B",
-        border: "1px solid rgba(255,255,255,0.08)",
-        borderRadius: "24px",
-        padding: "36px 32px",
-        boxShadow: "0 24px 64px rgba(0,0,0,0.45)",
-      }} className="animate-fade-up">
-
-        {/* Logo + Badge */}
-        <div style={{ textAlign: "center", marginBottom: "28px" }}>
-          <img src={logoUrl || logo} alt={siteName}
-            style={{ height: "32px", margin: "0 auto 14px" }} />
-          <div style={{ display: "inline-flex", alignItems: "center", gap: "8px",
-            padding: "5px 12px", borderRadius: "9999px",
-            background: "rgba(26,255,110,0.1)", border: "1px solid rgba(26,255,110,0.25)" }}>
-            <span style={{ width: "6px", height: "6px", borderRadius: "50%",
-              background: "#1AFF6E", boxShadow: "0 0 8px #1AFF6E", display: "inline-block" }} />
-            <span style={{ fontSize: "10.5px", fontWeight: 800,
-              color: "#1AFF6E", letterSpacing: "0.08em", fontFamily: "var(--font-mono)" }}>
-              LP AUDIO · PANEL ADMIN
-            </span>
+    <div
+      className="admin-root admin-precision"
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px 16px",
+        background: "#F5F5F5",
+      }}
+    >
+      <div
+        className="au-card"
+        style={{
+          width: "100%",
+          maxWidth: 400,
+          padding: "32px 28px",
+          background: "#FFFFFF",
+          border: "1px solid #E4E4E7",
+          borderRadius: 12,
+        }}
+      >
+        {/* Official Positive Brand Header */}
+        <div style={{ textAlign: "center", marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+            {logoUrl ? (
+              <img src={logoUrl} alt={siteName || "LevelPro Audio"} style={{ height: 28, objectFit: "contain" }} />
+            ) : (
+              <span
+                className="lp-brand-logo-positive"
+                role="img"
+                aria-label={siteName || "LevelPro Audio"}
+                style={{
+                  height: 30,
+                  width: 100,
+                  backgroundPosition: "center",
+                  WebkitMaskImage: `url(${logo})`,
+                  maskImage: `url(${logo})`,
+                }}
+              />
+            )}
           </div>
+          <h1 style={{ fontSize: 19, fontWeight: 600, color: "#09090B", margin: "0 0 4px", letterSpacing: "-0.02em" }}>
+            Acceso Administrativo
+          </h1>
+          <p style={{ fontSize: 13, color: "#71717A", margin: 0 }}>
+            Ingresa con tu cuenta de operador autorizado
+          </p>
         </div>
 
-        <form onSubmit={handleSubmit}
-          style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {error && (
-            <div style={{ padding: "12px 16px", borderRadius: "12px",
-              background: "rgba(239,68,68,0.12)", border: "1px solid rgba(239,68,68,0.28)",
-              color: "#F87171", fontSize: "13px", fontWeight: 600 }}>
-              {error}
-            </div>
-          )}
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {error && <CalloutCard tone="danger" description={error} />}
 
-          <div>
-            <label style={{ display: "block", fontSize: "11.5px", fontWeight: 700,
-              color: "rgba(255,255,255,0.7)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Email</label>
-            <input type="email" value={email}
-              onChange={e => setEmail(e.target.value)}
-              className="input" placeholder="admin@levelproaudio.com"
-              required autoComplete="email" />
-          </div>
+          <FormField label="Email corporativo" required>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              style={formInputStyle}
+              placeholder="admin@levelproaudio.com"
+              required
+              autoComplete="email"
+            />
+          </FormField>
 
-          <div>
-            <label style={{ display: "block", fontSize: "11.5px", fontWeight: 700,
-              color: "rgba(255,255,255,0.7)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.06em" }}>Contraseña</label>
-            <input type="password" value={password}
-              onChange={e => setPassword(e.target.value)}
-              className="input" placeholder="••••••••"
-              required autoComplete="current-password" />
-          </div>
+          <FormField label="Contraseña" required>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              style={formInputStyle}
+              placeholder="••••••••"
+              required
+              autoComplete="current-password"
+            />
+          </FormField>
 
-          <button type="submit" disabled={loading} className="btn btn-accent"
-            style={{ justifyContent: "center", padding: "14px", borderRadius: "9999px",
-              fontSize: "14px", fontWeight: 700, marginTop: "6px", opacity: loading ? 0.7 : 1 }}>
-            {loading ? "Verificando..." : "Ingresar al admin"}
-          </button>
+          <PrimaryButton
+            type="submit"
+            loading={loading}
+            disabled={loading}
+            icon={Lock}
+            style={{ width: "100%", height: 40, marginTop: 4 }}
+          >
+            {loading ? "Verificando..." : "Ingresar al administrador"}
+          </PrimaryButton>
         </form>
       </div>
     </div>
