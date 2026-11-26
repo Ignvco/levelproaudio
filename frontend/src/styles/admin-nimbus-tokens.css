@@ -1,0 +1,1376 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   LEVELPRO OS V4.0 — GATE 13 (PHASE 2)
+   LEVELPRO PRECISION · DESIGN SYSTEM TOKENS & NIMBUS STRUCTURAL CONTRACT
+   Architecture: Tiendanube / Nimbus (@nimbus-ds/*)
+   Art Direction: Lumin Quality Standard × LevelPro Corporate Identity
+   Strict Scope: ONLY .admin-root & .admin-portal-root (0% storefront bleed)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.admin-root,
+.admin-portal-root {
+  /* ── Official LevelPro Brand Palette (Phase 1.2 Frozen) ── */
+  --lp-black-deep: #09090B;
+  --lp-green-level: #1AFF6E;
+  --lp-white-pure: #F5F5F5;
+  --lp-graphite: #242A34;
+
+  /* ── Semantic Surfaces ── */
+  --lp-bg-canvas: #F5F5F5;
+  --lp-bg-surface: #FFFFFF;
+  --lp-bg-surface-subtle: #FAFAFA;
+  --lp-bg-thead: #F9FAFB;
+  --lp-bg-surface-hover: #F4F4F5;
+  --lp-bg-brand-dark: #09090B;
+  --lp-bg-brand-graphite: #242A34;
+
+  /* ── Semantic Typography & Ink (WCAG 2.1 AA/AAA) ── */
+  --lp-text-primary: #09090B;
+  --lp-text-secondary: #52525B;
+  --lp-text-muted: #71717A;
+  --lp-text-disabled: #A1A1AA;
+
+  /* ── Hairline Borders ── */
+  --lp-border-hairline: #E4E4E7;
+  --lp-border-strong: #D4D4D8;
+
+  /* ── Surgical Brand Accent & Readable Semantic Statuses ── */
+  --lp-accent-brand: #1AFF6E;
+  --lp-accent-ink: #0F7A38;
+  --lp-status-success-bg: #ECFDF3;
+  --lp-status-success-border: #BBF7D0;
+  --lp-status-success-ink: #0F7A38;
+  --lp-status-success-dot: #16A34A;
+
+  --lp-status-warning-bg: #FEF3C7;
+  --lp-status-warning-border: #FDE68A;
+  --lp-status-warning-ink: #B45309;
+  --lp-status-warning-dot: #D97706;
+
+  --lp-status-danger-bg: #FEF2F2;
+  --lp-status-danger-border: #FECACA;
+  --lp-status-danger-ink: #DC2626;
+  --lp-status-danger-dot: #DC2626;
+
+  --lp-status-info-bg: #EFF6FF;
+  --lp-status-info-border: #BFDBFE;
+  --lp-status-info-ink: #1D4ED8;
+  --lp-status-info-dot: #2563EB;
+
+  /* ── Typography Scale (Geist & Geist Mono) ── */
+  --font-sans: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Geist", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* ── Shape & Radius (No Bento >=20px radii) ── */
+  --lp-radius-sm: 6px;
+  --lp-radius-control: 8px;
+  --lp-radius-card: 12px;
+  --lp-radius-modal: 14px;
+  --lp-radius-pill: 9999px;
+
+  /* ── Editorial Lumin Shadows ── */
+  --lp-shadow-none: none;
+  --lp-shadow-card: 0 1px 2px rgba(9, 9, 11, 0.03), 0 1px 1px rgba(9, 9, 11, 0.02);
+  --lp-shadow-popover: 0 8px 24px -4px rgba(9, 9, 11, 0.08), 0 2px 6px rgba(9, 9, 11, 0.04);
+  --lp-shadow-modal: 0 20px 48px -12px rgba(9, 9, 11, 0.18), 0 0 0 1px rgba(9, 9, 11, 0.06);
+
+  /* ── Motion ── */
+  --lp-ease: cubic-bezier(0.2, 0, 0, 1);
+  --lp-dur-fast: 120ms;
+  --lp-dur-base: 180ms;
+
+  /* ── Nimbus AppShell Dimensions (Exact UX13-P1-02) ── */
+  --lp-sidebar-expanded: 240px;
+  --lp-sidebar-collapsed: 48px;
+  --lp-header-height: 56px;
+
+  /* ── Deterministic Z-Index Layers ── */
+  --lp-z-sticky: 200;
+  --lp-z-header: 400;
+  --lp-z-sidebar: 500;
+  --lp-z-backdrop: 600;
+  --lp-z-drawer: 700;
+  --lp-z-popover: 800;
+  --lp-z-modal-backdrop: 1000;
+  --lp-z-modal: 1100;
+  --lp-z-palette: 1200;
+
+  /* ── Backward-compatible --admin-* & --surface / --text mappings ── */
+  --bg: #F5F5F5;
+  --bg-2: #FFFFFF;
+  --surface: #FFFFFF;
+  --surface-2: #FAFAFA;
+  --surface-3: #F4F4F5;
+  --border: #E4E4E7;
+  --border-hover: #D4D4D8;
+  --text: #09090B;
+  --text-2: #52525B;
+  --text-3: #71717A;
+  --accent: #09090B;
+  --accent-text: #0F7A38;
+  --success: #0F7A38;
+  --warning: #B45309;
+  --danger: #DC2626;
+  --card-shadow: var(--lp-shadow-card);
+
+  --admin-obsidian: #09090B;
+  --admin-graphite: #242A34;
+  --admin-pure-white: #F5F5F5;
+  --admin-bg: #F5F5F5;
+  --admin-background: #F5F5F5;
+  --admin-surface: #FFFFFF;
+  --admin-surface-subtle: #FAFAFA;
+  --admin-surface-secondary: #F4F4F5;
+  --admin-surface-soft: #F9FAFB;
+  --admin-surface-muted: #F4F4F5;
+  --admin-primary: #09090B;
+  --admin-primary-hover: #242A34;
+  --admin-primary-soft: #ECFDF3;
+  --admin-primary-text: #0F7A38;
+  --admin-page-text: #09090B;
+  --admin-page-text-muted: #52525B;
+  --admin-text: #09090B;
+  --admin-text-secondary: #52525B;
+  --admin-text-muted: #71717A;
+  --admin-border: #E4E4E7;
+  --admin-border-strong: #D4D4D8;
+  --admin-success: #0F7A38;
+  --admin-warning: #B45309;
+  --admin-danger: #DC2626;
+  --admin-radius-sm: 6px;
+  --admin-radius-md: 8px;
+  --admin-radius-lg: 12px;
+  --admin-shadow-sm: var(--lp-shadow-card);
+  --admin-shadow-md: var(--lp-shadow-card);
+
+  background-color: var(--lp-bg-canvas);
+  color: var(--lp-text-primary);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ADMIN SHELL — TIENDANUBE / NIMBUS + LEVELPRO PRECISION LAYOUT
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.admin-precision {
+  min-height: 100vh;
+  display: flex;
+  background: var(--lp-bg-canvas);
+  color: var(--lp-text-primary);
+}
+
+/* Official Logo Rendering on Light Surfaces (10:3 exact alpha mask, no black box) */
+.admin-precision .lp-brand-logo-positive {
+  display: inline-block;
+  height: 24px;
+  width: 80px;
+  background-color: var(--lp-black-deep);
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: left center;
+  mask-position: left center;
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  flex-shrink: 0;
+}
+
+/* Left Navigation Sidebar (240px Expanded / 48px Rail) */
+.admin-precision .lp-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: var(--lp-sidebar-expanded);
+  background: var(--lp-bg-surface);
+  border-right: 1px solid var(--lp-border-hairline);
+  z-index: var(--lp-z-sidebar);
+  display: flex;
+  flex-direction: column;
+  transition: width var(--lp-dur-base) var(--lp-ease);
+}
+
+.admin-precision.is-collapsed .lp-sidebar {
+  width: var(--lp-sidebar-collapsed);
+}
+
+.admin-precision .lp-sidebar__head {
+  height: var(--lp-header-height);
+  padding: 0 14px;
+  border-bottom: 1px solid var(--lp-border-hairline);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.admin-precision.is-collapsed .lp-sidebar__head {
+  padding: 0 6px;
+  justify-content: center;
+}
+
+.admin-precision .lp-sidebar__collapse-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--lp-radius-control);
+  border: 1px solid var(--lp-border-hairline);
+  background: var(--lp-bg-surface);
+  color: var(--lp-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background var(--lp-dur-fast) var(--lp-ease), color var(--lp-dur-fast) var(--lp-ease);
+}
+
+.admin-precision .lp-sidebar__collapse-btn:hover {
+  background: var(--lp-bg-surface-hover);
+  color: var(--lp-text-primary);
+}
+
+.admin-precision .lp-sidebar__body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-precision.is-collapsed .lp-sidebar__body {
+  padding: 10px 6px;
+  align-items: center;
+  overflow: visible;
+}
+
+.admin-precision .lp-nav-section {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--lp-text-muted);
+  padding: 12px 10px 4px;
+  letter-spacing: 0.01em;
+}
+
+.admin-precision .lp-nav-item {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 36px;
+  padding: 7px 10px;
+  border-radius: var(--lp-radius-control);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--lp-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--lp-dur-fast) var(--lp-ease), color var(--lp-dur-fast) var(--lp-ease);
+}
+
+.admin-precision .lp-nav-item:hover {
+  background: var(--lp-bg-surface-hover);
+  color: var(--lp-text-primary);
+}
+
+.admin-precision .lp-nav-item.is-active {
+  background: var(--lp-bg-surface-hover);
+  color: var(--lp-text-primary);
+  font-weight: 600;
+}
+
+/* Signature 2.5px Level Green vertical focus indicator */
+.admin-precision .lp-nav-item.is-active::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: 7px;
+  bottom: 7px;
+  width: 2.5px;
+  border-radius: 99px;
+  background: var(--lp-green-level);
+}
+
+.admin-precision.is-collapsed .lp-nav-item {
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  padding: 0;
+  justify-content: center;
+}
+
+.admin-precision.is-collapsed .lp-nav-item.is-active::before {
+  left: -4px;
+}
+
+.admin-precision .lp-nav-sublist {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-left: 26px;
+  margin: 2px 0 4px;
+}
+
+.admin-precision .lp-nav-subitem {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: var(--lp-radius-sm);
+  font-size: 12.5px;
+  font-weight: 450;
+  color: var(--lp-text-secondary);
+  text-decoration: none;
+  transition: background var(--lp-dur-fast) var(--lp-ease), color var(--lp-dur-fast) var(--lp-ease);
+}
+
+.admin-precision .lp-nav-subitem:hover {
+  background: var(--lp-bg-surface-hover);
+  color: var(--lp-text-primary);
+}
+
+.admin-precision .lp-nav-subitem.active {
+  background: var(--lp-bg-surface-hover);
+  color: var(--lp-text-primary);
+  font-weight: 600;
+}
+
+.admin-precision .lp-nav-subitem.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2.5px;
+  border-radius: 99px;
+  background: var(--lp-green-level);
+}
+
+.admin-precision .lp-nav-badge {
+  margin-left: auto;
+  min-width: 19px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9999px;
+  background: #F4F4F5;
+  border: 1px solid #E4E4E7;
+  color: var(--lp-text-primary);
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Collapsed 48px Rail Flyout Popover */
+.admin-precision .lp-rail-group {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+
+.admin-precision .lp-rail-popover {
+  position: absolute;
+  left: calc(100% + 8px);
+  top: 0;
+  min-width: 210px;
+  background: var(--lp-bg-surface);
+  border: 1px solid var(--lp-border-hairline);
+  border-radius: 10px;
+  box-shadow: var(--lp-shadow-popover);
+  padding: 6px;
+  z-index: var(--lp-z-popover);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-precision .lp-rail-popover__title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--lp-text-muted);
+  padding: 6px 8px 4px;
+  border-bottom: 1px solid var(--lp-border-hairline);
+  margin-bottom: 4px;
+}
+
+.admin-precision .lp-sidebar__footer {
+  border-top: 1px solid var(--lp-border-hairline);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: var(--lp-bg-surface);
+  flex-shrink: 0;
+}
+
+.admin-precision.is-collapsed .lp-sidebar__footer {
+  padding: 8px 6px;
+  align-items: center;
+}
+
+.admin-precision .lp-store-link {
+  color: var(--lp-accent-ink);
+  font-weight: 500;
+}
+
+.admin-precision .lp-store-link:hover {
+  color: var(--lp-black-deep);
+}
+
+/* Main Column + Fixed 56px Header */
+.admin-precision .lp-shell-content {
+  flex: 1;
+  min-width: 0;
+  margin-left: var(--lp-sidebar-expanded);
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  transition: margin-left var(--lp-dur-base) var(--lp-ease);
+}
+
+.admin-precision.is-collapsed .lp-shell-content {
+  margin-left: var(--lp-sidebar-collapsed);
+}
+
+.admin-precision .lp-topbar {
+  position: sticky;
+  top: 0;
+  height: var(--lp-header-height);
+  background: var(--lp-bg-surface);
+  border-bottom: 1px solid var(--lp-border-hairline);
+  padding: 0 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  z-index: var(--lp-z-header);
+}
+
+.admin-precision .lp-topbar__left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.admin-precision .lp-topbar__crumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--lp-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-precision .lp-topbar__crumb strong {
+  color: var(--lp-text-primary);
+  font-weight: 600;
+}
+
+.admin-precision .lp-topbar__right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.admin-precision .lp-mobile-menu-btn {
+  display: none;
+  width: 36px;
+  height: 36px;
+  border-radius: var(--lp-radius-control);
+  border: 1px solid var(--lp-border-hairline);
+  background: var(--lp-bg-surface);
+  color: var(--lp-text-primary);
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.admin-precision .lp-cmdk-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  min-width: 240px;
+  padding: 0 10px 0 11px;
+  border-radius: var(--lp-radius-control);
+  border: 1px solid var(--lp-border-hairline);
+  background: var(--lp-bg-surface-subtle);
+  color: var(--lp-text-muted);
+  font-size: 12.5px;
+  cursor: pointer;
+  transition: border-color var(--lp-dur-fast) var(--lp-ease), background var(--lp-dur-fast) var(--lp-ease);
+}
+
+.admin-precision .lp-cmdk-btn:hover {
+  border-color: var(--lp-border-strong);
+  background: var(--lp-bg-surface);
+  color: var(--lp-text-primary);
+}
+
+.admin-precision .lp-cmdk-kbd {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--lp-text-secondary);
+  background: var(--lp-bg-surface);
+  border: 1px solid var(--lp-border-hairline);
+  border-radius: 5px;
+  padding: 1px 6px;
+  line-height: 1.4;
+}
+
+.admin-precision .lp-topbar-icon-btn {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--lp-radius-control);
+  border: 1px solid var(--lp-border-hairline);
+  background: var(--lp-bg-surface);
+  color: var(--lp-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background var(--lp-dur-fast) var(--lp-ease), color var(--lp-dur-fast) var(--lp-ease);
+}
+
+.admin-precision .lp-topbar-icon-btn:hover {
+  background: var(--lp-bg-surface-hover);
+  color: var(--lp-text-primary);
+}
+
+.admin-precision .lp-user-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 34px;
+  padding: 0 10px 0 6px;
+  border-radius: var(--lp-radius-control);
+  border: 1px solid var(--lp-border-hairline);
+  background: var(--lp-bg-surface);
+  color: var(--lp-text-primary);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.admin-precision .lp-user-trigger:hover {
+  background: var(--lp-bg-surface-hover);
+}
+
+.admin-precision .lp-user-avatar {
+  width: 24px;
+  height: 24px;
+  border-radius: 9999px;
+  background: var(--lp-bg-surface-hover);
+  border: 1px solid var(--lp-border-hairline);
+  color: var(--lp-text-primary);
+  font-size: 10.5px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.admin-precision .lp-popover-panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: var(--lp-bg-surface);
+  border: 1px solid var(--lp-border-hairline);
+  border-radius: var(--lp-radius-card);
+  box-shadow: var(--lp-shadow-popover);
+  z-index: var(--lp-z-popover);
+  overflow: hidden;
+}
+
+.admin-precision .lp-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1328px;
+  margin: 0 auto;
+  padding: 20px 24px 48px;
+  min-width: 0;
+}
+
+/* Mobile & Tablet Responsive (< 1024px) */
+.admin-precision .lp-mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(9, 9, 11, 0.45);
+  z-index: var(--lp-z-backdrop);
+}
+
+@media (max-width: 1023px) {
+  .admin-precision .lp-sidebar {
+    width: 280px !important;
+    max-width: 85vw;
+    transform: translateX(-105%);
+    transition: transform 200ms var(--lp-ease);
+    z-index: var(--lp-z-drawer);
+    box-shadow: var(--lp-shadow-modal);
+  }
+  .admin-precision.is-mobile-open .lp-sidebar {
+    transform: translateX(0);
+  }
+  .admin-precision .lp-shell-content,
+  .admin-precision.is-collapsed .lp-shell-content {
+    margin-left: 0;
+  }
+  .admin-precision .lp-mobile-menu-btn {
+    display: inline-flex;
+  }
+  .admin-precision .lp-sidebar__collapse-btn {
+    display: none;
+  }
+  .admin-precision .lp-topbar {
+    padding: 0 14px;
+  }
+  .admin-precision .lp-main {
+    padding: 16px 16px 36px;
+  }
+  .admin-precision .lp-cmdk-btn {
+    min-width: 0;
+    padding: 0 8px;
+  }
+  .admin-precision .lp-cmdk-label {
+    display: none;
+  }
+  .admin-precision .lp-nav-item,
+  .admin-precision .lp-nav-subitem {
+    min-height: 44px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-precision .lp-user-name,
+  .admin-precision .lp-topbar__crumb {
+    display: none;
+  }
+  .admin-precision .lp-main {
+    padding: 12px 12px 32px;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPONENT OVERRIDES FOR LEVELPRO PRECISION (OVERRIDE LEGACY BENTO/INDEX.CSS)
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Ensure NO heavy Bento border-radius or dark heroes inside .admin-precision */
+.admin-precision .au-page {
+  gap: 18px;
+  padding-bottom: 24px;
+  max-width: 1280px;
+}
+
+.admin-precision .au-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  padding: 2px 0 6px !important;
+  color: var(--lp-text-primary) !important;
+  box-shadow: none !important;
+  overflow: visible;
+}
+
+.admin-precision .au-header::before {
+  display: none !important;
+}
+
+.admin-precision .au-header__crumbs {
+  font-family: var(--font-sans);
+  font-size: 12.5px;
+  color: var(--lp-text-muted);
+  margin-bottom: 6px;
+}
+
+.admin-precision .au-header__crumbs a {
+  color: var(--lp-text-secondary);
+}
+
+.admin-precision .au-header__crumbs a:hover {
+  color: var(--lp-black-deep);
+}
+
+.admin-precision .au-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--lp-accent-ink);
+  background: var(--lp-status-success-bg);
+  border: 1px solid var(--lp-status-success-border);
+  padding: 3px 8px;
+  border-radius: var(--lp-radius-sm);
+  margin-bottom: 6px;
+}
+
+.admin-precision .au-eyebrow::before {
+  display: none !important;
+}
+
+.admin-precision .au-header .au-title,
+.admin-precision h1.au-title {
+  font-family: var(--font-sans) !important;
+  font-size: 20px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.02em !important;
+  line-height: 28px !important;
+  color: var(--lp-black-deep) !important;
+}
+
+.admin-precision .au-desc {
+  font-size: 13px;
+  color: var(--lp-text-secondary);
+  margin-top: 2px;
+  line-height: 19px;
+}
+
+/* Precision Cards (Hairline borders, subtle shadow, 12px radius) */
+.admin-precision .au-card,
+.admin-precision .card {
+  background: var(--lp-bg-surface);
+  border: 1px solid var(--lp-border-hairline);
+  border-radius: var(--lp-radius-card);
+  box-shadow: var(--lp-shadow-card);
+}
+
+.admin-precision .card:hover,
+.admin-precision .au-pcard:hover,
+.admin-precision .au-acard:hover {
+  transform: none;
+  box-shadow: var(--lp-shadow-card);
+}
+
+.admin-precision .au-panel {
+  padding: 20px;
+}
+
+.admin-precision .au-panel__head {
+  padding-bottom: 12px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid var(--lp-border-hairline);
+}
+
+.admin-precision .au-panel__title {
+  font-family: var(--font-sans);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  color: var(--lp-text-primary);
+}
+
+/* Precision Buttons (8px radius, Deep Black #09090B primary, Crisp White secondary) */
+.admin-precision .au-btn,
+.admin-precision .btn-accent,
+.admin-precision .btn-ghost {
+  height: 36px;
+  padding: 0 14px;
+  border-radius: var(--lp-radius-control);
+  font-size: 13px;
+  font-weight: 500;
+  gap: 6px;
+  box-shadow: none;
+  transform: none;
+}
+
+.admin-precision .au-btn--sm {
+  height: 30px;
+  padding: 0 10px;
+  font-size: 12px;
+}
+
+.admin-precision .au-btn--primary,
+.admin-precision .btn-accent {
+  background: var(--lp-black-deep) !important;
+  color: #FFFFFF !important;
+  border: 1px solid var(--lp-black-deep) !important;
+  box-shadow: none !important;
+}
+
+.admin-precision .au-btn--primary:hover:not(:disabled),
+.admin-precision .btn-accent:hover:not(:disabled) {
+  background: var(--lp-graphite) !important;
+  border-color: var(--lp-graphite) !important;
+  transform: none !important;
+}
+
+.admin-precision .au-btn--secondary,
+.admin-precision .au-header .au-btn--secondary,
+.admin-precision .btn-ghost {
+  background: var(--lp-bg-surface) !important;
+  color: var(--lp-text-primary) !important;
+  border: 1px solid var(--lp-border-strong) !important;
+  box-shadow: none !important;
+}
+
+.admin-precision .au-btn--secondary:hover:not(:disabled),
+.admin-precision .au-header .au-btn--secondary:hover:not(:disabled),
+.admin-precision .btn-ghost:hover:not(:disabled) {
+  background: var(--lp-bg-surface-hover) !important;
+  color: var(--lp-text-primary) !important;
+  border-color: var(--lp-border-strong) !important;
+}
+
+.admin-precision .au-btn--ghost {
+  background: transparent;
+  color: var(--lp-text-secondary);
+  border: 1px solid transparent;
+}
+
+.admin-precision .au-btn--ghost:hover:not(:disabled) {
+  background: var(--lp-bg-surface-hover);
+  color: var(--lp-text-primary);
+}
+
+.admin-precision .au-btn--danger {
+  background: #DC2626 !important;
+  color: #FFFFFF !important;
+  border: 1px solid #DC2626 !important;
+}
+
+.admin-precision .au-btn--danger:hover:not(:disabled) {
+  background: #B91C1C !important;
+}
+
+.admin-precision .au-iconbtn {
+  width: 34px;
+  height: 34px;
+  border-radius: var(--lp-radius-control);
+  border-color: var(--lp-border-hairline);
+  box-shadow: none;
+}
+
+.admin-precision .au-iconbtn:hover {
+  transform: none;
+  box-shadow: none;
+  background: var(--lp-bg-surface-hover);
+  color: var(--lp-text-primary);
+}
+
+/* Precision Tabs (Underline Nimbus pattern) */
+.admin-precision .au-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 2px;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 1px solid var(--lp-border-hairline) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  overflow-x: auto;
+}
+
+.admin-precision .au-tab {
+  position: relative;
+  background: transparent !important;
+  border: none !important;
+  border-bottom: 2px solid transparent !important;
+  border-radius: 6px 6px 0 0 !important;
+  padding: 9px 12px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  color: var(--lp-text-secondary) !important;
+  box-shadow: none !important;
+  white-space: nowrap;
+}
+
+.admin-precision .au-tab:hover:not(.is-active) {
+  background: var(--lp-bg-surface-hover) !important;
+  color: var(--lp-text-primary) !important;
+}
+
+.admin-precision .au-tab.is-active {
+  background: transparent !important;
+  color: var(--lp-black-deep) !important;
+  font-weight: 600 !important;
+  border-bottom: 2px solid var(--lp-black-deep) !important;
+  box-shadow: none !important;
+}
+
+/* Segmented Control (Period buttons / View toggles) */
+.admin-precision .au-seg,
+.admin-precision .lp-seg-tabs {
+  background: var(--lp-bg-surface-hover);
+  border: 1px solid var(--lp-border-hairline);
+  border-radius: var(--lp-radius-control);
+  padding: 3px;
+  gap: 2px;
+}
+
+.admin-precision .au-seg__btn,
+.admin-precision .lp-seg-tab {
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--lp-text-secondary);
+  box-shadow: none;
+}
+
+.admin-precision .au-seg__btn.is-active,
+.admin-precision .lp-seg-tab.is-active,
+.admin-precision .lp-seg-tab[aria-pressed="true"] {
+  background: var(--lp-bg-surface) !important;
+  color: var(--lp-black-deep) !important;
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(9, 9, 11, 0.06);
+}
+
+/* Precision DataTable & All Tables (Light #F9FAFB Header, ZERO black thead) */
+.admin-precision .au-table-wrap,
+.admin-precision .lp-table-wrap {
+  border-radius: var(--lp-radius-card);
+  border: 1px solid var(--lp-border-hairline);
+  background: var(--lp-bg-surface);
+  box-shadow: var(--lp-shadow-card);
+}
+
+.admin-precision .au-toolbar {
+  padding: 12px 16px;
+  background: var(--lp-bg-surface);
+  border-bottom: 1px solid var(--lp-border-hairline);
+}
+
+.admin-precision .au-table thead th,
+.admin-precision .lp-table thead th,
+.admin-precision table thead th {
+  text-align: left;
+  padding: 10px 16px !important;
+  font-family: var(--font-sans) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  background: var(--lp-bg-thead) !important;
+  color: var(--lp-text-secondary) !important;
+  border-bottom: 1px solid var(--lp-border-hairline) !important;
+  white-space: nowrap;
+}
+
+.admin-precision .au-table thead th.is-sortable:hover {
+  color: var(--lp-black-deep) !important;
+}
+
+.admin-precision .au-table tbody td,
+.admin-precision .lp-table tbody td,
+.admin-precision table tbody td {
+  padding: 12px 16px !important;
+  font-size: 13px !important;
+  color: var(--lp-text-secondary);
+  border-bottom: 1px solid var(--lp-border-hairline);
+  font-variant-numeric: tabular-nums;
+}
+
+.admin-precision .au-table tbody tr:nth-child(even) {
+  background: transparent;
+}
+
+.admin-precision .au-table tbody tr:hover,
+.admin-precision .lp-table tbody tr:hover {
+  background: var(--lp-bg-surface-subtle) !important;
+  box-shadow: none !important;
+}
+
+.admin-precision .au-pagination button {
+  border-radius: var(--lp-radius-sm);
+  border-color: var(--lp-border-hairline);
+  font-weight: 500;
+}
+
+.admin-precision .au-pagination button.is-active,
+.admin-precision .au-pagination button[aria-current="page"] {
+  background: var(--lp-black-deep) !important;
+  color: #FFFFFF !important;
+  border-color: var(--lp-black-deep) !important;
+  font-weight: 600;
+}
+
+/* StatCard (LevelPro Precision KPIs) */
+.admin-precision .au-lp,
+.admin-precision .au-stat {
+  background: var(--lp-bg-surface) !important;
+  border: 1px solid var(--lp-border-hairline) !important;
+  border-radius: var(--lp-radius-card) !important;
+  box-shadow: var(--lp-shadow-card) !important;
+  padding: 18px 20px !important;
+  gap: 10px !important;
+}
+
+.admin-precision .au-lp--interactive:hover {
+  transform: none;
+  border-color: var(--lp-border-strong) !important;
+  box-shadow: var(--lp-shadow-popover) !important;
+}
+
+.admin-precision .au-lp__tag {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+  font-family: var(--font-sans) !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  color: var(--lp-text-secondary) !important;
+}
+
+.admin-precision .au-lp__icon {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: var(--lp-radius-control) !important;
+  background: var(--lp-bg-surface-hover) !important;
+  color: var(--lp-text-primary) !important;
+}
+
+.admin-precision .au-lp__value {
+  font-family: var(--font-sans) !important;
+  font-size: 24px !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.025em !important;
+  line-height: 30px !important;
+  color: var(--lp-black-deep) !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+.admin-precision .au-lp__pill {
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  font-size: 12px !important;
+  font-weight: 400 !important;
+  color: var(--lp-text-muted) !important;
+}
+
+.admin-precision .au-lp--ink,
+.admin-precision .au-lp--primary {
+  background: var(--lp-bg-surface) !important;
+  border: 1px solid var(--lp-border-hairline) !important;
+  box-shadow: var(--lp-shadow-card) !important;
+}
+
+.admin-precision .au-lp--ink .au-lp__value,
+.admin-precision .au-lp--primary .au-lp__value {
+  color: var(--lp-black-deep) !important;
+}
+
+.admin-precision .au-lp--ink .au-lp__icon,
+.admin-precision .au-lp--primary .au-lp__icon {
+  background: var(--lp-bg-surface-hover) !important;
+  color: var(--lp-black-deep) !important;
+}
+
+.admin-precision .au-lp--ink .au-lp__tag,
+.admin-precision .au-lp--primary .au-lp__tag {
+  color: var(--lp-text-secondary) !important;
+}
+
+/* Badges / Tags (Clean pill dots with AA+ contrast) */
+.admin-precision .au-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.admin-precision .au-badge--success,
+.admin-precision .au-badge--pos {
+  background: var(--lp-status-success-bg);
+  color: var(--lp-status-success-ink);
+  border-color: var(--lp-status-success-border);
+}
+
+.admin-precision .au-badge--warning {
+  background: var(--lp-status-warning-bg);
+  color: var(--lp-status-warning-ink);
+  border-color: var(--lp-status-warning-border);
+}
+
+.admin-precision .au-badge--danger,
+.admin-precision .au-badge--neg {
+  background: var(--lp-status-danger-bg);
+  color: var(--lp-status-danger-ink);
+  border-color: var(--lp-status-danger-border);
+}
+
+.admin-precision .au-badge--info {
+  background: var(--lp-status-info-bg);
+  color: var(--lp-status-info-ink);
+  border-color: var(--lp-status-info-border);
+}
+
+.admin-precision .au-badge--neutral {
+  background: #F4F4F5;
+  color: var(--lp-text-secondary);
+  border-color: var(--lp-border-hairline);
+}
+
+/* Crisp Light Form Controls (Override any dark/surface-2 inputs) */
+.admin-precision .input,
+.admin-precision .au-select,
+.admin-precision .au-search input,
+.admin-precision input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.admin-precision select,
+.admin-precision textarea,
+.admin-portal-root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+.admin-portal-root select,
+.admin-portal-root textarea {
+  background: #FFFFFF !important;
+  border: 1px solid var(--lp-border-hairline) !important;
+  border-radius: var(--lp-radius-control) !important;
+  color: var(--lp-text-primary) !important;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  box-shadow: none !important;
+}
+
+.admin-precision input:focus,
+.admin-precision select:focus,
+.admin-precision textarea:focus,
+.admin-portal-root input:focus,
+.admin-portal-root select:focus,
+.admin-portal-root textarea:focus {
+  border-color: var(--lp-black-deep) !important;
+  box-shadow: 0 0 0 2px rgba(9, 9, 11, 0.12) !important;
+  outline: none;
+}
+
+.admin-precision .au-search input {
+  padding-left: 34px !important;
+  height: 34px;
+}
+
+/* Modals, SideModal & Backdrop (Zero blurry Bento radii >= 20px) */
+.admin-precision .au-modal__backdrop,
+.admin-precision .lp-drawer-backdrop,
+.admin-portal-root .au-modal__backdrop,
+.admin-portal-root .lp-drawer-backdrop {
+  background: rgba(9, 9, 11, 0.45) !important;
+  backdrop-filter: none !important;
+  z-index: var(--lp-z-modal-backdrop) !important;
+}
+
+.admin-precision .au-modal,
+.admin-portal-root .au-modal {
+  background: #FFFFFF !important;
+  border: 1px solid var(--lp-border-hairline) !important;
+  border-radius: var(--lp-radius-modal) !important;
+  box-shadow: var(--lp-shadow-modal) !important;
+}
+
+.admin-precision .lp-sidemodal,
+.admin-precision .lp-drawer,
+.admin-portal-root .lp-sidemodal {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(580px, 100vw);
+  background: #FFFFFF !important;
+  border-left: 1px solid var(--lp-border-hairline) !important;
+  box-shadow: var(--lp-shadow-modal) !important;
+  z-index: var(--lp-z-modal) !important;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Accessible focus ring inside Admin Precision */
+.admin-precision :where(a, button, input, select, textarea, [tabindex]):focus-visible,
+.admin-portal-root :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--lp-black-deep) !important;
+  outline-offset: 2px !important;
+}
+
+/* Technical Mono Utility */
+.admin-precision .lp-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* FilterChips / Sticky BulkActionsBar / CalloutCard / UnsavedChangesBar */
+.admin-precision .lp-bulkbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--lp-black-deep);
+  color: #FFFFFF;
+  font-size: 13px;
+  border-bottom: 1px solid var(--lp-graphite);
+}
+
+.admin-precision .lp-chips-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 16px;
+  background: var(--lp-bg-surface-subtle);
+  border-bottom: 1px solid var(--lp-border-hairline);
+}
+
+.admin-precision .lp-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 9px;
+  border-radius: 9999px;
+  background: #FFFFFF;
+  border: 1px solid var(--lp-border-hairline);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--lp-text-primary);
+}
+
+.admin-precision .lp-callout {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: var(--lp-radius-card);
+  border: 1px solid var(--lp-border-hairline);
+  background: var(--lp-bg-surface);
+  font-size: 13px;
+}
+
+.admin-precision .lp-callout--warning {
+  background: var(--lp-status-warning-bg);
+  border-color: var(--lp-status-warning-border);
+  color: var(--lp-status-warning-ink);
+}
+
+.admin-precision .lp-callout--danger {
+  background: var(--lp-status-danger-bg);
+  border-color: var(--lp-status-danger-border);
+  color: var(--lp-status-danger-ink);
+}
+
+.admin-precision .lp-callout--success {
+  background: var(--lp-status-success-bg);
+  border-color: var(--lp-status-success-border);
+  color: var(--lp-status-success-ink);
+}
+
+.admin-precision .lp-unsaved-bar {
+  position: sticky;
+  bottom: 16px;
+  z-index: var(--lp-z-sticky);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 18px;
+  border-radius: var(--lp-radius-card);
+  background: var(--lp-black-deep);
+  color: #FFFFFF;
+  box-shadow: var(--lp-shadow-modal);
+}
+
+/* Form Layout Asymmetrical 2/3 + 1/3 */
+.admin-precision .lp-form-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1023px) {
+  .admin-precision .lp-form-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Brand Grid, SummaryStats Strip, Checklist Rows */
+.admin-precision .lp-summary-strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 14px;
+}
+
+.admin-precision .lp-action-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--lp-radius-control);
+  border: 1px solid var(--lp-border-hairline);
+  background: var(--lp-bg-surface);
+  text-decoration: none;
+  color: var(--lp-text-primary);
+  transition: background var(--lp-dur-fast) var(--lp-ease), border-color var(--lp-dur-fast) var(--lp-ease);
+}
+
+.admin-precision .lp-action-row:hover {
+  background: var(--lp-bg-surface-hover);
+  border-color: var(--lp-border-strong);
+}
+
+/* SwitchToggle (Accessible ON=#09090B or #16A34A with #1AFF6E accent dot) */
+.admin-precision .lp-switch {
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 9999px;
+  border: 1px solid var(--lp-border-strong);
+  background: #E4E4E7;
+  cursor: pointer;
+  padding: 0;
+  transition: background var(--lp-dur-fast) var(--lp-ease), border-color var(--lp-dur-fast) var(--lp-ease);
+  flex-shrink: 0;
+}
+
+.admin-precision .lp-switch.is-checked {
+  background: var(--lp-black-deep);
+  border-color: var(--lp-black-deep);
+}
+
+.admin-precision .lp-switch__thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 9999px;
+  background: #FFFFFF;
+  transition: transform var(--lp-dur-fast) var(--lp-ease), background var(--lp-dur-fast) var(--lp-ease);
+}
+
+.admin-precision .lp-switch.is-checked .lp-switch__thumb {
+  transform: translateX(16px);
+  background: var(--lp-green-level);
+}
