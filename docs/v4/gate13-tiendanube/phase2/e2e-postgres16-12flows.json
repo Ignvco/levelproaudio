@@ -1,0 +1,124 @@
+{
+  "suite": "E2E Real Playwright -> Vite Preview -> Django -> PostgreSQL 16 QA",
+  "db_name": "levelpro_v32_qa",
+  "total_flows": 12,
+  "passed": 12,
+  "failed": 0,
+  "js_errors": [],
+  "flows": [
+    {
+      "id": "E2E-PG-01",
+      "name": "Auth & Business Core (Dashboard, FX switch, Cmd+K, Bell)",
+      "status": "PASS",
+      "duration_ms": 3988,
+      "detail": {
+        "sku_found_in_palette": "SKU-P21-1795716892541"
+      }
+    },
+    {
+      "id": "E2E-PG-02",
+      "name": "PIM, Variantes, General y Precios + Persistencia Reload",
+      "status": "PASS",
+      "duration_ms": 8975,
+      "detail": {
+        "updated_product_name": "Genelec 8030C Studio P21 1795716892541 Persisted"
+      }
+    },
+    {
+      "id": "E2E-PG-03",
+      "name": "Proveedores & Procurement OC -> Emitida",
+      "status": "PASS",
+      "duration_ms": 7133,
+      "detail": {
+        "created_supplier": "Audio Distrib P21 1795716892541"
+      }
+    },
+    {
+      "id": "E2E-PG-04",
+      "name": "WMS, Kardex & Seriales",
+      "status": "PASS",
+      "duration_ms": 3805,
+      "detail": {
+        "verified_tabs": [
+          "Kardex",
+          "Bodegas",
+          "Seriales"
+        ]
+      }
+    },
+    {
+      "id": "E2E-PG-05",
+      "name": "Costing, Capas & Simulador de Márgenes",
+      "status": "PASS",
+      "duration_ms": 5676,
+      "detail": {
+        "simulator_ready": true
+      }
+    },
+    {
+      "id": "E2E-PG-06",
+      "name": "OMS, Venta Manual, SideModal 3D & Pagos + Reload",
+      "status": "PASS",
+      "duration_ms": 11681,
+      "detail": {
+        "manual_order_converted_and_reloaded": true
+      }
+    },
+    {
+      "id": "E2E-PG-07",
+      "name": "CRM 360°, Organizaciones B2B & Cotizaciones",
+      "status": "PASS",
+      "duration_ms": 7860,
+      "detail": {
+        "created_org": "Estudio P21 SpA 1795716892541"
+      }
+    },
+    {
+      "id": "E2E-PG-08",
+      "name": "Finanzas, Tesorería & Ruta Tributaria /admin/billing",
+      "status": "PASS",
+      "duration_ms": 3229,
+      "detail": {
+        "redirect_verified": "/admin/fiscal -> /admin/billing"
+      }
+    },
+    {
+      "id": "E2E-PG-09",
+      "name": "Logística, Envío & Taller Técnico + Persist Reload",
+      "status": "PASS",
+      "duration_ms": 4862,
+      "detail": {
+        "workshop_persisted": "Falla fuente P21 1795716892541"
+      }
+    },
+    {
+      "id": "E2E-PG-10",
+      "name": "Marketing Cupón Real, Loyalty & Rewards + Reload",
+      "status": "PASS",
+      "duration_ms": 5954,
+      "detail": {
+        "persisted_coupon": "P2192541"
+      }
+    },
+    {
+      "id": "E2E-PG-11",
+      "name": "CMS Borrador, Iframe Preview Real & Paridad Home Oscuro",
+      "status": "PASS",
+      "duration_ms": 6676,
+      "detail": {
+        "hero_draft_saved": "Audio Mastering P21 1795716892541",
+        "public_bg": "rgb(10, 10, 10)"
+      }
+    },
+    {
+      "id": "E2E-PG-12",
+      "name": "Academia, Servicios, RBAC Zero-Trust & Audit SideModal",
+      "status": "PASS",
+      "duration_ms": 7113,
+      "detail": {
+        "audit_sidemodal_ok": true,
+        "rbac_denied_verified": true
+      }
+    }
+  ]
+}

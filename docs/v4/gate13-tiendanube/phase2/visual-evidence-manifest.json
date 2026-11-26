@@ -1,0 +1,535 @@
+{
+  "gate": "LEVELPRO OS V4.0 — GATE 13 PHASE 2.1",
+  "design_system": "LEVELPRO PRECISION (Tiendanube/Nimbus Architecture x Lumin Quality Standard)",
+  "git_branch": "feature/v4-gate13-admin-experience",
+  "baseline_head": "fa53c7f9b07ec6b13c4886a3ce4f322a58fe4bf6",
+  "final_implementation_commit": "6299ce2cc6f9d8b28f750e8c7266523d05b7c683",
+  "reference_package_sha256": "21204867647ac5217562fce1cb1f118b6b9a2fb13798081a8343109baca2519f",
+  "total_before_pngs": 25,
+  "total_after_pngs": 25,
+  "total_before_after_comparisons": 25,
+  "total_target_vs_implemented": 11,
+  "identical_pairs_count": 0,
+  "archives": [
+    {
+      "file": "gate13_v2_tiendanube_before.zip",
+      "bytes": 6633139,
+      "sha256": "e849200c19635bef565c9d3c4bc52ba5906553c2eabdc33d4513a700a2bd18f7"
+    },
+    {
+      "file": "gate13_v2_tiendanube_after.zip",
+      "bytes": 3340618,
+      "sha256": "aec9ccd04b0016abc942703ea72480f5bbed0d6528e2357cd72befc34441acc8"
+    },
+    {
+      "file": "gate13_v2_comparisons.zip",
+      "bytes": 4631246,
+      "sha256": "faef447f0eb273e8193740c7fc11af8bc07ae6237b3460a85997ad1d08b99b60"
+    },
+    {
+      "file": "gate13_v2_target_vs_implemented.zip",
+      "bytes": 1795539,
+      "sha256": "3247a70baa9cb56ea8d579690188b16b328ced7d5b7edf48f841787eb9deb77c"
+    },
+    {
+      "file": "gate13_v2_detailed_views.zip",
+      "bytes": 1992342,
+      "sha256": "9f25287cb2abaef2fd4597c9002af249222d7d6c9d80b5b9f83fc7d0a6adab3f"
+    }
+  ],
+  "before_after_pairs": [
+    {
+      "file": "01-sidebar-shell.png",
+      "comparison_file": "01-sidebar-shell-comparison.png",
+      "before_sha256": "255abcf253a1da275435784b3c3e30f121cd9187f412b8e7c203f669261b98be",
+      "before_bytes": 343447,
+      "after_sha256": "09e78150001ad9e1b91d7a963883c2b75a84a2ee08bcdae7e895241da9d7e9ca",
+      "after_bytes": 177422,
+      "identical": false,
+      "comparison_sha256": "a8463d46a073654dec320066c61f06d65c9661c63b1b9c29e312145ac4f0d4b3",
+      "comparison_bytes": 234488
+    },
+    {
+      "file": "03-dashboard.png",
+      "comparison_file": "03-dashboard-comparison.png",
+      "before_sha256": "ca049e8b4334b2a47a7263b63e573e5d5512805d42c0453b97cf6c4db19f9fcb",
+      "before_bytes": 343694,
+      "after_sha256": "2a0a8f759e01bde453e037372c2ace02ba2c888942c36c2fb7d30b19e308f243",
+      "after_bytes": 177637,
+      "identical": false,
+      "comparison_sha256": "4f556292685f8e69636e3a76f7a1b116d72e6b709b208c45a600a5f8fb7da72a",
+      "comparison_bytes": 234363
+    },
+    {
+      "file": "04-product-list.png",
+      "comparison_file": "04-product-list-comparison.png",
+      "before_sha256": "c6a1956c07ec5729860c14a3c13f98240b2489014e5f9b5f384afdf74a4cb4c6",
+      "before_bytes": 289507,
+      "after_sha256": "b7550fe7163d74dc4bd446673481c20db878ea87690708a1006e53ba354393d9",
+      "after_bytes": 134201,
+      "identical": false,
+      "comparison_sha256": "c8915c14b602b2cae7d0d8a751c7355f89d37e8d7413a717594fdaa8e55300a0",
+      "comparison_bytes": 177958
+    },
+    {
+      "file": "05-product-form.png",
+      "comparison_file": "05-product-form-comparison.png",
+      "before_sha256": "304c8d0bd41a4cb42e2b617f72ccba98e6f8231e218c1a33c524f5aab6b311e2",
+      "before_bytes": 295213,
+      "after_sha256": "f9f4ace37fa17ef8ade2766e8bdd01e322f1a60158f39ba6f1f232348bc16b68",
+      "after_bytes": 142274,
+      "identical": false,
+      "comparison_sha256": "424ec4262135f4b9ad6c2aea3e94dba721de0dedc1778ddeb21fa5c75c8fad64",
+      "comparison_bytes": 179795
+    },
+    {
+      "file": "07-datatable-orders.png",
+      "comparison_file": "07-datatable-orders-comparison.png",
+      "before_sha256": "857f6975f4c112f9756c116c24d1f9525c7e21147ff4c572843d3ac0beacf22a",
+      "before_bytes": 308466,
+      "after_sha256": "9369346d895dede94bedad06cf902aa0de9d77fa72a57bb431f498a448d4ff5d",
+      "after_bytes": 143597,
+      "identical": false,
+      "comparison_sha256": "d4c682c89c53eff4de24d8b1d6d7f68b56c96a8ae54b4bcab1d370df5b70cc32",
+      "comparison_bytes": 190869
+    },
+    {
+      "file": "08-forms-costing.png",
+      "comparison_file": "08-forms-costing-comparison.png",
+      "before_sha256": "7957419a062113fa3c3de7c19e2883fcfdbf0dfccd2d2416101b80dff287c442",
+      "before_bytes": 349558,
+      "after_sha256": "bfcb1e34228e4aef315c8eb169c62eac7f7d6260a7e547562378693f55e3dd70",
+      "after_bytes": 176488,
+      "identical": false,
+      "comparison_sha256": "23e0979167af128dfc6337738d95662fc6b8029d2bb84ed4d6706bc5db2bee66",
+      "comparison_bytes": 236872
+    },
+    {
+      "file": "10-settings-cms.png",
+      "comparison_file": "10-settings-cms-comparison.png",
+      "before_sha256": "902c949bd730a0825571a0ce116fb0fa883a333c637cb0173ddd3e9eac997c77",
+      "before_bytes": 290832,
+      "after_sha256": "a7faf96711e374623e2ad7c19be25323f276de5bb04ba003b0c7377f566173a6",
+      "after_bytes": 347820,
+      "identical": false,
+      "comparison_sha256": "6de3b113dbf195f90b4319ce930625a7a06e8ea19d3b5f4656f8e19eebc1e220",
+      "comparison_bytes": 244798
+    },
+    {
+      "file": "12-inventory-wms.png",
+      "comparison_file": "12-inventory-wms-comparison.png",
+      "before_sha256": "78771c27d64163b0534848e8cce3f2972dbbb19b602c311194ed438380188af3",
+      "before_bytes": 298621,
+      "after_sha256": "21368f2414b21707c4ba03c9efc74b9c427d4bcf4b0e1cb2257c65ff5a7450c8",
+      "after_bytes": 138077,
+      "identical": false,
+      "comparison_sha256": "ed2099d4768b1c2679a0636b32237be3ef6a69c26d0aed5b88caba6692f89748",
+      "comparison_bytes": 188562
+    },
+    {
+      "file": "13-finance.png",
+      "comparison_file": "13-finance-comparison.png",
+      "before_sha256": "275ef7c66e7178d8525031ab108b3bfef2f3ba2bdf78e756f2a1c17b6e4338cb",
+      "before_bytes": 250923,
+      "after_sha256": "dcee63bdd0f3d860181150d67f5e46ea94768e71cd192d52ada66f0498a95b8e",
+      "after_bytes": 89720,
+      "identical": false,
+      "comparison_sha256": "d404ac0362231165981e696331fc3066cc90fcd0c79aa760597668a01d0fa738",
+      "comparison_bytes": 134163
+    },
+    {
+      "file": "14-b2b-quotes.png",
+      "comparison_file": "14-b2b-quotes-comparison.png",
+      "before_sha256": "104ab89f9fddfbc11ae0d1322b77bfbfa3771e147731a9e2e1624d1e031b93f5",
+      "before_bytes": 324210,
+      "after_sha256": "953e128287b507f187444e7be3918b3338eea21eeab6cfcad156b10cb64d7f68",
+      "after_bytes": 134803,
+      "identical": false,
+      "comparison_sha256": "693320f68166d35d5b94394a609d9c63a3341d646b943d71ac85d8ca941539de",
+      "comparison_bytes": 187291
+    },
+    {
+      "file": "15-logistics.png",
+      "comparison_file": "15-logistics-comparison.png",
+      "before_sha256": "74b70e315df3d9f1ba4d5e6579d8913350a51b51440710160ebb0878e20e09d3",
+      "before_bytes": 258969,
+      "after_sha256": "07beaf111a4d3a8fe9b9e54926837eedfe6b9bafc9637c3bea51c39bd335b34e",
+      "after_bytes": 105574,
+      "identical": false,
+      "comparison_sha256": "11fcc76a65b4ef4f41650d35eaa992173dbabff03d3773558a632e377b8bd52b",
+      "comparison_bytes": 150205
+    },
+    {
+      "file": "16-marketing.png",
+      "comparison_file": "16-marketing-comparison.png",
+      "before_sha256": "0d4f17fa7942888df45a6ec92cefe0ffe98120bcb7d99c6f0b980e34a152eb46",
+      "before_bytes": 287012,
+      "after_sha256": "249d90b6cb4b189e82b926820df1b1c13c29f8742121dd03eb9ab41f2c3313b2",
+      "after_bytes": 133461,
+      "identical": false,
+      "comparison_sha256": "4ea489c4bb3a7190301604ff2199a33e38f2fd983efcdd27e7753b792ca35051",
+      "comparison_bytes": 179544
+    },
+    {
+      "file": "17-users-crm.png",
+      "comparison_file": "17-users-crm-comparison.png",
+      "before_sha256": "3dbe581ba98d86af644bc20a32fde82f9e93eed2493e82f5571f5f4613489bf9",
+      "before_bytes": 297254,
+      "after_sha256": "e0c52cd91f0b384a42e22098a49ba0d4f6d438bbe11c7868253402651bbdc043",
+      "after_bytes": 111740,
+      "identical": false,
+      "comparison_sha256": "4a964836d997ec655d873141b5a5d30565f783f08cec48b96e59455e7e356d53",
+      "comparison_bytes": 158972
+    },
+    {
+      "file": "18-roles-rbac.png",
+      "comparison_file": "18-roles-rbac-comparison.png",
+      "before_sha256": "dd4c14597a7fa082da55558a0efe0ba238177c9a1f4bb23af2e56005886cb1ac",
+      "before_bytes": 291791,
+      "after_sha256": "c47e4eddb479bc28cbd30cf42223a2c5f62cd45ed6f65805dadafe6d28424331",
+      "after_bytes": 94018,
+      "identical": false,
+      "comparison_sha256": "581f30aa7b74596afe943855aec3287326e0cf4ae5028b859d2623566864a4ae",
+      "comparison_bytes": 145833
+    },
+    {
+      "file": "19-audit.png",
+      "comparison_file": "19-audit-comparison.png",
+      "before_sha256": "8e207d2a34c6c23937d8ef812d152b12375f23043510e8b71cfccdd2a740ca59",
+      "before_bytes": 246115,
+      "after_sha256": "14b29509aac25a7bdf30f1fc41379c600a305e2655bd1ad2a447e4f0c969e776",
+      "after_bytes": 137680,
+      "identical": false,
+      "comparison_sha256": "64245844e59312c572eb0ef9e51ff9dd80bb98b0f1428e7c532506bc5c1a0b56",
+      "comparison_bytes": 170703
+    },
+    {
+      "file": "20-academy.png",
+      "comparison_file": "20-academy-comparison.png",
+      "before_sha256": "dcd28e3aefe9fc9974d6fd1b977ecef595d58c32fb9b70399941215508fddc17",
+      "before_bytes": 286383,
+      "after_sha256": "cc97768c1eb4f361ae9375fd0128eebce5db67c863d2fe814a7503d348ffb874",
+      "after_bytes": 134638,
+      "identical": false,
+      "comparison_sha256": "358201b07377badaeb7e27cbe7efacd5bc6485de469f93f8771f45f3df42f08f",
+      "comparison_bytes": 177499
+    },
+    {
+      "file": "21-services.png",
+      "comparison_file": "21-services-comparison.png",
+      "before_sha256": "9c34d0a270b47f6cf93cc1cda82a65cf36504ebe51b3ecff4d666f6950b1fbaa",
+      "before_bytes": 273049,
+      "after_sha256": "554b83437fd1bc7be1bd1c5b11c0d745fd9cc8d451cdf5b8dfe25248fc9e9525",
+      "after_bytes": 117246,
+      "identical": false,
+      "comparison_sha256": "a1b58d808037176a75664644a8947e531128969bdee8c33ed4f9f38ead8b1ab1",
+      "comparison_bytes": 152691
+    },
+    {
+      "file": "22-loyalty.png",
+      "comparison_file": "22-loyalty-comparison.png",
+      "before_sha256": "c95cb09127f0f11b8b7db133f225356bf1df58a561e4aa382b2af6d360ab0605",
+      "before_bytes": 218764,
+      "after_sha256": "d4bdc36baba3431d17982d814f0c1ba363ef7f1f992081633075bddcb17fd2fb",
+      "after_bytes": 85032,
+      "identical": false,
+      "comparison_sha256": "f792d7cb310d603d6ce6376a3370187117884e89459764e06d293af633db85aa",
+      "comparison_bytes": 115652
+    },
+    {
+      "file": "23-rewards.png",
+      "comparison_file": "23-rewards-comparison.png",
+      "before_sha256": "86a761c20c4463312867f08f3b4d27522593d3062c83f8fbc7277aaaeda7efcd",
+      "before_bytes": 342839,
+      "after_sha256": "db5c33e7f7796d87a1ce7958489eded1786ca0c12a80407505775a884a71f2fc",
+      "after_bytes": 155130,
+      "identical": false,
+      "comparison_sha256": "0c010b327273afe3a108c2f9d873a1e6b3a143dbaa6f980c8f46a3ab2d672a25",
+      "comparison_bytes": 208685
+    },
+    {
+      "file": "24-public-storefront-home.png",
+      "comparison_file": "24-public-storefront-home-comparison.png",
+      "before_sha256": "bd9019fb5db927a28fe3e3d564638ab77e670a9409eeb7ed1d1d03259c17f5ba",
+      "before_bytes": 216632,
+      "after_sha256": "f293f8e4290ef7d6650518400787821af68e48126d6989e15631913278abccf6",
+      "after_bytes": 216315,
+      "identical": false,
+      "comparison_sha256": "c7d30719eca86f11013002273e10cfa63be7f965b059c715fd9b69fb5d80a212",
+      "comparison_bytes": 100393
+    },
+    {
+      "file": "02-header-palette.png",
+      "comparison_file": "02-header-palette-comparison.png",
+      "before_sha256": "e4e43b42db7a405b99029b741fbb5eeceb64b7126593b0fbc0b98d48a198a4c0",
+      "before_bytes": 210447,
+      "after_sha256": "f6cc1a0d1d4215cec9493d2ea92c8cfbafdbcc785b950de558292a6fc3f1ae9e",
+      "after_bytes": 170723,
+      "identical": false,
+      "comparison_sha256": "a135dca23f169eb77a43cff04c082cef45e7a0687e9afe9a54a1638033cd865f",
+      "comparison_bytes": 176148
+    },
+    {
+      "file": "06-order-sidemodal.png",
+      "comparison_file": "06-order-sidemodal-comparison.png",
+      "before_sha256": "facbebd246698c9cec35c944284bc4c68b9ce33fa06e3e4c6b158edfa8236e4c",
+      "before_bytes": 252880,
+      "after_sha256": "7b4752cc1229baca6b6e2c4ab23d639a6245c2649a87b3ef4100de7f2eb92e26",
+      "after_bytes": 167692,
+      "identical": false,
+      "comparison_sha256": "86339508ac1378004639b5c1b1d71e8dff4539520e3c3e181847671809d5eb89",
+      "comparison_bytes": 195042
+    },
+    {
+      "file": "09-modal-product.png",
+      "comparison_file": "09-modal-product-comparison.png",
+      "before_sha256": "f9314ba26b6504fefe86aec52bb61ebf8b0375adb8db35e38aa6399d066cf465",
+      "before_bytes": 209227,
+      "after_sha256": "f2ebcff26eced53bd210132148649a9ecf494470afdac2ef59303fa829a58ed5",
+      "after_bytes": 144647,
+      "identical": false,
+      "comparison_sha256": "6e696cb9af21f8bd25cf51b584c8728144a40ff9351c07c46345a7d1389d1665",
+      "comparison_bytes": 166384
+    },
+    {
+      "file": "11-mobile-dashboard.png",
+      "comparison_file": "11-mobile-dashboard-comparison.png",
+      "before_sha256": "fc51a116d881ad0ce139aa75c3766c1d17097729e641c86561c89735614442b2",
+      "before_bytes": 149970,
+      "after_sha256": "ab6a38bdba71cfee975c5abd4e5d628acf3c13b1f01baa86604b88fb665b3ac6",
+      "after_bytes": 45851,
+      "identical": false,
+      "comparison_sha256": "5b0389fadafa960f311919249976636b4e9a43afb578dad3a8a9d4fcd486e885",
+      "comparison_bytes": 585588
+    },
+    {
+      "file": "25-admin-login.png",
+      "comparison_file": "25-admin-login-comparison.png",
+      "before_sha256": "04fcb73358aa3ba89c77818c81b90ddba5eeb8cf6827bfebf2592986664e8c41",
+      "before_bytes": 97721,
+      "after_sha256": "288bca8ccd6e43416c8fe319decc90e14cc1bb70574f74369b6e400a8df84187",
+      "after_bytes": 27676,
+      "identical": false,
+      "comparison_sha256": "ec72714e90646cc4484cc7313942b5d80a076d04f1977ac67432085cb8372a6d",
+      "comparison_bytes": 59473
+    }
+  ],
+  "target_vs_implemented_pairs": [
+    {
+      "screen": "App Shell · Sidebar 240px & Brand Logo",
+      "target_file": "01-after-sidebar.png",
+      "target_sha256": "4330b99ae86ac78e1b8ba7f35d77c22e861c35207a09f26f392859c634993906",
+      "implemented_file": "01-sidebar-shell.png",
+      "implemented_sha256": "09e78150001ad9e1b91d7a963883c2b75a84a2ee08bcdae7e895241da9d7e9ca",
+      "comparison_file": "01-ti-sidebar.png",
+      "comparison_sha256": "9bdf0587ab5dd6f81ca694463ea3d818a535f171eef6fc620855dc218c0c0466",
+      "comparison_bytes": 152572
+    },
+    {
+      "screen": "Header 56px & Command Palette (Ctrl+K)",
+      "target_file": "02-after-header.png",
+      "target_sha256": "d49a483e74016bd7515dae78ab20123a354d520b5bef48a3a68633429b88b64b",
+      "implemented_file": "02-header-palette.png",
+      "implemented_sha256": "f6cc1a0d1d4215cec9493d2ea92c8cfbafdbcc785b950de558292a6fc3f1ae9e",
+      "comparison_file": "02-ti-header.png",
+      "comparison_sha256": "e343305af3af2706059528d4b419e49f432970fbccb7ee4903e33b64655c91ce",
+      "comparison_bytes": 146305
+    },
+    {
+      "screen": "Dashboard · SummaryStats + 2/3 Chart + Activity",
+      "target_file": "03-after-dashboard.png",
+      "target_sha256": "ff898216e62c8065c8dae1baefcd94e662670622504cfc954613dfbce793ce90",
+      "implemented_file": "03-dashboard.png",
+      "implemented_sha256": "2a0a8f759e01bde453e037372c2ace02ba2c888942c36c2fb7d30b19e308f243",
+      "comparison_file": "03-ti-dashboard.png",
+      "comparison_sha256": "4961fbae81354016cee3dbeb01274a8e98ad8fc750e6e898b8262b65a09f1f96",
+      "comparison_bytes": 178663
+    },
+    {
+      "screen": "Products PIM · FilterChips + DataTable + RowMenu",
+      "target_file": "04-after-product-list.png",
+      "target_sha256": "709817363eb47c26cbdd3682f473e5445d58ecea9e1698eb0a8407948e9eab4f",
+      "implemented_file": "04-product-list.png",
+      "implemented_sha256": "b7550fe7163d74dc4bd446673481c20db878ea87690708a1006e53ba354393d9",
+      "comparison_file": "04-ti-product-list.png",
+      "comparison_sha256": "6377c98e8361d9359bffaf1260a5c7668f837f2c53fdc6ce54057e175529ad95",
+      "comparison_bytes": 157373
+    },
+    {
+      "screen": "Product Detail · 2/3 + 1/3 Asymmetrical Grid & Switch",
+      "target_file": "05-after-product-form.png",
+      "target_sha256": "3c0ffbf702438ae9e806feaeea490947193de4fe3bda81a60f0e3ff2c70795cb",
+      "implemented_file": "05-product-form.png",
+      "implemented_sha256": "f9f4ace37fa17ef8ade2766e8bdd01e322f1a60158f39ba6f1f232348bc16b68",
+      "comparison_file": "05-ti-product-form.png",
+      "comparison_sha256": "cb772e86c17e8ec0d5a9788c5aea04c6d6c8a01cc4cf9820eaab580c8ca54497",
+      "comparison_bytes": 168517
+    },
+    {
+      "screen": "Order OMS · SideModal Timeline & Actions",
+      "target_file": "06-after-order-sidemodal.png",
+      "target_sha256": "3d0fc8887a1cf95b74f281058d987b33c39e0dffd4ba90bb967af7889d11b056",
+      "implemented_file": "06-order-sidemodal.png",
+      "implemented_sha256": "7b4752cc1229baca6b6e2c4ab23d639a6245c2649a87b3ef4100de7f2eb92e26",
+      "comparison_file": "06-ti-order-sidemodal.png",
+      "comparison_sha256": "91b320355f3286f984525ed442df90b833b714ea601c286767149b41ac0abc2f",
+      "comparison_bytes": 152088
+    },
+    {
+      "screen": "DataTable & BulkActions · Orders Matrix",
+      "target_file": "07-after-datatable.png",
+      "target_sha256": "f38e3fd32e66d9a0a8361f278a807e535fdfc710f13c720fd31b533e1c567545",
+      "implemented_file": "07-datatable-orders.png",
+      "implemented_sha256": "9369346d895dede94bedad06cf902aa0de9d77fa72a57bb431f498a448d4ff5d",
+      "comparison_file": "07-ti-datatable.png",
+      "comparison_sha256": "e84f49934b47acedc204871529eb45fa27187ed82b82a8f4abcd4cfd63c2b49a",
+      "comparison_bytes": 157464
+    },
+    {
+      "screen": "Forms & Costing · Landed Cost & Field Validation",
+      "target_file": "08-after-forms.png",
+      "target_sha256": "a3d389f0ed495029c02a981ed68dd5a22cd27b5edc3eb6b649ee111398d216ce",
+      "implemented_file": "08-forms-costing.png",
+      "implemented_sha256": "bfcb1e34228e4aef315c8eb169c62eac7f7d6260a7e547562378693f55e3dd70",
+      "comparison_file": "08-ti-forms.png",
+      "comparison_sha256": "03b105e2f3e167f6cafee348bc1da5b3d8829a8f5e596245adf7b21cec8085cd",
+      "comparison_bytes": 180308
+    },
+    {
+      "screen": "Modal Pattern · Clean Light FormModal",
+      "target_file": "09-after-modals.png",
+      "target_sha256": "654b71031319b156ed89dc6173703cafc01a9c448016bd2a3a4346e9e6d95c92",
+      "implemented_file": "09-modal-product.png",
+      "implemented_sha256": "f2ebcff26eced53bd210132148649a9ecf494470afdac2ef59303fa829a58ed5",
+      "comparison_file": "09-ti-modals.png",
+      "comparison_sha256": "5ced73cca123e4ebf646867435994aa589c16b04b5785a3fa06499450e7e8966",
+      "comparison_bytes": 135716
+    },
+    {
+      "screen": "Settings & CMS · Gate 12 Light Chrome + Storefront Preview",
+      "target_file": "10-after-settings-cms.png",
+      "target_sha256": "3c837ac059bd8ca5d802f4501696f0edeab25f936fd895f8e2ba4bc29af4c878",
+      "implemented_file": "10-settings-cms.png",
+      "implemented_sha256": "a7faf96711e374623e2ad7c19be25323f276de5bb04ba003b0c7377f566173a6",
+      "comparison_file": "10-ti-settings-cms.png",
+      "comparison_sha256": "830b2b56eacd60f46b5ad18841123cbf4b1786b8d978239f329a93a190a9baf3",
+      "comparison_bytes": 208649
+    },
+    {
+      "screen": "Mobile Responsive · 390px Drawer & Stacked Cards",
+      "target_file": "11-after-mobile.png",
+      "target_sha256": "2d4df4c44df59f30d68625ed104321883ae51b387d59f5f28bb04652aad944fd",
+      "implemented_file": "11-mobile-dashboard.png",
+      "implemented_sha256": "ab6a38bdba71cfee975c5abd4e5d628acf3c13b1f01baa86604b88fb665b3ac6",
+      "comparison_file": "11-ti-mobile.png",
+      "comparison_sha256": "42f9fc8b92c8a85c869d4b8dc63d5af78d29615633205d5e79f6b2281dea38ff",
+      "comparison_bytes": 220579
+    }
+  ],
+  "detailed_views": [
+    {
+      "file": "pd-01-variants.png",
+      "domain": "PRODUCT_DETAIL",
+      "label": "Product Detail · Variantes",
+      "viewport": "1440x900",
+      "bytes": 146142,
+      "sha256": "a4f16bb14aa3369f0b785786b110dbbf1a625bd346fd6f48241151644171b438"
+    },
+    {
+      "file": "pd-02-specs.png",
+      "domain": "PRODUCT_DETAIL",
+      "label": "Product Detail · Especificaciones Técnicas",
+      "viewport": "1440x900",
+      "bytes": 104092,
+      "sha256": "9897449a9ab505af1c4af1f21cb8338f07d7e0317ac0a72d4a4cb3a031396893"
+    },
+    {
+      "file": "pd-03-suppliers.png",
+      "domain": "PRODUCT_DETAIL",
+      "label": "Product Detail · Proveedores Asociados",
+      "viewport": "1440x900",
+      "bytes": 120189,
+      "sha256": "6750be3cbff21c2f1b688e1a64325e0a0c3655d8d71d61726dc08b24e0c16ade"
+    },
+    {
+      "file": "pd-04-general-precios.png",
+      "domain": "PRODUCT_DETAIL",
+      "label": "Product Detail · General y Precios (2/3 + 1/3)",
+      "viewport": "1440x900",
+      "bytes": 142200,
+      "sha256": "fa1af591c328d98fd34b5dae6f2cf1d4a735cd9bea78d0d30dcdc1acd077c838"
+    },
+    {
+      "file": "pd-05-unsaved-changes-bar.png",
+      "domain": "PRODUCT_DETAIL",
+      "label": "Product Detail · Estado de Guardado UnsavedChangesBar",
+      "viewport": "1440x900",
+      "bytes": 149051,
+      "sha256": "198b4188fb92d2d3e2f21d3ed112298542cb6f4f8d0fd7643afa9a2c2826748a"
+    },
+    {
+      "file": "cms-01-overview.png",
+      "domain": "CMS",
+      "label": "CMS · 1. Vista General",
+      "viewport": "1440x900",
+      "bytes": 143011,
+      "sha256": "b3d952f7a06a3982a64ce69caa9cd289eedda8ddc69c647c4d23d60d4bb97147"
+    },
+    {
+      "file": "cms-02-hero-editor.png",
+      "domain": "CMS",
+      "label": "CMS · 2. Editor Hero",
+      "viewport": "1440x900",
+      "bytes": 172749,
+      "sha256": "aa32ceb5168f580a5ded54b4b215480606bf33b75e53169b742e97828fbcba36"
+    },
+    {
+      "file": "cms-03-borradores.png",
+      "domain": "CMS",
+      "label": "CMS · 9. Borradores y Revisión",
+      "viewport": "1440x900",
+      "bytes": 132325,
+      "sha256": "8e96273c68d272225b39bb3156dc5b4a3000790979399f4900b8fff398798b81"
+    },
+    {
+      "file": "cms-04-preview-iframe-desktop.png",
+      "domain": "CMS",
+      "label": "CMS · 11. Previsualización Iframe Real (Desktop 1440px)",
+      "viewport": "1440x900",
+      "bytes": 347513,
+      "sha256": "cff464930ef7a3359d5ea240abc3860b7085a9610caf40b610868fa76aefe529"
+    },
+    {
+      "file": "cms-05-preview-iframe-mobile390.png",
+      "domain": "CMS",
+      "label": "CMS · 11. Previsualización Responsive (Mobile 390px)",
+      "viewport": "1440x900",
+      "bytes": 249059,
+      "sha256": "76f608aa426fe78c42b41603d2b3461ca1ec1bb1b8322c5682a3896ba339d210"
+    },
+    {
+      "file": "oms-01-sidemodal-3d-footer.png",
+      "domain": "OMS",
+      "label": "OMS · SideModal 3D, Ítems, Pagos y Footer Sticky",
+      "viewport": "1440x900",
+      "bytes": 167692,
+      "sha256": "7b4752cc1229baca6b6e2c4ab23d639a6245c2649a87b3ef4100de7f2eb92e26"
+    },
+    {
+      "file": "oms-02-fulfillment-wms.png",
+      "domain": "OMS",
+      "label": "OMS · Preparación y Despacho WMS",
+      "viewport": "1440x900",
+      "bytes": 106145,
+      "sha256": "6c72561c3847d7cdfbb934dcb9b285216edf33f88e5d77838541cbec715f5e94"
+    },
+    {
+      "file": "oms-03-rma-postventa.png",
+      "domain": "OMS",
+      "label": "OMS · Devoluciones e Inspección RMA",
+      "viewport": "1440x900",
+      "bytes": 110800,
+      "sha256": "dbb7de0ebdd9849c2482710c637203661387a11cbf11d2bc07dfb979101f1e60"
+    }
+  ]
+}
