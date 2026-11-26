@@ -24,6 +24,7 @@ import {
   formInputStyle,
   SecondaryButton,
   PrimaryButton,
+  SideModal,
 } from "../../components/admin/ui"
 import {
   Users as UsersIcon,
@@ -364,8 +365,8 @@ export default function AdminUsers() {
         <StatCard variant="light" Icon={UserCheck} label="Usuarios Registrados" value={totalCount} sub={`Staff: ${staffCount} · Clientes: ${clientCount}`} />
       </div>
 
-      {/* Sub-tabs CRM / Organizaciones / RBAC */}
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+      {/* Sub-tabs CRM / Organizaciones / RBAC — Nimbus underline tabs */}
+      <div className="au-tabs hide-scroll" role="tablist" aria-label="CRM y RBAC">
         {[
           { id: "crm", label: "Directorio CRM & Ficha 360°" },
           { id: "organizations", label: "Organizaciones y Contactos" },
@@ -373,14 +374,11 @@ export default function AdminUsers() {
         ].map(t => (
           <button
             key={t.id}
+            role="tab"
+            aria-selected={activeTab === t.id}
             data-testid={`crm-tab-${t.id}`}
             onClick={() => setActiveTab(t.id)}
-            style={{
-              padding: "8px 14px", borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: "pointer",
-              border: activeTab === t.id ? "1px solid #0B0E14" : "1px solid var(--admin-border)",
-              background: activeTab === t.id ? "#0B0E14" : "#fff",
-              color: activeTab === t.id ? "#1AFF6E" : "var(--admin-text)",
-            }}
+            className={`au-tab ${activeTab === t.id ? "is-active" : ""}`}
           >
             {t.label}
           </button>
@@ -448,156 +446,149 @@ export default function AdminUsers() {
       )}
 
       {/* PANEL FICHA 360° */}
-      {selected360Id && (
-        <div
-          data-testid="crm-360-drawer"
-          style={{
-            position: "fixed", inset: 0, zIndex: 1200, background: "rgba(11,14,20,0.65)",
-            display: "flex", justifyContent: "flex-end",
-          }}
-        >
-          <div style={{
-            width: "min(760px, 100vw)", height: "100%", overflowY: "auto",
-            background: "#fff", padding: 24, display: "flex", flexDirection: "column", gap: 18,
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px solid var(--admin-border)", paddingBottom: 12 }}>
-              <div>
-                <div style={{ fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text-muted)" }}>
-                  FICHA INTEGRAL 360° · {d360?.identity?.code || "..."}
-                </div>
-                <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0 }}>{d360?.identity?.full_name || "Cargando..."}</h2>
-              </div>
-              <SecondaryButton data-testid="close-360-btn" onClick={() => setSelected360Id(null)}><X size={15} /></SecondaryButton>
+      <SideModal
+        open={!!selected360Id}
+        onClose={() => setSelected360Id(null)}
+        maxWidth={740}
+        testId="crm-360-drawer"
+        subtitle={`FICHA INTEGRAL 360° · ${d360?.identity?.code || "..."}`}
+        title={d360?.identity?.full_name || "Cargando..."}
+        headerExtra={
+          <SecondaryButton size="sm" data-testid="close-360-btn" onClick={() => setSelected360Id(null)}>
+            <X size={15} />
+          </SecondaryButton>
+        }
+      >
+        {view360Query.isLoading || !d360 ? (
+          <p style={{ color: "var(--admin-text-muted)" }}>Consolidando historial 360°...</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{
+              display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(155px, 1fr))", gap: 10,
+              padding: 14, borderRadius: 12, background: "#FAFAFA", border: "1px solid #E4E4F0",
+              borderTop: "2.5px solid #09090B",
+            }}>
+              <div><div style={{ fontSize: 10.5, fontWeight: 600, color: "#71717A" }}>EMAIL</div><div style={{ fontSize: 12.5, fontFamily: "var(--font-mono)", color: "#09090B", wordBreak: "break-word" }}>{d360.identity.email || "—"}</div></div>
+              <div><div style={{ fontSize: 10.5, fontWeight: 600, color: "#71717A" }}>ID TRIBUTARIO</div><div style={{ fontSize: 12.5, fontFamily: "var(--font-mono)", color: "#09090B" }}>{d360.identity.country} · {d360.identity.tax_id || "—"}</div></div>
+              <div><div style={{ fontSize: 10.5, fontWeight: 600, color: "#71717A" }}>SEGMENTO</div><div style={{ fontSize: 12.5, color: "#0F7A38", fontWeight: 700 }}>{SEGMENT_LABELS[d360.identity.commercial_segment] || d360.identity.commercial_segment}</div></div>
+              <div><div style={{ fontSize: 10.5, fontWeight: 600, color: "#71717A" }}>PEDIDOS / COTIZ.</div><div style={{ fontSize: 12.5, fontFamily: "var(--font-mono)", color: "#09090B" }}>{d360.history_360.orders.length} / {d360.history_360.b2b_quotes.length}</div></div>
             </div>
 
-            {view360Query.isLoading || !d360 ? (
-              <p style={{ color: "var(--admin-text-muted)" }}>Consolidando historial 360°...</p>
-            ) : (
-              <>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, padding: 14, borderRadius: 12, background: "#0B0E14", color: "#fff" }}>
-                  <div><div style={{ fontSize: 10.5, color: "#9CA3AF" }}>EMAIL</div><div style={{ fontSize: 12.5, fontFamily: "var(--font-mono)" }}>{d360.identity.email || "—"}</div></div>
-                  <div><div style={{ fontSize: 10.5, color: "#9CA3AF" }}>ID TRIBUTARIO</div><div style={{ fontSize: 12.5, fontFamily: "var(--font-mono)" }}>{d360.identity.country} · {d360.identity.tax_id || "—"}</div></div>
-                  <div><div style={{ fontSize: 10.5, color: "#9CA3AF" }}>SEGMENTO</div><div style={{ fontSize: 12.5, color: "#1AFF6E", fontWeight: 700 }}>{SEGMENT_LABELS[d360.identity.commercial_segment] || d360.identity.commercial_segment}</div></div>
-                  <div><div style={{ fontSize: 10.5, color: "#9CA3AF" }}>PEDIDOS / COTIZ.</div><div style={{ fontSize: 12.5, fontFamily: "var(--font-mono)" }}>{d360.history_360.orders.length} / {d360.history_360.b2b_quotes.length}</div></div>
+            {/* Perfil Técnico del Estudio */}
+            <div style={{ border: "1px solid var(--admin-border)", borderRadius: 12, padding: 14 }} data-testid="crm-technical-profile-card">
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 13, marginBottom: 10 }}>
+                <Sliders size={14} /> Perfil Técnico de Estudio / Productora
+              </div>
+              {d360.technical_profile && (
+                <div style={{ fontSize: 12.5, marginBottom: 10, padding: 10, background: "var(--admin-surface-soft)", borderRadius: 8 }}>
+                  <strong>Actividad:</strong> {d360.technical_profile.primary_activity || "—"} · <strong>DAW:</strong> {d360.technical_profile.primary_daw || "—"} · <strong>Instalación:</strong> {d360.technical_profile.facility_type || "—"}
                 </div>
+              )}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <input
+                  placeholder="Actividad (ej. Mastering / Post)"
+                  value={techForm.primary_activity}
+                  onChange={e => setTechForm({ ...techForm, primary_activity: e.target.value })}
+                  style={formInputStyle}
+                />
+                <input
+                  placeholder="DAW Principal (ej. Pro Tools / Ableton)"
+                  value={techForm.primary_daw}
+                  onChange={e => setTechForm({ ...techForm, primary_daw: e.target.value })}
+                  style={formInputStyle}
+                />
+                <input
+                  placeholder="Monitores (separados por coma)"
+                  value={techForm.monitors}
+                  onChange={e => setTechForm({ ...techForm, monitors: e.target.value })}
+                  style={formInputStyle}
+                />
+                <input
+                  placeholder="Necesidades futuras / Proyecto"
+                  value={techForm.future_needs}
+                  onChange={e => setTechForm({ ...techForm, future_needs: e.target.value })}
+                  style={formInputStyle}
+                />
+              </div>
+              <div style={{ marginTop: 8, textAlign: "right" }}>
+                <SecondaryButton
+                  size="sm"
+                  data-testid="save-tech-profile-btn"
+                  onClick={() => saveTechMut.mutate({
+                    id: selected360Id,
+                    payload: {
+                      primary_activity: techForm.primary_activity,
+                      primary_daw: techForm.primary_daw,
+                      monitors: techForm.monitors.split(",").map(s => s.trim()).filter(Boolean),
+                      future_needs: techForm.future_needs,
+                    },
+                  })}
+                >
+                  Guardar Perfil Técnico
+                </SecondaryButton>
+              </div>
+            </div>
 
-                {/* Perfil Técnico del Estudio */}
-                <div style={{ border: "1px solid var(--admin-border)", borderRadius: 12, padding: 14 }} data-testid="crm-technical-profile-card">
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 800, fontSize: 13, marginBottom: 10 }}>
-                    <Sliders size={14} /> Perfil Técnico de Estudio / Productora
+            {/* Historial 360° */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div style={{ border: "1px solid var(--admin-border)", borderRadius: 12, padding: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 12.5, marginBottom: 6 }}>Pedidos OMS ({d360.history_360.orders.length})</div>
+                {d360.history_360.orders.length === 0 ? (
+                  <p style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>Sin pedidos registrados.</p>
+                ) : d360.history_360.orders.slice(0, 5).map(o => (
+                  <div key={o.id} style={{ fontSize: 12, display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+                    <span style={{ fontFamily: "var(--font-mono)" }}>#{o.id.slice(0, 8)}</span>
+                    <span>{formatCurrency(o.total, o.currency)}</span>
                   </div>
-                  {d360.technical_profile && (
-                    <div style={{ fontSize: 12.5, marginBottom: 10, padding: 10, background: "var(--admin-surface-soft)", borderRadius: 8 }}>
-                      <strong>Actividad:</strong> {d360.technical_profile.primary_activity || "—"} · <strong>DAW:</strong> {d360.technical_profile.primary_daw || "—"} · <strong>Instalación:</strong> {d360.technical_profile.facility_type || "—"}
-                    </div>
-                  )}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    <input
-                      placeholder="Actividad (ej. Mastering / Post)"
-                      value={techForm.primary_activity}
-                      onChange={e => setTechForm({ ...techForm, primary_activity: e.target.value })}
-                      style={formInputStyle}
-                    />
-                    <input
-                      placeholder="DAW Principal (ej. Pro Tools / Ableton)"
-                      value={techForm.primary_daw}
-                      onChange={e => setTechForm({ ...techForm, primary_daw: e.target.value })}
-                      style={formInputStyle}
-                    />
-                    <input
-                      placeholder="Monitores (separados por coma)"
-                      value={techForm.monitors}
-                      onChange={e => setTechForm({ ...techForm, monitors: e.target.value })}
-                      style={formInputStyle}
-                    />
-                    <input
-                      placeholder="Necesidades futuras / Proyecto"
-                      value={techForm.future_needs}
-                      onChange={e => setTechForm({ ...techForm, future_needs: e.target.value })}
-                      style={formInputStyle}
-                    />
-                  </div>
-                  <div style={{ marginTop: 8, textAlign: "right" }}>
-                    <SecondaryButton
-                      size="sm"
-                      data-testid="save-tech-profile-btn"
-                      onClick={() => saveTechMut.mutate({
-                        id: selected360Id,
-                        payload: {
-                          primary_activity: techForm.primary_activity,
-                          primary_daw: techForm.primary_daw,
-                          monitors: techForm.monitors.split(",").map(s => s.trim()).filter(Boolean),
-                          future_needs: techForm.future_needs,
-                        },
-                      })}
-                    >
-                      Guardar Perfil Técnico
-                    </SecondaryButton>
-                  </div>
+                ))}
+              </div>
+              <div style={{ border: "1px solid var(--admin-border)", borderRadius: 12, padding: 12 }}>
+                <div style={{ fontWeight: 700, fontSize: 12.5, marginBottom: 6 }}>Academia / Servicios / Loyalty</div>
+                <div style={{ fontSize: 12, color: "var(--admin-text-secondary)" }}>
+                  Cursos: {d360.history_360.academy_enrollments.length} · Reservas Serv.: {d360.history_360.service_bookings.length}<br />
+                  Loyalty: {d360.history_360.loyalty ? `${d360.history_360.loyalty.points_balance} pts` : "Sin cuenta"} · RMA: {d360.history_360.rmas.length}
                 </div>
+              </div>
+            </div>
 
-                {/* Historial 360° */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                  <div style={{ border: "1px solid var(--admin-border)", borderRadius: 12, padding: 12 }}>
-                    <div style={{ fontWeight: 800, fontSize: 12.5, marginBottom: 6 }}>Pedidos OMS ({d360.history_360.orders.length})</div>
-                    {d360.history_360.orders.length === 0 ? (
-                      <p style={{ fontSize: 12, color: "var(--admin-text-muted)" }}>Sin pedidos registrados.</p>
-                    ) : d360.history_360.orders.slice(0, 5).map(o => (
-                      <div key={o.id} style={{ fontSize: 12, display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
-                        <span style={{ fontFamily: "var(--font-mono)" }}>#{o.id.slice(0, 8)}</span>
-                        <span>{formatCurrency(o.total, o.currency)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div style={{ border: "1px solid var(--admin-border)", borderRadius: 12, padding: 12 }}>
-                    <div style={{ fontWeight: 800, fontSize: 12.5, marginBottom: 6 }}>Academia / Servicios / Loyalty</div>
-                    <div style={{ fontSize: 12, color: "var(--admin-text-secondary)" }}>
-                      Cursos: {d360.history_360.academy_enrollments.length} · Reservas Serv.: {d360.history_360.service_bookings.length}<br />
-                      Loyalty: {d360.history_360.loyalty ? `${d360.history_360.loyalty.points_balance} pts` : "Sin cuenta"} · RMA: {d360.history_360.rmas.length}
-                    </div>
-                  </div>
+            {/* Seguimiento Comercial */}
+            <div style={{ border: "1px solid var(--admin-border)", borderRadius: 12, padding: 14 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 700, fontSize: 13, marginBottom: 8 }}>
+                <MessageSquare size={14} /> Seguimiento Comercial ({d360.interactions.length})
+              </div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                <select
+                  value={interForm.interaction_type}
+                  onChange={e => setInterForm({ ...interForm, interaction_type: e.target.value })}
+                  style={{ ...formInputStyle, width: 140 }}
+                >
+                  <option value="call">Llamada</option>
+                  <option value="meeting">Reunión</option>
+                  <option value="opportunity">Oportunidad</option>
+                  <option value="follow_up">Seguimiento</option>
+                </select>
+                <input
+                  placeholder="Asunto de seguimiento..."
+                  value={interForm.subject}
+                  onChange={e => setInterForm({ ...interForm, subject: e.target.value })}
+                  style={{ ...formInputStyle, flex: 1 }}
+                />
+                <PrimaryButton
+                  size="sm"
+                  onClick={() => logInterMut.mutate({ id: selected360Id, payload: interForm })}
+                >
+                  Registrar
+                </PrimaryButton>
+              </div>
+              {d360.interactions.slice(0, 4).map(it => (
+                <div key={it.id} style={{ fontSize: 12, padding: "6px 0", borderTop: "1px solid var(--admin-border)" }}>
+                  <strong>[{it.interaction_type}]</strong> {it.subject} <span style={{ color: "var(--admin-text-muted)" }}>({it.sales_rep_email || "staff"})</span>
                 </div>
-
-                {/* Seguimiento Comercial */}
-                <div style={{ border: "1px solid var(--admin-border)", borderRadius: 12, padding: 14 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 800, fontSize: 13, marginBottom: 8 }}>
-                    <MessageSquare size={14} /> Seguimiento Comercial ({d360.interactions.length})
-                  </div>
-                  <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-                    <select
-                      value={interForm.interaction_type}
-                      onChange={e => setInterForm({ ...interForm, interaction_type: e.target.value })}
-                      style={{ ...formInputStyle, width: 140 }}
-                    >
-                      <option value="call">Llamada</option>
-                      <option value="meeting">Reunión</option>
-                      <option value="opportunity">Oportunidad</option>
-                      <option value="follow_up">Seguimiento</option>
-                    </select>
-                    <input
-                      placeholder="Asunto de seguimiento..."
-                      value={interForm.subject}
-                      onChange={e => setInterForm({ ...interForm, subject: e.target.value })}
-                      style={{ ...formInputStyle, flex: 1 }}
-                    />
-                    <PrimaryButton
-                      size="sm"
-                      onClick={() => logInterMut.mutate({ id: selected360Id, payload: interForm })}
-                    >
-                      Registrar
-                    </PrimaryButton>
-                  </div>
-                  {d360.interactions.slice(0, 4).map(it => (
-                    <div key={it.id} style={{ fontSize: 12, padding: "6px 0", borderTop: "1px solid var(--admin-border)" }}>
-                      <strong>[{it.interaction_type}]</strong> {it.subject} <span style={{ color: "var(--admin-text-muted)" }}>({it.sales_rep_email || "staff"})</span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </SideModal>
 
       {/* MODAL NUEVA ORGANIZACIÓN */}
       <FormModal

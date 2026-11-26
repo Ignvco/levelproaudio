@@ -429,8 +429,8 @@ export default function AdminB2BQuotes() {
         <StatCard variant="light" Icon={CreditCard} label="Cuentas de Crédito" value={creditAccounts.length} sub="Control preventivo Net-15/30" />
       </div>
 
-      {/* Tabs Gate 8 */}
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      {/* Tabs Gate 8 — Nimbus underline tabs */}
+      <div className="au-tabs hide-scroll" role="tablist" aria-label="Centro B2B">
         {[
           { id: "quotes", label: "Historial de Cotizaciones" },
           { id: "builder", label: "Generador Pro de Cotizaciones" },
@@ -439,14 +439,11 @@ export default function AdminB2BQuotes() {
         ].map(t => (
           <button
             key={t.id}
+            role="tab"
+            aria-selected={activeTab === t.id}
             data-testid={`b2b-tab-${t.id}`}
             onClick={() => setActiveTab(t.id)}
-            style={{
-              padding: "8px 14px", borderRadius: 10, fontSize: 12.5, fontWeight: 700, cursor: "pointer",
-              border: activeTab === t.id ? "1px solid #0B0E14" : "1px solid var(--admin-border)",
-              background: activeTab === t.id ? "#0B0E14" : "#fff",
-              color: activeTab === t.id ? "#1AFF6E" : "var(--admin-text)",
-            }}
+            className={`au-tab ${activeTab === t.id ? "is-active" : ""}`}
           >
             {t.label}
           </button>

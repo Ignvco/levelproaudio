@@ -2,7 +2,7 @@
 import { useState } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { getAdminPayments, updatePaymentStatus } from "../../api/admin.api"
-import { StatCard, DataTable, StatusBadge, AdminPageHeader, SecondaryButton } from "../../components/admin/ui"
+import { StatCard, DataTable, StatusBadge, AdminPageHeader, SecondaryButton, ConfirmationModal } from "../../components/admin/ui"
 import { showToast } from "../../utils/toast"
 import { Inbox, Bell } from "lucide-react"
 import AccountingCurrencySelect from "../../components/admin/ui/AccountingCurrencySelect"
@@ -26,6 +26,7 @@ const PROVIDERS = {
 
 function StatusSelector({ paymentId, current }) {
   const queryClient = useQueryClient()
+  const [pendingStatus, setPendingStatus] = useState(null)
   const mutation    = useMutation({
     mutationFn: (s) => updatePaymentStatus(paymentId, s),
     onSuccess:  () => {
@@ -33,28 +34,45 @@ function StatusSelector({ paymentId, current }) {
       queryClient.invalidateQueries({ queryKey: ["admin-orders"] })
       queryClient.invalidateQueries({ queryKey: ["admin-dashboard"] })
       queryClient.invalidateQueries({ queryKey: ["admin-finance-summary"] })
+      setPendingStatus(null)
     },
     onError: (e) => {
+      setPendingStatus(null)
       showToast(e?.response?.data?.detail || "No se pudo actualizar el estado del pago. Verificá antes de asumir que se marcó.", "error")
     },
   })
   return (
-    <select value={current}
-      className="au-select"
-      onChange={e => {
-        const v = e.target.value
-        if (["rejected","cancelled","refunded"].includes(v)) {
-          if (!window.confirm(`¿Cambiar a "${STATUS[v]?.label}"? Esto afecta finanzas.`)) return
-        }
-        mutation.mutate(v)
-      }}
-      disabled={mutation.isPending}
-      onClick={e => e.stopPropagation()}
-      style={{ minWidth:"135px", opacity: mutation.isPending ? 0.5 : 1 }}>
-      {Object.entries(STATUS).map(([v,{label}]) => (
-        <option key={v} value={v}>{label}</option>
-      ))}
-    </select>
+    <>
+      <ConfirmationModal
+        open={!!pendingStatus}
+        title="¿Cambiar estado financiero del pago?"
+        description={pendingStatus ? `Se actualizará el estado del pago a "${STATUS[pendingStatus]?.label}".` : ""}
+        warningNote="Esta transición repercute directamente en los registros financieros y de conciliación."
+        confirmLabel="Sí, actualizar estado"
+        danger
+        loading={mutation.isPending}
+        onConfirm={() => mutation.mutate(pendingStatus)}
+        onCancel={() => setPendingStatus(null)}
+        testId="confirm-payment-status-modal"
+      />
+      <select value={current}
+        className="au-select"
+        onChange={e => {
+          const v = e.target.value
+          if (["rejected","cancelled","refunded"].includes(v)) {
+            setPendingStatus(v)
+            return
+          }
+          mutation.mutate(v)
+        }}
+        disabled={mutation.isPending}
+        onClick={e => e.stopPropagation()}
+        style={{ minWidth:"135px", opacity: mutation.isPending ? 0.5 : 1 }}>
+        {Object.entries(STATUS).map(([v,{label}]) => (
+          <option key={v} value={v}>{label}</option>
+        ))}
+      </select>
+    </>
   )
 }
 

@@ -33,7 +33,7 @@ import {
 } from "lucide-react"
 import {
   DataTable, StatusBadge, AdminPageHeader, StatCard,
-  PrimaryButton, SecondaryButton, formInputStyle,
+  PrimaryButton, SecondaryButton, SideModal, formInputStyle,
 } from "../../components/admin/ui"
 import { showToast } from "../../utils/toast"
 import { formatCurrency } from "../../utils/accountingCurrency"
@@ -241,34 +241,15 @@ function OrderPanel({ order, onClose, canViewFinances = true, canApprovePayments
   })
 
   return (
-    <>
-      <div onClick={onClose} className="lp-drawer-backdrop" />
-
-      <div className="lp-drawer" role="dialog" aria-modal="true" aria-label="Detalle de orden">
-        {/* Header */}
-        <div style={{
-          padding: "20px 24px", borderBottom: "1px solid var(--admin-border)",
-          display: "flex", justifyContent: "space-between", alignItems: "center",
-          background: "var(--admin-surface-secondary)", flexShrink: 0,
-        }}>
-          <div>
-            <p className="au-eyebrow" style={{ marginBottom: "4px" }}>
-              Orden OMS · {ORIGIN_LABELS[order.order_origin] || "Online"}
-            </p>
-            <p style={{ fontSize: "17px", fontWeight: 800, fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>
-              #{order.id.slice(0, 8).toUpperCase()}
-            </p>
-          </div>
-          <button onClick={onClose} className="au-iconbtn" aria-label="Cerrar panel">
-            <X size={16} />
-          </button>
-        </div>
-
-        {/* Body */}
-        <div style={{
-          flex: 1, overflowY: "auto", padding: "20px 24px",
-          display: "flex", flexDirection: "column", gap: "16px",
-        }}>
+    <SideModal
+      open
+      onClose={onClose}
+      maxWidth={580}
+      testId="order-detail-sidemodal"
+      subtitle={`Orden OMS · ${ORIGIN_LABELS[order.order_origin] || "Online"}`}
+      title={<span className="lp-mono">#{order.id.slice(0, 8).toUpperCase()}</span>}
+    >
+      <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {/* BF-13: Matriz Tri-Dimensional de Estados */}
           <div style={{
             background: "#fff", border: "1px solid var(--admin-border)",
@@ -638,9 +619,8 @@ function OrderPanel({ order, onClose, canViewFinances = true, canApprovePayments
               </Link>
             </div>
           )}
-        </div>
       </div>
-    </>
+    </SideModal>
   )
 }
 
@@ -1094,14 +1074,12 @@ export default function AdminOrders() {
         </div>
       )}
 
-      {/* Barra de Navegación de Sub-módulos OMS */}
+      {/* Barra de Navegación de Sub-módulos OMS — Nimbus underline tabs */}
       <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "center",
+        display: "flex", justifyContent: "space-between", alignItems: "flex-end",
         flexWrap: "wrap", gap: "12px", marginBottom: "18px",
-        background: "#fff", border: "1px solid var(--admin-border)",
-        borderRadius: "16px", padding: "10px 14px",
       }}>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+        <div className="au-tabs hide-scroll" role="tablist" aria-label="Sub-módulos OMS" style={{ marginBottom: 0, flex: 1 }}>
           {[
             { id: "orders", label: `1. Centro de Pedidos (${totalCount})` },
             { id: "manual", label: `2. Ventas Manuales & WhatsApp (${manualDrafts.length})` },
@@ -1111,15 +1089,11 @@ export default function AdminOrders() {
             <button
               key={t.id}
               type="button"
+              role="tab"
+              aria-selected={activeTab === t.id}
               data-testid={`oms-tab-${t.id}`}
               onClick={() => setActiveTab(t.id)}
-              style={{
-                padding: "8px 14px", borderRadius: "10px", fontSize: "12.5px", fontWeight: 800,
-                cursor: "pointer",
-                background: activeTab === t.id ? "#065F46" : "var(--admin-surface-secondary)",
-                color: activeTab === t.id ? "#fff" : "var(--admin-text)",
-                border: activeTab === t.id ? "1px solid #065F46" : "1px solid var(--admin-border)",
-              }}
+              className={`au-tab ${activeTab === t.id ? "is-active" : ""}`}
             >
               {t.label}
             </button>
@@ -1127,18 +1101,13 @@ export default function AdminOrders() {
         </div>
 
         {activeTab === "orders" && (
-          <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
+          <div className="lp-seg-tabs" style={{ marginBottom: 4 }}>
             <button
               type="button"
               data-testid="oms-view-table"
               onClick={() => setViewMode("table")}
-              style={{
-                padding: "7px 12px", borderRadius: "8px", fontSize: "12px", fontWeight: 700,
-                cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px",
-                background: viewMode === "table" ? "var(--admin-text)" : "#fff",
-                color: viewMode === "table" ? "#fff" : "var(--admin-text)",
-                border: "1px solid var(--admin-border)",
-              }}
+              className={`lp-seg-tab ${viewMode === "table" ? "is-active" : ""}`}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
             >
               <List size={14} /> Vista Tabla
             </button>
@@ -1146,13 +1115,8 @@ export default function AdminOrders() {
               type="button"
               data-testid="oms-view-kanban"
               onClick={() => setViewMode("kanban")}
-              style={{
-                padding: "7px 12px", borderRadius: "8px", fontSize: "12px", fontWeight: 700,
-                cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px",
-                background: viewMode === "kanban" ? "var(--admin-text)" : "#fff",
-                color: viewMode === "kanban" ? "#fff" : "var(--admin-text)",
-                border: "1px solid var(--admin-border)",
-              }}
+              className={`lp-seg-tab ${viewMode === "kanban" ? "is-active" : ""}`}
+              style={{ display: "inline-flex", alignItems: "center", gap: "6px" }}
             >
               <Columns size={14} /> Vista Kanban
             </button>
@@ -1516,10 +1480,11 @@ export default function AdminOrders() {
             <div
               data-testid="draft-order-detail-card"
               style={{
-                background: "#fff",
-                border: "2px solid #065F46",
-                borderRadius: "20px",
-                padding: "22px",
+                background: "#FFFFFF",
+                border: "1px solid var(--admin-border-strong)",
+                borderTop: "2.5px solid #09090B",
+                borderRadius: "12px",
+                padding: "20px",
                 display: "flex",
                 flexDirection: "column",
                 gap: "16px",
@@ -1631,10 +1596,10 @@ export default function AdminOrders() {
                   }}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: "12px", fontWeight: 800, color: "#065F46", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "#0F7A38", display: "flex", alignItems: "center", gap: "6px" }}>
                       <ShieldCheck size={15} /> Enlace HTTPS Firmado Criptográficamente (Sin PII en URL)
                     </span>
-                    <span style={{ fontSize: "11.5px", color: "#047857", fontWeight: 700 }}>
+                    <span style={{ fontSize: "11.5px", color: "#52525B", fontWeight: 600 }}>
                       Expira: {new Date(whatsappLinkData.expires_at).toLocaleString("es-CL")}
                     </span>
                   </div>
@@ -1645,31 +1610,24 @@ export default function AdminOrders() {
                       value={whatsappLinkData.checkout_url}
                       style={{ ...formInputStyle, background: "#fff", fontFamily: "var(--font-mono)", fontSize: "12px", flex: 1 }}
                     />
-                    <button
+                    <SecondaryButton
                       type="button"
+                      size="sm"
                       onClick={() => {
                         navigator.clipboard?.writeText(whatsappLinkData.checkout_url)
                         setCopiedWa(true)
                         setTimeout(() => setCopiedWa(false), 2000)
                       }}
-                      style={{
-                        padding: "9px 14px", borderRadius: "10px", border: "1px solid #065F46",
-                        background: "#065F46", color: "#fff", fontWeight: 700, fontSize: "12px", cursor: "pointer",
-                        display: "inline-flex", alignItems: "center", gap: "6px",
-                      }}
                     >
                       {copiedWa ? <Check size={14} /> : <Copy size={14} />} {copiedWa ? "Copiado" : "Copiar URL"}
-                    </button>
+                    </SecondaryButton>
                     <a
                       href={whatsappLinkData.wa_me_url}
                       target="_blank"
                       rel="noreferrer"
                       data-testid="whatsapp-wame-share-link"
-                      style={{
-                        padding: "9px 14px", borderRadius: "10px", border: "1px solid #047857",
-                        background: "#fff", color: "#065F46", fontWeight: 800, fontSize: "12px",
-                        textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "6px",
-                      }}
+                      className="au-btn au-btn--secondary au-btn--sm"
+                      style={{ textDecoration: "none" }}
                     >
                       Compartir wa.me <ExternalLink size={13} />
                     </a>
@@ -1898,10 +1856,11 @@ export default function AdminOrders() {
             <div
               data-testid="rma-inspection-detail-card"
               style={{
-                background: "#fff",
-                border: "2px solid #065F46",
-                borderRadius: "20px",
-                padding: "22px",
+                background: "#FFFFFF",
+                border: "1px solid var(--admin-border-strong)",
+                borderTop: "2.5px solid #09090B",
+                borderRadius: "12px",
+                padding: "20px",
                 display: "flex",
                 flexDirection: "column",
                 gap: "16px",
