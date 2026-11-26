@@ -17,7 +17,7 @@ import {
   getSerials,
   regularizeSerials,
 } from "../../api/wms.api"
-import { SectionCard, PrimaryButton, SecondaryButton, StatusBadge, StatCard } from "./ui"
+import { SectionCard, PrimaryButton, SecondaryButton, StatusBadge, StatCard, FormModal, formInputStyle } from "./ui"
 import { showToast } from "../../utils/toast"
 import {
   Warehouse as WarehouseIcon,
@@ -30,19 +30,9 @@ import {
   CheckCircle2,
   SlidersHorizontal,
   RefreshCw,
-  X,
 } from "lucide-react"
 
-const inputStyle = {
-  width: "100%",
-  padding: "9px 12px",
-  background: "var(--admin-surface, #FFFFFF)",
-  border: "1px solid var(--admin-border, #CBD5E1)",
-  borderRadius: "10px",
-  color: "var(--admin-text, #14161A)",
-  fontSize: "13px",
-  outline: "none",
-}
+const inputStyle = formInputStyle
 
 const labelStyle = {
   fontSize: "11.5px",
@@ -101,7 +91,11 @@ export function WmsWarehousesTab({ canManage }) {
   })
 
   const handleCreate = async (e) => {
-    e.preventDefault()
+    e?.preventDefault?.()
+    if (!form.code.trim() || !form.name.trim()) {
+      showToast("Código y nombre de bodega son obligatorios", "error")
+      return
+    }
     setSaving(true)
     try {
       const locs = form.internal_locations.split(",").map(s => s.trim()).filter(Boolean)
@@ -201,52 +195,49 @@ export function WmsWarehousesTab({ canManage }) {
         </div>
       )}
 
-      {showModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(13,13,15,0.55)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: "16px" }}>
-          <form onSubmit={handleCreate} style={{ width: "100%", maxWidth: "520px", background: "#FFFFFF", border: "1px solid var(--admin-border)", borderRadius: "20px", padding: "24px", boxShadow: "0 24px 60px rgba(20,30,24,0.24)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h3 style={{ fontSize: "17px", fontWeight: 800, color: "var(--admin-text)" }}>Nueva Bodega</h3>
-              <button type="button" onClick={() => setShowModal(false)} style={{ background: "none", border: "none", color: "var(--admin-text-muted)", cursor: "pointer" }}><X size={18} /></button>
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <div>
-                <label style={labelStyle}>Código único *</label>
-                <input required value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="SHOW-SCL" style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>Tipo *</label>
-                <select value={form.warehouse_type} onChange={e => setForm(f => ({ ...f, warehouse_type: e.target.value }))} style={inputStyle}>
-                  <option value="central">Bodega Central</option>
-                  <option value="showroom">Showroom</option>
-                  <option value="transit">Tránsito (No vendible)</option>
-                </select>
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={labelStyle}>Nombre *</label>
-                <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Showroom Providencia" style={inputStyle} />
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={labelStyle}>Ubicaciones internas (separadas por coma)</label>
-                <input value={form.internal_locations} onChange={e => setForm(f => ({ ...f, internal_locations: e.target.value }))} placeholder="A-01, B-02" style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>Prioridad de despacho</label>
-                <input type="number" min="1" value={form.fulfillment_priority} onChange={e => setForm(f => ({ ...f, fulfillment_priority: e.target.value }))} style={inputStyle} />
-              </div>
-              <div style={{ display: "flex", alignItems: "center", paddingTop: "18px" }}>
-                <label style={{ fontSize: "12.5px", color: "var(--admin-text)", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
-                  <input type="checkbox" disabled={form.warehouse_type === "transit"} checked={form.warehouse_type === "transit" ? false : form.is_sellable_online} onChange={e => setForm(f => ({ ...f, is_sellable_online: e.target.checked }))} />
-                  Elegible venta online
-                </label>
-              </div>
-            </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "18px" }}>
-              <SecondaryButton type="button" onClick={() => setShowModal(false)}>Cancelar</SecondaryButton>
-              <PrimaryButton type="submit" loading={saving}>Crear bodega</PrimaryButton>
-            </div>
-          </form>
+      <FormModal
+        open={showModal}
+        title="Nueva Bodega"
+        onClose={() => setShowModal(false)}
+        onSave={handleCreate}
+        saving={saving}
+        saveLabel="Crear bodega"
+        maxWidth="520px"
+        testId="wms-new-warehouse-modal"
+      >
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+          <div>
+            <label style={labelStyle}>Código único *</label>
+            <input required value={form.code} onChange={e => setForm(f => ({ ...f, code: e.target.value }))} placeholder="SHOW-SCL" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>Tipo *</label>
+            <select value={form.warehouse_type} onChange={e => setForm(f => ({ ...f, warehouse_type: e.target.value }))} style={inputStyle}>
+              <option value="central">Bodega Central</option>
+              <option value="showroom">Showroom</option>
+              <option value="transit">Tránsito (No vendible)</option>
+            </select>
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label style={labelStyle}>Nombre *</label>
+            <input required value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} placeholder="Showroom Providencia" style={inputStyle} />
+          </div>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <label style={labelStyle}>Ubicaciones internas (separadas por coma)</label>
+            <input value={form.internal_locations} onChange={e => setForm(f => ({ ...f, internal_locations: e.target.value }))} placeholder="A-01, B-02" style={inputStyle} />
+          </div>
+          <div>
+            <label style={labelStyle}>Prioridad de despacho</label>
+            <input type="number" min="1" value={form.fulfillment_priority} onChange={e => setForm(f => ({ ...f, fulfillment_priority: e.target.value }))} style={inputStyle} />
+          </div>
+          <div style={{ display: "flex", alignItems: "center", paddingTop: "18px" }}>
+            <label style={{ fontSize: "12.5px", color: "var(--admin-text)", fontWeight: 600, display: "flex", alignItems: "center", gap: "6px" }}>
+              <input type="checkbox" disabled={form.warehouse_type === "transit"} checked={form.warehouse_type === "transit" ? false : form.is_sellable_online} onChange={e => setForm(f => ({ ...f, is_sellable_online: e.target.checked }))} />
+              Elegible venta online
+            </label>
+          </div>
         </div>
-      )}
+      </FormModal>
     </SectionCard>
   )
 }
@@ -277,8 +268,11 @@ export function WmsDimensionalStockTab({ canAdjust }) {
   const totals = stockData?.totals || { total_physical: 0, total_reserved: 0, total_non_sellable: 0, total_available: 0 }
 
   const handleAdjust = async (e) => {
-    e.preventDefault()
-    if (!adjustRow) return
+    e?.preventDefault?.()
+    if (!adjustRow || !reason.trim()) {
+      showToast("Indica el motivo obligatorio del ajuste", "error")
+      return
+    }
     setSaving(true)
     try {
       await adjustWmsStock({
@@ -389,11 +383,19 @@ export function WmsDimensionalStockTab({ canAdjust }) {
         )}
       </SectionCard>
 
-      {adjustRow && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(13,13,15,0.55)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: "16px" }}>
-          <form onSubmit={handleAdjust} style={{ width: "100%", maxWidth: "460px", background: "#FFFFFF", border: "1px solid var(--admin-border)", borderRadius: "20px", padding: "24px", boxShadow: "0 24px 60px rgba(20,30,24,0.24)" }}>
-            <h3 style={{ fontSize: "17px", fontWeight: 800, color: "var(--admin-text)", marginBottom: "6px" }}>Ajuste Atómico de Inventario</h3>
-            <p style={{ fontSize: "12.5px", color: "var(--admin-text-muted)", marginBottom: "14px" }}>
+      <FormModal
+        open={!!adjustRow}
+        title="Ajuste Atómico de Inventario"
+        onClose={() => setAdjustRow(null)}
+        onSave={handleAdjust}
+        saving={saving}
+        saveLabel="Confirmar en Kardex"
+        maxWidth="460px"
+        testId="wms-adjust-stock-modal"
+      >
+        {adjustRow && (
+          <>
+            <p style={{ fontSize: "12.5px", color: "var(--admin-text-muted)", marginBottom: "6px" }}>
               {adjustRow.warehouse_code} · {adjustRow.internal_sku} ({adjustRow.product_name})
             </p>
             <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
@@ -406,13 +408,9 @@ export function WmsDimensionalStockTab({ canAdjust }) {
                 <input required value={reason} onChange={e => setReason(e.target.value)} style={inputStyle} />
               </div>
             </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "18px" }}>
-              <SecondaryButton type="button" onClick={() => setAdjustRow(null)}>Cancelar</SecondaryButton>
-              <PrimaryButton type="submit" loading={saving}>Confirmar en Kardex</PrimaryButton>
-            </div>
-          </form>
-        </div>
-      )}
+          </>
+        )}
+      </FormModal>
     </div>
   )
 }

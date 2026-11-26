@@ -9,20 +9,9 @@ import {
   getSupplierPriceListsExportUrl,
   getSupplierPriceListTemplateUrl,
 } from "../../api/suppliers.api"
-import { AdminPageHeader, SectionCard, PrimaryButton, SecondaryButton, StatusBadge } from "../../components/admin/ui"
+import { AdminPageHeader, SectionCard, PrimaryButton, SecondaryButton, StatusBadge, FormModal, formInputStyle } from "../../components/admin/ui"
 import { showToast } from "../../utils/toast"
-import { Plus, Search, Upload, Download, Building2, Globe2, PackageCheck, AlertTriangle, X } from "lucide-react"
-
-const bentoInput = {
-  width: "100%",
-  padding: "9px 12px",
-  background: "var(--admin-surface, #FFFFFF)",
-  border: "1px solid var(--admin-border, #CBD5E1)",
-  borderRadius: "10px",
-  color: "var(--admin-text, #14161A)",
-  fontSize: "13px",
-  outline: "none",
-}
+import { Plus, Search, Upload, Download, Building2, Globe2, PackageCheck, AlertTriangle } from "lucide-react"
 
 const SUPPLIER_TYPES = {
   manufacturer: "Fabricante",
@@ -187,20 +176,20 @@ export default function AdminSuppliers() {
               value={search}
               onChange={e => setSearch(e.target.value)}
               placeholder="Código, razón social, RUT/CUIT, país…"
-              style={{ ...bentoInput, paddingLeft: "32px" }}
+              style={{ ...formInputStyle, paddingLeft: "32px" }}
             />
           </div>
-          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={bentoInput}>
+          <select value={typeFilter} onChange={e => setTypeFilter(e.target.value)} style={formInputStyle}>
             <option value="">Todos los tipos</option>
             {Object.entries(SUPPLIER_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
-          <select value={currencyFilter} onChange={e => setCurrencyFilter(e.target.value)} style={bentoInput}>
+          <select value={currencyFilter} onChange={e => setCurrencyFilter(e.target.value)} style={formInputStyle}>
             <option value="">Todas las monedas</option>
             <option value="USD">USD</option>
             <option value="CLP">CLP</option>
             <option value="ARS">ARS</option>
           </select>
-          <select value={activeFilter} onChange={e => setActiveFilter(e.target.value)} style={bentoInput}>
+          <select value={activeFilter} onChange={e => setActiveFilter(e.target.value)} style={formInputStyle}>
             <option value="true">Solo activos</option>
             <option value="false">Solo inactivos</option>
             <option value="">Todos los estados</option>
@@ -270,106 +259,106 @@ export default function AdminSuppliers() {
       </SectionCard>
 
       {/* Modal Crear Proveedor */}
-      {showCreateModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(13,13,15,0.55)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: "16px" }}>
-          <form onSubmit={handleCreateSupplier} data-testid="create-supplier-modal" style={{ width: "100%", maxWidth: "620px", background: "#FFFFFF", border: "1px solid var(--admin-border, #ECEEF2)", borderRadius: "var(--admin-radius-lg, 24px)", boxShadow: "0 24px 60px rgba(20,30,24,0.24)", padding: "26px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
-              <h3 style={{ fontSize: "18px", fontWeight: 800, color: "var(--admin-text, #14161A)" }}>Nuevo Proveedor</h3>
-              <button type="button" onClick={() => setShowCreateModal(false)} style={{ background: "none", border: "none", color: "var(--admin-text-muted, #6B7280)", cursor: "pointer" }}><X size={18} /></button>
+      <FormModal
+        open={showCreateModal}
+        title="Nuevo Proveedor"
+        onClose={() => setShowCreateModal(false)}
+        maxWidth="620px"
+        scrollableBody
+        testId="create-supplier-modal"
+      >
+        <form onSubmit={handleCreateSupplier}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+            <div>
+              <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Código interno (opcional)</label>
+              <input data-testid="new-supplier-code" value={newSupplier.internal_code} onChange={e => setNewSupplier(s => ({ ...s, internal_code: e.target.value }))} placeholder="Auto (SUP-XXXX)" style={formInputStyle} />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <div>
-                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Código interno (opcional)</label>
-                <input data-testid="new-supplier-code" value={newSupplier.internal_code} onChange={e => setNewSupplier(s => ({ ...s, internal_code: e.target.value }))} placeholder="Auto (SUP-XXXX)" style={bentoInput} />
-              </div>
-              <div>
-                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Identificación tributaria</label>
-                <input value={newSupplier.tax_id} onChange={e => setNewSupplier(s => ({ ...s, tax_id: e.target.value }))} placeholder="RUT / CUIT / EIN" style={bentoInput} />
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Razón social *</label>
-                <input data-testid="new-supplier-legal-name" required value={newSupplier.legal_name} onChange={e => setNewSupplier(s => ({ ...s, legal_name: e.target.value }))} placeholder="Ej: Audio Distribuidora SpA" style={bentoInput} />
-              </div>
-              <div>
-                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Nombre comercial</label>
-                <input value={newSupplier.trade_name} onChange={e => setNewSupplier(s => ({ ...s, trade_name: e.target.value }))} placeholder="Ej: ProAudio Latam" style={bentoInput} />
-              </div>
-              <div>
-                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>País</label>
-                <input value={newSupplier.country} onChange={e => setNewSupplier(s => ({ ...s, country: e.target.value }))} style={bentoInput} />
-              </div>
-              <div>
-                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Tipo</label>
-                <select value={newSupplier.supplier_type} onChange={e => setNewSupplier(s => ({ ...s, supplier_type: e.target.value }))} style={bentoInput}>
-                  {Object.entries(SUPPLIER_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Moneda comercial</label>
-                <select value={newSupplier.currency} onChange={e => setNewSupplier(s => ({ ...s, currency: e.target.value }))} style={bentoInput}>
-                  <option value="USD">USD</option>
-                  <option value="CLP">CLP</option>
-                  <option value="ARS">ARS</option>
-                </select>
-              </div>
-              <div>
-                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Condiciones de pago</label>
-                <input value={newSupplier.payment_terms} onChange={e => setNewSupplier(s => ({ ...s, payment_terms: e.target.value }))} style={bentoInput} />
-              </div>
-              <div>
-                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Plazo habitual (días)</label>
-                <input type="number" min="0" value={newSupplier.default_lead_time_days} onChange={e => setNewSupplier(s => ({ ...s, default_lead_time_days: e.target.value }))} style={bentoInput} />
-              </div>
-              <div>
-                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Email</label>
-                <input type="email" value={newSupplier.primary_email} onChange={e => setNewSupplier(s => ({ ...s, primary_email: e.target.value }))} style={bentoInput} />
-              </div>
-              <div>
-                <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Teléfono</label>
-                <input value={newSupplier.primary_phone} onChange={e => setNewSupplier(s => ({ ...s, primary_phone: e.target.value }))} style={bentoInput} />
-              </div>
+            <div>
+              <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Identificación tributaria</label>
+              <input value={newSupplier.tax_id} onChange={e => setNewSupplier(s => ({ ...s, tax_id: e.target.value }))} placeholder="RUT / CUIT / EIN" style={formInputStyle} />
             </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "20px" }}>
-              <SecondaryButton type="button" onClick={() => setShowCreateModal(false)}>Cancelar</SecondaryButton>
-              <PrimaryButton type="submit" loading={creating} data-testid="submit-create-supplier-btn">Crear proveedor</PrimaryButton>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Razón social *</label>
+              <input data-testid="new-supplier-legal-name" required value={newSupplier.legal_name} onChange={e => setNewSupplier(s => ({ ...s, legal_name: e.target.value }))} placeholder="Ej: Audio Distribuidora SpA" style={formInputStyle} />
             </div>
-          </form>
-        </div>
-      )}
+            <div>
+              <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Nombre comercial</label>
+              <input value={newSupplier.trade_name} onChange={e => setNewSupplier(s => ({ ...s, trade_name: e.target.value }))} placeholder="Ej: ProAudio Latam" style={formInputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>País</label>
+              <input value={newSupplier.country} onChange={e => setNewSupplier(s => ({ ...s, country: e.target.value }))} style={formInputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Tipo</label>
+              <select value={newSupplier.supplier_type} onChange={e => setNewSupplier(s => ({ ...s, supplier_type: e.target.value }))} style={formInputStyle}>
+                {Object.entries(SUPPLIER_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Moneda comercial</label>
+              <select value={newSupplier.currency} onChange={e => setNewSupplier(s => ({ ...s, currency: e.target.value }))} style={formInputStyle}>
+                <option value="USD">USD</option>
+                <option value="CLP">CLP</option>
+                <option value="ARS">ARS</option>
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Condiciones de pago</label>
+              <input value={newSupplier.payment_terms} onChange={e => setNewSupplier(s => ({ ...s, payment_terms: e.target.value }))} style={formInputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Plazo habitual (días)</label>
+              <input type="number" min="0" value={newSupplier.default_lead_time_days} onChange={e => setNewSupplier(s => ({ ...s, default_lead_time_days: e.target.value }))} style={formInputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Email</label>
+              <input type="email" value={newSupplier.primary_email} onChange={e => setNewSupplier(s => ({ ...s, primary_email: e.target.value }))} style={formInputStyle} />
+            </div>
+            <div>
+              <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Teléfono</label>
+              <input value={newSupplier.primary_phone} onChange={e => setNewSupplier(s => ({ ...s, primary_phone: e.target.value }))} style={formInputStyle} />
+            </div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "20px" }}>
+            <SecondaryButton type="button" onClick={() => setShowCreateModal(false)}>Cancelar</SecondaryButton>
+            <PrimaryButton type="submit" loading={creating} data-testid="submit-create-supplier-btn">Crear proveedor</PrimaryButton>
+          </div>
+        </form>
+      </FormModal>
 
       {/* Modal Importar Listas de Costos */}
-      {showImportModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(13,13,15,0.55)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: "16px" }}>
-          <div data-testid="price-list-import-modal" style={{ width: "100%", maxWidth: "660px", background: "#FFFFFF", border: "1px solid var(--admin-border, #ECEEF2)", borderRadius: "var(--admin-radius-lg, 24px)", boxShadow: "0 24px 60px rgba(20,30,24,0.24)", padding: "26px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-              <h3 style={{ fontSize: "18px", fontWeight: 800, color: "var(--admin-text, #14161A)" }}>Importación de Listas de Costos (Excel / CSV)</h3>
-              <button type="button" onClick={() => setShowImportModal(false)} style={{ background: "none", border: "none", color: "var(--admin-text-muted, #6B7280)", cursor: "pointer" }}><X size={18} /></button>
-            </div>
-            <p style={{ fontSize: "13px", color: "var(--admin-text-muted, #475569)", marginBottom: "14px", lineHeight: 1.5 }}>
-              Actualiza costos de proveedores sin alterar precios de venta ni stock físico. Descarga la{" "}
-              <a href={getSupplierPriceListTemplateUrl("csv")} style={{ color: "var(--admin-primary-text, #0F9940)", fontWeight: 700, textDecoration: "underline" }}>plantilla CSV</a> o{" "}
-              <a href={getSupplierPriceListTemplateUrl("xlsx")} style={{ color: "var(--admin-primary-text, #0F9940)", fontWeight: 700, textDecoration: "underline" }}>XLSX</a>.
-            </p>
-            <div style={{ padding: "14px", borderRadius: "12px", background: "var(--admin-surface-secondary, #F8FAFC)", border: "1px solid var(--admin-border, #CBD5E1)", marginBottom: "16px" }}>
-              <input type="file" accept=".csv,.xlsx" onChange={e => setImportFile(e.target.files?.[0] || null)} style={{ color: "var(--admin-text, #14161A)", fontSize: "13px", width: "100%" }} />
-            </div>
-            <div style={{ display: "flex", gap: "10px", marginBottom: "16px" }}>
-              <SecondaryButton onClick={() => handleRunImport(true)} loading={importing} data-testid="import-price-dry-run-btn">Simular (Dry-Run)</SecondaryButton>
-              <PrimaryButton onClick={() => handleRunImport(false)} loading={importing} data-testid="import-price-confirm-btn">Confirmar importación</PrimaryButton>
-            </div>
-            {importResult && (
-              <div data-testid="import-price-summary" style={{ padding: "14px", borderRadius: "12px", background: "var(--admin-surface-secondary, #F8FAFC)", border: "1px solid var(--admin-border, #CBD5E1)", maxHeight: "220px", overflowY: "auto" }}>
-                <p style={{ fontSize: "13px", color: "var(--admin-text, #14161A)", fontWeight: 700, marginBottom: "8px" }}>
-                  {importResult.dry_run ? "Simulación:" : "Aplicado:"} {importResult.summary.new} nuevos · {importResult.summary.updated} actualizados · {importResult.summary.rejected} rechazados
-                </p>
-                {(importResult.errors || []).map(err => (
-                  <p key={err.row} style={{ fontSize: "12px", color: "#DC2626", fontWeight: 600, marginTop: "4px" }}>Fila {err.row} ({err.sku}): {err.error}</p>
-                ))}
-              </div>
-            )}
-          </div>
+      <FormModal
+        open={showImportModal}
+        title="Importación de Listas de Costos (Excel / CSV)"
+        onClose={() => setShowImportModal(false)}
+        maxWidth="660px"
+        scrollableBody
+        testId="price-list-import-modal"
+      >
+        <p style={{ fontSize: "13px", color: "var(--admin-text-muted, #475569)", lineHeight: 1.5 }}>
+          Actualiza costos de proveedores sin alterar precios de venta ni stock físico. Descarga la{" "}
+          <a href={getSupplierPriceListTemplateUrl("csv")} style={{ color: "var(--admin-primary-text, #0F9940)", fontWeight: 700, textDecoration: "underline" }}>plantilla CSV</a> o{" "}
+          <a href={getSupplierPriceListTemplateUrl("xlsx")} style={{ color: "var(--admin-primary-text, #0F9940)", fontWeight: 700, textDecoration: "underline" }}>XLSX</a>.
+        </p>
+        <div style={{ padding: "14px", borderRadius: "10px", background: "var(--admin-surface-secondary, #FAFAFA)", border: "1px solid var(--admin-border, #E4E4E7)" }}>
+          <input type="file" accept=".csv,.xlsx" onChange={e => setImportFile(e.target.files?.[0] || null)} style={{ color: "var(--admin-text, #14161A)", fontSize: "13px", width: "100%" }} />
         </div>
-      )}
+        <div style={{ display: "flex", gap: "10px" }}>
+          <SecondaryButton onClick={() => handleRunImport(true)} loading={importing} data-testid="import-price-dry-run-btn">Simular (Dry-Run)</SecondaryButton>
+          <PrimaryButton onClick={() => handleRunImport(false)} loading={importing} data-testid="import-price-confirm-btn">Confirmar importación</PrimaryButton>
+        </div>
+        {importResult && (
+          <div data-testid="import-price-summary" style={{ padding: "14px", borderRadius: "10px", background: "var(--admin-surface-secondary, #FAFAFA)", border: "1px solid var(--admin-border, #E4E4E7)", maxHeight: "220px", overflowY: "auto" }}>
+            <p style={{ fontSize: "13px", color: "var(--admin-text, #14161A)", fontWeight: 700, marginBottom: "8px" }}>
+              {importResult.dry_run ? "Simulación:" : "Aplicado:"} {importResult.summary.new} nuevos · {importResult.summary.updated} actualizados · {importResult.summary.rejected} rechazados
+            </p>
+            {(importResult.errors || []).map(err => (
+              <p key={err.row} style={{ fontSize: "12px", color: "#DC2626", fontWeight: 600, marginTop: "4px" }}>Fila {err.row} ({err.sku}): {err.error}</p>
+            ))}
+          </div>
+        )}
+      </FormModal>
     </div>
   )
 }

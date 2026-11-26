@@ -17,6 +17,8 @@ import {
   SectionCard,
   StatCard,
   StatusBadge,
+  FormModal,
+  formInputStyle,
 } from "../../components/admin/ui"
 import { getAdminSuppliers } from "../../api/suppliers.api"
 import { getWarehouses } from "../../api/wms.api"
@@ -47,15 +49,7 @@ const PO_STATUS_MAP = {
   cancelled: { label: "Cancelada", tone: "danger" },
 }
 
-const inputStyle = {
-  width: "100%",
-  padding: "8px 10px",
-  borderRadius: "8px",
-  border: "1px solid var(--admin-border)",
-  background: "#FFFFFF",
-  color: "var(--admin-text)",
-  fontSize: "13px",
-}
+const inputStyle = formInputStyle
 
 const labelStyle = {
   display: "block",
@@ -321,7 +315,7 @@ export default function AdminProcurement() {
             fontSize: "13px",
             fontWeight: 600,
             background: banner.type === "error" ? "#FEF2F2" : "#ECFDF5",
-            color: banner.type === "error" ? "#991B1B" : "#065F46",
+            color: banner.type === "error" ? "#991B1B" : "#0F7A38",
             border: `1px solid ${banner.type === "error" ? "#FECACA" : "#A7F3D0"}`,
           }}
         >
@@ -583,175 +577,182 @@ export default function AdminProcurement() {
       )}
 
       {/* Modal Crear PO */}
-      {showCreatePo && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(13,13,15,0.55)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: "16px" }}>
-          <form onSubmit={handleCreatePo} style={{ width: "100%", maxWidth: "540px", background: "#FFFFFF", border: "1px solid var(--admin-border)", borderRadius: "20px", padding: "24px" }}>
-            <h3 style={{ fontSize: "17px", fontWeight: 800, color: "var(--admin-text)", marginBottom: "14px" }}>Nueva Orden de Compra (BF-03)</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-              <div>
-                <label style={labelStyle}>Proveedor *</label>
-                <select required value={poForm.supplier_id} onChange={e => setPoForm(f => ({ ...f, supplier_id: e.target.value }))} style={inputStyle}>
-                  <option value="">Seleccionar...</option>
-                  {suppliers.map(s => (
-                    <option key={s.id} value={s.id}>{s.internal_code} — {s.trade_name || s.legal_name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Bodega destino</label>
-                <select value={poForm.destination_warehouse_id} onChange={e => setPoForm(f => ({ ...f, destination_warehouse_id: e.target.value }))} style={inputStyle}>
-                  <option value="">Seleccionar...</option>
-                  {warehouses.map(w => (
-                    <option key={w.id} value={w.id}>{w.code} — {w.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Moneda</label>
-                <select value={poForm.currency} onChange={e => setPoForm(f => ({ ...f, currency: e.target.value }))} style={inputStyle}>
-                  <option value="USD">USD</option>
-                  <option value="CLP">CLP</option>
-                  <option value="ARS">ARS</option>
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Incoterm</label>
-                <input value={poForm.incoterm_snapshot} onChange={e => setPoForm(f => ({ ...f, incoterm_snapshot: e.target.value }))} style={inputStyle} />
-              </div>
-              <div style={{ gridColumn: "1 / -1" }}>
-                <label style={labelStyle}>Producto *</label>
-                <select required value={poForm.product_id} onChange={e => setPoForm(f => ({ ...f, product_id: e.target.value }))} style={inputStyle}>
-                  <option value="">Seleccionar producto...</option>
-                  {products.map(p => (
-                    <option key={p.id} value={p.id}>{p.sku || "S/SKU"} — {p.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Cantidad *</label>
-                <input type="number" min="1" required value={poForm.quantity_ordered} onChange={e => setPoForm(f => ({ ...f, quantity_ordered: e.target.value }))} style={inputStyle} />
-              </div>
-              <div>
-                <label style={labelStyle}>Costo unitario *</label>
-                <input type="number" step="0.01" min="0" required value={poForm.unit_cost} onChange={e => setPoForm(f => ({ ...f, unit_cost: e.target.value }))} style={inputStyle} />
-              </div>
+      <FormModal
+        open={showCreatePo}
+        title="Nueva Orden de Compra (BF-03)"
+        onClose={() => setShowCreatePo(false)}
+        maxWidth="540px"
+        testId="create-po-modal"
+      >
+        <form onSubmit={handleCreatePo}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <div>
+              <label style={labelStyle}>Proveedor *</label>
+              <select required value={poForm.supplier_id} onChange={e => setPoForm(f => ({ ...f, supplier_id: e.target.value }))} style={inputStyle}>
+                <option value="">Seleccionar...</option>
+                {suppliers.map(s => (
+                  <option key={s.id} value={s.id}>{s.internal_code} — {s.trade_name || s.legal_name}</option>
+                ))}
+              </select>
             </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "18px" }}>
-              <SecondaryButton type="button" onClick={() => setShowCreatePo(false)}>Cancelar</SecondaryButton>
-              <PrimaryButton type="submit">Crear Borrador PO</PrimaryButton>
+            <div>
+              <label style={labelStyle}>Bodega destino</label>
+              <select value={poForm.destination_warehouse_id} onChange={e => setPoForm(f => ({ ...f, destination_warehouse_id: e.target.value }))} style={inputStyle}>
+                <option value="">Seleccionar...</option>
+                {warehouses.map(w => (
+                  <option key={w.id} value={w.id}>{w.code} — {w.name}</option>
+                ))}
+              </select>
             </div>
-          </form>
-        </div>
-      )}
+            <div>
+              <label style={labelStyle}>Moneda</label>
+              <select value={poForm.currency} onChange={e => setPoForm(f => ({ ...f, currency: e.target.value }))} style={inputStyle}>
+                <option value="USD">USD</option>
+                <option value="CLP">CLP</option>
+                <option value="ARS">ARS</option>
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Incoterm</label>
+              <input value={poForm.incoterm_snapshot} onChange={e => setPoForm(f => ({ ...f, incoterm_snapshot: e.target.value }))} style={inputStyle} />
+            </div>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <label style={labelStyle}>Producto *</label>
+              <select required value={poForm.product_id} onChange={e => setPoForm(f => ({ ...f, product_id: e.target.value }))} style={inputStyle}>
+                <option value="">Seleccionar producto...</option>
+                {products.map(p => (
+                  <option key={p.id} value={p.id}>{p.sku || "S/SKU"} — {p.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label style={labelStyle}>Cantidad *</label>
+              <input type="number" min="1" required value={poForm.quantity_ordered} onChange={e => setPoForm(f => ({ ...f, quantity_ordered: e.target.value }))} style={inputStyle} />
+            </div>
+            <div>
+              <label style={labelStyle}>Costo unitario *</label>
+              <input type="number" step="0.01" min="0" required value={poForm.unit_cost} onChange={e => setPoForm(f => ({ ...f, unit_cost: e.target.value }))} style={inputStyle} />
+            </div>
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "18px" }}>
+            <SecondaryButton type="button" onClick={() => setShowCreatePo(false)}>Cancelar</SecondaryButton>
+            <PrimaryButton type="submit">Crear Borrador PO</PrimaryButton>
+          </div>
+        </form>
+      </FormModal>
 
       {/* Modal Registrar Recepción */}
-      {showCreateGr && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(13,13,15,0.55)", backdropFilter: "blur(3px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: "16px" }}>
-          <form onSubmit={handleCreateGr} style={{ width: "100%", maxWidth: "680px", maxHeight: "90vh", overflowY: "auto", background: "#FFFFFF", border: "1px solid var(--admin-border)", borderRadius: "20px", padding: "24px" }}>
-            <h3 style={{ fontSize: "17px", fontWeight: 800, color: "var(--admin-text)", marginBottom: "12px" }}>Registrar Recepción Física (BF-04)</h3>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
-              <div>
-                <label style={labelStyle}>Bodega destino *</label>
-                <select required value={grForm.warehouse_id} onChange={e => setGrForm(f => ({ ...f, warehouse_id: e.target.value }))} style={inputStyle}>
-                  {warehouses.map(w => (
-                    <option key={w.id} value={w.id}>{w.code} — {w.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div>
-                <label style={labelStyle}>Guía / Remito</label>
-                <input value={grForm.delivery_note_number} onChange={e => setGrForm(f => ({ ...f, delivery_note_number: e.target.value }))} placeholder="GD-00123" style={inputStyle} />
-              </div>
+      <FormModal
+        open={showCreateGr}
+        title="Registrar Recepción Física (BF-04)"
+        onClose={() => setShowCreateGr(false)}
+        maxWidth="680px"
+        scrollableBody
+        testId="create-gr-modal"
+      >
+        <form onSubmit={handleCreateGr}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "14px" }}>
+            <div>
+              <label style={labelStyle}>Bodega destino *</label>
+              <select required value={grForm.warehouse_id} onChange={e => setGrForm(f => ({ ...f, warehouse_id: e.target.value }))} style={inputStyle}>
+                {warehouses.map(w => (
+                  <option key={w.id} value={w.id}>{w.code} — {w.name}</option>
+                ))}
+              </select>
             </div>
-
-            {grForm.items.map((it, idx) => (
-              <div key={it.purchase_order_item_id} style={{ padding: "12px", borderRadius: "10px", border: "1px solid var(--admin-border)", marginBottom: "10px", background: "#F9FAFB" }}>
-                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--admin-text)", marginBottom: "8px" }}>
-                  {it.sku} — {it.description} (Pendiente: {it.pending})
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
-                  <div>
-                    <label style={labelStyle}>Aceptadas (Vendibles)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={it.quantity_accepted}
-                      onChange={e => {
-                        const val = e.target.value
-                        setGrForm(f => ({
-                          ...f,
-                          items: f.items.map((x, i) => (i === idx ? { ...x, quantity_accepted: val } : x)),
-                        }))
-                      }}
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Dañadas (No vendibles)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={it.quantity_damaged}
-                      onChange={e => {
-                        const val = e.target.value
-                        setGrForm(f => ({
-                          ...f,
-                          items: f.items.map((x, i) => (i === idx ? { ...x, quantity_damaged: val } : x)),
-                        }))
-                      }}
-                      style={inputStyle}
-                    />
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Rechazadas (Sin ingreso)</label>
-                    <input
-                      type="number"
-                      min="0"
-                      value={it.quantity_rejected}
-                      onChange={e => {
-                        const val = e.target.value
-                        setGrForm(f => ({
-                          ...f,
-                          items: f.items.map((x, i) => (i === idx ? { ...x, quantity_rejected: val } : x)),
-                        }))
-                      }}
-                      style={inputStyle}
-                    />
-                  </div>
-                </div>
-                {(it.serialization_mode === "required" || it.serialization_mode === "optional") && (
-                  <div style={{ marginTop: "8px" }}>
-                    <label style={labelStyle}>Seriales ({it.serialization_mode.toUpperCase()}) — separados por coma o línea</label>
-                    <textarea
-                      rows={2}
-                      value={it.serials_raw}
-                      onChange={e => {
-                        const val = e.target.value
-                        setGrForm(f => ({
-                          ...f,
-                          items: f.items.map((x, i) => (i === idx ? { ...x, serials_raw: val } : x)),
-                        }))
-                      }}
-                      placeholder="SN-001, SN-002"
-                      style={inputStyle}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
-
-            <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 600, color: "var(--admin-text)", marginTop: "8px" }}>
-              <input type="checkbox" checked={grForm.confirm} onChange={e => setGrForm(f => ({ ...f, confirm: e.target.checked }))} />
-              Confirmar inmediatamente en WMS y Kardex
-            </label>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "18px" }}>
-              <SecondaryButton type="button" onClick={() => setShowCreateGr(false)}>Cancelar</SecondaryButton>
-              <PrimaryButton type="submit" data-testid="btn-submit-gr">Confirmar Recepción</PrimaryButton>
+            <div>
+              <label style={labelStyle}>Guía / Remito</label>
+              <input value={grForm.delivery_note_number} onChange={e => setGrForm(f => ({ ...f, delivery_note_number: e.target.value }))} placeholder="GD-00123" style={inputStyle} />
             </div>
-          </form>
-        </div>
-      )}
+          </div>
+
+          {grForm.items.map((it, idx) => (
+            <div key={it.purchase_order_item_id} style={{ padding: "12px", borderRadius: "10px", border: "1px solid var(--admin-border)", marginBottom: "10px", background: "#FAFAFA" }}>
+              <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--admin-text)", marginBottom: "8px" }}>
+                {it.sku} — {it.description} (Pendiente: {it.pending})
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                <div>
+                  <label style={labelStyle}>Aceptadas (Vendibles)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={it.quantity_accepted}
+                    onChange={e => {
+                      const val = e.target.value
+                      setGrForm(f => ({
+                        ...f,
+                        items: f.items.map((x, i) => (i === idx ? { ...x, quantity_accepted: val } : x)),
+                      }))
+                    }}
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Dañadas (No vendibles)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={it.quantity_damaged}
+                    onChange={e => {
+                      const val = e.target.value
+                      setGrForm(f => ({
+                        ...f,
+                        items: f.items.map((x, i) => (i === idx ? { ...x, quantity_damaged: val } : x)),
+                      }))
+                    }}
+                    style={inputStyle}
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Rechazadas (Sin ingreso)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={it.quantity_rejected}
+                    onChange={e => {
+                      const val = e.target.value
+                      setGrForm(f => ({
+                        ...f,
+                        items: f.items.map((x, i) => (i === idx ? { ...x, quantity_rejected: val } : x)),
+                      }))
+                    }}
+                    style={inputStyle}
+                  />
+                </div>
+              </div>
+              {(it.serialization_mode === "required" || it.serialization_mode === "optional") && (
+                <div style={{ marginTop: "8px" }}>
+                  <label style={labelStyle}>Seriales ({it.serialization_mode.toUpperCase()}) — separados por coma o línea</label>
+                  <textarea
+                    rows={2}
+                    value={it.serials_raw}
+                    onChange={e => {
+                      const val = e.target.value
+                      setGrForm(f => ({
+                        ...f,
+                        items: f.items.map((x, i) => (i === idx ? { ...x, serials_raw: val } : x)),
+                      }))
+                    }}
+                    placeholder="SN-001, SN-002"
+                    style={inputStyle}
+                  />
+                </div>
+              )}
+            </div>
+          ))}
+
+          <label style={{ display: "flex", alignItems: "center", gap: "8px", fontSize: "13px", fontWeight: 600, color: "var(--admin-text)", marginTop: "8px" }}>
+            <input type="checkbox" checked={grForm.confirm} onChange={e => setGrForm(f => ({ ...f, confirm: e.target.checked }))} />
+            Confirmar inmediatamente en WMS y Kardex
+          </label>
+
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "18px" }}>
+            <SecondaryButton type="button" onClick={() => setShowCreateGr(false)}>Cancelar</SecondaryButton>
+            <PrimaryButton type="submit" data-testid="btn-submit-gr">Confirmar Recepción</PrimaryButton>
+          </div>
+        </form>
+      </FormModal>
     </div>
   )
 }

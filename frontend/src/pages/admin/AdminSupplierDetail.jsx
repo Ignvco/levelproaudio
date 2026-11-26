@@ -14,21 +14,10 @@ import {
   getSupplierPriceListsExportUrl,
 } from "../../api/suppliers.api"
 import { getAdminBrands } from "../../api/admin.api"
-import { AdminPageHeader, SectionCard, PrimaryButton, SecondaryButton, StatusBadge } from "../../components/admin/ui"
+import { AdminPageHeader, SectionCard, PrimaryButton, SecondaryButton, StatusBadge, ConfirmationModal, formInputStyle } from "../../components/admin/ui"
 import { showToast } from "../../utils/toast"
 import { formatCurrency } from "../../utils/accountingCurrency"
 import { Save, UserPlus, Trash2, Download, Building2, Users, Package, History } from "lucide-react"
-
-const bentoInput = {
-  width: "100%",
-  padding: "9px 12px",
-  background: "var(--admin-surface, #FFFFFF)",
-  border: "1px solid var(--admin-border, #CBD5E1)",
-  borderRadius: "10px",
-  color: "var(--admin-text, #14161A)",
-  fontSize: "13px",
-  outline: "none",
-}
 
 export default function AdminSupplierDetail() {
   const { id } = useParams()
@@ -62,6 +51,8 @@ export default function AdminSupplierDetail() {
 
   const [contactForm, setContactForm] = useState({ full_name: "", role_title: "", email: "", phone: "" })
   const [savingContact, setSavingContact] = useState(false)
+  const [confirmDeactivate, setConfirmDeactivate] = useState(false)
+  const [togglingActive, setTogglingActive] = useState(false)
 
   useEffect(() => {
     if (!supplier) return
@@ -103,20 +94,35 @@ export default function AdminSupplierDetail() {
     }
   }
 
-  const handleToggleActive = async () => {
-    if (!supplier) return
+  const executeDeactivate = async () => {
+    setConfirmDeactivate(false)
+    setTogglingActive(true)
     try {
-      if (supplier.is_active) {
-        if (!window.confirm("¿Desactivar lógicamente este proveedor? Su historial y relaciones se conservarán.")) return
-        await deactivateAdminSupplier(id)
-        showToast("Proveedor desactivado lógicamente")
-      } else {
-        await reactivateAdminSupplier(id)
-        showToast("Proveedor reactivado")
-      }
+      await deactivateAdminSupplier(id)
+      showToast("Proveedor desactivado lógicamente")
       refetch()
     } catch {
       showToast("No se pudo cambiar el estado del proveedor", "error")
+    } finally {
+      setTogglingActive(false)
+    }
+  }
+
+  const handleToggleActive = async () => {
+    if (!supplier) return
+    if (supplier.is_active) {
+      setConfirmDeactivate(true)
+      return
+    }
+    setTogglingActive(true)
+    try {
+      await reactivateAdminSupplier(id)
+      showToast("Proveedor reactivado")
+      refetch()
+    } catch {
+      showToast("No se pudo cambiar el estado del proveedor", "error")
+    } finally {
+      setTogglingActive(false)
     }
   }
 
@@ -188,6 +194,17 @@ export default function AdminSupplierDetail() {
         }
       />
 
+      <ConfirmationModal
+        open={confirmDeactivate}
+        title="Desactivar proveedor"
+        description="¿Desactivar lógicamente este proveedor? Su historial y relaciones se conservarán."
+        confirmLabel="Desactivar proveedor"
+        danger
+        loading={togglingActive}
+        onConfirm={executeDeactivate}
+        onCancel={() => setConfirmDeactivate(false)}
+      />
+
       <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "20px" }}>
         {[
           { key: "profile", label: "Ficha & Condiciones", Icon: Building2 },
@@ -231,23 +248,23 @@ export default function AdminSupplierDetail() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: "14px" }}>
             <div>
               <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Razón social</label>
-              <input value={form.legal_name} onChange={e => setForm(f => ({ ...f, legal_name: e.target.value }))} style={bentoInput} />
+              <input value={form.legal_name} onChange={e => setForm(f => ({ ...f, legal_name: e.target.value }))} style={formInputStyle} />
             </div>
             <div>
               <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Nombre comercial</label>
-              <input value={form.trade_name} onChange={e => setForm(f => ({ ...f, trade_name: e.target.value }))} style={bentoInput} />
+              <input value={form.trade_name} onChange={e => setForm(f => ({ ...f, trade_name: e.target.value }))} style={formInputStyle} />
             </div>
             <div>
               <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Identificación tributaria</label>
-              <input value={form.tax_id} onChange={e => setForm(f => ({ ...f, tax_id: e.target.value }))} style={bentoInput} />
+              <input value={form.tax_id} onChange={e => setForm(f => ({ ...f, tax_id: e.target.value }))} style={formInputStyle} />
             </div>
             <div>
               <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>País</label>
-              <input value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} style={bentoInput} />
+              <input value={form.country} onChange={e => setForm(f => ({ ...f, country: e.target.value }))} style={formInputStyle} />
             </div>
             <div>
               <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Moneda comercial</label>
-              <select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} style={bentoInput}>
+              <select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))} style={formInputStyle}>
                 <option value="USD">USD</option>
                 <option value="CLP">CLP</option>
                 <option value="ARS">ARS</option>
@@ -255,15 +272,15 @@ export default function AdminSupplierDetail() {
             </div>
             <div>
               <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Condiciones de pago</label>
-              <input value={form.payment_terms} onChange={e => setForm(f => ({ ...f, payment_terms: e.target.value }))} style={bentoInput} />
+              <input value={form.payment_terms} onChange={e => setForm(f => ({ ...f, payment_terms: e.target.value }))} style={formInputStyle} />
             </div>
             <div>
               <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>MOQ habitual</label>
-              <input type="number" min="1" value={form.default_min_order_qty} onChange={e => setForm(f => ({ ...f, default_min_order_qty: e.target.value }))} style={bentoInput} />
+              <input type="number" min="1" value={form.default_min_order_qty} onChange={e => setForm(f => ({ ...f, default_min_order_qty: e.target.value }))} style={formInputStyle} />
             </div>
             <div>
               <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Plazo habitual (días)</label>
-              <input type="number" min="0" value={form.default_lead_time_days} onChange={e => setForm(f => ({ ...f, default_lead_time_days: e.target.value }))} style={bentoInput} />
+              <input type="number" min="0" value={form.default_lead_time_days} onChange={e => setForm(f => ({ ...f, default_lead_time_days: e.target.value }))} style={formInputStyle} />
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
               <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "6px" }}>Marcas distribuidas</label>
@@ -292,7 +309,7 @@ export default function AdminSupplierDetail() {
             </div>
             <div style={{ gridColumn: "1 / -1" }}>
               <label style={{ fontSize: "11.5px", fontWeight: 600, color: "var(--admin-text, #14161A)", display: "block", marginBottom: "4px" }}>Observaciones internas</label>
-              <textarea rows={3} value={form.internal_notes} onChange={e => setForm(f => ({ ...f, internal_notes: e.target.value }))} style={bentoInput} />
+              <textarea rows={3} value={form.internal_notes} onChange={e => setForm(f => ({ ...f, internal_notes: e.target.value }))} style={formInputStyle} />
             </div>
           </div>
         </SectionCard>
@@ -301,10 +318,10 @@ export default function AdminSupplierDetail() {
       {tab === "contacts" && (
         <SectionCard eyebrow="CONTACTOS COMERCIALES" title="Agenda de ejecutivos y cuentas">
           <form onSubmit={handleAddContact} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: "10px", marginBottom: "18px" }}>
-            <input required placeholder="Nombre completo *" value={contactForm.full_name} onChange={e => setContactForm(c => ({ ...c, full_name: e.target.value }))} style={bentoInput} />
-            <input placeholder="Cargo" value={contactForm.role_title} onChange={e => setContactForm(c => ({ ...c, role_title: e.target.value }))} style={bentoInput} />
-            <input type="email" placeholder="Email" value={contactForm.email} onChange={e => setContactForm(c => ({ ...c, email: e.target.value }))} style={bentoInput} />
-            <input placeholder="Teléfono" value={contactForm.phone} onChange={e => setContactForm(c => ({ ...c, phone: e.target.value }))} style={bentoInput} />
+            <input required placeholder="Nombre completo *" value={contactForm.full_name} onChange={e => setContactForm(c => ({ ...c, full_name: e.target.value }))} style={formInputStyle} />
+            <input placeholder="Cargo" value={contactForm.role_title} onChange={e => setContactForm(c => ({ ...c, role_title: e.target.value }))} style={formInputStyle} />
+            <input type="email" placeholder="Email" value={contactForm.email} onChange={e => setContactForm(c => ({ ...c, email: e.target.value }))} style={formInputStyle} />
+            <input placeholder="Teléfono" value={contactForm.phone} onChange={e => setContactForm(c => ({ ...c, phone: e.target.value }))} style={formInputStyle} />
             <PrimaryButton type="submit" loading={savingContact}><UserPlus size={14} /> Agregar</PrimaryButton>
           </form>
           <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
