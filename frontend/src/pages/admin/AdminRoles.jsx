@@ -282,7 +282,7 @@ export default function AdminRoles() {
                             fontSize: 11,
                             padding: "2px 6px",
                             borderRadius: 6,
-                            background: "rgba(255,255,255,0.05)",
+                            background: "var(--admin-surface-secondary, #F4F4F5)",
                             color: "var(--admin-text-muted)",
                           }}
                         >
@@ -412,7 +412,7 @@ export default function AdminRoles() {
                   <tr
                     key={r.name}
                     style={{
-                      borderBottom: "1px solid rgba(255,255,255,0.05)",
+                      borderBottom: "1px solid var(--admin-border, #E4E4F0)",
                       transition: "background 0.15s ease",
                     }}
                   >
@@ -439,9 +439,9 @@ export default function AdminRoles() {
                       return (
                         <td key={cap} style={{ padding: "12px 8px", textAlign: "center" }}>
                           {hasCap ? (
-                            <CheckCircle2 size={16} color="#1AFF6E" style={{ display: "inline-block" }} />
+                            <CheckCircle2 size={16} color="#0F7A38" style={{ display: "inline-block" }} />
                           ) : (
-                            <span style={{ color: "rgba(255,255,255,0.15)", fontSize: 13 }}>—</span>
+                            <span style={{ color: "var(--admin-text-muted)", fontSize: 13 }}>—</span>
                           )}
                         </td>
                       )
@@ -485,8 +485,8 @@ export default function AdminRoles() {
                       key={m}
                       style={{
                         padding: "8px 10px",
-                        borderRadius: 6,
-                        background: "rgba(255,255,255,0.03)",
+                        borderRadius: 8,
+                        background: "#FAFAFA",
                         border: "1px solid var(--admin-border)",
                         display: "flex",
                         flexDirection: "column",
@@ -496,7 +496,7 @@ export default function AdminRoles() {
                     >
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <CheckCircle2 size={13} color="#1AFF6E" />
+                          <CheckCircle2 size={13} color="#0F7A38" />
                           <span style={{ fontWeight: 600 }}>{MODULE_LABELS[m] || m}</span>
                         </div>
                         {modStatus === "partial_reserved" && (
@@ -505,8 +505,8 @@ export default function AdminRoles() {
                               fontSize: 9.5,
                               padding: "1px 5px",
                               borderRadius: 4,
-                              background: "rgba(245, 158, 11, 0.14)",
-                              color: "#F59E0B",
+                              background: "#FEF3C7",
+                              color: "#92400E",
                               fontFamily: "var(--font-mono)",
                             }}
                           >
@@ -523,8 +523,8 @@ export default function AdminRoles() {
                                 fontSize: 10,
                                 padding: "1px 6px",
                                 borderRadius: 4,
-                                background: "rgba(255,255,255,0.06)",
-                                color: "var(--admin-text-muted)",
+                                background: "#F4F4F5",
+                                color: "var(--admin-text-secondary)",
                                 fontWeight: 600,
                               }}
                               title={act}
@@ -551,21 +551,21 @@ export default function AdminRoles() {
                       key={c}
                       style={{
                         padding: "8px 12px",
-                        borderRadius: 6,
-                        background: "rgba(26, 255, 110, 0.05)",
-                        border: "1px solid rgba(26, 255, 110, 0.2)",
+                        borderRadius: 8,
+                        background: "#F0FDF4",
+                        border: "1px solid #BBF7D0",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <Lock size={13} color="#1AFF6E" />
+                        <Lock size={13} color="#0F7A38" />
                         <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--admin-text)" }}>
                           {CAPABILITY_LABELS[c] || c}
                         </span>
                       </div>
-                      <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "#1AFF6E" }}>{c}</span>
+                      <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, color: "#0F7A38" }}>{c}</span>
                     </div>
                   ))}
                 </div>
@@ -587,8 +587,9 @@ export default function AdminRoles() {
                       key={u.id}
                       style={{
                         padding: "8px 12px",
-                        borderRadius: 6,
-                        background: "rgba(255,255,255,0.03)",
+                        borderRadius: 8,
+                        background: "#FAFAFA",
+                        border: "1px solid var(--admin-border)",
                         display: "flex",
                         alignItems: "center",
                         justifyContent: "space-between",
