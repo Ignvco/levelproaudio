@@ -335,7 +335,7 @@ export default function AdminCostPricing() {
             borderRadius: "10px",
             background: banner.type === "error" ? "#FEF2F2" : "#ECFDF5",
             border: `1px solid ${banner.type === "error" ? "#FCA5A5" : "#6EE7B7"}`,
-            color: banner.type === "error" ? "#991B1B" : "#065F46",
+            color: banner.type === "error" ? "#991B1B" : "#0F7A38",
             fontSize: "13px",
             fontWeight: 600,
           }}
@@ -704,7 +704,7 @@ export default function AdminCostPricing() {
                       </div>
                       <div>
                         <strong style={{ color: "var(--admin-text)" }}>Total Landed:</strong>{" "}
-                        <span style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "#065F46" }}>
+                        <span style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "#0F7A38" }}>
                           {alloc.total_landed_cost} {alloc.valuation_currency}
                         </span>
                       </div>
@@ -730,7 +730,7 @@ export default function AdminCostPricing() {
                             <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>{ln.total_weight_snapshot || "—"}</td>
                             <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>{ln.cif_base_total}</td>
                             <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>+{ln.allocated_expenses_total}</td>
-                            <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "#065F46" }}>{ln.landed_unit_cost}</td>
+                            <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "#0F7A38" }}>{ln.landed_unit_cost}</td>
                             <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text)" }}>{ln.landed_total_cost}</td>
                           </tr>
                         ))}
@@ -804,7 +804,7 @@ export default function AdminCostPricing() {
                         <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>
                           +{lyr.unit_allocated_expense} {lyr.valuation_currency}
                         </td>
-                        <td style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "#065F46" }}>
+                        <td style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "#0F7A38" }}>
                           {lyr.landed_unit_cost} {lyr.valuation_currency}
                         </td>
                         <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>
@@ -855,7 +855,7 @@ export default function AdminCostPricing() {
                         <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>
                           +{sc.allocated_expense}
                         </td>
-                        <td style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "#065F46" }}>
+                        <td style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "#0F7A38" }}>
                           {sc.landed_unit_cost} {sc.valuation_currency}
                         </td>
                         <td>
@@ -893,7 +893,7 @@ export default function AdminCostPricing() {
                         <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>
                           {w.sellable_quantity} / {w.damaged_quantity} (Total: {w.total_quantity})
                         </td>
-                        <td style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "#065F46" }}>
+                        <td style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "#0F7A38" }}>
                           {w.average_unit_cost} {w.currency}
                         </td>
                         <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>
@@ -1031,7 +1031,7 @@ export default function AdminCostPricing() {
                         <td style={{ fontWeight: 700, color: "var(--admin-text)" }}>{br.brand_name}</td>
                         <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>{br.currency}</td>
                         <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>{br.sku_count}</td>
-                        <td style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "#065F46" }}>
+                        <td style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "#0F7A38" }}>
                           {br.avg_margin_on_sales_percent}%
                         </td>
                         <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>
@@ -1137,7 +1137,7 @@ export default function AdminCostPricing() {
                         <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text)" }}>
                           {m.gross_margin_unit ? `${m.gross_margin_unit} ${m.currency}` : "—"}
                         </td>
-                        <td style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: m.below_min_margin ? "#991B1B" : "#065F46" }}>
+                        <td style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: m.below_min_margin ? "#991B1B" : "#0F7A38" }}>
                           {m.margin_on_sales_percent !== null ? `${m.margin_on_sales_percent}%` : "Pendiente"}
                         </td>
                         <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>
@@ -1316,7 +1316,7 @@ export default function AdminCostPricing() {
                       <td style={{ fontFamily: "var(--font-mono)", fontWeight: 700, color: "var(--admin-text)" }}>{pr.sku}</td>
                       <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>{pr.base_landed_cost} {pr.currency}</td>
                       <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>{pr.current_net_price} {pr.currency}</td>
-                      <td style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "#065F46" }}>{pr.proposed_net_price} {pr.currency}</td>
+                      <td style={{ fontFamily: "var(--font-mono)", fontWeight: 800, color: "#0F7A38" }}>{pr.proposed_net_price} {pr.currency}</td>
                       <td style={{ fontFamily: "var(--font-mono)", color: "var(--admin-text)" }}>
                         {pr.projected_margin_percent}% / {pr.projected_markup_percent}%
                       </td>

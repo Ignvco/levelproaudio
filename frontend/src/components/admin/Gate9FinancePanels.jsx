@@ -593,7 +593,7 @@ export function ExternalTaxPanel() {
       title="Registro Tributario Externo (SII / AFIP — Modo Asistido)"
       description="LevelPro OS V4.0 registra folios, respaldos PDF/XML y payloads de borrador (api_ready_draft_only=True) sin emitir ni transmitir DTEs oficiales automáticamente."
       action={
-        <Link to="/admin/fiscal" style={{ textDecoration: "none" }}>
+        <Link to="/admin/billing" style={{ textDecoration: "none" }}>
           <PrimaryButton><FileCheck2 size={14} /> Abrir módulo fiscal</PrimaryButton>
         </Link>
       }

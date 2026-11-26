@@ -194,6 +194,7 @@ function App() {
           <Route path="/admin/executive" element={<Navigate to="/admin/finance" replace />} />
           <Route path="/admin/finance" element={<Suspense fallback={<AdminLoading />}><AdminFinance /></Suspense>} />
           <Route path="/admin/billing" element={<Suspense fallback={<AdminLoading />}><AdminBilling /></Suspense>} />
+          <Route path="/admin/fiscal" element={<Navigate to="/admin/billing" replace />} />
           <Route path="/admin/loyalty" element={<Suspense fallback={<AdminLoading />}><AdminLoyalty /></Suspense>} />
           <Route path="orders" element={<Suspense fallback={<AdminLoading />}><AdminOrders /></Suspense>} />
           <Route path="logistics" element={<Suspense fallback={<AdminLoading />}><AdminLogistics /></Suspense>} />
