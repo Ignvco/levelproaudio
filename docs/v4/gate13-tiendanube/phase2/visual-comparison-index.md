@@ -1,8 +1,8 @@
-# LEVELPRO OS V4.0 — GATE 13 · PHASE 2
-## Visual Comparison Index (Before/After & Target vs Implemented)
+# LEVELPRO OS V4.0 — GATE 13 · PHASE 2.1
+## Visual Comparison Index (Before/After, Target vs Implemented & Detailed Subviews)
 
-**Estado:** `COMPLETE`  
-**Paquete de referencia target:** `docs/v4/gate13-tiendanube/premium-visual-refinement-package.zip` (`SHA-256: 21204867647ac5217562fce1cb1f118b6b9a2fb13798081a8343109baca2519f`)  
+**Estado:** `COMPLETE` (re-capturado en condiciones comparables tras correcciones de Phase 2.1 `6299ce2`)  
+**Paquete de referencia target Phase 1.2 (inmutable):** `docs/v4/gate13-tiendanube/premium-visual-refinement-package.zip` (`SHA-256: 21204867647ac5217562fce1cb1f118b6b9a2fb13798081a8343109baca2519f`)  
 **Manifiesto completo:** `docs/v4/gate13-tiendanube/phase2/visual-evidence-manifest.json`
 
 ### Archivos ZIP Entregables (`docs/v4/gate13-tiendanube/phase2/`)
@@ -10,20 +10,26 @@
 | Archivo ZIP | Contenido | Cantidad | Tamaño (Bytes) |
 | :--- | :--- | :---: | ---: |
 | `gate13_v2_tiendanube_before.zip` | Capturas base inmutables tomadas sobre `fa53c7f` antes de Phase 2 + `manifest_before.json` | 25 PNGs | 6,633,139 |
-| `gate13_v2_tiendanube_after.zip` | Capturas reales ejecutadas sobre `d98ef8b` (LevelPro Precision) + `manifest_after.json` | 25 PNGs | 3,140,430 |
-| `gate13_v2_comparisons.zip` | Láminas lado a lado `BEFORE vs AFTER` (`25/25`, `0` pares idénticos en `/admin`) | 25 PNGs | 4,582,366 |
-| `gate13_v2_target_vs_implemented.zip` | Láminas lado a lado `Target Phase 1.2 Mockup vs Implemented Phase 2` | 11 PNGs | 1,746,438 |
+| `gate13_v2_tiendanube_after.zip` | Capturas reales actualizadas sobre `6299ce2` (General Product Detail comparable + Preview CMS + OMS Footer/Items) | 25 PNGs | 3,340,618 |
+| `gate13_v2_comparisons.zip` | Láminas lado a lado `BEFORE vs AFTER` (`25/25`, `0` pares idénticos en `/admin`) | 25 PNGs | 4,631,246 |
+| `gate13_v2_target_vs_implemented.zip` | Láminas lado a lado `Target Phase 1.2 Mockup vs Implemented` | 11 PNGs | 1,795,539 |
+| `gate13_v2_detailed_views.zip` | Subvistas comparables detalladas de `PRODUCT DETAIL` (`5` PNGs), `CMS` (`5` PNGs) y `OMS` (`3` PNGs) | 13 PNGs | 1,992,342 |
 
-### Índice `Target vs Implemented` (`11/11` Vistas Maestro)
+### Índice de Subvistas Comparables Phase 2.1 (`gate13_v2_detailed_views.zip`)
 
-1. `01-ti-sidebar.png` — Sidebar `240px` + brand logo positivo sin pastilla oscura (`01-after-sidebar.png` vs `01-sidebar-shell.png`)
-2. `02-ti-header.png` — Topbar sticky `56px` + Command Palette `Ctrl+K` (`02-after-header.png` vs `02-header-palette.png`)
-3. `03-ti-dashboard.png` — Inicio KPI strip + Por resolver + Chart 2/3 & Mix 1/3 + Actividad (`03-after-dashboard.png` vs `03-dashboard.png`)
-4. `04-ti-product-list.png` — Catálogo PIM con `FilterChipBar` + `DataTable` (`04-after-product-list.png` vs `04-product-list.png`)
-5. `05-ti-product-form.png` — Detalle de Producto `2/3 + 1/3` asimétrico y variantes (`05-after-product-form.png` vs `05-product-form.png`)
-6. `06-ti-order-sidemodal.png` — Orden OMS en `SideModal` con matriz 3D y conciliación (`06-after-order-sidemodal.png` vs `06-order-sidemodal.png`)
-7. `07-ti-datatable.png` — Tabla OMS y barra operativa (`07-after-datatable.png` vs `07-datatable-orders.png`)
-8. `08-ti-forms.png` — Costing & Precios (`formInputStyle` blanco `#FFFFFF`) (`08-after-forms.png` vs `08-forms-costing.png`)
-9. `09-ti-modals.png` — `FormModal` Nuevo Producto (`09-after-modals.png` vs `09-modal-product.png`)
-10. `10-ti-settings-cms.png` — Editor Visual CMS Chrome claro + iframe Gate 12 preservado (`10-after-settings-cms.png` vs `10-settings-cms.png`)
-11. `11-ti-mobile.png` — Vista responsive móvil `390×844` con favicon oficial y menú drawer (`11-after-mobile.png` vs `11-mobile-dashboard.png`)
+- **PRODUCT DETAIL (`/admin/products/p-1`):**
+  1. `pd-01-variants.png` — Pestaña Variantes comerciales y precios multi-moneda
+  2. `pd-02-specs.png` — Pestaña Especificaciones Técnicas (BF-44)
+  3. `pd-03-suppliers.png` — Pestaña Proveedores asociados y costos
+  4. `pd-04-general-precios.png` — Pestaña General y Precios (`2/3 + 1/3` comparable con `05-after-product-form.png`)
+  5. `pd-05-unsaved-changes-bar.png` — Estado de guardado sucio con `UnsavedChangesBar` (`#09090B` + botón `#1AFF6E`)
+- **CMS (`/admin/settings`):**
+  6. `cms-01-overview.png` — 1. Vista General Editorial CMS
+  7. `cms-02-hero-editor.png` — 2. Editor Hero
+  8. `cms-03-borradores.png` — 9. Borradores y ciclo de revisión
+  9. `cms-04-preview-iframe-desktop.png` — 11. Previsualización Iframe Real Desktop `1440px`
+  10. `cms-05-preview-iframe-mobile390.png` — 11. Previsualización Responsive Iframe `390px`
+- **OMS (`/admin/orders`):**
+  11. `oms-01-sidemodal-3d-footer.png` — `OrderPanel` `SideModal` con matriz 3D, pagos y footer sticky
+  12. `oms-02-fulfillment-wms.png` — Pestaña Preparación y Despacho WMS
+  13. `oms-03-rma-postventa.png` — Pestaña Devoluciones e Inspección RMA

@@ -1,8 +1,9 @@
-# LEVELPRO OS V4.0 — GATE 13 · PHASE 2
+# LEVELPRO OS V4.0 — GATE 13 · PHASE 2.1
 ## Responsive Audit Report (`39 rutas × 6 viewports = 234 checks`)
 
 **Estado:** `COMPLETE` (`234 / 234` **PASS**)  
-**Modo de prueba:** Chromium Headless con fixtures deterministas locales tras build final (`d98ef8b`).
+**Modo de prueba:** `synthetic_fixture` sobre build de producción Vite (`6299ce2`) en Chromium Headless `1.62.1`.  
+**Matriz cruda completa (`234` registros individuales):** `docs/v4/gate13-tiendanube/phase2/responsive-matrix-234.json`
 
 ### Viewports Verificados
 
@@ -16,12 +17,9 @@
 | `3840 × 2160` | 4K Ultrawide | 39 | `0` | `0` | `0` | `PASS` |
 | **Total** | **6 viewports** | **234 checks** | **`0`** | **`0`** | **`0`** | **`234 / 234 PASS`** |
 
-### Hallazgos Detectados y Resueltos Durante Bloque N
+### Geometría de Shell Verificada en DOM
 
-En la primera corrida post-Bloque M se detectaron `16` desbordamientos horizontales (`scrollWidth > innerWidth`, sin errores funcionales ni violaciones `VIS-BAN`):
-- `AdminCostPricing.jsx`: grillas fijas (`1.1fr 1.2fr`, `1fr 1fr`, `1.2fr 1fr`, `1fr 1.2fr`, `repeat(4, 1fr)`) y tabla `line_allocations` sin `.au-tscroll` causaban overflow incluso en `1280×800` y `1440×900`. Convertidas a `repeat(auto-fit, minmax(min(100%, ...), 1fr))` + `.au-tscroll`.
-- `AdminProcurement.jsx`: grilla `minmax(320px, 1.1fr) minmax(360px, 1.3fr)` en tab Órdenes desbordaba `320px`, `390px` y `768px`. Reemplazada por `repeat(auto-fit, minmax(min(100%, 320px), 1fr))`.
-- `AdminLogistics.jsx`: 8 tablas `.lp-table` envueltas en `.au-tscroll` (`overflow-x: auto`).
-- `AdminProductImport.jsx`, `AdminRewardsCampaignDetail.jsx`, `AdminRewardsWinners.jsx`, `AdminRewardsEntries.jsx`, `AdminAudit.jsx`: ajustes `minmax(min(100%, 260px), 1fr)` / `maxWidth: "100%"` y regla base CSS `.admin-precision .au-page > *, .au-card, .au-panel { min-width: 0; max-width: 100%; }`.
-
-Re-ejecutado tras el último build: **`234 / 234` checks aprobados con `0` violaciones**.
+- `sidebarW` expandido (`1440×900`): `240 px`
+- `collapsedRailW` (toggle rail): `48 px`
+- `topbarH`: `56 px`
+- Tipografía primaria: `Geist, -apple-system, "system-ui", "Segoe UI", sans-serif`
