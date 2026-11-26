@@ -36,7 +36,7 @@ function WinnerCard({ w }) {
           <p style={{ fontSize:"11px", color:"var(--admin-primary-text)",
             letterSpacing:"0.08em", textTransform:"uppercase",
             fontWeight:800, marginBottom:"4px" }}>
-            {w.is_backup ? `Suplente #${w.backup_position}` : "🏆 Ganador principal"}
+            {w.is_backup ? `Suplente #${w.backup_position}` : "Ganador principal"}
           </p>
           <p style={{ fontSize:"16px", fontWeight:800, color:"var(--admin-text)" }}>
             {w.user_name || w.user_email}

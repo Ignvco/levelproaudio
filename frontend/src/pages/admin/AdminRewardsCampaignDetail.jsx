@@ -121,7 +121,7 @@ export default function AdminRewardsCampaignDetail() {
       <AdminPageHeader
         eyebrow="LEVELPRO / REWARDS"
         title={c.name}
-        description={`🏆 ${c.main_prize}`}
+        description={c.main_prize}
         breadcrumbs={[
           { label: "Rewards", to: "/admin/rewards" },
           { label: "Campañas", to: "/admin/rewards/campaigns" },
@@ -388,7 +388,7 @@ export default function AdminRewardsCampaignDetail() {
           action={<SecondaryButton onClick={() => retryWinners()}>Reintentar</SecondaryButton>} />
       )}
       {!winnersError && winners.length > 0 && (
-        <SectionCard eyebrow="RESULTADO DEL SORTEO" title="🏆 Ganadores">
+        <SectionCard eyebrow="RESULTADO DEL SORTEO" title="Ganadores">
           <div style={{ display:"flex", flexDirection:"column", gap:"8px" }}>
             {winners.map(w => (
               <div key={w.id} style={{
@@ -407,7 +407,7 @@ export default function AdminRewardsCampaignDetail() {
                   <p style={{ fontSize:"14px", fontWeight:800, color: "var(--admin-text)" }}>
                     {w.is_backup
                       ? `Suplente #${w.backup_position}`
-                      : "🏆 GANADOR PRINCIPAL"}
+                      : "GANADOR PRINCIPAL"}
                   </p>
                   <p style={{ fontSize:"12.5px", color:"var(--admin-text-secondary)",
                     marginTop:"2px" }}>

@@ -265,7 +265,7 @@ export default function AdminServices() {
             action={<SecondaryButton onClick={() => retryRequests()}>Reintentar</SecondaryButton>} />
         ) : requests.length === 0 ? (
           <div className="au-card au-panel" style={{ textAlign: "center", padding: "56px", color: "var(--admin-text-secondary)" }}>
-            <p style={{ fontSize: "36px", marginBottom: "10px" }}>🔧</p>
+            <Wrench size={32} style={{ color: "var(--admin-text-muted)", margin: "0 auto 10px" }} />
             <p style={{ fontSize: "14px", fontWeight: 600 }}>Sin solicitudes pendientes</p>
           </div>
         ) : (

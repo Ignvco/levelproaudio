@@ -12,7 +12,7 @@ import { showToast } from "../../utils/toast"
 import { getProducts } from "../../api/products.api"
 import { mediaUrl } from "../../utils/mediaUrl"
 import { AdminPageHeader, PrimaryButton, SecondaryButton, StatCard, FormModal, formInputStyle, ConfirmationModal, ErrorState } from "../../components/admin/ui"
-import { Gift, Sparkles, Ticket } from "lucide-react"
+import { Gift, Sparkles, Ticket, Trophy, Users } from "lucide-react"
 
 const STATUS_STYLES = {
   draft:    { bg:"var(--admin-surface-muted)", color:"var(--admin-text-secondary)", label:"Borrador"    },
@@ -44,14 +44,14 @@ function CampaignRow({ c, onDuplicate, onDelete }) {
             {STATUS_STYLES[c.status]?.label}
           </span>
         </div>
-        <p style={{ fontSize:"12.5px", color:"var(--admin-text-secondary)" }}>
-          🏆 {c.main_prize} · Sorteo {new Date(c.draw_date).toLocaleDateString("es-CL")}
+        <p style={{ fontSize:"12.5px", color:"var(--admin-text-secondary)", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+          <Trophy size={13} style={{ color: "#0F7A38" }} /> {c.main_prize} · Sorteo {new Date(c.draw_date).toLocaleDateString("es-CL")}
         </p>
       </div>
       <div style={{ display:"flex", gap:"14px", alignItems:"center",
         fontSize:"13px", fontWeight: 700, color:"var(--admin-text-secondary)", fontFamily: "var(--font-mono)" }}>
-        <span title="Participaciones">🎫 {c.total_entries}</span>
-        <span title="Participantes">👥 {c.total_participants}</span>
+        <span title="Participaciones" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><Ticket size={13} /> {c.total_entries}</span>
+        <span title="Participantes" style={{ display: "inline-flex", alignItems: "center", gap: "4px" }}><Users size={13} /> {c.total_participants}</span>
       </div>
       <div style={{ display:"flex", gap:"8px", flexWrap: "wrap" }}>
         <Link to={`/admin/rewards/campaigns/${c.id}`}
@@ -370,7 +370,7 @@ export default function AdminRewardsCampaigns() {
 
       {!isLoading && !isError && campaigns.length === 0 && (
         <div className="au-card au-panel" style={{ padding:"48px 32px", textAlign:"center" }}>
-          <p style={{ fontSize:"42px", marginBottom:"10px" }}>🎁</p>
+          <Gift size={36} style={{ color:"var(--admin-text-muted)", margin:"0 auto 10px" }} />
           <p style={{ fontSize:"15px", fontWeight: 700, color:"var(--admin-text)", marginBottom:"6px" }}>
             No hay campañas creadas.
           </p>

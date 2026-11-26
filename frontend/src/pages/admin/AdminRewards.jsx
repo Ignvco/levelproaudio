@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import { useQuery } from "@tanstack/react-query"
-import { Gift, Ticket, Users, DollarSign } from "lucide-react"
+import { Gift, Ticket, Users, DollarSign, Trophy } from "lucide-react"
 import { adminGetRewardsDashboard } from "../../api/rewards.api"
 import { StatCard, AdminPageHeader, SectionCard, SecondaryButton, StatusBadge, ErrorState } from "../../components/admin/ui"
 import { useSiteSettings } from "../../hooks/useSiteSettings"
@@ -89,33 +89,40 @@ export default function AdminRewards() {
           subtitle={reliableRevenue ? "Órdenes relacionadas, sin conversión" : "Importe no verificable en la moneda seleccionada"} Icon={DollarSign} />
       </div>
 
-      {/* Campaña actual */}
+      {/* Campaña actual — Nimbus light card con acento Deep Black superior */}
       {data.current_campaign ? (
-        <div className="lp-user-hero">
+        <div
+          className="au-card au-panel"
+          style={{
+            borderTop: "3px solid #09090B",
+            padding: "24px",
+          }}
+        >
           <div style={{ display:"flex", justifyContent:"space-between",
-            alignItems:"flex-start", flexWrap:"wrap", gap:"20px", position: "relative", zIndex: 1 }}>
+            alignItems:"flex-start", flexWrap:"wrap", gap:"20px" }}>
             <div style={{ minWidth:0, flex:1 }}>
               <div className="au-eyebrow">
                 <span className="lp-hero-dot" />
                 CAMPAÑA ACTIVA EN TIENDA
               </div>
               <h2 style={{ fontFamily:"var(--font-display)",
-                fontSize:"clamp(1.6rem, 2.4vw, 2.2rem)", fontWeight:800,
-                letterSpacing:"-0.03em", marginBottom:"6px", color: "#fff" }}>
+                fontSize:"clamp(1.4rem, 2.2vw, 1.85rem)", fontWeight:700,
+                letterSpacing:"-0.025em", marginBottom:"6px", color: "#09090B" }}>
                 {data.current_campaign.name}
               </h2>
-              <p style={{ fontSize:"14px", color:"rgba(255,255,255,0.78)" }}>
-                🏆 {data.current_campaign.main_prize}
+              <p style={{ fontSize:"13.5px", color:"var(--admin-text-secondary)", display: "inline-flex", alignItems: "center", gap: "6px" }}>
+                <Trophy size={15} style={{ color: "#0F7A38" }} />
+                {data.current_campaign.main_prize}
               </p>
             </div>
             <div style={{ textAlign:"right" }}>
-              <p style={{ fontSize:"11px", color:"rgba(255,255,255,0.6)",
-                textTransform:"uppercase", letterSpacing:"0.08em",
+              <p style={{ fontSize:"11px", color:"var(--admin-text-muted)",
+                textTransform:"uppercase", letterSpacing:"0.06em",
                 marginBottom:"4px", fontWeight: 700 }}>
                 Tiempo restante
               </p>
-              <p style={{ fontSize:"22px", fontWeight:800,
-                color:"#1AFF6E", fontFamily:"var(--font-mono)" }}>
+              <p style={{ fontSize:"20px", fontWeight:700,
+                color:"#0F7A38", fontFamily:"var(--font-mono)" }}>
                 {remainingLabel}
               </p>
             </div>
@@ -124,9 +131,8 @@ export default function AdminRewards() {
           <div style={{
             display:"grid",
             gridTemplateColumns:"repeat(auto-fit, minmax(140px, 1fr))",
-            gap:"12px", marginTop:"22px",
-            paddingTop:"18px", borderTop:"1px solid rgba(255,255,255,0.1)",
-            position: "relative", zIndex: 1,
+            gap:"12px", marginTop:"20px",
+            paddingTop:"16px", borderTop:"1px solid var(--admin-border)",
           }}>
             {[
               ["Participaciones", data.current_campaign.total_entries],
@@ -135,17 +141,16 @@ export default function AdminRewards() {
               ["Conversión",      `${data.current_campaign.conversion_rate}%`],
             ].map(([label, value]) => (
               <div key={label}>
-                <p style={{ fontSize:"11px", color:"rgba(255,255,255,0.58)",
-                  textTransform:"uppercase", letterSpacing:"0.08em",
-                  marginBottom:"4px", fontWeight: 700 }}>{label}</p>
-                <p style={{ fontSize:"20px", fontWeight:800,
-                  color:"#fff", fontFamily:"var(--font-mono)" }}>{value}</p>
+                <p style={{ fontSize:"11px", color:"var(--admin-text-muted)",
+                  textTransform:"uppercase", letterSpacing:"0.06em",
+                  marginBottom:"4px", fontWeight: 600 }}>{label}</p>
+                <p style={{ fontSize:"19px", fontWeight:700,
+                  color:"var(--admin-text)", fontFamily:"var(--font-mono)" }}>{value}</p>
               </div>
             ))}
           </div>
 
-          <div style={{ marginTop:"20px", display:"flex", gap:"10px",
-            flexWrap:"wrap", position: "relative", zIndex: 1 }}>
+          <div style={{ marginTop:"18px", display:"flex", gap:"10px", flexWrap:"wrap" }}>
             <Link to={`/admin/rewards/campaigns/${data.current_campaign.id}`}
               className="au-btn au-btn--primary"
               style={{ textDecoration:"none" }}>
@@ -153,12 +158,7 @@ export default function AdminRewards() {
             </Link>
             <Link to={`/admin/rewards/entries?campaign=${data.current_campaign.id}`}
               className="au-btn au-btn--secondary"
-              style={{
-                textDecoration:"none",
-                background:"rgba(255,255,255,0.08)",
-                borderColor:"rgba(255,255,255,0.16)",
-                color:"#fff",
-              }}>
+              style={{ textDecoration:"none" }}>
               Ver participaciones
             </Link>
           </div>
