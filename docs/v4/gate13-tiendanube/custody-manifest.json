@@ -1,0 +1,605 @@
+{
+  "source_package": "LEVELPRO_OS_V4_HANDOFF.zip",
+  "head_reported": "df702949c74bcf3df97f98096d3dc2ee4f40aa44",
+  "git_tracking_status": "NOT_VERIFIABLE_NO_DOT_GIT",
+  "total_files": 85,
+  "total_bytes": 55466647,
+  "groups": {
+    "source_document": 12,
+    "source_zip": 2,
+    "design_precision": 38,
+    "design_previous": 33
+  },
+  "files": [
+    {
+      "path": "docs/v4/gate13-tiendanube/admin-surface-inventory.md",
+      "bytes": 74864,
+      "sha256": "fca9d394e11e27587b4c6008b5048cf41020867fd613f6913416f370e78947ce",
+      "classification": "source_document"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/component-mapping.md",
+      "bytes": 25007,
+      "sha256": "a0e13507196243ce39f8952c4155138364e916c9df45c0249deca2d75ad56b2a",
+      "classification": "source_document"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/full-redesign-blueprint.md",
+      "bytes": 35614,
+      "sha256": "9b74c2cc1b43a843c6f012d5cffeb71ffbdf3bdf910c35b8079a0d84e939ae15",
+      "classification": "source_document"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/functional-preservation-matrix.md",
+      "bytes": 33135,
+      "sha256": "d3bf9fe301f0c090c5eb793eba3e19ab41094f2176adce4e2423769b1f6c7d06",
+      "classification": "source_document"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/levelpro-precision-design-tokens.md",
+      "bytes": 8940,
+      "sha256": "55cb16a93f21718d929a50664b8cbc388965c2c05b7861078877d1eabdabe2e2",
+      "classification": "source_document"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/owner-visual-approval-board.md",
+      "bytes": 17270,
+      "sha256": "8ebf79cbfc85b3fd40cd76fea4cd5e7690fc6ed6d64e74875f8feef2e34368f3",
+      "classification": "source_document"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/phase2.zip",
+      "bytes": 16134401,
+      "sha256": "77244b5582c286fa1e7e59e291689bcdbb105782d0d57c4df6ac70ce39873abd",
+      "classification": "source_zip"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/after/01-after-sidebar.png",
+      "bytes": 248379,
+      "sha256": "4330b99ae86ac78e1b8ba7f35d77c22e861c35207a09f26f392859c634993906",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/after/02-after-header.png",
+      "bytes": 304232,
+      "sha256": "d49a483e74016bd7515dae78ab20123a354d520b5bef48a3a68633429b88b64b",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/after/03-after-dashboard.png",
+      "bytes": 383800,
+      "sha256": "ff898216e62c8065c8dae1baefcd94e662670622504cfc954613dfbce793ce90",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/after/04-after-product-list.png",
+      "bytes": 414414,
+      "sha256": "709817363eb47c26cbdd3682f473e5445d58ecea9e1698eb0a8407948e9eab4f",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/after/05-after-product-form.png",
+      "bytes": 443611,
+      "sha256": "3c0ffbf702438ae9e806feaeea490947193de4fe3bda81a60f0e3ff2c70795cb",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/after/06-after-order-sidemodal.png",
+      "bytes": 326752,
+      "sha256": "3d0fc8887a1cf95b74f281058d987b33c39e0dffd4ba90bb967af7889d11b056",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/after/07-after-datatable.png",
+      "bytes": 389951,
+      "sha256": "f38e3fd32e66d9a0a8361f278a807e535fdfc710f13c720fd31b533e1c567545",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/after/08-after-forms.png",
+      "bytes": 384522,
+      "sha256": "a3d389f0ed495029c02a981ed68dd5a22cd27b5edc3eb6b649ee111398d216ce",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/after/09-after-modals.png",
+      "bytes": 279752,
+      "sha256": "654b71031319b156ed89dc6173703cafc01a9c448016bd2a3a4346e9e6d95c92",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/after/10-after-settings-cms.png",
+      "bytes": 351194,
+      "sha256": "3c837ac059bd8ca5d802f4501696f0edeab25f936fd895f8e2ba4bc29af4c878",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/after/11-after-mobile.png",
+      "bytes": 182028,
+      "sha256": "2d4df4c44df59f30d68625ed104321883ae51b387d59f5f28bb04652aad944fd",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/before/01-before-sidebar.png",
+      "bytes": 259804,
+      "sha256": "285ad0f20d09a36a826d188fbf07bcfb4af639166f754ea0a073a8a1df7f025a",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/before/02-before-header.png",
+      "bytes": 277253,
+      "sha256": "57fa7aaaf498b828a092810190777a9a06817cc16ac8b7e264e56038412971cc",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/before/03-before-dashboard.png",
+      "bytes": 354760,
+      "sha256": "11d5cdbc5fe98e13a4951a82384fc161c5b705b530c79783c5cd3e03329d97a9",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/before/04-before-product-list.png",
+      "bytes": 420078,
+      "sha256": "c3412774988208841a60de7e887259d5c98e701517c617bda7adc07063c6dcba",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/before/05-before-product-form.png",
+      "bytes": 419875,
+      "sha256": "4e8b705320d89c5a8907871a908760f4b931de24fc6cec6392381b6ecac41807",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/before/06-before-order-sidemodal.png",
+      "bytes": 312685,
+      "sha256": "7bcd1ce1fb358048e79c7e837e49a001810d02c900ba0860ff0aeada392e4a1b",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/before/07-before-datatable.png",
+      "bytes": 231344,
+      "sha256": "7b4557ca637cfd69518d3717edd26db9527dd46787684be85142c8298fb43610",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/before/08-before-forms.png",
+      "bytes": 270563,
+      "sha256": "03c4bf6e778fd642e70775845d6cd2f1419d47cf3bd8bb2cfd9c150825491e33",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/before/09-before-modals.png",
+      "bytes": 170091,
+      "sha256": "af82b82daabdcf33490ada5661f6a9ca1a92243b7e80fd6d81ed101864618c05",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/before/10-before-settings-cms.png",
+      "bytes": 383563,
+      "sha256": "3cbf4b53ab5158516f9fc5734aa94ad05e6a2459e6f48405f9ca36edd66155b1",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/before/11-before-mobile.png",
+      "bytes": 194001,
+      "sha256": "36a439f38e95c2895fc418dabff6d38c9d1b54d6b11f173ac36decab7b9c5062",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/comparisons/01-ba-sidebar.png",
+      "bytes": 515136,
+      "sha256": "99799eeb3cc925041717b569d83c79a90044b04fd6841cf4ce2e1189b3717993",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/comparisons/02-ba-header.png",
+      "bytes": 539947,
+      "sha256": "bd2eb2fd86ee2d78d0c0453053e35eb5d6a8bfad83a76365ddb2c5f552fd8e84",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/comparisons/03-ba-dashboard.png",
+      "bytes": 719921,
+      "sha256": "428bbdd0f4f475a2d3a72885c77b6470557e3f63d99d0ce63fce16516c496e15",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/comparisons/04-ba-product-list.png",
+      "bytes": 767825,
+      "sha256": "062c99bf095fcf54019b900fea6028b664b2e5b71b0270b6d0fbcaacb7d0ae79",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/comparisons/05-ba-product-form.png",
+      "bytes": 813145,
+      "sha256": "34a6c5811453af085fd813a6cb912d7db5ec1bf5d22c6efa66cd3cb78e010ca3",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/comparisons/06-ba-order-sidemodal.png",
+      "bytes": 591374,
+      "sha256": "49fdfed58ad163aa1d0f192dc199b76e86749214016dc3cc430a5f4dea4c375b",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/comparisons/07-ba-datatable.png",
+      "bytes": 592511,
+      "sha256": "86ee0798c3fc8abf9f8e5def875f298ff8a096960f3ed2f2e5e2f26547746521",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/comparisons/08-ba-forms.png",
+      "bytes": 679818,
+      "sha256": "4ce367fdcd4e9dd256a74d9683032a950317490e7e84c69d3d054e6101019b57",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/comparisons/09-ba-modals.png",
+      "bytes": 452088,
+      "sha256": "8695a84879ceeaadef880aac2387ed6e0ca0d8ffbe0115429c375e2ff1213ce2",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/comparisons/10-ba-settings-cms.png",
+      "bytes": 707544,
+      "sha256": "fbf69108ddbfe842c1e2744d58a40f743d0a01a6f82d9afbcf56d865771c1f30",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/comparisons/11-ba-mobile.png",
+      "bytes": 461247,
+      "sha256": "7e172a09aee960773baee627caaea4934217866e566cb8fedccd9fa617cf8918",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/variants/var-01-desktop-1440x900.png",
+      "bytes": 383800,
+      "sha256": "ff898216e62c8065c8dae1baefcd94e662670622504cfc954613dfbce793ce90",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/variants/var-02-desktop-collapsed-1440x900.png",
+      "bytes": 213790,
+      "sha256": "dddcb02c7add6ca24f365c54f34f6ca7957cb91748b06ba39c828d2adbd8bb1a",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/variants/var-03-tablet-768x1024.png",
+      "bytes": 162233,
+      "sha256": "1b07b24585c3dca385e8446b5fac973a92f78149447224ba58e61da233228681",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/variants/var-04-mobile-390x844.png",
+      "bytes": 57169,
+      "sha256": "f2f7409c9cd75cb6c2026f66af2673da235d97c6c82c55d752bc5e95e0783a23",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/precision-board/variants/var-05-mobile-compact-320x720.png",
+      "bytes": 84728,
+      "sha256": "419f72898c14cc9a479fe2863e683b5a1cd370490740222e00e5ae3996495215",
+      "classification": "design_precision"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/premium-art-direction-audit.md",
+      "bytes": 11927,
+      "sha256": "e796fe25e96dade071f7783db0653fb51ab31ce97f42a263c47d6170f41133ac",
+      "classification": "source_document"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/premium-visual-approval-board.md",
+      "bytes": 8949,
+      "sha256": "78ed6bf8c22a7b1af8c7e0b05d464c520fde0dbf1205bdfc8a6828587089deda",
+      "classification": "source_document"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/premium-visual-refinement-matrix.md",
+      "bytes": 8252,
+      "sha256": "b19876986f14a15378429554cf08928c44340fd6a9347699d506123a70743523",
+      "classification": "source_document"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/premium-visual-refinement-package.zip",
+      "bytes": 13952897,
+      "sha256": "21204867647ac5217562fce1cb1f118b6b9a2fb13798081a8343109baca2519f",
+      "classification": "source_zip"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/qa-acceptance-plan.md",
+      "bytes": 14738,
+      "sha256": "69488e32a05bae41c4575e1a53a93cd3dce2460b030684657bc01ede5ff3119c",
+      "classification": "source_document"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/reference-audit.md",
+      "bytes": 43164,
+      "sha256": "6847ae834b596f348a3d83a58ae43c3b2d8743f182e569d86e56f361e25a8d09",
+      "classification": "source_document"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-acceptance-matrix.md",
+      "bytes": 12223,
+      "sha256": "013f1625dc7b9fe8e1b438ef1b5a7c6668ef422b81c76a06b79516767fd1e1c3",
+      "classification": "source_document"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/comparisons/01-comp-sidebar.png",
+      "bytes": 388773,
+      "sha256": "8dd01c8b8c704cbbd577ada203da88c4c236848d3d46d43d99558c500dd6f808",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/comparisons/02-comp-header.png",
+      "bytes": 409710,
+      "sha256": "affa5c1916ea64e278293d2d414c318a5626e0f3a31c9d1c1f3e2482739427a9",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/comparisons/03-comp-dashboard.png",
+      "bytes": 573701,
+      "sha256": "ac0b631e5928f2fd845919bcd9413eca1e5467730ad7055459b15a8fa23910ce",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/comparisons/04-comp-product-list.png",
+      "bytes": 698860,
+      "sha256": "e93ddc88553b5aee1d7252b4f1699d154596054340a5d021713a4f3297eb5e7f",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/comparisons/05-comp-product-form.png",
+      "bytes": 565931,
+      "sha256": "209b70c2ddf08a124181def0828b6f021cd61b0682d0432b24faec9d628b5df4",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/comparisons/06-comp-order-sidemodal.png",
+      "bytes": 388209,
+      "sha256": "7f080bb568a52bf13bf4dd29a36e7ac08ebad0aa2962d725aeb0086ab92434a3",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/comparisons/07-comp-datatable.png",
+      "bytes": 426954,
+      "sha256": "27096e21bd3e9e8a2568b3fa79bfdfc1f8a22183f757bb6433e1e414e7754337",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/comparisons/08-comp-forms.png",
+      "bytes": 646898,
+      "sha256": "ddc0ecfa5e6bf01262b45e5805a11ef18e63622953f776848effe40cbd375f1d",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/comparisons/09-comp-modals.png",
+      "bytes": 331220,
+      "sha256": "4764c545a1fc584a2b8173a25a9d6435a454db4b7721122167ecc90a9e45a530",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/comparisons/10-comp-settings-cms.png",
+      "bytes": 502520,
+      "sha256": "923d1cc49ed3bdeaca984cacc4bb38faf190ae7c6909e35169d8f1b791e82d20",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/comparisons/11-comp-mobile.png",
+      "bytes": 400906,
+      "sha256": "e6db1dda0b6b4dda8bc289cae7a392efc769b2a20b4d113f62d28753700579a7",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/proposals/01-prop-sidebar.png",
+      "bytes": 259804,
+      "sha256": "285ad0f20d09a36a826d188fbf07bcfb4af639166f754ea0a073a8a1df7f025a",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/proposals/02-prop-header.png",
+      "bytes": 277253,
+      "sha256": "57fa7aaaf498b828a092810190777a9a06817cc16ac8b7e264e56038412971cc",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/proposals/03-prop-dashboard.png",
+      "bytes": 354760,
+      "sha256": "11d5cdbc5fe98e13a4951a82384fc161c5b705b530c79783c5cd3e03329d97a9",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/proposals/04-prop-product-list.png",
+      "bytes": 420078,
+      "sha256": "c3412774988208841a60de7e887259d5c98e701517c617bda7adc07063c6dcba",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/proposals/05-prop-product-form.png",
+      "bytes": 419875,
+      "sha256": "4e8b705320d89c5a8907871a908760f4b931de24fc6cec6392381b6ecac41807",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/proposals/06-prop-order-sidemodal.png",
+      "bytes": 312685,
+      "sha256": "7bcd1ce1fb358048e79c7e837e49a001810d02c900ba0860ff0aeada392e4a1b",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/proposals/07-prop-datatable.png",
+      "bytes": 231344,
+      "sha256": "7b4557ca637cfd69518d3717edd26db9527dd46787684be85142c8298fb43610",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/proposals/08-prop-forms.png",
+      "bytes": 270563,
+      "sha256": "03c4bf6e778fd642e70775845d6cd2f1419d47cf3bd8bb2cfd9c150825491e33",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/proposals/09-prop-modals.png",
+      "bytes": 170091,
+      "sha256": "af82b82daabdcf33490ada5661f6a9ca1a92243b7e80fd6d81ed101864618c05",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/proposals/10-prop-settings-cms.png",
+      "bytes": 383563,
+      "sha256": "3cbf4b53ab5158516f9fc5734aa94ad05e6a2459e6f48405f9ca36edd66155b1",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/proposals/11-prop-mobile.png",
+      "bytes": 194001,
+      "sha256": "36a439f38e95c2895fc418dabff6d38c9d1b54d6b11f173ac36decab7b9c5062",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/references/01-ref-sidebar.png",
+      "bytes": 121344,
+      "sha256": "f1ba3bed8630c62d22d98e238f51004cdfb1bffad195e0dd58d8ac63e234dc97",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/references/02-ref-header.png",
+      "bytes": 114929,
+      "sha256": "96550343a0b8c2f0794dcc65600e014dc7659d0e76300c6db9f374b4bb5fe822",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/references/03-ref-dashboard.png",
+      "bytes": 125516,
+      "sha256": "aab87d1ac7e613170707b814a7c771afa0cf9ef5c1283baaef1daa51e739feec",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/references/04-ref-product-list.png",
+      "bytes": 275962,
+      "sha256": "6406e609dc82c144d126991cf82e6d4fa9cde073a9bb872b140aa0fdf0a71a22",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/references/05-ref-product-form.png",
+      "bytes": 113291,
+      "sha256": "d6c40e97eccea69a55b63c8d067616893ad57408b52db27154e8823a9e9e6ac8",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/references/06-ref-order-sidemodal.png",
+      "bytes": 46671,
+      "sha256": "b3a4550304cbe30b38e7c2a1a46c4647bd1b28026d56f8b2e65ed467abd61631",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/references/07-ref-datatable.png",
+      "bytes": 168482,
+      "sha256": "7e0d51c786c15c44549ee4f7b6717fbb0c4d77fc6ccf651d38e776a1cc01fcaa",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/references/08-ref-forms.png",
+      "bytes": 355189,
+      "sha256": "b4602b673f323b726f0aeeefbbcf4043db489f0f61e1d6bd7989096b0c27c76b",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/references/09-ref-modals.png",
+      "bytes": 103954,
+      "sha256": "dc73910d89a64a040dd814a23e29c5f25549517f20572689baafcd171a926cce",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/references/10-ref-settings-cms.png",
+      "bytes": 102592,
+      "sha256": "5b2c451debd94fb5ec67a6e8d0fc9972e6f2e5b0e7e1ec5944dae985015cd416",
+      "classification": "design_previous"
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-board/references/11-ref-mobile.png",
+      "bytes": 184709,
+      "sha256": "1d5b664c3149535d4fda30b500ad681170724c14bb4509a2747954874c239f23",
+      "classification": "design_previous"
+    }
+  ],
+  "custody_archive": {
+    "filename": "LEVELPRO_GATE13_CUSTODY_85_ORIGINALS.zip",
+    "sha256": "570b51e5267acfd01cf6a23277c12868ba5c5c72386d7bdc55ac07d1ca01f473",
+    "status": "VERIFIED_LOCAL_COPY_NOT_REMOTE"
+  },
+  "publication_documents": [
+    {
+      "path": "docs/v4/gate13-tiendanube/admin-surface-inventory.md",
+      "original_sha256": "fca9d394e11e27587b4c6008b5048cf41020867fd613f6913416f370e78947ce",
+      "publication_sha256": "fca9d394e11e27587b4c6008b5048cf41020867fd613f6913416f370e78947ce",
+      "modified_for_portability": false
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/component-mapping.md",
+      "original_sha256": "a0e13507196243ce39f8952c4155138364e916c9df45c0249deca2d75ad56b2a",
+      "publication_sha256": "a0e13507196243ce39f8952c4155138364e916c9df45c0249deca2d75ad56b2a",
+      "modified_for_portability": false
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/full-redesign-blueprint.md",
+      "original_sha256": "9b74c2cc1b43a843c6f012d5cffeb71ffbdf3bdf910c35b8079a0d84e939ae15",
+      "publication_sha256": "9b74c2cc1b43a843c6f012d5cffeb71ffbdf3bdf910c35b8079a0d84e939ae15",
+      "modified_for_portability": false
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/functional-preservation-matrix.md",
+      "original_sha256": "d3bf9fe301f0c090c5eb793eba3e19ab41094f2176adce4e2423769b1f6c7d06",
+      "publication_sha256": "d3bf9fe301f0c090c5eb793eba3e19ab41094f2176adce4e2423769b1f6c7d06",
+      "modified_for_portability": false
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/levelpro-precision-design-tokens.md",
+      "original_sha256": "55cb16a93f21718d929a50664b8cbc388965c2c05b7861078877d1eabdabe2e2",
+      "publication_sha256": "55cb16a93f21718d929a50664b8cbc388965c2c05b7861078877d1eabdabe2e2",
+      "modified_for_portability": false
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/owner-visual-approval-board.md",
+      "original_sha256": "8ebf79cbfc85b3fd40cd76fea4cd5e7690fc6ed6d64e74875f8feef2e34368f3",
+      "publication_sha256": "b2f545f3109e3f9bd2ef612090b09459a9059e53554cbe634f353331113b2e4c",
+      "modified_for_portability": true
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/premium-art-direction-audit.md",
+      "original_sha256": "e796fe25e96dade071f7783db0653fb51ab31ce97f42a263c47d6170f41133ac",
+      "publication_sha256": "e796fe25e96dade071f7783db0653fb51ab31ce97f42a263c47d6170f41133ac",
+      "modified_for_portability": false
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/premium-visual-approval-board.md",
+      "original_sha256": "78ed6bf8c22a7b1af8c7e0b05d464c520fde0dbf1205bdfc8a6828587089deda",
+      "publication_sha256": "78ed6bf8c22a7b1af8c7e0b05d464c520fde0dbf1205bdfc8a6828587089deda",
+      "modified_for_portability": false
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/premium-visual-refinement-matrix.md",
+      "original_sha256": "b19876986f14a15378429554cf08928c44340fd6a9347699d506123a70743523",
+      "publication_sha256": "b19876986f14a15378429554cf08928c44340fd6a9347699d506123a70743523",
+      "modified_for_portability": false
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/qa-acceptance-plan.md",
+      "original_sha256": "69488e32a05bae41c4575e1a53a93cd3dce2460b030684657bc01ede5ff3119c",
+      "publication_sha256": "69488e32a05bae41c4575e1a53a93cd3dce2460b030684657bc01ede5ff3119c",
+      "modified_for_portability": false
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/reference-audit.md",
+      "original_sha256": "6847ae834b596f348a3d83a58ae43c3b2d8743f182e569d86e56f361e25a8d09",
+      "publication_sha256": "6847ae834b596f348a3d83a58ae43c3b2d8743f182e569d86e56f361e25a8d09",
+      "modified_for_portability": false
+    },
+    {
+      "path": "docs/v4/gate13-tiendanube/visual-acceptance-matrix.md",
+      "original_sha256": "013f1625dc7b9fe8e1b438ef1b5a7c6668ef422b81c76a06b79516767fd1e1c3",
+      "publication_sha256": "013f1625dc7b9fe8e1b438ef1b5a7c6668ef422b81c76a06b79516767fd1e1c3",
+      "modified_for_portability": false
+    }
+  ],
+  "note": "Original 85 files preserved byte-for-byte. Historical visual-board/manifest.json is referenced but absent from the handoff; custody hashes cover all 33 PNGs. No external storage location has been assigned."
+}
