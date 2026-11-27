@@ -1,7 +1,7 @@
 // pages/admin/AdminOrders.jsx
 // LEVELPRO OS V4.0 — GATE 7: Order Management System (OMS)
 // BF-11 (Ventas Manuales / DraftOrder), BF-12 (WhatsApp Checkout), BF-13 (Estados 3D Comercial/Financiero/Logístico), BF-23 (RMA e Inspección)
-import { useState } from "react"
+import { useRef, useState } from "react"
 import { Link } from "react-router-dom"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
@@ -33,10 +33,13 @@ import {
 } from "lucide-react"
 import {
   DataTable, StatusBadge, AdminPageHeader, StatCard,
-  PrimaryButton, SecondaryButton, SideModal, formInputStyle,
+  PrimaryButton, SecondaryButton, SideModal, FormField, formInputStyle,
 } from "../../components/admin/ui"
 import { showToast } from "../../utils/toast"
 import { formatCurrency } from "../../utils/accountingCurrency"
+import {
+  availableManualVariants, makeManualDraftLine, manualProductRequiresVariant, manualVariantPrice, toManualOrderPayloadLine,
+} from "./manualOrderVariant"
 
 const STATUS = {
   pending:   { label: "Pendiente",  color: "#D97706" },
@@ -673,6 +676,8 @@ export default function AdminOrders() {
   const [draftReserveInventory, setDraftReserveInventory] = useState(true)
   const [draftNotes, setDraftNotes] = useState("")
   const [draftProductId, setDraftProductId] = useState("")
+  const [draftVariantId, setDraftVariantId] = useState("")
+  const manualVariantRef = useRef(null)
   const [draftQuantity, setDraftQuantity] = useState(1)
   const [draftCustomPrice, setDraftCustomPrice] = useState("")
   const [draftLines, setDraftLines] = useState([])
@@ -730,7 +735,7 @@ export default function AdminOrders() {
     queryFn: () => getAdminRMAs(),
   })
 
-  const { data: catalogData } = useQuery({
+  const { data: catalogData, isLoading: catalogLoading, isError: catalogError } = useQuery({
     queryKey: ["admin-products-oms-selector"],
     queryFn: () => getAdminProducts({ is_active: true }),
     staleTime: 60 * 1000,
@@ -741,6 +746,9 @@ export default function AdminOrders() {
   const fulfillmentQueue = fulfillmentData?.results || []
   const rmasList = rmasData?.results || []
   const catalogProducts = catalogData?.results || (Array.isArray(catalogData) ? catalogData : [])
+  const selectedManualProduct = catalogProducts.find((p) => String(p.id) === String(draftProductId))
+  const requiresManualVariant = manualProductRequiresVariant(selectedManualProduct)
+  const activeManualVariants = availableManualVariants(selectedManualProduct)
 
   const totalCount = ordersData?.count ?? orders.length
   const paidCount = orders.filter((o) => o.status === "paid" || o.status === "completed" || o.financial_status === "paid").length
@@ -762,6 +770,10 @@ export default function AdminOrders() {
       setShowManualModal(false)
       setSelectedDraft(created)
       setDraftLines([])
+      setDraftProductId("")
+      setDraftVariantId("")
+      setDraftQuantity(1)
+      setDraftCustomPrice("")
       showToast(`Propuesta comercial ${created.draft_number} creada.`, "success")
     },
     onError: (e) => {
@@ -882,34 +894,44 @@ export default function AdminOrders() {
     },
   })
 
+  const buildCurrentDraftLine = () => {
+    try {
+      return makeManualDraftLine({
+        product: selectedManualProduct,
+        variantId: draftVariantId,
+        quantity: draftQuantity,
+        authorizedUnitPrice: canEditPrices ? draftCustomPrice : "",
+        currency: draftCurrency,
+      })
+    } catch (error) {
+      showToast(error.message || "No se pudo validar el producto seleccionado.", "error")
+      if (requiresManualVariant && activeManualVariants.length > 0 && !activeManualVariants.some((variant) => String(variant.id) === String(draftVariantId))) {
+        manualVariantRef.current?.focus()
+      }
+      return null
+    }
+  }
+
   const handleAddDraftLine = () => {
-    const prod = catalogProducts.find((p) => String(p.id) === String(draftProductId))
-    if (!prod) {
-      showToast("Selecciona un producto del catálogo.", "error")
-      return
-    }
-    const qty = Math.max(1, Number(draftQuantity) || 1)
-    const line = {
-      product_id: prod.id,
-      product_name: prod.name,
-      sku: prod.sku || "SKU",
-      quantity: qty,
-      catalog_price: prod.price,
-      ...(draftCustomPrice ? { authorized_unit_price: draftCustomPrice } : {}),
-    }
+    const line = buildCurrentDraftLine()
+    if (!line) return
     setDraftLines((prev) => [...prev, line])
     setDraftQuantity(1)
     setDraftCustomPrice("")
+    setDraftVariantId("")
   }
 
   const handleCreateManualOrderSubmit = (e) => {
     e.preventDefault()
-    const effectiveLines = draftLines.length > 0
-      ? draftLines
-      : (draftProductId ? [{ product_id: draftProductId, quantity: Math.max(1, Number(draftQuantity) || 1), ...(draftCustomPrice ? { authorized_unit_price: draftCustomPrice } : {}) }] : [])
-
-    if (!draftCustomerName.trim() || !draftCustomerEmail.trim() || effectiveLines.length === 0) {
-      showToast("Completa cliente, email y al menos un producto.", "error")
+    if (createDraftMutation.isPending) return
+    const lines = [...draftLines]
+    if (lines.length === 0) {
+      const currentLine = buildCurrentDraftLine()
+      if (!currentLine) return
+      lines.push(currentLine)
+    }
+    if (!draftCustomerName.trim() || !draftCustomerEmail.trim()) {
+      showToast("Completa cliente y email para crear la propuesta.", "error")
       return
     }
     createDraftMutation.mutate({
@@ -922,7 +944,7 @@ export default function AdminOrders() {
       channel: draftChannel,
       reserve_inventory: draftReserveInventory,
       notes: draftNotes.trim(),
-      items: effectiveLines,
+      items: lines.map(toManualOrderPayloadLine),
     })
   }
 
@@ -1374,7 +1396,14 @@ export default function AdminOrders() {
                   <select
                     data-testid="manual-currency-select"
                     value={draftCurrency}
-                    onChange={(e) => setDraftCurrency(e.target.value)}
+                    onChange={(e) => {
+                      if (draftLines.length > 0) {
+                        showToast("Quita las líneas añadidas antes de cambiar la moneda de la propuesta.", "error")
+                        return
+                      }
+                      setDraftCurrency(e.target.value)
+                      setDraftCustomPrice("")
+                    }}
                     style={{ ...formInputStyle, background: "#fff" }}
                   >
                     <option value="CLP">CLP ($)</option>
@@ -1413,24 +1442,31 @@ export default function AdminOrders() {
                 borderRadius: "14px", padding: "14px",
               }}>
                 <label style={labelStyle}>Agregar Equipamiento del Catálogo WMS</label>
-                <div style={{ display: "grid", gridTemplateColumns: "2fr 100px 160px auto", gap: "10px", alignItems: "center" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 150px), 1fr))", gap: "10px", alignItems: "center" }}>
                   <select
                     data-testid="manual-product-select"
+                    aria-label="Producto del catálogo"
                     value={draftProductId}
-                    onChange={(e) => setDraftProductId(e.target.value)}
+                    onChange={(e) => {
+                      setDraftProductId(e.target.value)
+                      setDraftVariantId("")
+                      setDraftCustomPrice("")
+                    }}
                     style={{ ...formInputStyle, background: "#fff" }}
                   >
-                    <option value="">Seleccionar producto o variante...</option>
+                    <option value="">Seleccionar producto...</option>
                     {catalogProducts.map((p) => (
                       <option key={p.id} value={p.id}>
-                        {p.sku ? `[${p.sku}] ` : ""}{p.name} — Stock: {p.stock} — {formatCurrency(p.price, "CLP")}
+                        {p.sku ? `[${p.sku}] ` : ""}{p.name} — Stock: {p.stock} — {manualProductRequiresVariant(p) ? "Elegir variante" : formatCurrency(manualVariantPrice(p, draftCurrency), draftCurrency)}
                       </option>
                     ))}
                   </select>
                   <input
                     type="number"
                     min={1}
+                    step={1}
                     data-testid="manual-product-qty"
+                    aria-label="Cantidad"
                     value={draftQuantity}
                     onChange={(e) => setDraftQuantity(e.target.value)}
                     placeholder="Cant."
@@ -1438,6 +1474,9 @@ export default function AdminOrders() {
                   />
                   <input
                     type="number"
+                    step="0.01"
+                    min="0.01"
+                    aria-label="Precio unitario autorizado"
                     value={draftCustomPrice}
                     onChange={(e) => setDraftCustomPrice(e.target.value)}
                     placeholder={canEditPrices ? "Precio aut. (opc)" : "Precio catálogo"}
@@ -1449,6 +1488,47 @@ export default function AdminOrders() {
                   </SecondaryButton>
                 </div>
 
+                {catalogLoading && <p className="au-formfield__help" role="status">Cargando catálogo de productos...</p>}
+                {catalogError && <p className="au-formfield__error" role="alert">No fue posible consultar el catálogo con tus permisos actuales. No se puede emitir una propuesta sin un producto válido.</p>}
+                {requiresManualVariant && (
+                  <div style={{ marginTop: "12px", maxWidth: "560px", minWidth: 0 }}>
+                    <FormField
+                      label="Variante del producto"
+                      required
+                      error={activeManualVariants.length === 0
+                        ? "Este producto tiene variantes, pero ninguna activa disponible. No puede añadirse a la propuesta."
+                        : undefined}
+                      description={activeManualVariants.length > 0
+                        ? "Selecciona el SKU exacto. El precio definitivo y la reserva WMS se validan al crear la propuesta."
+                        : undefined}
+                    >
+                      <select
+                        data-testid="manual-variant-select"
+                        ref={manualVariantRef}
+                        aria-required="true"
+                        value={draftVariantId}
+                        onChange={(e) => {
+                          setDraftVariantId(e.target.value)
+                          setDraftCustomPrice("")
+                        }}
+                        disabled={activeManualVariants.length === 0}
+                        style={{ ...formInputStyle, background: "#fff", maxWidth: "100%", minWidth: 0 }}
+                      >
+                        <option value="">Seleccionar variante obligatoria...</option>
+                        {activeManualVariants.map((variant) => (
+                          <option key={variant.id} value={variant.id}>
+                            [{variant.sku || "SKU"}] {variant.name || "Variante"}
+                            {Object.entries(variant.attributes || {}).map(([key, val]) => ` · ${key}: ${String(val)}`).join("")}
+                            {variant.stock != null ? ` · Stock referencial: ${variant.stock}` : ""}
+                            {manualVariantPrice(variant, draftCurrency) != null
+                              ? ` · ${formatCurrency(manualVariantPrice(variant, draftCurrency), draftCurrency)}` : ""}
+                          </option>
+                        ))}
+                      </select>
+                    </FormField>
+                  </div>
+                )}
+
                 {draftLines.length > 0 && (
                   <div style={{ marginTop: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
                     {draftLines.map((ln, idx) => (
@@ -1457,7 +1537,7 @@ export default function AdminOrders() {
                         background: "#fff", padding: "8px 12px", borderRadius: "10px", border: "1px solid var(--admin-border)",
                         fontSize: "12.5px", fontWeight: 700, color: "var(--admin-text)",
                       }}>
-                        <span>[{ln.sku}] {ln.product_name} × {ln.quantity}</span>
+                        <span>[{ln.sku}] {ln.product_name}{ln.variant_name ? ` — ${ln.variant_name}` : ""} × {ln.quantity}</span>
                         <button
                           type="button"
                           onClick={() => setDraftLines((prev) => prev.filter((_, i) => i !== idx))}
